@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS public."User"
 	phone varchar(10),
 	status varchar(20) DEFAULT 'active',
 	birthdate date,
-	created_at timestamptz DEFAULT now()
+	created_at timestamptz DEFAULT now(),
+	updated_at timestamptz DEFAULT now()
 );
 
 DROP TABLE IF EXISTS public."Permission_Role";
@@ -63,13 +64,16 @@ CREATE TABLE IF NOT EXISTS public."User_Role"
 		REFERENCES "Role"(role_id)
 );
 
-DROP TABLE IF EXISTS public."User_Social_Account";
-CREATE TABLE IF NOT EXISTS public."User_Social_Account"
+DROP TABLE IF EXISTS public."User_Auth_Provider";
+CREATE TABLE IF NOT EXISTS public."User_Auth_Provider"
 (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	social_account varchar(100),
 	user_id uuid NOT NULL,
-	provider varchar(100),
+	email varchar(100),
+	password_hash text,
+	provider varchar(100) UNIQUE NOT NULL,
+	provider_user_id varchar(255) NOT NULL,
+	created_at timestamptz DEFAULT now()
 
 	CONSTRAINT fk_user_id
 		FOREIGN KEY (user_id)
@@ -85,7 +89,7 @@ CREATE TABLE IF NOT EXISTS public."Specialty"
 	specialty_name varchar(100),
 	description text,
 	created_at timestamptz DEFAULT now()
-);
+); 
 
 DROP TABLE IF EXISTS public."Roadmap";
 CREATE TABLE IF NOT EXISTS public."Roadmap"
