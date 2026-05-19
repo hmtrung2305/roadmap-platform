@@ -25,7 +25,8 @@ DROP TABLE IF EXISTS public."User";
 CREATE TABLE IF NOT EXISTS public."User"
 (
     user_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name varchar(100),
+    username varchar(50) UNIQUE,
+	display_name varchar(100),
 	gender bool, -- true-M, false-FM
 	phone varchar(10),
 	status varchar(20) DEFAULT 'active',
@@ -73,7 +74,7 @@ CREATE TABLE IF NOT EXISTS public."User_Auth_Provider"
 	password_hash text,
 	provider varchar(100) UNIQUE NOT NULL,
 	provider_user_id varchar(255) NOT NULL,
-	created_at timestamptz DEFAULT now()
+	created_at timestamptz DEFAULT now(),
 
 	CONSTRAINT fk_user_id
 		FOREIGN KEY (user_id)
@@ -98,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public."Roadmap"
 	specialty_id uuid NOT NULL,
 	roadmap_name varchar(100),
 	version int DEFAULT 1,
-	is_active bool DEFAULT 'true',
+	is_active bool DEFAULT true,
 	created_at timestamptz DEFAULT now(),
 
 	CONSTRAINT fk_specialty_id
