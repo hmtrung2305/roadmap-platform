@@ -1,9 +1,9 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO public;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- =========================
 -- User, Role, Permission
@@ -28,7 +28,12 @@ CREATE TABLE IF NOT EXISTS public."User"
     display_name varchar(100),
     gender varchar(20),
     phone varchar(20),
-    status varchar(20) NOT NULL DEFAULT 'active',
+    bio varchar(500),
+    avatar_url text,
+    website_url text,
+    github_url text,
+    linkedin_url text,
+    status int NOT NULL DEFAULT 1,
     birthdate date,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
@@ -82,6 +87,7 @@ CREATE TABLE IF NOT EXISTS public."User_Auth_Provider"
     password_hash text,
     provider varchar(100) NOT NULL,
     provider_user_id varchar(255) NOT NULL,
+    provider_username varchar(50),
     created_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_user_auth_provider_user_id
@@ -329,15 +335,31 @@ CREATE TABLE IF NOT EXISTS public."Repository"
 (
     repository_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
-    repo_name varchar(100) NOT NULL,
-    repo_url text,
+
+    github_repo_id bigint NOT NULL,
+    name varchar(150) NOT NULL,
+    full_name varchar(255) NOT NULL,
+    html_url text NOT NULL,
     description text,
-    created_at timestamptz NOT NULL DEFAULT now(),
+
+    primary_language varchar(50),
+    stars int NOT NULL DEFAULT 0,
+    forks int NOT NULL DEFAULT 0,
+
+    is_private bool NOT NULL DEFAULT false,
+    is_selected_for_portfolio bool NOT NULL DEFAULT true,
+
+    github_created_at timestamptz,
+    github_updated_at timestamptz,
+    synced_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_repository_user_id
         FOREIGN KEY (user_id)
         REFERENCES public."User"(user_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_user_github_repo
+        UNIQUE (user_id, github_repo_id)
 );
 
 CREATE TABLE IF NOT EXISTS public."Repo_Insight"
@@ -429,5 +451,3 @@ CREATE TABLE IF NOT EXISTS public."Payment_Transaction"
         REFERENCES public."Invoice"(invoice_id)
         ON DELETE CASCADE
 );
-
-SELECT * FROM user_auth_provider;
