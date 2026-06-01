@@ -1,0 +1,9 @@
+﻿namespace RoadmapPlatform.Application.Constants
+{
+    public static class EmailVerficationPurposes
+    {
+        public const string Register = "register";
+        public const string ChangeEmail = "change_email";
+        public const string LinkLocal = "link_local";
+    }
+}

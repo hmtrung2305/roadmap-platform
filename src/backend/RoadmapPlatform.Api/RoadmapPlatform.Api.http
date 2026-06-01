@@ -1,0 +1,6 @@
+@RoadmapPlatform.Api_HostAddress = http://localhost:5237
+
+GET {{RoadmapPlatform.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
