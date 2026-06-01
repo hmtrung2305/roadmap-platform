@@ -1,9 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Pgvector.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Pgvector.EntityFrameworkCore;
+using RoadmapPlatform.Application.Interfaces;
+using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
 {
@@ -26,8 +29,13 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                         npgsqlOptions.UseVector();
                     }));
 
+            services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+
             // Đăng ký implementation cho external services ở đây sau.
             // Ví dụ:
+            services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IJwtTokenService, JwtTokenService>();
+            services.AddScoped<IOAuthLoginService, OAuthLoginService>();
             // services.AddScoped<IEmailSender, EmailSender>();
             // services.AddScoped<IGitHubClient, GitHubApiClient>();
             // services.AddScoped<IRagService, RagService>();

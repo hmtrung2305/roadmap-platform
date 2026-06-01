@@ -72,9 +72,6 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<UserSkillProgress> UserSkillProgresses { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection", x => x.UseVector());
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
