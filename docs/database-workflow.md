@@ -187,7 +187,7 @@ Command cho PowerShell:
 dotnet ef dbcontext scaffold "Name=ConnectionStrings:DefaultConnection" Npgsql.EntityFrameworkCore.PostgreSQL `
   --project RoadmapPlatform.Infrastructure `
   --startup-project RoadmapPlatform.Api `
-  --context RoadmapPlatformDbContext `
+  --context ApplicationDbContext `
   --context-dir Data `
   --output-dir Entities `
   --force
@@ -198,7 +198,7 @@ Command cho CMD/Git Bash:
 dotnet ef dbcontext scaffold "Name=ConnectionStrings:DefaultConnection" Npgsql.EntityFrameworkCore.PostgreSQL \
   --project RoadmapPlatform.Infrastructure \
   --startup-project RoadmapPlatform.Api \
-  --context RoadmapPlatformDbContext \
+  --context ApplicationDbContext \
   --context-dir Data \
   --output-dir Entities \
   --force
