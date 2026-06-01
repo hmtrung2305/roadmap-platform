@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.Interfaces;
 
 namespace RoadmapPlatform.Api.Controllers
