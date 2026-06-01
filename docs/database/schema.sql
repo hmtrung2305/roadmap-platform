@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.user_profile
     cover_image_url text,
 
     career_goal varchar(150),
-    current_role varchar(100),
+    "current_role" varchar(100),
 
     public_email varchar(254),
     github_url text,
@@ -352,7 +352,7 @@ CREATE TABLE IF NOT EXISTS public.user_skill_progress
     status varchar(30),
     unlock_method jsonb,
     updated_at timestamptz NOT NULL DEFAULT now(),
-
+fcurre
     CONSTRAINT fk_user_skill_progress_user_id
         FOREIGN KEY (user_id)
         REFERENCES public.user(user_id)
