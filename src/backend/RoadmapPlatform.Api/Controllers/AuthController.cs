@@ -1,11 +1,8 @@
 ﻿using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.Interfaces;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers
 {
@@ -20,18 +17,6 @@ namespace RoadmapPlatform.Api.Controllers
         public AuthController(IAuthService authServices)
         {
             _authService = authServices;
-        }
-
-        [Authorize]
-        [HttpGet("auth-test")]
-        public IActionResult AuthTest()
-        {
-            return Ok(new
-            {
-                message = "Token is valid",
-                userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                username = User.Identity?.Name
-            });
         }
 
         [HttpGet("google/login")]
