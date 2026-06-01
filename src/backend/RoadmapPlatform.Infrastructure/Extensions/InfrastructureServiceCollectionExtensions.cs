@@ -33,9 +33,16 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Đăng ký implementation cho external services ở đây sau.
             // Ví dụ:
+
+            // Authentication Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IOAuthLoginService, OAuthLoginService>();
+            
+            // User Services
+            services.AddScoped<IUserService, UserService>();
+            
+            
             // services.AddScoped<IEmailSender, EmailSender>();
             // services.AddScoped<IGitHubClient, GitHubApiClient>();
             // services.AddScoped<IRagService, RagService>();
