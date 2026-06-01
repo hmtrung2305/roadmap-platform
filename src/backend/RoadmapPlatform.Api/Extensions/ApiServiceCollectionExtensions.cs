@@ -25,7 +25,8 @@
                     policy
                         .WithOrigins(allowedOrigins)
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
             });
 
