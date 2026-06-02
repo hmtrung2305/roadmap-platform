@@ -10,5 +10,6 @@ namespace RoadmapPlatform.Application.Interfaces.Portfolio
     {
         Task<PortfolioResponseDto> GetMyPortfolioAsync(Guid userId);
         Task<PortfolioResponseDto> GetPortfolioByUsernameAsync(string username);
+        Task<PortfolioResponseDto> UpdatePortfolioRepositoriesAsync(Guid userId, UpdatePortfolioRepositoriesRequestDto request);
     }
 }

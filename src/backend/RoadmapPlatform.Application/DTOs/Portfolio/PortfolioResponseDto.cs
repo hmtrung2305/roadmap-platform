@@ -1,3 +1,5 @@
+using RoadmapPlatform.Application.DTOs.GitHub;
+
 namespace RoadmapPlatform.Application.DTOs.Portfolio
 {
     public class PortfolioResponseDto
@@ -14,5 +16,6 @@ namespace RoadmapPlatform.Application.DTOs.Portfolio
         public string? GithubUrl { get; set; }
         public string? LinkedinUrl { get; set; }
         public string? PersonalWebsiteUrl { get; set; }
+        public List<GitHubRepositoryResponseDto> Repositories { get; set; } = new();
     }
 }

@@ -3,12 +3,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pgvector.EntityFrameworkCore;
 using RoadmapPlatform.Application.Interfaces.Auth;
+using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Users;
+using RoadmapPlatform.Infrastructure.Clients;
 using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services.Auth;
+using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Users;
 
@@ -48,7 +51,11 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Portfolio Services
             services.AddScoped<IPortfolioService, PortfolioService>();
-            
+
+            // GitHub Services
+            services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
+            services.AddScoped<IGitHubApiClient, GitHubApiClient>();
+
             // services.AddScoped<IEmailSender, EmailSender>();
             // services.AddScoped<IGitHubClient, GitHubApiClient>();
             // services.AddScoped<IRagService, RagService>();
