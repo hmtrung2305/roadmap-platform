@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Pgvector.EntityFrameworkCore;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.GitHub;
@@ -56,6 +56,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IOAuthLoginService, OAuthLoginService>();
             services.AddScoped<IAuthProviderService, AuthProviderService>();
+            services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             // Email Services
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
