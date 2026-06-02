@@ -42,6 +42,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             // User Services
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IPermissionService, PermissionService>();
+            services.AddScoped<IRoleService, RoleService>();
             
             
             // services.AddScoped<IEmailSender, EmailSender>();
