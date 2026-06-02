@@ -1,4 +1,4 @@
-namespace RoadmapPlatform.Application.Interfaces;
+namespace RoadmapPlatform.Application.Interfaces.Auth;
 
 public interface IJwtTokenService
 {

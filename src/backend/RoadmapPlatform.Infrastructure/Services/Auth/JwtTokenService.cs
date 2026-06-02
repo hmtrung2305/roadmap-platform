@@ -3,10 +3,10 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using RoadmapPlatform.Application.Interfaces;
+using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Configurations;
 
-namespace RoadmapPlatform.Infrastructure.Services;
+namespace RoadmapPlatform.Infrastructure.Services.Auth;
 
 public class JwtTokenService : IJwtTokenService
 {

@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using RoadmapPlatform.Application.DTOs.Auth;
 
-namespace RoadmapPlatform.Application.Interfaces;
+namespace RoadmapPlatform.Application.Interfaces.Auth;
 
 public interface IAuthService
 {

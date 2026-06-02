@@ -6,11 +6,11 @@ using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.DTOs.Users;
 using RoadmapPlatform.Application.Exceptions;
-using RoadmapPlatform.Application.Interfaces;
+using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services;
+namespace RoadmapPlatform.Infrastructure.Services.Auth;
 
 public class AuthService : IAuthService
 {

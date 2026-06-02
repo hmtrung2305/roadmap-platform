@@ -1,6 +1,6 @@
 ﻿using RoadmapPlatform.Application.DTOs.Users;
 
-namespace RoadmapPlatform.Application.Interfaces;
+namespace RoadmapPlatform.Application.Interfaces.Users;
 
 public interface IUserService
 {
