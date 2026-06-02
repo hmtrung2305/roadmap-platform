@@ -73,6 +73,10 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // User Services
             services.AddScoped<IUserService, UserService>();
+          
+            // RBAC Services
+            services.AddScoped<IPermissionService, PermissionService>();
+            services.AddScoped<IRoleService, RoleService>();
 
             // Portfolio Services
             services.AddScoped<IPortfolioService, PortfolioService>();
@@ -80,11 +84,6 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             // GitHub Services
             services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
-
-            // services.AddScoped<IEmailSender, EmailSender>();
-            // services.AddScoped<IGitHubClient, GitHubApiClient>();
-            // services.AddScoped<IRagService, RagService>();
-            // services.AddScoped<IJobMarketAnalysisClient, JobMarketAnalysisClient>();
 
             return services;
         }
