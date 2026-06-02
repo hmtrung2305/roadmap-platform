@@ -9,5 +9,7 @@
         public bool IsLinked { get; set; }
 
         public bool CanUnlink { get; set; }
+
+        public bool RequiresVerification { get; set; }
     }
 }

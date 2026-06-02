@@ -46,6 +46,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IOAuthLoginService, OAuthLoginService>();
             services.AddScoped<IAuthProviderService, AuthProviderService>();
+            services.AddScoped<IEmailVerificationService, EmailVerificationService>();
             
             // User Services
             services.AddScoped<IUserService, UserService>();

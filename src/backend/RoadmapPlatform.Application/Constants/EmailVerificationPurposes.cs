@@ -1,6 +1,6 @@
 ﻿namespace RoadmapPlatform.Application.Constants
 {
-    public static class EmailVerficationPurposes
+    public static class EmailVerificationPurposes
     {
         public const string Register = "register";
         public const string ChangeEmail = "change_email";
