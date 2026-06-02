@@ -11,7 +11,7 @@ using RoadmapPlatform.Infrastructure.Entities;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace RoadmapPlatform.Infrastructure.Services.Auth
+namespace RoadmapPlatform.Infrastructure.Services.Email
 {
     public class EmailVerificationService : IEmailVerificationService
     {
