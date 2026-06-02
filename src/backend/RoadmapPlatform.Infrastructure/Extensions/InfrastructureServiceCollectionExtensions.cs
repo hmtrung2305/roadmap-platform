@@ -4,18 +4,24 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.Auth;
+using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
+using RoadmapPlatform.Application.Interfaces.Rag;
 using RoadmapPlatform.Application.Interfaces.Users;
+using RoadmapPlatform.Application.Interfaces.Resources;
 using RoadmapPlatform.Infrastructure.Clients;
 using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.Auth;
+using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
+using RoadmapPlatform.Infrastructure.Services.Rag;
+using RoadmapPlatform.Infrastructure.Services.Resources;
 using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
@@ -39,14 +45,20 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                         npgsqlOptions.UseVector();
                     }));
 
+            // JWT Settings
             services.Configure<JwtSettings>(
                 configuration.GetSection("Jwt"));
 
+            // Email Settings
             services.Configure<EmailVerificationSettings>(
                 configuration.GetSection("EmailVerification"));
 
             services.Configure<SmtpEmailSettings>(
                 configuration.GetSection("SmtpEmail"));
+
+            // AI, RAG Settings
+            services.Configure<AiSettings>(configuration.GetSection("Ai"));
+            services.Configure<RagSettings>(configuration.GetSection("Rag"));
 
             // Đăng ký implementation cho external services ở đây sau.
             // Ví dụ:
@@ -84,6 +96,13 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             // GitHub Services
             services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
+
+            // Chatbot, RAG Services
+            services.AddScoped<IResourceService, ResourceService>();
+            services.AddScoped<IChatService, ChatService>();
+
+            services.AddSingleton<IRagService, RagService>();
+
 
             return services;
         }
