@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+src/backend/RoadmapPlatform.Api/wwwroot/docs/*
+!src/backend/RoadmapPlatform.Api/wwwroot/docs/.gitkeep
+
 # dotenv files
 .env
 
