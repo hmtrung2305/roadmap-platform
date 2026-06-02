@@ -1,8 +1,10 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Application.DTOs.Portfolio;
 using RoadmapPlatform.Application.DTOs.Users;
-using RoadmapPlatform.Application.Interfaces;
+using RoadmapPlatform.Application.Interfaces.Portfolio;
+using RoadmapPlatform.Application.Interfaces.Users;
+using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers;
 
@@ -12,10 +14,12 @@ namespace RoadmapPlatform.Api.Controllers;
 public class MeController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IPortfolioService _portfolioService;
 
-    public MeController(IUserService userService)
+    public MeController(IUserService userService, IPortfolioService portfolioService)
     {
         _userService = userService;
+        _portfolioService = portfolioService;
     }
 
     [HttpGet]
@@ -62,6 +66,28 @@ public class MeController : ControllerBase
         var result = await _userService.UpdateMyProfileAsync(userId, request);
 
         return Ok(result);
+    }
+
+    [HttpGet("portfolio")]
+    [Authorize]
+    public async Task<IActionResult> GetMyPortfolio()
+    {
+        var userId = GetCurrentUserId();
+
+        var portfolioResponse = await _portfolioService.GetMyPortfolioAsync(userId);
+
+        return Ok(portfolioResponse);
+    }
+
+    [HttpPatch("portfolio/repositories")]
+    [Authorize]
+    public async Task<IActionResult> UpdatePortfolioRepositories(UpdatePortfolioRepositoriesRequestDto request)
+    {
+        var userId = GetCurrentUserId();
+
+        var portfolioResponse = await _portfolioService.UpdatePortfolioRepositoriesAsync(userId, request);
+
+        return Ok(portfolioResponse);
     }
 
     private Guid GetCurrentUserId()
