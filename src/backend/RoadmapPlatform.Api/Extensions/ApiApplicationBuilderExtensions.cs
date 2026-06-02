@@ -20,6 +20,8 @@ namespace RoadmapPlatform.Api.Extensions
 
             app.UseAuthorization();
 
+            app.UseStaticFiles();
+
             app.MapControllers();
 
             return app;
