@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using System.Security.Claims;
 
@@ -16,10 +17,14 @@ namespace RoadmapPlatform.Api.Controllers
         private const string LinkingUserIdProperty = "linking_user_id";
 
         private readonly IAuthProviderService _authProviderService;
+        private readonly IEmailVerificationService _emailVerificationService;
 
-        public MeAuthProviderController(IAuthProviderService authProviderService)
+        public MeAuthProviderController(
+            IAuthProviderService authProviderService,
+            IEmailVerificationService emailVerificationService)
         {
             _authProviderService = authProviderService;
+            _emailVerificationService = emailVerificationService;
         }
 
         [HttpGet]
@@ -31,6 +36,90 @@ namespace RoadmapPlatform.Api.Controllers
             var response = await _authProviderService.GetAuthProviderStatusAsync(userId);
 
             return Ok(response);
+        }
+
+        [HttpPost("local")]
+        [Authorize]
+        public async Task<IActionResult> LinkLocalLogin(LinkLocalLoginRequestDto request)
+        {
+            var userId = GetCurrentUserId();
+
+            await _authProviderService.LinkLocalLoginAsync(userId, request);
+
+            return Ok(new
+            {
+                message = "Password login added. Verification code sent to email."
+            });
+        }
+
+        [HttpPost("local/resend-verification")]
+        [Authorize]
+        public async Task<IActionResult> ResendLinkedLocalVerification()
+        {
+            var userId = GetCurrentUserId();
+
+            await _emailVerificationService.ResendLinkedLocalVerificationAsync(userId);
+
+            return Ok(new
+            {
+                message = "Verification code sent"
+            });
+        }
+
+        [HttpPost("local/verify")]
+        [Authorize]
+        public async Task<IActionResult> VerifyLinkedLocalEmail(VerifyOtpRequestDto request)
+        {
+            var userId = GetCurrentUserId();
+
+            await _emailVerificationService.VerifyLinkedLocalEmailAsync(userId, request.Otp!);
+
+            return Ok(new
+            {
+                message = "Local login email verified successfully"
+            });
+        }
+
+        [HttpPost("local/email/change-request")]
+        [Authorize]
+        public async Task<IActionResult> RequestLocalEmailChange(UpdateLocalEmailRequestDto request)
+        {
+            var userId = GetCurrentUserId();
+
+            await _emailVerificationService.RequestLocalEmailChangeAsync(userId, request.NewEmail!);
+
+            return Ok(new
+            {
+                message = "Verification code sent"
+            });
+        }
+
+        [HttpPost("local/email/verify")]
+        [Authorize]
+        public async Task<IActionResult> VerifyLocalEmailChange(VerifyOtpRequestDto request)
+        {
+            var userId = GetCurrentUserId();
+
+            await _emailVerificationService.VerifyLocalEmailChangeAsync(userId, request.Otp!);
+
+            return Ok(new
+            {
+                message = "Email changed successfully"
+            });
+        }
+
+        [HttpPut("local/password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePasswordRequestDto request)
+        {
+            var userId = GetCurrentUserId();
+
+            await _authProviderService.ChangePasswordAsync(userId, request);
+
+            return Ok(new
+            {
+                message = "Password changed successfully"
+            });
         }
 
         [HttpGet("github/link")]
