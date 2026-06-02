@@ -2,11 +2,11 @@
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Users;
 using RoadmapPlatform.Application.Exceptions;
-using RoadmapPlatform.Application.Interfaces;
+using RoadmapPlatform.Application.Interfaces.Users;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services
+namespace RoadmapPlatform.Infrastructure.Services.Users
 {
     public class UserService : IUserService
     {
