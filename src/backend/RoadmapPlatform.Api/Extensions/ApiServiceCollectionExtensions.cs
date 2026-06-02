@@ -14,6 +14,8 @@
                 .GetSection("Cors:AllowedOrigins")
                 .Get<string[]>() ?? [];
 
+            services.AddHttpClient();
+
             services.AddControllers();
 
             services.AddHttpContextAccessor();
