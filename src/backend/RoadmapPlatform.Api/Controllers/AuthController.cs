@@ -7,7 +7,7 @@ using RoadmapPlatform.Application.Interfaces.Auth;
 
 namespace RoadmapPlatform.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     [ApiController]
     public class AuthController : ControllerBase
     {
