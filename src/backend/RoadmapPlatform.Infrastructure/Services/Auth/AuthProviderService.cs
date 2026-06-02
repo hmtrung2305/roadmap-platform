@@ -1,10 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Email;
 using System.Security.Claims;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth
@@ -12,10 +14,17 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
     public class AuthProviderService : IAuthProviderService
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly IEmailVerificationService _emailVerificationService;
 
-        public AuthProviderService(ApplicationDbContext dbContext)
+        public AuthProviderService(
+            ApplicationDbContext dbContext,
+            IPasswordHasher<User> passwordHasher,
+            IEmailVerificationService emailVerificationService)
         {
             _dbContext = dbContext;
+            _passwordHasher = passwordHasher;
+            _emailVerificationService = emailVerificationService;
         }
 
         public async Task<List<LoginMethodStatusDto>> GetAuthProviderStatusAsync(Guid userId)
@@ -42,29 +51,159 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             var hasGitHub = linkedProviders.Contains(AuthProviders.GitHub);
 
             return new List<LoginMethodStatusDto>
+            {
+                new LoginMethodStatusDto
+                {
+                    Provider = AuthProviders.Local,
+                    DisplayName = "Local",
+                    IsLinked = hasLocal,
+                    CanUnlink = hasLocal && linkedProviderCount > 1
+                },
+                new LoginMethodStatusDto
+                {
+                    Provider = AuthProviders.Google,
+                    DisplayName = "Google",
+                    IsLinked = hasGoogle,
+                    CanUnlink = hasGoogle && linkedProviderCount > 1
+                },
+                new LoginMethodStatusDto
+                {
+                    Provider = AuthProviders.GitHub,
+                    DisplayName = "GitHub",
+                    IsLinked = hasGitHub,
+                    CanUnlink = hasGitHub && linkedProviderCount > 1
+                }
+            };
+        }
+
+        public async Task LinkLocalLoginAsync(Guid userId, LinkLocalLoginRequestDto request)
         {
-            new LoginMethodStatusDto
+            if (request == null)
             {
-                Provider = AuthProviders.Local,
-                DisplayName = "Local",
-                IsLinked = hasLocal,
-                CanUnlink = hasLocal && linkedProviderCount > 1
-            },
-            new LoginMethodStatusDto
-            {
-                Provider = AuthProviders.Google,
-                DisplayName = "Google",
-                IsLinked = hasGoogle,
-                CanUnlink = hasGoogle && linkedProviderCount > 1
-            },
-            new LoginMethodStatusDto
-            {
-                Provider = AuthProviders.GitHub,
-                DisplayName = "GitHub",
-                IsLinked = hasGitHub,
-                CanUnlink = hasGitHub && linkedProviderCount > 1
+                throw new InvalidOperationException("Request body was not provided");
             }
-        };
+
+            var email = NormalizeEmailOrThrow(request.Email);
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+            {
+                throw new InvalidOperationException("Password was not provided");
+            }
+
+            var user = await _dbContext.Users
+                .FirstOrDefaultAsync(x => x.UserId == userId);
+
+            if (user == null)
+            {
+                throw new NotFoundException("User was not found");
+            }
+
+            var existingLocalProvider = await _dbContext.UserAuthProviders
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Provider == AuthProviders.Local);
+
+            if (existingLocalProvider != null)
+            {
+                if (existingLocalProvider.EmailVerifiedAt == null)
+                {
+                    throw new ConflictException("This account already has a pending local login verification");
+                }
+
+                throw new ConflictException("This account already has a local login method");
+            }
+
+            var emailAlreadyRegistered = await _dbContext.UserAuthProviders
+                .AnyAsync(x =>
+                    x.Provider == AuthProviders.Local &&
+                    x.ProviderUserId == email);
+
+            if (emailAlreadyRegistered)
+            {
+                throw new ConflictException("Email is already registered");
+            }
+
+            var now = DateTime.UtcNow;
+
+            var localProvider = new UserAuthProvider
+            {
+                UserId = userId,
+                Provider = AuthProviders.Local,
+                ProviderUserId = email,
+                ProviderUsername = null,
+                Email = email,
+                PendingEmail = null,
+                PasswordHash = _passwordHasher.HashPassword(user, request.Password),
+                EmailVerifiedAt = null,
+                CreatedAt = now,
+            };
+
+            _dbContext.UserAuthProviders.Add(localProvider);
+
+            await _dbContext.SaveChangesAsync();
+
+            await _emailVerificationService.SendVerificationCodeAsync(
+                userId,
+                AuthProviders.Local,
+                email,
+                EmailVerificationPurposes.LinkLocal);
+        }
+
+        public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request)
+        {
+            if (request == null)
+            {
+                throw new InvalidOperationException("Request body was not provided");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            {
+                throw new InvalidOperationException("Current password was not provided");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                throw new InvalidOperationException("New password was not provided");
+            }
+
+            if (request.CurrentPassword == request.NewPassword)
+            {
+                throw new InvalidOperationException("New password must be different from the current password");
+            }
+
+            var localProvider = await _dbContext.UserAuthProviders
+                .Include(x => x.User)
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Provider == AuthProviders.Local);
+
+            if (localProvider == null ||
+                localProvider.User == null ||
+                string.IsNullOrWhiteSpace(localProvider.PasswordHash))
+            {
+                throw new InvalidOperationException("This account does not have a local password login");
+            }
+
+            if (localProvider.EmailVerifiedAt == null)
+            {
+                throw new InvalidOperationException("Local email must be verified before changing password");
+            }
+
+            var verificationResult = _passwordHasher.VerifyHashedPassword(
+                localProvider.User,
+                localProvider.PasswordHash,
+                request.CurrentPassword);
+
+            if (verificationResult == PasswordVerificationResult.Failed)
+            {
+                throw new UnauthorizedException("Current password is incorrect");
+            }
+
+            localProvider.PasswordHash = _passwordHasher.HashPassword(
+                localProvider.User,
+                request.NewPassword);
+
+            await _dbContext.SaveChangesAsync();
         }
 
         public async Task LinkGitHubAsync(Guid userId, ClaimsPrincipal githubUser)
@@ -220,6 +359,16 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             _dbContext.UserAuthProviders.Add(authProvider);
 
             await _dbContext.SaveChangesAsync();
+        }
+
+        private static string NormalizeEmailOrThrow(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new InvalidOperationException("Email was not provided");
+            }
+
+            return email.Trim().ToLowerInvariant();
         }
 
         private static string? NormalizeNullable(string? value)

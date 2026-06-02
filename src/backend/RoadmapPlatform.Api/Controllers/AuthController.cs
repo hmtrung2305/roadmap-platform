@@ -12,12 +12,62 @@ namespace RoadmapPlatform.Api.Controllers
     public class AuthController : ControllerBase
     {
         private const string ExternalScheme = "External";
+        private const string AccessTokenCookieName = "access_token";
 
         private readonly IAuthService _authService;
 
-        public AuthController(IAuthService authServices)
+        public AuthController(IAuthService authService)
         {
-            _authService = authServices;
+            _authService = authService;
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterRequestDto request)
+        {
+            var response = await _authService.RegisterAsync(request);
+
+            return Ok(response);
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginRequestDto request)
+        {
+            var loginResponse = await _authService.LoginAsync(request);
+
+            AppendAccessTokenCookie(loginResponse.AccessToken);
+
+            return Ok(new
+            {
+                user = loginResponse.User,
+                message = "Logged in successfully"
+            });
+        }
+
+        [HttpPost("registration/verify-email")]
+        public async Task<IActionResult> VerifyRegistrationEmail(
+            VerifyRegistrationEmailRequestDto request)
+        {
+            var loginResponse = await _authService.VerifyRegistrationEmailAsync(request);
+
+            AppendAccessTokenCookie(loginResponse.AccessToken);
+
+            return Ok(new
+            {
+                user = loginResponse.User,
+                message = "Email verified successfully"
+            });
+        }
+
+        [HttpPost("registration/resend-verification")]
+        public async Task<IActionResult> ResendRegistrationVerification(
+            ResendRegistrationVerificationRequestDto request)
+        {
+            await _authService.ResendRegistrationVerificationAsync(request);
+
+            return Ok(new
+            {
+                message = "Verification code sent"
+            });
         }
 
         [HttpGet("google/login")]
@@ -25,7 +75,6 @@ namespace RoadmapPlatform.Api.Controllers
         {
             var properties = new AuthenticationProperties
             {
-                // This returns the endpoint of the google callback
                 RedirectUri = Url.Action(nameof(GoogleCallback))
             };
 
@@ -35,7 +84,6 @@ namespace RoadmapPlatform.Api.Controllers
         [HttpGet("google/callback")]
         public async Task<IActionResult> GoogleCallback()
         {
-            // Read the external cookie that was created during Google login 
             var result = await HttpContext.AuthenticateAsync(ExternalScheme);
 
             if (!result.Succeeded || result.Principal == null)
@@ -45,17 +93,18 @@ namespace RoadmapPlatform.Api.Controllers
 
             try
             {
-                LoginResponseDto loginResponse = await _authService.LoginWithGoogleAsync(result.Principal);
+                var loginResponse = await _authService.LoginWithGoogleAsync(result.Principal);
 
                 await HttpContext.SignOutAsync(ExternalScheme);
 
                 AppendAccessTokenCookie(loginResponse.AccessToken);
 
-                return Redirect($"http://localhost:5173/home");
+                return Redirect("http://localhost:5173/home");
             }
             catch (Exception ex)
             {
                 await HttpContext.SignOutAsync(ExternalScheme);
+
                 return RedirectWithOAuthError(ex.Message);
             }
         }
@@ -78,35 +127,36 @@ namespace RoadmapPlatform.Api.Controllers
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("GitHub authentication failed.");
+                return Unauthorized("GitHub authentication failed");
             }
+
             try
             {
-                var loginResponse = await _authService.LoginWithGitHubAsync(
-                                result.Principal);
+                var loginResponse = await _authService.LoginWithGitHubAsync(result.Principal);
 
                 await HttpContext.SignOutAsync(ExternalScheme);
 
                 AppendAccessTokenCookie(loginResponse.AccessToken);
 
-                return Redirect($"http://localhost:5173/home");
+                return Redirect("http://localhost:5173/home");
             }
             catch (Exception ex)
             {
                 await HttpContext.SignOutAsync(ExternalScheme);
+
                 return RedirectWithOAuthError(ex.Message);
             }
-
         }
 
         [HttpPost("logout")]
         public IActionResult Logout()
         {
-            Response.Cookies.Delete("access_token", new CookieOptions
+            Response.Cookies.Delete(AccessTokenCookieName, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.None
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddMinutes(60)
             });
 
             return Ok(new
@@ -117,7 +167,7 @@ namespace RoadmapPlatform.Api.Controllers
 
         private void AppendAccessTokenCookie(string accessToken)
         {
-            Response.Cookies.Append("access_token", accessToken, new CookieOptions
+            Response.Cookies.Append(AccessTokenCookieName, accessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
