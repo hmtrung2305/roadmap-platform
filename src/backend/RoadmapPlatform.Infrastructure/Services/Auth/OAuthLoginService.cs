@@ -127,6 +127,19 @@ public class OAuthLoginService : IOAuthLoginService
         };
 
         _dbContext.UserAuthProviders.Add(externalProvider);
+
+        var learnerRole = await _dbContext.Roles
+            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner);
+
+        if (learnerRole != null)
+        {
+            _dbContext.UserRoles.Add(new UserRole
+            {
+                User = user,
+                RoleId = learnerRole.RoleId
+            });
+        }
+
         await _dbContext.SaveChangesAsync();
 
         return ToAuthenticatedUserDto(user, externalProvider.Email);
