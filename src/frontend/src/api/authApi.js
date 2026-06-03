@@ -14,6 +14,14 @@ export const registerApi = async (payload) => {
     const response = await axiosClient.post("/auth/register", payload);
     return response.data;
 }
+export const verifyRegistrationEmailApi = async (payload) => {
+    const response = await  axiosClient.post("/auth/registration/verify-email", payload);
+    return response.data;
+}
+export const resendRegistrationVerificationApi = async (payload) => {
+    const response = await axiosClient.post("/auth/registration/resend-verification", payload);
+    return response.data;
+}
 export const getCurrentUserApi = async () => {
     const response = await axiosClient.get("/me");
     return response.data;

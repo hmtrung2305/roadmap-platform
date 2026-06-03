@@ -17,6 +17,7 @@ import StudyRoomPage from "./pages/StudyRoomPage";
 import EditProfilePage from "./pages/EditProfilePage";
 import ManagePortfolioRepositoriesPage from "./pages/ManagePortfolioRepositoryPage";
 import { ToastContainer } from "react-toastify";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 function AuthBootstrap({ children }) {
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
@@ -48,6 +49,14 @@ export default function App() {
             element={
               <PublicRoute>
                 <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/verify-email"
+            element={
+              <PublicRoute>
+                <VerifyEmailPage/>
               </PublicRoute>
             }
           />
