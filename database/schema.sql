@@ -1,5 +1,5 @@
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
+CREATE SCHEMA IF NOT EXISTS public;
+
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO public;
 
@@ -10,19 +10,19 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- User, Role, Permission
 -- =========================
 
-CREATE TABLE IF NOT EXISTS public.permission
+CREATE TABLE IF NOT EXISTS public."Permission"
 (
     permission_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     permission_name varchar(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS public.role
+CREATE TABLE IF NOT EXISTS public."Role"
 (
     role_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     role_name varchar(15) NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS public.user
+CREATE TABLE IF NOT EXISTS public."User"
 (
     user_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     username varchar(50) UNIQUE NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.user
         CHECK (status in ('active', 'suspended', 'deleted'))
 );
 
-CREATE TABLE IF NOT EXISTS public.user_profile
+CREATE TABLE IF NOT EXISTS public."User_Profile"
 (
     user_id uuid PRIMARY KEY,
 
@@ -64,11 +64,11 @@ CREATE TABLE IF NOT EXISTS public.user_profile
 
     CONSTRAINT fk_user_profile_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.user_activity_stats
+CREATE TABLE IF NOT EXISTS public."User_Activity_Stats"
 (
     user_id uuid PRIMARY KEY,
 
@@ -78,11 +78,11 @@ CREATE TABLE IF NOT EXISTS public.user_activity_stats
 
     CONSTRAINT fk_user_activity_stats_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.permission_role
+CREATE TABLE IF NOT EXISTS public."Permission_Role"
 (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     permission_id uuid NOT NULL,
@@ -90,19 +90,19 @@ CREATE TABLE IF NOT EXISTS public.permission_role
 
     CONSTRAINT fk_permission_role_permission_id
         FOREIGN KEY (permission_id)
-        REFERENCES public.permission(permission_id)
+        REFERENCES public."Permission"(permission_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_permission_role_role_id
         FOREIGN KEY (role_id)
-        REFERENCES public.role(role_id)
+        REFERENCES public."Role"(role_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_permission_role
         UNIQUE (permission_id, role_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.user_role
+CREATE TABLE IF NOT EXISTS public."User_Role"
 (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id uuid NOT NULL,
@@ -110,19 +110,19 @@ CREATE TABLE IF NOT EXISTS public.user_role
 
     CONSTRAINT fk_user_role_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_role_role_id
         FOREIGN KEY (role_id)
-        REFERENCES public.role(role_id)
+        REFERENCES public."Role"(role_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_user_role
         UNIQUE (user_id, role_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.user_auth_provider
+CREATE TABLE IF NOT EXISTS public."User_Auth_Provider"
 (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
 
     CONSTRAINT fk_user_auth_provider_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_provider_identity
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
         UNIQUE (user_id, provider)
 );
 
-CREATE TABLE IF NOT EXISTS public.email_verification_token
+CREATE TABLE IF NOT EXISTS public."Email_Verification_Token"
 (
     verification_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
 
     CONSTRAINT fk_email_verification_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE
 );
 
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
 -- Roadmap
 -- =========================
 
-CREATE TABLE IF NOT EXISTS public.specialty
+CREATE TABLE IF NOT EXISTS public."Specialty"
 (
     specialty_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     specialty_name varchar(100) NOT NULL UNIQUE,
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS public.specialty
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.roadmap
+CREATE TABLE IF NOT EXISTS public."Roadmap"
 (
     roadmap_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     specialty_id uuid NOT NULL,
@@ -196,11 +196,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap
 
     CONSTRAINT fk_roadmap_specialty_id
         FOREIGN KEY (specialty_id)
-        REFERENCES public.specialty(specialty_id)
+        REFERENCES public."Specialty"(specialty_id)
         ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS public.roadmap_node
+CREATE TABLE IF NOT EXISTS public."Roadmap_Node"
 (
     node_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     roadmap_id uuid NOT NULL,
@@ -212,11 +212,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node
 
     CONSTRAINT fk_roadmap_node_roadmap_id
         FOREIGN KEY (roadmap_id)
-        REFERENCES public.roadmap(roadmap_id)
+        REFERENCES public."Roadmap"(roadmap_id)
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.roadmap_edge
+CREATE TABLE IF NOT EXISTS public."Roadmap_Edge"
 (
     edge_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     roadmap_id uuid NOT NULL,
@@ -225,17 +225,17 @@ CREATE TABLE IF NOT EXISTS public.roadmap_edge
 
     CONSTRAINT fk_roadmap_edge_roadmap_id
         FOREIGN KEY (roadmap_id)
-        REFERENCES public.roadmap(roadmap_id)
+        REFERENCES public."Roadmap"(roadmap_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_roadmap_edge_ancestor_node_id
         FOREIGN KEY (ancestor_node_id)
-        REFERENCES public.roadmap_node(node_id)
+        REFERENCES public."Roadmap_Node"(node_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_roadmap_edge_descendant_node_id
         FOREIGN KEY (descendant_node_id)
-        REFERENCES public.roadmap_node(node_id)
+        REFERENCES public."Roadmap_Node"(node_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_roadmap_edge
@@ -245,14 +245,14 @@ CREATE TABLE IF NOT EXISTS public.roadmap_edge
         CHECK (ancestor_node_id <> descendant_node_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.skill
+CREATE TABLE IF NOT EXISTS public."Skill"
 (
     skill_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     skill_name varchar(100) NOT NULL UNIQUE,
     description text
 );
 
-CREATE TABLE IF NOT EXISTS public.node_skill
+CREATE TABLE IF NOT EXISTS public."Node_Skill"
 (
     node_skill_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     roadmap_node_id uuid NOT NULL,
@@ -260,20 +260,19 @@ CREATE TABLE IF NOT EXISTS public.node_skill
 
     CONSTRAINT fk_node_skill_roadmap_node_id
         FOREIGN KEY (roadmap_node_id)
-        REFERENCES public.roadmap_node(node_id)
+        REFERENCES public."Roadmap_Node"(node_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_node_skill_skill_id
         FOREIGN KEY (skill_id)
-        REFERENCES public.skill(skill_id)
+        REFERENCES public."Skill"(skill_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_node_skill
         UNIQUE (roadmap_node_id, skill_id)
 );
 
-DROP TABLE IF EXISTS public.resource CASCADE;
-CREATE TABLE IF NOT EXISTS public.resource
+CREATE TABLE IF NOT EXISTS public."Resource"
 (
 	resource_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	skill_id uuid NOT NULL,
@@ -284,21 +283,19 @@ CREATE TABLE IF NOT EXISTS public.resource
 
 	CONSTRAINT fk_skill_id
 		FOREIGN KEY (skill_id)
-		REFERENCES public.skill(skill_id)
+		REFERENCES "Skill"(skill_id)
 );
 
-DROP TABLE IF EXISTS public.my_resource CASCADE;
-CREATE TABLE IF NOT EXISTS public.my_resource
+CREATE TABLE IF NOT EXISTS public."My_Resource"
 (
 	resource_id uuid PRIMARY KEY,
     
 	CONSTRAINT fk_my_resource_id
 		FOREIGN KEY (resource_id)
-		REFERENCES public.resource(resource_id) ON DELETE CASCADE
+		REFERENCES "Resource"(resource_id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS public.other_resource CASCADE;
-CREATE TABLE IF NOT EXISTS public.other_resource
+CREATE TABLE IF NOT EXISTS public."Other_Resource"
 (
 	resource_id uuid PRIMARY KEY,
 	resource_type varchar(100),
@@ -306,11 +303,10 @@ CREATE TABLE IF NOT EXISTS public.other_resource
 
 	CONSTRAINT fk_other_resource_id
 		FOREIGN KEY (resource_id)
-		REFERENCES public.resource(resource_id) ON DELETE CASCADE
+		REFERENCES "Resource"(resource_id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS public.resource_chunk CASCADE;
-CREATE TABLE IF NOT EXISTS public.resource_chunk
+CREATE TABLE IF NOT EXISTS public."Resource_Chunk"
 (
     chunk_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     resource_id uuid NOT NULL,
@@ -319,10 +315,10 @@ CREATE TABLE IF NOT EXISTS public.resource_chunk
 
     CONSTRAINT fk_chunk_resource
         FOREIGN KEY (resource_id)
-        REFERENCES public.resource(resource_id) ON DELETE CASCADE
+        REFERENCES "Resource"(resource_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.user_roadmap_status
+CREATE TABLE IF NOT EXISTS public."User_Roadmap_Status"
 (
     enrollment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -332,19 +328,19 @@ CREATE TABLE IF NOT EXISTS public.user_roadmap_status
 
     CONSTRAINT fk_user_roadmap_status_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_roadmap_status_roadmap_id
         FOREIGN KEY (roadmap_id)
-        REFERENCES public.roadmap(roadmap_id)
+        REFERENCES public."Roadmap"(roadmap_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_user_roadmap_status
         UNIQUE (user_id, roadmap_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.user_skill_progress
+CREATE TABLE IF NOT EXISTS public."User_Skill_Progress"
 (
     progress_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -355,12 +351,12 @@ CREATE TABLE IF NOT EXISTS public.user_skill_progress
 
     CONSTRAINT fk_user_skill_progress_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_skill_progress_skill_id
         FOREIGN KEY (skill_id)
-        REFERENCES public.skill(skill_id)
+        REFERENCES public."Skill"(skill_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_user_skill_progress
@@ -371,7 +367,7 @@ CREATE TABLE IF NOT EXISTS public.user_skill_progress
 -- Chatbot AI
 -- =========================
 
-CREATE TABLE IF NOT EXISTS public.conversation
+CREATE TABLE IF NOT EXISTS public."Conversation"
 (
     conversation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -382,16 +378,16 @@ CREATE TABLE IF NOT EXISTS public.conversation
 
     CONSTRAINT fk_conversation_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_conversation_resource_id
         FOREIGN KEY (resource_id)
-        REFERENCES public.resource(resource_id)
+        REFERENCES public."Resource"(resource_id)
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.chatbot_message
+CREATE TABLE IF NOT EXISTS public."Chatbot_Message"
 (
     request_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id uuid NOT NULL,
@@ -400,11 +396,11 @@ CREATE TABLE IF NOT EXISTS public.chatbot_message
 
     CONSTRAINT fk_chatbot_message_conversation_id
         FOREIGN KEY (conversation_id)
-        REFERENCES public.conversation(conversation_id)
+        REFERENCES public."Conversation"(conversation_id)
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.user_insight
+CREATE TABLE IF NOT EXISTS public."User_Insight"
 (
     insight_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -412,7 +408,7 @@ CREATE TABLE IF NOT EXISTS public.user_insight
 
     CONSTRAINT fk_user_insight_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE
 );
 
@@ -420,7 +416,7 @@ CREATE TABLE IF NOT EXISTS public.user_insight
 -- GitHub Repository
 -- =========================
 
-CREATE TABLE IF NOT EXISTS public.repository
+CREATE TABLE IF NOT EXISTS public."Repository"
 (
     repository_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -444,14 +440,14 @@ CREATE TABLE IF NOT EXISTS public.repository
 
     CONSTRAINT fk_repository_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_user_github_repo
         UNIQUE (user_id, github_repo_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.repo_insight
+CREATE TABLE IF NOT EXISTS public."Repo_Insight"
 (
     insight_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     repository_id uuid NOT NULL,
@@ -463,7 +459,7 @@ CREATE TABLE IF NOT EXISTS public.repo_insight
 
     CONSTRAINT fk_repo_insight_repository_id
         FOREIGN KEY (repository_id)
-        REFERENCES public.repository(repository_id)
+        REFERENCES public."Repository"(repository_id)
         ON DELETE CASCADE
 );
 
@@ -471,7 +467,7 @@ CREATE TABLE IF NOT EXISTS public.repo_insight
 -- Payment
 -- =========================
 
-CREATE TABLE IF NOT EXISTS public.invoice
+CREATE TABLE IF NOT EXISTS public."Invoice"
 (
     invoice_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL,
@@ -483,11 +479,11 @@ CREATE TABLE IF NOT EXISTS public.invoice
 
     CONSTRAINT fk_invoice_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."User"(user_id)
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.payment_transaction
+CREATE TABLE IF NOT EXISTS public."Payment_Transaction"
 (
     transaction_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     invoice_id uuid NOT NULL,
@@ -500,6 +496,6 @@ CREATE TABLE IF NOT EXISTS public.payment_transaction
 
     CONSTRAINT fk_payment_transaction_invoice_id
         FOREIGN KEY (invoice_id)
-        REFERENCES public.invoice(invoice_id)
+        REFERENCES public."Invoice"(invoice_id)
         ON DELETE CASCADE
 );
