@@ -23,6 +23,8 @@ using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Rag;
 using RoadmapPlatform.Infrastructure.Services.Resources;
 using RoadmapPlatform.Infrastructure.Services.Users;
+using RoadmapPlatform.Application.Interfaces.Streaks;
+using RoadmapPlatform.Infrastructure.Services.Streaks;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
 {
@@ -102,6 +104,9 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IChatService, ChatService>();
 
             services.AddSingleton<IRagService, RagService>();
+
+            // Streak Service
+            services.AddScoped<IStreakService, StreakService>();
 
 
             return services;
