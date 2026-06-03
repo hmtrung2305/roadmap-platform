@@ -20,7 +20,7 @@ export default function LoginPage() {
   const oauthError = searchParams.get("oauthError");
 
   const [form, setForm] = useState({
-    email: "",
+    emailOrUsername: "",
     password: "",
   });
 
@@ -143,9 +143,8 @@ export default function LoginPage() {
         {/* Right form panel */}
         <section className="flex items-center justify-center bg-white px-6 py-6">
           <div
-            className={`w-full max-w-100 transition duration-200 ${
-              authLoading ? "scale-[0.99] opacity-70" : ""
-            }`}
+            className={`w-full max-w-100 transition duration-200 ${authLoading ? "scale-[0.99] opacity-70" : ""
+              }`}
           >
             <div className="mb-10 lg:hidden">
               <AuthLogo />
@@ -161,24 +160,24 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {(authError || oauthError ) && (
+            {(authError || oauthError) && (
               <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {authError || oauthError }
+                {authError || oauthError}
               </div>
             )}
 
             <form onSubmit={handleLogin} className="mt-7 space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Email address
+                  Email or username
                 </label>
 
                 <input
-                  name="email"
-                  type="email"
-                  value={form.email}
+                  name="emailOrUsername"
+                  type="text"
+                  value={form.emailOrUsername}
                   onChange={handleChange}
-                  placeholder="name@example.com"
+                  placeholder="Email or Username"
                   className="h-11 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   required
                 />
