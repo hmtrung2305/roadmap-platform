@@ -27,8 +27,50 @@ axiosClient.interceptors.response.use(
     if (status === 401) {
       console.warn("Unauthorized request:", url);
     }
-
-    return Promise.reject(error);
+    const normalizedError = {
+      status,
+      message: extractErrorMessage(error),
+      raw: error.response?.data,
+      url,
+    };
+    return Promise.reject(normalizedError);
   }
 );
+
+function extractErrorMessage(error) {
+  const data = error.response?.data;
+
+  if (!data) {
+    return error.message || "Network error. Please try again.";
+  }
+
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (data.message) {
+    return data.message;
+  }
+
+  if (data.error) {
+    return data.error;
+  }
+
+  if (data.title && !data.errors) {
+    return data.title;
+  }
+
+  if (data.errors) {
+    const validationMessages = Object.values(data.errors)
+      .flat()
+      .filter(Boolean);
+
+    if (validationMessages.length > 0) {
+      return validationMessages[0];
+    }
+  }
+
+  return "Something went wrong. Please try again.";
+}
+
 export default axiosClient;
