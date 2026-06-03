@@ -20,7 +20,7 @@ export default function LoginPage() {
   const oauthError = searchParams.get("oauthError");
 
   const [form, setForm] = useState({
-    email: "",
+    emailOrUsername: "",
     password: "",
   });
 
@@ -104,17 +104,17 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Email address
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Email or username
                 </label>
 
                 <input
-                  name="email"
-                  type="email"
-                  value={form.email}
+                  name="emailOrUsername"
+                  type="text"
+                  value={form.emailOrUsername}
                   onChange={handleChange}
-                  placeholder="name@example.com"
-                  className="h-10 w-full rounded-xl border border-slate-300 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  placeholder="Email or Username"
+                  className="h-11 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   required
                 />
               </div>

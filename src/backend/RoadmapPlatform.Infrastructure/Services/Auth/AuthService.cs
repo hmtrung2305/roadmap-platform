@@ -128,18 +128,43 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Request body was not provided");
         }
 
-        var email = NormalizeEmailOrThrow(request.Email);
+        if (string.IsNullOrWhiteSpace(request.EmailOrUsername))
+        {
+            throw new InvalidOperationException("Email or username was not provided");
+        }
 
         if (string.IsNullOrWhiteSpace(request.Password))
         {
             throw new InvalidOperationException("Password was not provided");
         }
 
-        var localProvider = await _dbContext.UserAuthProviders
-            .Include(x => x.User)
-            .FirstOrDefaultAsync(x =>
-                x.Provider == AuthProviders.Local &&
-                x.ProviderUserId == email);
+        var emailOrUsername = request.EmailOrUsername.Trim();
+
+        UserAuthProvider? localProvider;
+
+        if (emailOrUsername.Contains('@'))
+        {
+            // Find the user by email
+            var email = NormalizeEmailOrThrow(emailOrUsername);
+
+            localProvider = await _dbContext.UserAuthProviders
+                .Include(x => x.User)
+                .FirstOrDefaultAsync(x =>
+                    x.Provider == AuthProviders.Local &&
+                    x.ProviderUserId == email);
+        }
+        else
+        {
+            // Find the user by username
+            var usernameNormalized = NormalizeUsernameOrThrow(emailOrUsername).ToLowerInvariant();
+
+            localProvider = await _dbContext.UserAuthProviders
+                .Include(x => x.User)
+                .FirstOrDefaultAsync(x =>
+                    x.Provider == AuthProviders.Local &&
+                    x.User != null &&
+                    x.User.UsernameNormalized == usernameNormalized);
+        }
 
         if (localProvider == null ||
             localProvider.User == null ||
@@ -160,7 +185,7 @@ public class AuthService : IAuthService
 
         if (localProvider.EmailVerifiedAt == null)
         {
-            throw new EmailNotVerifiedException(email);
+            throw new EmailNotVerifiedException(localProvider.Email ?? localProvider.ProviderUserId);
         }
 
         ValidateAccountStatus(localProvider.User.Status);
