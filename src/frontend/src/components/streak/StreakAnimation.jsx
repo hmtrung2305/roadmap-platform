@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaFire } from "react-icons/fa";
+import { FaFireAlt } from "react-icons/fa";
 import { useStreakStore } from "../../stores/useStreakStore";
 
 export default function StreakAnimation() {
@@ -26,7 +26,7 @@ export default function StreakAnimation() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.35 }}
+          transition={{ duration: 0.42 }}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 px-4"
         >
           <motion.div
@@ -69,7 +69,7 @@ export default function StreakAnimation() {
               }}
               className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-orange-50"
             >
-              <FaFire className="text-6xl text-orange-500" />
+              <FaFireAlt className="text-6xl text-orange-500" />
             </motion.div>
 
             <motion.h2

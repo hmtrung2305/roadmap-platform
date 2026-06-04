@@ -1,23 +1,25 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
-
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
 import PortfolioPage from "./pages/PortfolioPage";
-
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
 import ResourceManagementPage from "./pages/ResourceManagementPage";
-import PublicLayout from "./layouts/PublicLayout";
 import StudyRoomPage from "./pages/StudyRoomPage";
-import EditProfilePage from "./pages/EditProfilePage";
 import ManagePortfolioRepositoriesPage from "./pages/ManagePortfolioRepositoryPage";
 import { ToastContainer } from "react-toastify";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import SettingsLayout from "./pages/settings/SettingsLayout";
+import AccountSettingsPage from "./pages/settings/AccountSettingsPage";
+import PrivacySettingsPage from "./pages/settings/PrivacySettingsPage";
+import ProfileSettingsPage from "./pages/settings/ProfileSettingsPage";
+import PointsSettingsPage from "./pages/settings/PointSettingsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 function AuthBootstrap({ children }) {
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
@@ -40,8 +42,7 @@ export default function App() {
         draggable
       />
       <AnimatePresence>
-        
-        <Routes >
+        <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
 
           <Route
@@ -56,7 +57,7 @@ export default function App() {
             path="/verify-email"
             element={
               <PublicRoute>
-                <VerifyEmailPage/>
+                <VerifyEmailPage />
               </PublicRoute>
             }
           />
@@ -72,11 +73,7 @@ export default function App() {
 
           {/* PUBLIC DEMO ROUTES - không cần auth */}
 
-          <Route element={<MainLayout />}>
-            <Route path="/resources" element={<ResourceManagementPage />} />
-           
-            <Route path="/study/:resourceId" element={<StudyRoomPage />} />
-          </Route>
+          <Route element={<MainLayout />}></Route>
 
           {/* Cần auth thì mới access được */}
           <Route
@@ -87,9 +84,26 @@ export default function App() {
             }
           >
             <Route path="/home" element={<HomePage />} />
-            <Route path="/profile/edit" element={<EditProfilePage />} />
-             <Route path="/portfolio" element={<PortfolioPage />} />
-             <Route path="/portfolio/repositories" element={<ManagePortfolioRepositoriesPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route
+              path="/portfolio/repositories"
+              element={<ManagePortfolioRepositoriesPage />}
+            />
+            <Route path="/resources" element={<ResourceManagementPage />} />
+            <Route path="/study/:resourceId" element={<StudyRoomPage />} />
+          </Route>
+
+          {/*Setting pages */}
+          <Route path="/settings" element={<SettingsLayout />}>
+            <Route
+              index
+              element={<Navigate to="/settings/account" replace />}
+            />
+            <Route path="account" element={<AccountSettingsPage />} />
+            <Route path="privacy" element={<PrivacySettingsPage />} />
+            <Route path="points" element={<PointsSettingsPage />} />
+            <Route path="profile" element={<ProfileSettingsPage />} />
           </Route>
         </Routes>
       </AnimatePresence>

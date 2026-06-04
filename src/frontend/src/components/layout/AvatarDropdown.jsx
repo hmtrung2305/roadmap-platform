@@ -72,7 +72,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
 
   const handleGoToProfile = () => {
     setOpen(false);
-    navigate("/profile/edit");
+    navigate("/profile");
   };
 
   const handleGoToSettings = () => {
@@ -127,7 +127,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
           <div className="p-2">
             <DropdownItem
               icon={<UserRound size={18} />}
-              label="Profile"
+              label="View Profile"
               onClick={handleGoToProfile}
             />
 

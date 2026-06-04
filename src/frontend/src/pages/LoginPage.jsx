@@ -18,6 +18,7 @@ export default function LoginPage() {
 
   const [searchParams] = useSearchParams();
   const oauthError = searchParams.get("oauthError");
+  const verified = searchParams.get("verified");
 
   const [form, setForm] = useState({
     email: "",
@@ -99,6 +100,12 @@ export default function LoginPage() {
             {(authError || oauthError) && (
               <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {authError || oauthError}
+              </div>
+            )}
+
+            {verified === "1" && (
+              <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                Your email has been verified. You can now sign in.
               </div>
             )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaFire } from "react-icons/fa";
+import { FaFireAlt } from "react-icons/fa";
 
 import { useStreakStore } from "../../stores/useStreakStore";
 import { useAuthStore } from "../../stores/useAuthStore";
@@ -10,7 +10,7 @@ import AvatarDropdown from "./AvatarDropdown";
 export default function TopNavbar() {
   const navItems = [
     { label: "Home", path: "/home" },
-    { label: "Roadmap", path: "/roadmap" },
+    { label: "Resource", path: "/resources" },
     { label: "Portfolio", path: "/portfolio" },
     { label: "Market Pulse", path: "/market-pulse" },
   ];
@@ -102,7 +102,7 @@ export default function TopNavbar() {
                 : "Open a learning resource to complete today's streak"
             }
           >
-            <FaFire
+            <FaFireAlt
               className={`text-base ${
                 isCompletedStreakToday ? "text-orange-500" : "text-slate-400"
               }`}
