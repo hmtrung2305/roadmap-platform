@@ -105,6 +105,18 @@ public class AuthService : IAuthService
         _dbContext.UserProfiles.Add(profile);
         _dbContext.UserAuthProviders.Add(localProvider);
 
+        var learnerRole = await _dbContext.Roles
+            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner);
+
+        if (learnerRole != null)
+        {
+            _dbContext.UserRoles.Add(new UserRole
+            {
+                UserId = user.UserId,
+                RoleId = learnerRole.RoleId
+            });
+        }
+
         await _dbContext.SaveChangesAsync();
 
         await _emailVerificationService.SendVerificationCodeAsync(
