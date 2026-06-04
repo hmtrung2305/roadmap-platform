@@ -30,3 +30,7 @@ export const logoutApi = async () => {
     const  response =  await axiosClient.post("/auth/logout");
     return response.data;
 }
+export const updateCurrentUserApi = async (payload) => {
+  const response = await axiosClient.patch("/me", payload);
+  return response.data;
+};
