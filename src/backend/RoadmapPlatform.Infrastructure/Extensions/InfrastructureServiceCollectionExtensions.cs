@@ -25,6 +25,8 @@ using RoadmapPlatform.Infrastructure.Services.Resources;
 using RoadmapPlatform.Infrastructure.Services.Users;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
+using RoadmapPlatform.Infrastructure.Security;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
 {
@@ -107,6 +109,13 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Streak Service
             services.AddScoped<IStreakService, StreakService>();
+
+            // Cache memory
+            services.AddMemoryCache();
+            services.AddScoped<IPermissionCache,PermissionCache>();
+
+            // Authorize Handler
+            services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 
             return services;
