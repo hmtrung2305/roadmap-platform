@@ -34,9 +34,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Rag
         {
             var docEmbedResp = await _client.Models.EmbedContentAsync(
                 model: string.IsNullOrWhiteSpace(_aiSettings.EmbeddingModel)
-                    ? "gemini-embedding-001"
+                    ? "gemini-embedding-2"
                     : _aiSettings.EmbeddingModel,
-                contents: text
+                contents: text,
+                config: new EmbedContentConfig
+                {
+                    OutputDimensionality = 3072
+                }
             );
 
             return docEmbedResp.Embeddings?[0]?.Values?
@@ -62,9 +66,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Rag
         {
             var userEmbedResp = await _client.Models.EmbedContentAsync(
                 model: string.IsNullOrWhiteSpace(_aiSettings.EmbeddingModel)
-                    ? "gemini-embedding-001"
+                    ? "gemini-embedding-2"
                     : _aiSettings.EmbeddingModel,
-                contents: prompt
+                contents: prompt,
+                config: new EmbedContentConfig
+                {
+                    OutputDimensionality = 3072
+                }
             );
 
             var userVector = userEmbedResp.Embeddings?[0]?.Values?
