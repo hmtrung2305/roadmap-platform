@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.Interfaces.Auth;
 
@@ -15,10 +16,12 @@ namespace RoadmapPlatform.Api.Controllers
         private const string AccessTokenCookieName = "access_token";
 
         private readonly IAuthService _authService;
+        private readonly string _frontendBaseUrl;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IConfiguration configuration)
         {
             _authService = authService;
+            _frontendBaseUrl = NormalizeFrontendBaseUrl(configuration["Frontend:BaseUrl"]);
         }
 
         [HttpPost("register")]
@@ -99,7 +102,7 @@ namespace RoadmapPlatform.Api.Controllers
 
                 AppendAccessTokenCookie(loginResponse.AccessToken);
 
-                return Redirect("http://localhost:5173/home");
+                return Redirect(BuildFrontendUrl("/home"));
             }
             catch (Exception ex)
             {
@@ -138,7 +141,7 @@ namespace RoadmapPlatform.Api.Controllers
 
                 AppendAccessTokenCookie(loginResponse.AccessToken);
 
-                return Redirect("http://localhost:5173/home");
+                return Redirect(BuildFrontendUrl("/home"));
             }
             catch (Exception ex)
             {
@@ -180,7 +183,19 @@ namespace RoadmapPlatform.Api.Controllers
         {
             var encodedMessage = Uri.EscapeDataString(message);
 
-            return Redirect($"http://localhost:5173/login?oauthError={encodedMessage}");
+            return Redirect(BuildFrontendUrl($"/login?oauthError={encodedMessage}"));
+        }
+
+        private string BuildFrontendUrl(string path)
+        {
+            return $"{_frontendBaseUrl}{path}";
+        }
+
+        private static string NormalizeFrontendBaseUrl(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? "http://localhost:5173"
+                : value.Trim().TrimEnd('/');
         }
     }
 }

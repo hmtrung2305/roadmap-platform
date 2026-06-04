@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using System.Security.Claims;
@@ -18,13 +19,16 @@ namespace RoadmapPlatform.Api.Controllers
 
         private readonly IAuthProviderService _authProviderService;
         private readonly IEmailVerificationService _emailVerificationService;
+        private readonly string _frontendBaseUrl;
 
         public MeAuthProviderController(
             IAuthProviderService authProviderService,
-            IEmailVerificationService emailVerificationService)
+            IEmailVerificationService emailVerificationService,
+            IConfiguration configuration)
         {
             _authProviderService = authProviderService;
             _emailVerificationService = emailVerificationService;
+            _frontendBaseUrl = NormalizeFrontendBaseUrl(configuration["Frontend:BaseUrl"]);
         }
 
         [HttpGet]
@@ -157,7 +161,7 @@ namespace RoadmapPlatform.Api.Controllers
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect("http://localhost:5173/home");
+            return Redirect(BuildFrontendUrl("/home"));
         }
 
         [HttpGet("google/link")]
@@ -195,7 +199,7 @@ namespace RoadmapPlatform.Api.Controllers
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect("http://localhost:5173/home");
+            return Redirect(BuildFrontendUrl("/home"));
         }
 
         [HttpDelete("{provider}")]
@@ -239,6 +243,18 @@ namespace RoadmapPlatform.Api.Controllers
             }
 
             return Guid.TryParse(linkingUserIdText, out userId);
+        }
+
+        private string BuildFrontendUrl(string path)
+        {
+            return $"{_frontendBaseUrl}{path}";
+        }
+
+        private static string NormalizeFrontendBaseUrl(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? "http://localhost:5173"
+                : value.Trim().TrimEnd('/');
         }
     }
 }

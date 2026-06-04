@@ -139,7 +139,7 @@ public class OAuthLoginService : IOAuthLoginService
                 RoleId = learnerRole.RoleId
             });
         }
-
+        
         await _dbContext.SaveChangesAsync();
 
         return ToAuthenticatedUserDto(user, externalProvider.Email);
