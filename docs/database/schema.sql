@@ -1,6 +1,8 @@
 -- =========================
 -- User, Role, Permission
 -- =========================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS public.permission
 (
@@ -41,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.user_profile
     cover_image_url text,
 
     career_goal varchar(150),
-    current_role varchar(100),
+    "current_role" varchar(100),
 
     public_email varchar(254),
     github_url text,
