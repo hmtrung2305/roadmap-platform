@@ -40,6 +40,8 @@ public class OAuthLoginService : IOAuthLoginService
 
         var existingProvider = await _dbContext.UserAuthProviders
             .Include(x => x.User)
+            .ThenInclude(u => u!.UserRoles)
+            .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(x =>
                 x.Provider == provider &&
                 x.ProviderUserId == providerUserId);
@@ -133,11 +135,13 @@ public class OAuthLoginService : IOAuthLoginService
 
         if (learnerRole != null)
         {
-            _dbContext.UserRoles.Add(new UserRole
+            var userRole = new UserRole
             {
                 User = user,
-                RoleId = learnerRole.RoleId
-            });
+                RoleId = learnerRole.RoleId,
+                Role = learnerRole
+            };
+            _dbContext.UserRoles.Add(userRole);
         }
         
         await _dbContext.SaveChangesAsync();
@@ -152,7 +156,11 @@ public class OAuthLoginService : IOAuthLoginService
             UserId = user.UserId,
             Username = user.Username ?? string.Empty,
             Email = email,
-            Status = user.Status
+            Status = user.Status,
+            Roles = user.UserRoles
+                    .Where(ur => ur.Role != null)
+                    .Select(ur => ur.Role!.RoleName)
+                    .ToList(),
         };
     }
 

@@ -1,4 +1,7 @@
-﻿namespace RoadmapPlatform.Api.Extensions
+﻿using Microsoft.AspNetCore.Authorization;
+using RoadmapPlatform.Infrastructure.Security;
+
+namespace RoadmapPlatform.Api.Extensions
 {
     // Class này dùng để cấu hình Authorization cho API.
     // Những phần nên đặt ở đây gồm: role policies, permission policies,
@@ -23,6 +26,10 @@
                 //     policy.RequireRole("admin");
                 // });
             });
+
+            // Đăng ký provider tự động tạo Policy
+            services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+            services.AddAuthorization();
 
             return services;
         }

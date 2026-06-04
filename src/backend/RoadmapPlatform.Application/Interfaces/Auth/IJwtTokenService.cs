@@ -2,5 +2,5 @@ namespace RoadmapPlatform.Application.Interfaces.Auth;
 
 public interface IJwtTokenService
 {
-    string GenerateToken(Guid userId, string username);
+    string GenerateToken(Guid userId, string username,IEnumerable<string> roles);
 }

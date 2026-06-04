@@ -6,6 +6,7 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Security;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -15,10 +16,12 @@ namespace RoadmapPlatform.Infrastructure.Services
     public class RoleService : IRoleService
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IPermissionCache _permissionCache;
 
-        public RoleService(ApplicationDbContext dbContext)
+        public RoleService(ApplicationDbContext dbContext, IPermissionCache permissionCache)
         {
             _dbContext = dbContext;
+            _permissionCache = permissionCache;
         }
 
         public async Task<RoleResponseDto> CreateRoleAsync(CreateRoleRequestDto roleRequest)
@@ -52,6 +55,7 @@ namespace RoadmapPlatform.Infrastructure.Services
             _dbContext.Roles.Remove(role);
 
             await _dbContext.SaveChangesAsync();
+            _permissionCache.Invalidate();
         }
 
         public async Task<RoleDetailResponseDto> GetRoleByIdAsync(Guid roleId)
@@ -107,6 +111,7 @@ namespace RoadmapPlatform.Infrastructure.Services
             role.RoleName = roleRequest.RoleName.ToLower();
 
             await _dbContext.SaveChangesAsync();
+            _permissionCache.Invalidate();
 
             return new RoleResponseDto
             {
@@ -175,6 +180,7 @@ namespace RoadmapPlatform.Infrastructure.Services
             }
 
             await _dbContext.SaveChangesAsync();
+            _permissionCache.Invalidate();
 
             return await GetRoleByIdAsync(roleId);
         }

@@ -161,6 +161,8 @@ public class AuthService : IAuthService
 
             localProvider = await _dbContext.UserAuthProviders
                 .Include(x => x.User)
+                .ThenInclude(u => u!.UserRoles)
+                .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(x =>
                     x.Provider == AuthProviders.Local &&
                     x.ProviderUserId == email);
@@ -172,6 +174,8 @@ public class AuthService : IAuthService
 
             localProvider = await _dbContext.UserAuthProviders
                 .Include(x => x.User)
+                .ThenInclude(u=> u!.UserRoles)
+                .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(x =>
                     x.Provider == AuthProviders.Local &&
                     x.User != null &&
@@ -207,7 +211,11 @@ public class AuthService : IAuthService
             UserId = localProvider.User.UserId,
             Username = localProvider.User.Username,
             Email = localProvider.Email,
-            Status = localProvider.User.Status
+            Status = localProvider.User.Status,
+            Roles = localProvider.User.UserRoles
+                    .Where(ur => ur.Role != null)
+                    .Select(ur => ur.Role!.RoleName)
+                    .ToList()
         };
 
         return CreateLoginResponse(authenticatedUser);
@@ -232,6 +240,8 @@ public class AuthService : IAuthService
             .VerifyRegistrationEmailAsync(email, request.Otp);
 
         var user = await _dbContext.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.UserId == verificationResult.UserId);
 
@@ -247,7 +257,11 @@ public class AuthService : IAuthService
             UserId = user.UserId,
             Username = user.Username,
             Email = verificationResult.Email,
-            Status = user.Status
+            Status = user.Status,
+            Roles = user.UserRoles
+                    .Where(ur => ur.Role != null)
+                    .Select(ur => ur.Role!.RoleName)
+                    .ToList()
         };
 
         return CreateLoginResponse(authenticatedUser);
@@ -332,7 +346,7 @@ public class AuthService : IAuthService
     {
         string username = user.Username;
 
-        var accessToken = _jwtTokenService.GenerateToken(user.UserId, user.Username ?? string.Empty);
+        var accessToken = _jwtTokenService.GenerateToken(user.UserId, user.Username ?? string.Empty,user.Roles);
 
         return new LoginResponseDto
         {
