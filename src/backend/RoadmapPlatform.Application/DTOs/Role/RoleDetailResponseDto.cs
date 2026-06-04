@@ -9,7 +9,7 @@ namespace RoadmapPlatform.Application.DTOs.Role
     {
         public Guid RoleId { get; set; }
 
-        public string RoleName { get; set; }
+        public string? RoleName { get; set; }
 
         public List<PermissionResponseDto> Permissions { get; set; } = new();
     }
