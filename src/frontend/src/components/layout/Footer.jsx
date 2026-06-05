@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <button
             type="button"
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/dashboard")}
             className="font-bold text-blue-700 hover:text-blue-800 text-2xl"
           >
             TechMap
@@ -23,10 +23,10 @@ export default function Footer() {
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <button
             type="button"
-            onClick={() => navigate("/roadmap")}
+            onClick={() => navigate("/dashboard")}
             className="hover:text-blue-700"
           >
-            Roadmap
+            Dashboard
           </button>
 
           <button

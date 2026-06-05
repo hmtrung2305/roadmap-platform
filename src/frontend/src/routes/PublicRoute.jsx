@@ -13,7 +13,7 @@ export default function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

@@ -161,7 +161,7 @@ namespace RoadmapPlatform.Api.Controllers
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect(BuildFrontendUrl("/home"));
+            return Redirect(BuildFrontendUrl("/dashboard"));
         }
 
         [HttpGet("google/link")]
@@ -199,7 +199,7 @@ namespace RoadmapPlatform.Api.Controllers
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect(BuildFrontendUrl("/home"));
+            return Redirect(BuildFrontendUrl("/dashboard"));
         }
 
         [HttpDelete("{provider}")]

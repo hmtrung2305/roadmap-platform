@@ -9,8 +9,8 @@ import AvatarDropdown from "./AvatarDropdown";
 
 export default function TopNavbar() {
   const navItems = [
-    { label: "Home", path: "/home" },
-    { label: "Resource", path: "/resources" },
+    { label: "Dashboard", path: "/dashboard" },
+    { label: "Resources", path: "/resources" },
     { label: "Portfolio", path: "/portfolio" },
     { label: "Market Pulse", path: "/market-pulse" },
   ];
@@ -54,7 +54,7 @@ export default function TopNavbar() {
         <div className="flex items-center gap-8">
           <button
             type="button"
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/dashboard")}
             className="text-2xl font-bold text-blue-700"
           >
             TechMap

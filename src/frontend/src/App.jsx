@@ -3,7 +3,8 @@ import { useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import HomePage from "./pages/HomePage";
+import LandingPage from "./pages/LandingPage";
+import DashboardPage from "./pages/DashboardPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -43,7 +44,7 @@ export default function App() {
       />
       <AnimatePresence>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
 
           <Route
             path="/login"
@@ -71,11 +72,11 @@ export default function App() {
             }
           />
 
-          {/* PUBLIC DEMO ROUTES - không cần auth */}
+          {/* Public demo routes can be added here when they do not require auth. */}
 
           <Route element={<MainLayout />}></Route>
 
-          {/* Cần auth thì mới access được */}
+          {/* Authenticated workspace routes. */}
           <Route
             element={
               <ProtectedRoute>
@@ -83,7 +84,8 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/home" element={<HomePage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/home" element={<Navigate to="/dashboard" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route

@@ -285,7 +285,7 @@ Handles GitHub linking callback.
 | Missing linking session | Unauthorized |
 | GitHub already linked to current user | Conflict |
 | GitHub linked to another user | Conflict |
-| Success | Adds GitHub provider and redirects to `/home` |
+| Success | Adds GitHub provider and redirects to `/dashboard` |
 
 ---
 
@@ -317,7 +317,7 @@ Handles Google linking callback.
 | Missing linking session | Unauthorized |
 | Google already linked to current user | Conflict |
 | Google linked to another user | Conflict |
-| Success | Adds Google provider and redirects to `/home` |
+| Success | Adds Google provider and redirects to `/dashboard` |
 
 ---
 

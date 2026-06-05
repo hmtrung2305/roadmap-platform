@@ -47,7 +47,7 @@ export default function LoginPage() {
       await login(form);
 
       setTimeout(() => {
-        navigate("/home");
+        navigate("/dashboard");
       }, 250);
     } catch (error) {
       console.log("Login failed:", error.response?.data || error);

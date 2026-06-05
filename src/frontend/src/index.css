@@ -169,3 +169,74 @@ body,
 .animate-fire-bounce {
   animation: fire-bounce 0.8s ease-in-out infinite;
 }
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes landing-glow-shift {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes landing-bar-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.landing-float {
+  animation: landing-float 7s ease-in-out infinite;
+}
+
+.landing-glow {
+  animation: landing-glow-shift 9s ease-in-out infinite;
+}
+
+.landing-bar-pulse {
+  animation: landing-bar-pulse 2.8s ease-in-out infinite;
+}
+
+.landing-lift {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.landing-lift:hover {
+  transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-float,
+  .landing-glow,
+  .landing-bar-pulse {
+    animation: none;
+  }
+
+  .landing-lift,
+  .landing-lift:hover {
+    transform: none;
+  }
+}

@@ -239,7 +239,7 @@ Handles Google OAuth callback.
 | External authentication succeeds | Login or create account |
 | Google email exists on another account | Redirects to login with OAuth error |
 | Login succeeds | Sets `access_token` cookie |
-| Final redirect | `http://localhost:5173/home` |
+| Final redirect | `http://localhost:5173/dashboard` |
 
 ### Failure Behavior
 
@@ -276,7 +276,7 @@ Handles GitHub OAuth callback.
 | GitHub account exists | Existing user is logged in |
 | New GitHub account | New user/profile/provider rows are created |
 | Login succeeds | Sets `access_token` cookie |
-| Final redirect | `http://localhost:5173/home` |
+| Final redirect | `http://localhost:5173/dashboard` |
 
 ### Failure Behavior
 
