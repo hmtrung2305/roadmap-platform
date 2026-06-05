@@ -1,4 +1,4 @@
-import { SendHorizonal, SendHorizontal } from "lucide-react";
+import { SendHorizontal } from "lucide-react";
 import { useState } from "react";
 
 export default function ChatInput({ onSend, disabled }) {
@@ -42,7 +42,7 @@ export default function ChatInput({ onSend, disabled }) {
       </div>
 
       <p className="mt-2 text-center text-[11px] text-slate-400">
-        Enter để gửi, Shift + Enter để xuống dòng
+        Enter to send, Shift + Enter for a new line
       </p>
     </form>
   );

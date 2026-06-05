@@ -20,7 +20,20 @@ export const useChatStore = create((set, get) => ({
   conversationIdByResourceId: {},
 
   isSending: false,
+  creditStatus: null,
   error: null,
+
+  loadCreditStatus: async () => {
+    try {
+      const creditStatus = await chatApi.getCredits();
+
+      set({
+        creditStatus,
+      });
+    } catch (error) {
+      console.log("Load AI credit status failed:", error);
+    }
+  },
 
   getMessagesByResourceId: (resourceId) => {
     return get().messagesByResourceId[resourceId] || [];
@@ -43,13 +56,14 @@ export const useChatStore = create((set, get) => ({
           [resourceId]: [...currentMessages, userMessage],
         },
       }));
+
       const data = await chatApi.sendMessage({
         prompt: prompt.trim(),
-        resourceId: resourceId,
+        resourceId,
         conversationId: currentConversationId,
       });
 
-      const assistantText = data.response || "AI has not replied yet";
+      const assistantText = data.response || "AI has not replied yet.";
       const nextConversationId = data.conversationId || currentConversationId;
       const assistantMessage = createAssistantMessage(assistantText);
 
@@ -67,11 +81,19 @@ export const useChatStore = create((set, get) => ({
           ...state.conversationIdByResourceId,
           [resourceId]: nextConversationId,
         },
+        creditStatus: data.credits || state.creditStatus,
       }));
     } catch (error) {
       console.log("Send chat message failed:", error);
+
+      const limitMessage =
+        error.status === 429
+          ? "You have used all AI credits for today. Your credits reset tomorrow."
+          : "The service is currently experiencing high demand. Please try again in a few moments.";
+
       set({
-        error: "The service is currently experiencing high demand. Please try again in a few moments.",
+        error: limitMessage,
+        creditStatus: error.raw?.credits || get().creditStatus,
       });
     } finally {
       set({
@@ -79,6 +101,7 @@ export const useChatStore = create((set, get) => ({
       });
     }
   },
+
   clearChatByResourceId: (resourceId) => {
     set((state) => {
       const nextMessagesByResourceId = { ...state.messagesByResourceId };

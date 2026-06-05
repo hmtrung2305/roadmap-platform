@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RoadmapPlatform.Application.Interfaces;
+using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
@@ -15,6 +16,7 @@ using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services;
+using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.Auth;
 using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
@@ -118,6 +120,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             }
 
             services.AddScoped<IChatService, ChatService>();
+            
+            services.AddScoped<IAiCreditService, AiCreditService>();
 
             services.AddSingleton<IRagService, RagService>();
 

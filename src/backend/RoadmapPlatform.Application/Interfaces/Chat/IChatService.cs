@@ -4,6 +4,6 @@ namespace RoadmapPlatform.Application.Interfaces.Chat
 {
     public interface IChatService
     {
-        Task<ChatResponseDto> ChatAsync(ChatRequestDto request);
+        Task<ChatResponseDto> ChatAsync(Guid userId, ChatRequestDto request);
     }
 }

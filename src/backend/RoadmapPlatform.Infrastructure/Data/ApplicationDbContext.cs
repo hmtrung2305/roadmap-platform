@@ -16,6 +16,10 @@ public partial class ApplicationDbContext : DbContext
     {
     }
 
+    public virtual DbSet<AiCreditPlan> AiCreditPlans { get; set; }
+
+    public virtual DbSet<AiCreditUsage> AiCreditUsages { get; set; }
+
     public virtual DbSet<ChatbotMessage> ChatbotMessages { get; set; }
 
     public virtual DbSet<Conversation> Conversations { get; set; }
@@ -60,6 +64,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<UserActivityStat> UserActivityStats { get; set; }
 
+    public virtual DbSet<UserAiCreditPlan> UserAiCreditPlans { get; set; }
+
     public virtual DbSet<UserAuthProvider> UserAuthProviders { get; set; }
 
     public virtual DbSet<UserInsight> UserInsights { get; set; }
@@ -77,6 +83,56 @@ public partial class ApplicationDbContext : DbContext
         modelBuilder
             .HasPostgresExtension("pgcrypto")
             .HasPostgresExtension("vector");
+
+        modelBuilder.Entity<AiCreditPlan>(entity =>
+        {
+            entity.HasKey(e => e.PlanCode).HasName("ai_credit_plan_pkey");
+
+            entity.ToTable("ai_credit_plan");
+
+            entity.Property(e => e.PlanCode)
+                .HasMaxLength(30)
+                .HasColumnName("plan_code");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DailyCreditLimit).HasColumnName("daily_credit_limit");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.MonthlyCreditLimit).HasColumnName("monthly_credit_limit");
+        });
+
+        modelBuilder.Entity<AiCreditUsage>(entity =>
+        {
+            entity.HasKey(e => e.UsageId).HasName("ai_credit_usage_pkey");
+
+            entity.ToTable("ai_credit_usage");
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_ai_credit_usage_user_created_at");
+
+            entity.HasIndex(e => new { e.FeatureName, e.CreatedAt }, "idx_ai_credit_usage_feature_created_at");
+
+            entity.Property(e => e.UsageId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("usage_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreditCost)
+                .HasDefaultValue(1)
+                .HasColumnName("credit_cost");
+            entity.Property(e => e.FeatureName)
+                .HasMaxLength(80)
+                .HasColumnName("feature_name");
+            entity.Property(e => e.Metadata)
+                .HasColumnType("jsonb")
+                .HasColumnName("metadata");
+            entity.Property(e => e.RequestRefId).HasColumnName("request_ref_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.AiCreditUsages)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_ai_credit_usage_user_id");
+        });
 
         modelBuilder.Entity<ChatbotMessage>(entity =>
         {
@@ -627,6 +683,36 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithOne(p => p.UserActivityStat)
                 .HasForeignKey<UserActivityStat>(d => d.UserId)
                 .HasConstraintName("fk_user_activity_stats_user_id");
+        });
+
+        modelBuilder.Entity<UserAiCreditPlan>(entity =>
+        {
+            entity.HasKey(e => e.UserId).HasName("user_ai_credit_plan_pkey");
+
+            entity.ToTable("user_ai_credit_plan");
+
+            entity.Property(e => e.UserId)
+                .ValueGeneratedNever()
+                .HasColumnName("user_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.PlanCode)
+                .HasMaxLength(30)
+                .HasColumnName("plan_code");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Plan).WithMany(p => p.UserAiCreditPlans)
+                .HasForeignKey(d => d.PlanCode)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_user_ai_credit_plan_plan_code");
+
+            entity.HasOne(d => d.User).WithOne(p => p.UserAiCreditPlan)
+                .HasForeignKey<UserAiCreditPlan>(d => d.UserId)
+                .HasConstraintName("fk_user_ai_credit_plan_user_id");
         });
 
         modelBuilder.Entity<UserAuthProvider>(entity =>

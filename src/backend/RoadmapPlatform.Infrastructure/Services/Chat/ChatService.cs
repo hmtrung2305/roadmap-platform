@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.DTOs.Chat;
 using RoadmapPlatform.Application.DTOs.Rag;
+using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.Rag;
 using RoadmapPlatform.Infrastructure.Data;
@@ -9,16 +10,24 @@ namespace RoadmapPlatform.Infrastructure.Services.Chat
 {
     public class ChatService : IChatService
     {
+        private const string ChatFeatureName = "ai_chat";
+        private const int ChatCreditCost = 1;
+
+        private readonly IAiCreditService _aiCreditService;
         private readonly ApplicationDbContext _context;
         private readonly IRagService _ragService;
 
-        public ChatService(ApplicationDbContext context, IRagService ragService)
+        public ChatService(
+            ApplicationDbContext context,
+            IAiCreditService aiCreditService,
+            IRagService ragService)
         {
             _context = context;
+            _aiCreditService = aiCreditService;
             _ragService = ragService;
         }
 
-        public async Task<ChatResponseDto> ChatAsync(ChatRequestDto request)
+        public async Task<ChatResponseDto> ChatAsync(Guid userId, ChatRequestDto request)
         {
             if (request.ResourceId == Guid.Empty)
             {
@@ -38,6 +47,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Chat
             {
                 throw new KeyNotFoundException("Resource was not found.");
             }
+
+            await _aiCreditService.EnsureCanSpendAsync(userId, ChatFeatureName, ChatCreditCost);
 
             if (_ragService.IsKnowledgeBaseEmpty())
             {
@@ -61,11 +72,17 @@ namespace RoadmapPlatform.Infrastructure.Services.Chat
                 request.ResourceId
             );
 
+            var credits = await _aiCreditService.RecordUsageAsync(
+                userId,
+                ChatFeatureName,
+                ChatCreditCost);
+
             return new ChatResponseDto
             {
                 Response = result.Answer,
                 DebugContextUsed = result.Context,
-                DebugScore = result.Score
+                DebugScore = result.Score,
+                Credits = credits
             };
         }
     }

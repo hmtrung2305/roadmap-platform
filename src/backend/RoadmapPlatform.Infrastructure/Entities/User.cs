@@ -19,6 +19,8 @@ public partial class User
 
     public DateTime? DeletedAt { get; set; }
 
+    public virtual ICollection<AiCreditUsage> AiCreditUsages { get; set; } = new List<AiCreditUsage>();
+
     public virtual ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
 
     public virtual ICollection<EmailVerificationToken> EmailVerificationTokens { get; set; } = new List<EmailVerificationToken>();
@@ -28,6 +30,8 @@ public partial class User
     public virtual ICollection<Repository> Repositories { get; set; } = new List<Repository>();
 
     public virtual UserActivityStat? UserActivityStat { get; set; }
+
+    public virtual UserAiCreditPlan? UserAiCreditPlan { get; set; }
 
     public virtual ICollection<UserAuthProvider> UserAuthProviders { get; set; } = new List<UserAuthProvider>();
 

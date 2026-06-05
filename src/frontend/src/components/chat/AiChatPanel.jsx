@@ -1,4 +1,5 @@
 import { Bot, Loader2, MessageCircle, Trash2, X } from "lucide-react";
+import { useEffect } from "react";
 import { useChatStore } from "../../stores/useChatStore";
 import ChatInput from "./ChatInput";
 import ChatMessage from "./ChatMessage";
@@ -16,7 +17,9 @@ export default function AiChatPanel({
   const resourceId = resource?.resourceId;
 
   const isSending = useChatStore((state) => state.isSending);
+  const creditStatus = useChatStore((state) => state.creditStatus);
   const error = useChatStore((state) => state.error);
+  const loadCreditStatus = useChatStore((state) => state.loadCreditStatus);
   const sendMessage = useChatStore((state) => state.sendMessage);
   const clearChatByResourceId = useChatStore(
     (state) => state.clearChatByResourceId,
@@ -27,6 +30,12 @@ export default function AiChatPanel({
     if (!resourceId) return EMPTY_MESSAGES;
     return state.messagesByResourceId[resourceId] ?? EMPTY_MESSAGES;
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCreditStatus();
+    }
+  }, [isOpen, loadCreditStatus]);
 
   const handleSend = async (text) => {
     if (!resourceId) return;
@@ -40,11 +49,13 @@ export default function AiChatPanel({
   const handleClear = () => {
     if (!resourceId) return;
 
-    const confirmed = window.confirm("Bạn muốn xóa đoạn chat hiện tại?");
+    const confirmed = window.confirm("Clear the current chat?");
     if (!confirmed) return;
 
     clearChatByResourceId(resourceId);
   };
+
+  const isOutOfCredits = creditStatus?.remainingCreditsToday === 0;
 
   return (
     <>
@@ -61,7 +72,6 @@ export default function AiChatPanel({
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* Resize handle */}
         <div
           onMouseDown={onStartResize}
           className="absolute left-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-300"
@@ -78,7 +88,7 @@ export default function AiChatPanel({
               <div className="min-w-0">
                 <h2 className="font-bold text-slate-900">AI Mentor</h2>
                 <p className="line-clamp-1 text-xs text-slate-500">
-                  Hỏi đáp theo tài liệu hiện tại
+                  Ask questions about the current document
                 </p>
               </div>
             </div>
@@ -112,6 +122,18 @@ export default function AiChatPanel({
               </p>
             </div>
           )}
+
+          {creditStatus && (
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+              <span className="font-medium text-slate-600">
+                AI credits today
+              </span>
+              <span className="font-semibold text-slate-900">
+                {creditStatus.remainingCreditsToday}/
+                {creditStatus.dailyCreditLimit}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
@@ -125,7 +147,7 @@ export default function AiChatPanel({
                   onClick={clearError}
                   className="font-semibold hover:underline"
                 >
-                  Đóng
+                  Close
                 </button>
               </div>
             </div>
@@ -139,16 +161,19 @@ export default function AiChatPanel({
                 </div>
 
                 <p className="font-semibold text-slate-900">
-                  Bắt đầu hỏi về tài liệu này
+                  Start asking about this document
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  AI sẽ dùng nội dung tài liệu hiện tại để trả lời. Hãy hỏi về
-                  khái niệm, ví dụ, tóm tắt hoặc phần bạn chưa hiểu.
+                  AI uses the current document as context. Ask for summaries,
+                  examples, concepts, or anything you want to understand better.
                 </p>
               </div>
 
-              <SuggestedQuestions onSelect={handleSend} disabled={isSending} />
+              <SuggestedQuestions
+                onSelect={handleSend}
+                disabled={isSending || isOutOfCredits}
+              />
             </div>
           ) : (
             <div className="space-y-3">
@@ -160,7 +185,7 @@ export default function AiChatPanel({
                 <div className="flex justify-start">
                   <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
                     <Loader2 size={16} className="animate-spin" />
-                    AI đang trả lời...
+                    AI is replying...
                   </div>
                 </div>
               )}
@@ -168,7 +193,10 @@ export default function AiChatPanel({
           )}
         </div>
 
-        <ChatInput onSend={handleSend} disabled={isSending || !resourceId} />
+        <ChatInput
+          onSend={handleSend}
+          disabled={isSending || !resourceId || isOutOfCredits}
+        />
       </aside>
     </>
   );
