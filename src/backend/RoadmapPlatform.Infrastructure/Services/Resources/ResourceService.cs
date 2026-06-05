@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Pgvector;
 using RoadmapPlatform.Application.DTOs.Rag;
@@ -14,16 +15,16 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
     {
         private readonly ApplicationDbContext _context;
         private readonly IRagService _ragService;
-        private readonly IWebHostEnvironment _env;
+        private readonly IResourceFileStorage _fileStorage;
 
         public ResourceService(
             ApplicationDbContext context,
             IRagService ragService,
-            IWebHostEnvironment env)
+            IResourceFileStorage fileStorage)
         {
             _context = context;
             _ragService = ragService;
-            _env = env;
+            _fileStorage = fileStorage;
         }
 
         public async Task<List<ResourceResponseDto>> GetResourcesAsync()
@@ -51,7 +52,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
             string skillName,
             string originalFileName,
             Stream fileStream,
-            long fileLength)
+            long fileLength,
+            string contentType)
         {
             if (fileLength == 0)
             {
@@ -68,19 +70,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
                 throw new ArgumentException("Skill name is required.");
             }
 
-            string webRootPath = _env.WebRootPath
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
-            string uploadFolder = Path.Combine(webRootPath, "docs");
-            Directory.CreateDirectory(uploadFolder);
-
-            string fileName = Guid.NewGuid() + "_" + originalFileName;
-            string filePath = Path.Combine(uploadFolder, fileName);
-
-            await using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await fileStream.CopyToAsync(stream);
-            }
+            await using var bufferedFile = new MemoryStream();
+            await fileStream.CopyToAsync(bufferedFile);
+            bufferedFile.Position = 0;
 
             var normalizedSkillName = skillName.Trim().ToLower();
 
@@ -101,14 +93,24 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
             }
 
             var newResourceId = Guid.NewGuid();
+            var safeFileName = BuildSafeFileName(originalFileName);
+            var objectPath = $"docs/{newResourceId:N}-{safeFileName}";
+            var normalizedContentType = NormalizeContentType(contentType);
+            var savedFile = await _fileStorage.SaveAsync(objectPath, bufferedFile, normalizedContentType);
 
             var resource = new Resource
             {
                 ResourceId = newResourceId,
                 Title = title.Trim(),
                 SkillId = skill.SkillId,
-                Url = $"/docs/{fileName}",
+                Url = $"/api/resources/{newResourceId}/content",
                 CreatedAt = DateTime.UtcNow,
+                Metadata = JsonSerializer.Serialize(new ResourceStorageMetadata(
+                    _fileStorage.ProviderName,
+                    savedFile.ObjectPath,
+                    originalFileName,
+                    normalizedContentType,
+                    fileLength)),
                 MyResource = new MyResource
                 {
                     ResourceId = newResourceId
@@ -118,7 +120,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
             _context.Resources.Add(resource);
             await _context.SaveChangesAsync();
 
-            string fileContent = await File.ReadAllTextAsync(filePath);
+            string fileContent = Encoding.UTF8.GetString(bufferedFile.ToArray());
 
             var chunkTexts = fileContent.Split(
                 new[] { "\n## " },
@@ -161,6 +163,36 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
             };
         }
 
+        public async Task<string> GetResourceContentAsync(Guid resourceId)
+        {
+            var resource = await _context.Resources
+                .AsNoTracking()
+                .FirstOrDefaultAsync(resource => resource.ResourceId == resourceId);
+
+            if (resource == null)
+            {
+                throw new KeyNotFoundException("Resource was not found.");
+            }
+
+            var metadata = ParseStorageMetadata(resource.Metadata);
+
+            if (!string.IsNullOrWhiteSpace(metadata?.ObjectPath))
+            {
+                await using var storedFile = await _fileStorage.OpenReadAsync(metadata.ObjectPath);
+                using var reader = new StreamReader(storedFile, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                return await reader.ReadToEndAsync();
+            }
+
+            if (resource.Url.StartsWith("/docs/", StringComparison.OrdinalIgnoreCase))
+            {
+                await using var storedFile = await _fileStorage.OpenReadAsync(resource.Url.TrimStart('/'));
+                using var reader = new StreamReader(storedFile, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                return await reader.ReadToEndAsync();
+            }
+
+            throw new InvalidOperationException("Resource file metadata is missing.");
+        }
+
         public async Task DeleteResourceAsync(Guid resourceId)
         {
             var resource = await _context.Resources
@@ -171,18 +203,23 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
                 throw new KeyNotFoundException("Resource was not found.");
             }
 
-            string webRootPath = _env.WebRootPath
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var storageMetadata = ParseStorageMetadata(resource.Metadata);
+            var objectPath = storageMetadata?.ObjectPath;
 
-            string? relativePath = resource.Url?.TrimStart('/');
-
-            if (!string.IsNullOrWhiteSpace(relativePath))
+            if (string.IsNullOrWhiteSpace(objectPath) && resource.Url.StartsWith("/docs/", StringComparison.OrdinalIgnoreCase))
             {
-                string physicalPath = Path.Combine(webRootPath, relativePath);
+                objectPath = resource.Url.TrimStart('/');
+            }
 
-                if (File.Exists(physicalPath))
+            if (!string.IsNullOrWhiteSpace(objectPath))
+            {
+                try
                 {
-                    File.Delete(physicalPath);
+                    await _fileStorage.DeleteAsync(objectPath);
+                }
+                catch (FileNotFoundException)
+                {
+                    // Continue deleting the database record if the file is already gone.
                 }
             }
 
@@ -246,5 +283,44 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
 
             _ragService.LoadKnowledgeBase(chunks);
         }
+
+        private static string NormalizeContentType(string contentType)
+        {
+            return string.IsNullOrWhiteSpace(contentType) ? "text/markdown" : contentType;
+        }
+
+        private static string BuildSafeFileName(string originalFileName)
+        {
+            var fileName = Path.GetFileName(originalFileName);
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var safeChars = fileName.Select(character => invalidChars.Contains(character) ? '-' : character).ToArray();
+            var safeFileName = new string(safeChars).Trim();
+
+            return string.IsNullOrWhiteSpace(safeFileName) ? "resource.md" : safeFileName;
+        }
+
+        private static ResourceStorageMetadata? ParseStorageMetadata(string? metadata)
+        {
+            if (string.IsNullOrWhiteSpace(metadata))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<ResourceStorageMetadata>(metadata);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        private sealed record ResourceStorageMetadata(
+            string StorageProvider,
+            string ObjectPath,
+            string OriginalFileName,
+            string ContentType,
+            long FileSizeBytes);
     }
 }

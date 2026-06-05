@@ -63,6 +63,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             // AI, RAG Settings
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<RagSettings>(configuration.GetSection("Rag"));
+            services.Configure<FileStorageSettings>(configuration.GetSection("FileStorage"));
+            services.Configure<SupabaseStorageSettings>(configuration.GetSection("SupabaseStorage"));
 
             // Đăng ký implementation cho external services ở đây sau.
             // Ví dụ:
@@ -103,6 +105,18 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Chatbot, RAG Services
             services.AddScoped<IResourceService, ResourceService>();
+
+            var fileStorageProvider = configuration["FileStorage:Provider"];
+
+            if (string.Equals(fileStorageProvider, "Supabase", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddHttpClient<IResourceFileStorage, SupabaseResourceFileStorage>();
+            }
+            else
+            {
+                services.AddScoped<IResourceFileStorage, LocalResourceFileStorage>();
+            }
+
             services.AddScoped<IChatService, ChatService>();
 
             services.AddSingleton<IRagService, RagService>();

@@ -40,10 +40,19 @@ namespace RoadmapPlatform.Api.Controllers
                 skillName,
                 file.FileName,
                 fileStream,
-                file.Length
+                file.Length,
+                file.ContentType
             );
 
             return Ok(resource);
+        }
+
+        [HttpGet("{id}/content")]
+        public async Task<IActionResult> GetResourceContent(Guid id)
+        {
+            var content = await _resourceService.GetResourceContentAsync(id);
+
+            return Content(content, "text/markdown");
         }
 
         [HttpDelete("{id}")]

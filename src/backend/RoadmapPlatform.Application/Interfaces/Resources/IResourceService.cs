@@ -11,7 +11,10 @@ namespace RoadmapPlatform.Application.Interfaces.Resources
             string skillName,
             string originalFileName,
             Stream fileStream,
-            long fileLength);
+            long fileLength,
+            string contentType);
+
+        Task<string> GetResourceContentAsync(Guid resourceId);
 
         Task DeleteResourceAsync(Guid resourceId);
     }
