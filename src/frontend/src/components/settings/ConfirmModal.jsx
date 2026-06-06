@@ -16,7 +16,7 @@ export default function ConfirmModal({
         <div className="flex items-start gap-4">
           <div
             className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-              danger ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-700"
+              danger ? "bg-red-50 text-red-600" : "bg-emerald-50 text-indigo-700"
             }`}
           >
             <AlertTriangle size={20} />
@@ -47,7 +47,7 @@ export default function ConfirmModal({
                 type="button"
                 onClick={onCancel}
                 disabled={loading}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {cancelLabel}
               </button>

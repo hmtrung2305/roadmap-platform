@@ -4,7 +4,7 @@ import TopNavbar from "../components/layout/TopNavBar";
 
 export default function PublicLayout() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-[#F7F1E8] text-slate-900">
       {/* <TopNavbar /> */}
 
       <main>

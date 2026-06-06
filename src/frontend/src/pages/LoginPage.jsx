@@ -30,9 +30,7 @@ export default function LoginPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (authError) {
-      clearAuthError();
-    }
+    
 
     setForm((prev) => ({
       ...prev,
@@ -47,10 +45,11 @@ export default function LoginPage() {
       await login(form);
 
       setTimeout(() => {
-        navigate("/home");
+        navigate("/dashboard");
       }, 250);
     } catch (error) {
-      console.log("Login failed:", error.response?.data || error);
+      console.log("Login failed:", error?.message);
+      console.log("LOGIN PAGE AUTH ERROR:", authError);
     }
   };
 
@@ -69,7 +68,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh overflow-hidden bg-slate-50 text-slate-900">
+    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
       <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <AuthRoadmapPanel />
 
@@ -84,7 +83,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">
                 Welcome back
               </p>
 
@@ -121,7 +120,7 @@ export default function LoginPage() {
                   value={form.emailOrUsername}
                   onChange={handleChange}
                   placeholder="Email or Username"
-                  className="h-11 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="h-11 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   required
                 />
               </div>
@@ -134,7 +133,7 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    className="text-xs font-semibold text-blue-600 transition hover:text-blue-700"
+                    className="text-xs font-semibold text-emerald-600 transition hover:text-emerald-700"
                   >
                     Forgot password?
                   </button>
@@ -147,7 +146,7 @@ export default function LoginPage() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="h-10 w-full rounded-xl border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                     required
                   />
 
@@ -164,7 +163,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="h-11 w-full rounded-xl bg-blue-700 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-emerald-700 text-sm font-semibold text-white shadow-lg shadow-emerald-700/20 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Signing in..." : "Sign in"}
               </button>
@@ -204,7 +203,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleGoRegister}
                 disabled={authLoading}
-                className="font-semibold text-blue-600 transition hover:text-blue-700 disabled:opacity-60"
+                className="font-semibold text-emerald-600 transition hover:text-emerald-700 disabled:opacity-60"
               >
                 {authLoading ? "Opening..." : "Sign up"}
               </button>

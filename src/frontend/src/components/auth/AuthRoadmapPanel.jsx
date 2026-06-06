@@ -17,7 +17,7 @@ const mainNodes = [
 ];
 
 const skillNodes = [
-  // Node 1: 3 skills bên trái
+  // Node 1: 3 skills on the left
   {
     title: "HTTP / HTTPS",
     side: "left",
@@ -37,7 +37,7 @@ const skillNodes = [
     variant: "warm",
   },
 
-  // Node 2: 3 skills bên phải
+  // Node 2: 3 skills on the right
   {
     title: "Semantic HTML",
     side: "right",
@@ -87,7 +87,7 @@ export default function AuthRoadmapPanel() {
         <AuthLogo compact />
 
         <div className="mt-4 max-w-sm">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-600">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">
             Guided Learning Path
           </p>
 
@@ -200,7 +200,7 @@ function MainNode({ node }) {
   return (
     <div
       style={{ top: node.top }}
-      className="absolute left-1/2 z-20 flex h-[56px] w-[160px] -translate-x-1/2 items-center justify-center rounded-[20px] border-2 border-blue-700 bg-white px-4 text-center shadow-[0_10px_24px_rgba(37,99,235,0.12)]"
+      className="absolute left-1/2 z-20 flex h-[56px] w-[160px] -translate-x-1/2 items-center justify-center rounded-[20px] border-2 border-emerald-700 bg-white px-4 text-center shadow-[0_10px_24px_rgba(37,99,235,0.12)]"
     >
       <div>
         <h3 className="text-[13px] font-semibold leading-tight text-slate-900">
@@ -225,7 +225,7 @@ function SkillNode({ node }) {
       ? "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-[0_8px_20px_rgba(16,185,129,0.14)]"
       : node.variant === "warm"
       ? "border-amber-200 bg-amber-50 text-amber-800 shadow-[0_8px_20px_rgba(245,158,11,0.12)]"
-      : "border-slate-200 bg-slate-50 text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.06)]";
+      : "border-slate-200 bg-[#F7F1E8] text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.06)]";
 
   return (
     <div

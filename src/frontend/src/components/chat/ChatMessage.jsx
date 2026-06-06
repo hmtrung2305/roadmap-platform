@@ -7,16 +7,16 @@ export default function ChatMessage({ message }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
+        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
           isUser
-            ? "bg-blue-600 text-white"
-            : "border border-slate-200 bg-white text-slate-700"
+            ? "bg-[#2FA084] text-white"
+            : "border border-[#B9D8CC] bg-white text-slate-700"
         }`}
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <div className="prose prose-slate max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:text-xs">
+          <div className="prose prose-slate max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-pre:bg-[#18332D] prose-code:text-xs prose-a:text-[#1F6F5F]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>

@@ -1,31 +1,41 @@
 import { useEffect, useState } from "react";
-import { getPortfolio } from "../api/portfolioApi";
+import { getMyPortfolioApi, getPortfolioByUsernameApi } from "../api/portfolioApi";
 
-export function usePortfolio(userId){
-    const [portfolio, setPortfolio] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const  [error, setError] = useState("");
+export function usePortfolio(username, isOwnPortfolio = false) {
+  const [portfolio, setPortfolio] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    useEffect(()=> {
-        if(!userId) return;
+  useEffect(() => {
+    async function fetchPortfolio() {
+      try {
+        setLoading(true);
+        setError("");
 
-        const fetchPortfolio = async () => {
-            try {
-                setLoading(true);
-                const data = await getPortfolio(userId);
-                setPortfolio(data);
-            } catch (err) {
-                console.error("Failed to fetch portfolio:", err);
-                setError("Cannot load portfolio data");
-            }finally {
-                setLoading(false);
-            }
-        };
-        fetchPortfolio();
-    }, [userId]);
-    return {
-        portfolio,
-        loading,
-        error,
+        const data = isOwnPortfolio
+          ? await getMyPortfolioApi()
+          : await getPortfolioByUsernameApi(username);
+
+        setPortfolio(data);
+      } catch (err) {
+        console.error("Failed to fetch portfolio:", err);
+        setError(err?.message || "Cannot load portfolio data");
+      } finally {
+        setLoading(false);
+      }
     }
+
+    if (isOwnPortfolio || username) {
+      fetchPortfolio();
+    } else {
+      setLoading(false);
+      setError("Username was not found.");
+    }
+  }, [username, isOwnPortfolio]);
+
+  return {
+    portfolio,
+    loading,
+    error,
+  };
 }

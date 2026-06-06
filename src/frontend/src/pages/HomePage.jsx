@@ -18,7 +18,7 @@ export default function HomePage() {
   return (
     <section className="mx-auto max-w-7xl px-6 py-12">
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold text-blue-600">Welcome back</p>
+        <p className="text-sm font-semibold text-emerald-600">Welcome back</p>
 
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
           Hi, {userDisplayName}
@@ -36,8 +36,8 @@ export default function HomePage() {
           <InfoCard title="Portfolio" description="Build your public profile." />
         </div>
 
-        <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6">
-          <p className="text-sm font-semibold text-blue-700">
+        <div className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
+          <p className="text-sm font-semibold text-emerald-700">
             Demo learning resource
           </p>
 
@@ -53,7 +53,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={handleOpenDemoResource}
-            className="mt-5 rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+            className="mt-5 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800"
           >
             Open demo resource
           </button>
@@ -65,7 +65,7 @@ export default function HomePage() {
 
 function InfoCard({ title, description }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+    <div className="rounded-2xl border border-slate-200 bg-[#F7F1E8] p-5">
       <h3 className="font-semibold text-slate-900">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
     </div>

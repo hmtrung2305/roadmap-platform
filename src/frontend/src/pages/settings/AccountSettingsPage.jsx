@@ -191,7 +191,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             localProvider?.isLinked
               ? "bg-slate-100 text-slate-700"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-emerald-50 text-indigo-700"
           }
           onClick={() => {
             if (localProvider?.isLinked) {
@@ -216,7 +216,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             googleProvider?.isLinked
               ? "bg-red-50 text-red-600"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-emerald-50 text-indigo-700"
           }
           isDelete={googleProvider?.isLinked}
           disabled={googleProvider?.isLinked && !googleProvider?.canUnlink}
@@ -235,7 +235,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             githubProvider?.isLinked
               ? "bg-red-50 text-red-600"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-emerald-50 text-indigo-700"
           }
           isDelete={githubProvider?.isLinked}
           disabled={githubProvider?.isLinked && !githubProvider?.canUnlink}

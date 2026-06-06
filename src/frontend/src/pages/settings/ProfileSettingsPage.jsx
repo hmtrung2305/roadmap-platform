@@ -119,7 +119,7 @@ export default function ProfileSettingsPage() {
         <button
           type="button"
           onClick={() => navigate("/profile")}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-[#F7F1E8]"
         >
           <Eye size={16} />
           View profile
@@ -133,7 +133,7 @@ export default function ProfileSettingsPage() {
       )}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative h-40 bg-indigo-50">
+        <div className="relative h-40 bg-emerald-50">
           {form.coverImageUrl ? (
             <img
               src={form.coverImageUrl}
@@ -141,10 +141,10 @@ export default function ProfileSettingsPage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-r from-indigo-100 via-blue-50 to-teal-50" />
+            <div className="h-full w-full bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-50" />
           )}
 
-          <div className="absolute -bottom-12 left-6 h-24 w-24 overflow-hidden rounded-3xl border-4 border-white bg-indigo-50 shadow-sm">
+          <div className="absolute -bottom-12 left-6 h-24 w-24 overflow-hidden rounded-3xl border border-white bg-emerald-50 shadow-sm">
             {form.avatarUrl ? (
               <img
                 src={form.avatarUrl}
@@ -271,7 +271,7 @@ export default function ProfileSettingsPage() {
               onChange={handleChange}
               rows={4}
               placeholder="Write a short introduction..."
-              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             />
           </div>
         </div>
@@ -323,7 +323,7 @@ export default function ProfileSettingsPage() {
             placeholder="https://your-site.com"
           />
 
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-[#F7F1E8] px-4 py-3">
             <div>
               <p className="text-sm font-bold text-slate-900">
                 Public profile
@@ -376,7 +376,7 @@ function Input({ label, name, value, onChange, placeholder }) {
         value={value || ""}
         onChange={onChange}
         placeholder={placeholder}
-        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
       />
     </div>
   );

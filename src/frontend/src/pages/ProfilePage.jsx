@@ -44,7 +44,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-slate-50 px-6 py-8">
+      <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-8">
         <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Loading profile...</p>
         </div>
@@ -54,7 +54,7 @@ export default function ProfilePage() {
 
   if (error) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-slate-50 px-6 py-8">
+      <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-8">
         <div className="mx-auto max-w-5xl rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-600">
           {error}
         </div>
@@ -70,11 +70,11 @@ export default function ProfilePage() {
     profile?.careerGoal;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-slate-50 px-6 py-8 text-slate-900">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-8 text-slate-900">
       <div className="mx-auto max-w-5xl space-y-6">
         <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-hidden rounded-t-3xl">
-            <div className="relative h-50 bg-indigo-50">
+            <div className="relative h-50 bg-emerald-50">
               {profile?.coverImageUrl ? (
                 <img
                   src={profile.coverImageUrl}
@@ -82,13 +82,13 @@ export default function ProfilePage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="h-full w-full bg-gradient-to-r from-indigo-100 via-blue-50 to-teal-50" />
+                <div className="h-full w-full bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-50" />
               )}
 
               <button
                 type="button"
                 onClick={() => navigate("/settings/profile")}
-                className="absolute right-5 top-5 inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                className="absolute right-5 top-5 inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-[#F7F1E8]"
               >
                 <Edit3 size={16} />
                 Edit profile
@@ -99,7 +99,7 @@ export default function ProfilePage() {
           <div className="px-6 pb-3">
             <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="relative z-10 h-24 w-24 shrink-0 overflow-hidden rounded-3xl border-4 border-white bg-indigo-50 shadow-md">
+                <div className="relative z-10 h-24 w-24 shrink-0 overflow-hidden rounded-3xl border border-white bg-emerald-50 shadow-md">
                   {profile?.avatarUrl ? (
                     <img
                       src={profile.avatarUrl}
@@ -140,7 +140,7 @@ export default function ProfilePage() {
                 {profile.bio}
               </p>
             ) : (
-              <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-[#F7F1E8] px-4 py-4 text-sm text-slate-500">
                 Add a short bio to introduce yourself to others.
               </div>
             )}
@@ -260,7 +260,7 @@ function InfoItem({ label, value }) {
 function LinkItem({ icon, label, url }) {
   if (!url) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-400">
+      <div className="flex items-center gap-3 rounded-2xl bg-[#F7F1E8] px-4 py-3 text-sm text-slate-400">
         <span>{icon}</span>
         <span>{label} not added</span>
       </div>
@@ -272,7 +272,7 @@ function LinkItem({ icon, label, url }) {
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+      className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-emerald-100"
     >
       <span>{icon}</span>
       <span>{label}</span>

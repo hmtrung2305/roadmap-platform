@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GITHUB_AUTH_URL, GOOGLE_AUTH_URL } from "../api/authApi";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -24,20 +24,14 @@ export default function RegisterPage() {
     agreeTerms: false,
   });
 
+  const lastSubmittedFormRef = useRef(null);
+
   const [error, setError] = useState("");
 
   const displayError = error || authError;
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
-
-    if (error) {
-      setError("");
-    }
-
-    if (authError) {
-      clearAuthError();
-    }
 
     setForm((prev) => ({
       ...prev,
@@ -46,56 +40,86 @@ export default function RegisterPage() {
   };
 
   const validateForm = () => {
-    if (!form.username.trim()) {
-      return "Vui lòng nhập username.";
+    const username = form.username.trim();
+    const email = form.email.trim();
+
+    if (!username) {
+      return "Please enter your username.";
     }
 
-    if (!form.email.trim()) {
-      return "Vui lòng nhập email.";
+    if (username.length < 3) {
+      return "Username must be at least 3 characters long.";
+    }
+
+    if (!email) {
+      return "Please enter your email address.";
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return "Please enter a valid email address.";
+    }
+
+    if (!form.password) {
+      return "Please enter your password.";
     }
 
     if (form.password.length < 8) {
-      return "Mật khẩu nên có ít nhất 8 ký tự.";
+      return "Password must be at least 8 characters long.";
     }
 
     if (form.password !== form.confirmPassword) {
-      return "Confirm password không khớp.";
+      return "Confirm password does not match.";
     }
 
     if (!form.agreeTerms) {
-      return "Bạn cần đồng ý với Terms of Service và Privacy Policy.";
+      return "You need to agree to the Terms of Service and Privacy Policy.";
     }
 
     return "";
   };
 
-  const handleRegister = async (event) => {
-    event.preventDefault();
+ const handleRegister = async (event) => {
+  event.preventDefault();
 
-    const validationError = validateForm();
-
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    try {
-      setError("");
-      clearAuthError();
-
-      await register({
-        Username: form.username.trim(),
-        Email: form.email.trim(),
-        Password: form.password,
-      });
-
-      navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}`);
-    } catch (error) {
-      console.error("Register failed:", error);
-
-      setError(error.message || "Register failed. Please try again.");
-    }
+  const currentForm = {
+    ...form,
+    username: form.username,
+    email: form.email,
+    password: form.password,
+    confirmPassword: form.confirmPassword,
+    agreeTerms: form.agreeTerms,
   };
+
+  lastSubmittedFormRef.current = currentForm;
+
+  const validationError = validateForm();
+
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
+
+  try {
+    setError("");
+    clearAuthError();
+
+    await register({
+      Username: currentForm.username.trim(),
+      Email: currentForm.email.trim(),
+      Password: currentForm.password,
+    });
+
+    navigate(
+      `/verify-email?email=${encodeURIComponent(currentForm.email.trim())}`,
+    );
+  } catch (error) {
+    console.error("Register failed:", error);
+
+    setForm(lastSubmittedFormRef.current);
+
+    setError(error?.message || "Register failed. Please try again.");
+  }
+};
 
   const handleGoogleLogin = () => {
     window.location.href = GOOGLE_AUTH_URL;
@@ -106,7 +130,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-dvh overflow-hidden bg-slate-50 text-slate-900">
+    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
       <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <AuthRoadmapPanel />
 
@@ -121,7 +145,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">
                 Start learning
               </p>
 
@@ -151,7 +175,7 @@ export default function RegisterPage() {
                   value={form.username}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   required
                 />
               </div>
@@ -167,7 +191,7 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   required
                 />
               </div>
@@ -184,7 +208,7 @@ export default function RegisterPage() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                     required
                   />
                 </div>
@@ -200,7 +224,7 @@ export default function RegisterPage() {
                     value={form.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                     required
                   />
                 </div>
@@ -212,21 +236,21 @@ export default function RegisterPage() {
                   type="checkbox"
                   checked={form.agreeTerms}
                   onChange={handleChange}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
 
                 <span>
                   I agree to the{" "}
                   <button
                     type="button"
-                    className="font-semibold text-blue-600 transition hover:text-blue-700"
+                    className="font-semibold text-emerald-600 transition hover:text-emerald-700"
                   >
                     Terms of Service
                   </button>{" "}
                   and{" "}
                   <button
                     type="button"
-                    className="font-semibold text-blue-600 transition hover:text-blue-700"
+                    className="font-semibold text-emerald-600 transition hover:text-emerald-700"
                   >
                     Privacy Policy
                   </button>
@@ -237,7 +261,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="h-11 w-full rounded-xl bg-blue-700 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-emerald-700 text-sm font-semibold text-white shadow-lg shadow-emerald-700/20 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Creating account..." : "Create account"}
               </button>
@@ -275,7 +299,7 @@ export default function RegisterPage() {
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-semibold text-blue-600 transition hover:text-blue-700"
+                className="font-semibold text-emerald-600 transition hover:text-emerald-700"
               >
                 Sign in
               </Link>

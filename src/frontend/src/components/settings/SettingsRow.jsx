@@ -8,7 +8,7 @@ export default function SettingsRow({
   danger = false,
   isDelete = false,
   disabled = false,
-  iconClassName = "bg-indigo-50 text-indigo-700",
+  iconClassName = "bg-emerald-50 text-indigo-700",
   actionClassName = "",
   onClick,
 }) {
@@ -17,7 +17,7 @@ export default function SettingsRow({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex w-full items-center gap-4 px-6 py-5 text-left transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full items-center gap-4 px-6 py-5 text-left transition hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {Icon && (
         <div

@@ -1,22 +1,29 @@
-import { RefreshCw, Save } from "lucide-react";
+import { RefreshCw, Save, Sparkles } from "lucide-react";
 
 export default function RepositoryPageHeader({
   selectedCount,
+  totalCount,
   syncing,
   saving,
   onSync,
   onSave,
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Manage Portfolio Repositories
-          </h1>
+    <section className="relative overflow-hidden rounded-[2rem] border border-[#6FCF97] bg-gradient-to-br from-white via-[#ecfdf5] to-[#f8fafc] p-6 shadow-sm ring-1 ring-white/80 sm:p-7">
+      <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-200/50 blur-3xl" />
+      <div className="absolute -bottom-24 left-16 h-60 w-60 rounded-full bg-teal-200/40 blur-3xl" />
 
-          <p className="mt-1 text-slate-500">
-            Select which GitHub repositories should appear on your portfolio.
+      <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-[#1F6F5F] ring-1 ring-[#6FCF97]/35">
+            <Sparkles size={14} />
+            Portfolio Builder
+          </p>
+
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Manage repositories</h1>
+
+          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+            Sync GitHub, choose your strongest projects, then save the public repository showcase.
           </p>
         </div>
 
@@ -25,7 +32,7 @@ export default function RepositoryPageHeader({
             type="button"
             onClick={onSync}
             disabled={syncing}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
             {syncing ? "Syncing..." : "Sync GitHub"}
@@ -35,7 +42,7 @@ export default function RepositoryPageHeader({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save size={16} />
             {saving ? "Saving..." : "Save Selection"}
@@ -43,9 +50,20 @@ export default function RepositoryPageHeader({
         </div>
       </div>
 
-      <div className="mt-6 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
-        {selectedCount} repositories selected for your portfolio.
+      <div className="relative mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Metric label="Selected" value={selectedCount} />
+        <Metric label="Available" value={totalCount ?? 0} />
+        <Metric label="Status" value={selectedCount > 0 ? "Ready" : "Empty"} />
       </div>
     </section>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="rounded-3xl border border-white/80 bg-white/75 p-4 shadow-sm backdrop-blur">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+    </div>
   );
 }

@@ -146,7 +146,7 @@ export default function VerifyLocalEmailModal({
               onChange={handleOtpChange}
               placeholder="Enter 6-digit code"
               inputMode="numeric"
-              className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-center text-lg font-semibold tracking-[0.4em] text-slate-900 outline-none transition placeholder:text-sm placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-center text-lg font-semibold tracking-[0.4em] text-slate-900 outline-none transition placeholder:text-sm placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             />
           </div>
 
@@ -156,7 +156,7 @@ export default function VerifyLocalEmailModal({
                 type="button"
                 onClick={handleResendCode}
                 disabled={resending || loading}
-                className="text-sm font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="text-sm font-semibold text-emerald-600 transition hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {resending ? "Sending..." : "Resend code"}
               </button>
@@ -179,7 +179,7 @@ export default function VerifyLocalEmailModal({
               <button
                 type="submit"
                 disabled={loading || resending}
-                className="h-10 rounded-xl bg-blue-700 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-700/20 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Verifying..." : "Verify"}
               </button>

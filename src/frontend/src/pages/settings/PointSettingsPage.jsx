@@ -8,7 +8,7 @@ function StreakStatCard({ icon: Icon, title, value }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-indigo-700">
           <Icon size={20} />
         </div>
 
@@ -125,7 +125,7 @@ export default function PointsSettingsPage() {
 
         <div className="flex flex-col gap-5 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-indigo-700">
               <FaFireAlt size={20} />
             </div>
 
@@ -188,7 +188,7 @@ export default function PointsSettingsPage() {
           </div>
 
           {streak?.lastInteraction && (
-            <span className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700">
+            <span className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-indigo-700">
               +1 streak
             </span>
           )}

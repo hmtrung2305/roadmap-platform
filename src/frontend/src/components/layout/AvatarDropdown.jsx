@@ -90,9 +90,9 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-11 items-center gap-3 rounded-lg border border-slate-200 bg-white px-2.5 pr-3 shadow-sm transition hover:bg-slate-50"
+        className="flex h-10 items-center gap-2 border border-[#B9D8CC] bg-white px-2 shadow-sm transition hover:-translate-y-0.5"
       >
-        <div className="h-8 w-8 overflow-hidden rounded-full bg-blue-100">
+        <div className="flex h-7 w-7 items-center justify-center overflow-hidden border border-[#B9D8CC] bg-[#2FA084] text-xs font-extrabold text-white">
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -100,30 +100,31 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-blue-700">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
+            displayName.charAt(0).toUpperCase()
           )}
         </div>
 
         <div className="hidden min-w-0 text-left lg:block">
-          <p className="max-w-36 truncate text-sm font-semibold leading-4 text-slate-800">
+          <p className="max-w-32 truncate text-sm font-extrabold leading-4 text-[#18332D]">
             {displayName}
-          </p>
-
-          <p className="mt-0.5 max-w-44 truncate text-xs leading-4 text-slate-500">
-            {email || "Account"}
           </p>
         </div>
 
         <ChevronDown
           size={15}
-          className={`text-slate-500 transition ${open ? "rotate-180" : ""}`}
+          className={`text-[#18332D] transition ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-[100] w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
+        <div className="absolute right-0 top-12 z-[100] w-64 border border-[#B9D8CC] bg-white py-2 shadow-xl shadow-emerald-900/10">
+          <div className="border-b-2 border-[#B9D8CC] px-4 pb-3 pt-2">
+            <p className="truncate text-sm font-extrabold text-[#18332D]">{displayName}</p>
+            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+              {email || "Account"}
+            </p>
+          </div>
+
           <div className="p-2">
             <DropdownItem
               icon={<UserRound size={18} />}
@@ -157,14 +158,14 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
             )}
           </div>
 
-          <div className="mt-1 border-t border-slate-100 p-2">
+          <div className="border-t-2 border-[#B9D8CC] p-2">
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-extrabold text-red-600 hover:bg-red-50"
             >
               <LogOut size={18} />
-              Exit
+              Sign out
             </button>
           </div>
         </div>
@@ -179,10 +180,10 @@ function DropdownItem({ icon, label, onClick, active = false, disabled = false }
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60 ${
         active
-          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-          : "text-slate-700 hover:bg-slate-50 hover:text-blue-700"
+          ? "bg-[#6FCF97]/40 text-[#1F6F5F]"
+          : "text-[#18332D] hover:bg-[#EEEEEE]"
       }`}
     >
       {icon}

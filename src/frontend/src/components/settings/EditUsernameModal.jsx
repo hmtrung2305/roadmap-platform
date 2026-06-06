@@ -112,7 +112,7 @@ export default function EditUsernameModal({
                 setUsername(e.target.value);
               }}
               placeholder="Enter username"
-              className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
               autoFocus
             />
 
@@ -135,7 +135,7 @@ export default function EditUsernameModal({
             <button
               type="submit"
               disabled={loading}
-              className="h-10 rounded-xl bg-blue-700 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-10 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-700/20 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Saving..." : "Save"}
             </button>

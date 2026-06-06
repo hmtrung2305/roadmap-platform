@@ -2,7 +2,7 @@ export default function PrivacySettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">
           Privacy
         </p>
 

@@ -1,4 +1,4 @@
-import { SendHorizonal, SendHorizontal } from "lucide-react";
+import { SendHorizontal } from "lucide-react";
 import { useState } from "react";
 
 export default function ChatInput({ onSend, disabled }) {
@@ -15,8 +15,8 @@ export default function ChatInput({ onSend, disabled }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-slate-200 p-4">
-      <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+    <form onSubmit={handleSubmit} className="border-t border-[#B9D8CC] bg-white p-4">
+      <div className="flex items-end gap-2 rounded-2xl border border-[#B9D8CC] bg-[#F7F1E8] p-2 shadow-sm">
         <textarea
           rows={2}
           value={input}
@@ -35,14 +35,14 @@ export default function ChatInput({ onSend, disabled }) {
         <button
           type="submit"
           disabled={disabled || !input.trim()}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2FA084] text-white transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:bg-[#6FCF97]"
         >
           <SendHorizontal size={18} />
         </button>
       </div>
 
       <p className="mt-2 text-center text-[11px] text-slate-400">
-        Enter để gửi, Shift + Enter để xuống dòng
+        Enter to send, Shift + Enter for a new line
       </p>
     </form>
   );
