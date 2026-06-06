@@ -26,7 +26,7 @@ export default function GitHubNotLinkedState({
           <button
             type="button"
             onClick={onConnectGitHub}
-            className="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+            className="rounded-lg bg-[#2FA084] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1F6F5F]"
           >
             Connect GitHub
           </button>

@@ -84,7 +84,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#1F6F5F]">
                 Welcome back
               </p>
 
@@ -121,7 +121,7 @@ export default function LoginPage() {
                   value={form.emailOrUsername}
                   onChange={handleChange}
                   placeholder="Email or Username"
-                  className="h-11 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="h-11 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
@@ -134,7 +134,7 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    className="text-xs font-semibold text-blue-600 transition hover:text-blue-700"
+                    className="text-xs font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
                   >
                     Forgot password?
                   </button>
@@ -147,7 +147,7 @@ export default function LoginPage() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="h-10 w-full rounded-xl border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
 
@@ -164,7 +164,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="h-11 w-full rounded-xl bg-blue-700 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Signing in..." : "Sign in"}
               </button>
@@ -204,7 +204,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleGoRegister}
                 disabled={authLoading}
-                className="font-semibold text-blue-600 transition hover:text-blue-700 disabled:opacity-60"
+                className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F] disabled:opacity-60"
               >
                 {authLoading ? "Opening..." : "Sign up"}
               </button>

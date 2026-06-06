@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import { useResourceStore } from "../stores/useResourceStore";
@@ -10,9 +10,12 @@ import { Bot, PanelLeftOpen } from "lucide-react";
 import AiChatPanel from "../components/chat/AiChatPanel";
 import { BACKEND_BASE_URL } from "../api/apiConfig";
 
+const HEADER_HEIGHT = 72;
+
 export default function StudyRoomPage() {
   const { resourceId } = useParams();
   const location = useLocation();
+  const lastScrollTopRef = useRef(0);
 
   const resources = useResourceStore((state) => state.resources);
   const fetchResources = useResourceStore((state) => state.fetchResources);
@@ -26,9 +29,10 @@ export default function StudyRoomPage() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
-  const [sidebarWidth, setSidebarWidth] = useState(208);
-  const [chatWidth, setChatWidth] = useState(290);
+  const [sidebarWidth, setSidebarWidth] = useState(248);
+  const [chatWidth, setChatWidth] = useState(360);
   const [resizingPanel, setResizingPanel] = useState(null);
 
   const currentResource = useMemo(() => {
@@ -61,7 +65,7 @@ export default function StudyRoomPage() {
         setMarkdownContent(response.data);
       } catch (error) {
         console.error("Load markdown failed:", error);
-        setDocumentError("Không thể tải nội dung tài liệu.");
+        setDocumentError("Unable to load the document content.");
       } finally {
         setIsLoadingDocument(false);
       }
@@ -80,13 +84,13 @@ export default function StudyRoomPage() {
       event.preventDefault();
 
       if (resizingPanel === "sidebar") {
-        const nextWidth = Math.min(Math.max(event.clientX, 200), 520);
+        const nextWidth = Math.min(Math.max(event.clientX, 220), 520);
         setSidebarWidth(nextWidth);
       }
 
       if (resizingPanel === "chat") {
         const nextWidth = Math.min(
-          Math.max(window.innerWidth - event.clientX, 200),
+          Math.max(window.innerWidth - event.clientX, 260),
           620,
         );
         setChatWidth(nextWidth);
@@ -111,30 +115,45 @@ export default function StudyRoomPage() {
     };
   }, [resizingPanel]);
 
+  const handleDocumentScroll = (event) => {
+    const currentScrollTop = event.currentTarget.scrollTop;
+    const previousScrollTop = lastScrollTopRef.current;
+    const scrollDelta = currentScrollTop - previousScrollTop;
+
+    if (currentScrollTop <= 12) {
+      setIsHeaderVisible(true);
+      lastScrollTopRef.current = currentScrollTop;
+      return;
+    }
+
+    if (scrollDelta > 8) {
+      setIsHeaderVisible(false);
+    }
+
+    if (scrollDelta < -8) {
+      setIsHeaderVisible(true);
+    }
+
+    lastScrollTopRef.current = currentScrollTop;
+  };
+
+  const sidePanelTopOffset = isHeaderVisible ? HEADER_HEIGHT : 0;
+
   return (
-    <div className="relative flex h-screen flex-col bg-slate-50">
-      <div className="shrink-0">
+    <div className="relative flex h-screen overflow-hidden bg-[#F7F1E8] text-[#18332D]">
+      <div
+        className={`fixed left-0 right-0 top-0 z-50 transition-transform duration-300 ease-out ${
+          isHeaderVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
         <DocumentHeader resource={currentResource} />
       </div>
-
-      <main className="h-[calc(100vh-4rem)] flex-1  px-6 py-8">
-        <div className="mx-auto max-w-4xl">
-          {isFetching || isLoadingDocument ? (
-            <DocumentLoading />
-          ) : documentError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-              {documentError}
-            </div>
-          ) : (
-            <DocumentReader markdownContent={markdownContent} />
-          )}
-        </div>
-      </main>
 
       <LearningResourceSidebar
         resources={resources}
         isOpen={isSidebarOpen}
         width={sidebarWidth}
+        topOffset={sidePanelTopOffset}
         onStartResize={(event) => {
           event.preventDefault();
           setResizingPanel("sidebar");
@@ -142,10 +161,39 @@ export default function StudyRoomPage() {
         onClose={() => setIsSidebarOpen(false)}
       />
 
+      <div
+        className="flex min-w-0 flex-1 flex-col transition-[margin] duration-300"
+        style={{
+          marginLeft: isSidebarOpen ? sidebarWidth : 0,
+          marginRight: isChatOpen ? chatWidth : 0,
+        }}
+      >
+        <main
+          onScroll={handleDocumentScroll}
+          className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 transition-[padding] duration-300 sm:px-6 lg:px-8"
+          style={{
+            paddingTop: isHeaderVisible ? HEADER_HEIGHT + 24 : 24,
+          }}
+        >
+          <div className="mx-auto max-w-4xl">
+            {isFetching || isLoadingDocument ? (
+              <DocumentLoading />
+            ) : documentError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
+                {documentError}
+              </div>
+            ) : (
+              <DocumentReader markdownContent={markdownContent} />
+            )}
+          </div>
+        </main>
+      </div>
+
       <AiChatPanel
         resource={currentResource}
         isOpen={isChatOpen}
         width={chatWidth}
+        topOffset={sidePanelTopOffset}
         onStartResize={(event) => {
           event.preventDefault();
           setResizingPanel("chat");
@@ -157,10 +205,11 @@ export default function StudyRoomPage() {
         <button
           type="button"
           onClick={() => setIsSidebarOpen(true)}
-          className="fixed left-4 top-24 z-40 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg hover:bg-slate-50"
+          className="fixed left-5 z-50 inline-flex items-center gap-2 rounded-full border border-[#B9D8CC] bg-white px-4 py-2 text-sm font-bold text-[#1F6F5F] shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/20"
+          style={{ top: isHeaderVisible ? HEADER_HEIGHT + 16 : 16 }}
         >
-          <PanelLeftOpen size={18} />
-          Lessons
+          <PanelLeftOpen size={17} />
+          Resources
         </button>
       )}
 
@@ -168,7 +217,7 @@ export default function StudyRoomPage() {
         <button
           type="button"
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-blue-700"
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full bg-[#2FA084] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
         >
           <Bot size={18} />
           AI Mentor

@@ -92,7 +92,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
         onClick={() => setOpen((prev) => !prev)}
         className="flex h-11 items-center gap-3 rounded-lg border border-slate-200 bg-white px-2.5 pr-3 shadow-sm transition hover:bg-slate-50"
       >
-        <div className="h-8 w-8 overflow-hidden rounded-full bg-blue-100">
+        <div className="h-8 w-8 overflow-hidden rounded-full bg-[#6FCF97]/25">
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -100,7 +100,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-blue-700">
+            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#1F6F5F]">
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
@@ -182,7 +182,7 @@ function DropdownItem({ icon, label, onClick, active = false, disabled = false }
       className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
         active
           ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-          : "text-slate-700 hover:bg-slate-50 hover:text-blue-700"
+          : "text-slate-700 hover:bg-slate-50 hover:text-[#1F6F5F]"
       }`}
     >
       {icon}

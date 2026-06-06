@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useResourceStore } from "../stores/useResourceStore";
+import { AlertCircle, BookOpenText, Library } from "lucide-react";
+import { toast } from "react-toastify";
 import UploadResourceForm from "../components/resource/UploadResourceForm";
 import ResourceGrid from "../components/resource/ResourceGrid";
-import { toast } from "react-toastify";
+import { useResourceStore } from "../stores/useResourceStore";
 
 export default function ResourceManagementPage() {
   const navigate = useNavigate();
@@ -29,30 +30,30 @@ export default function ResourceManagementPage() {
         skillName,
         file,
       });
-      toast.success("Upload tài liệu thành công!");
+      toast.success("Resource uploaded successfully!");
     } catch (err) {
       const message =
-      err?.response?.data?.message ||
-      "Upload thất bại, vui lòng thử lại.";
+        err?.response?.data?.message ||
+        "Upload failed. Please try again.";
 
-    toast.error(message);
+      toast.error(message);
     }
   };
+
   const handleDelete = async (resourceId) => {
     const confirmed = window.confirm(
-      "Bạn có chắc chắn muốn xóa tài liệu này không?",
+      "Are you sure you want to delete this resource?",
     );
 
     if (!confirmed) return;
 
     try {
       await deleteResource(resourceId);
-      toast.success("Xóa tài liệu thành công");
-
+      toast.success("Resource deleted successfully.");
     } catch (error) {
       const message = error?.response?.data.message;
       toast.error(message);
-    }    
+    }
   };
 
   const handleOpenResource = (resource) => {
@@ -64,69 +65,71 @@ export default function ResourceManagementPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
-            TechMap Learning
-          </p>
+    <main className="min-h-screen bg-[#F7F1E8] px-6 py-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="overflow-hidden rounded-[2rem] border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]">
+          <div className="bg-gradient-to-r from-[#1F6F5F] via-[#2FA084] to-[#6FCF97] px-6 py-8 text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25">
+                <Library size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-white/80">
+                  TechMap Learning
+                </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">
-            Quản lý tài liệu học
-          </h1>
+                <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
+                  Manage learning documents
+                </h1>
+              </div>
+            </div>
 
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Upload và quản lý tài liệu học. Mỗi tài liệu sẽ được backend chia
-            thành nhiều chunk để phục vụ AI chat theo nội dung tài liệu.
-          </p>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/85">
+              Upload markdown documents, organize them by skill, and use them as
+              context for the AI mentor inside your study room.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 bg-white px-6 py-5 sm:grid-cols-3">
+            <Metric label="Documents" value={resources.length} />
+            <Metric label="Current mode" value="Markdown" />
+            <Metric label="AI support" value="Enabled" />
+          </div>
         </header>
 
-        <section className="mb-6">
-          <UploadResourceForm
-            onUpload={handleUpload}
-            isUploading={isUploading}
-          />
-        </section>
+        <UploadResourceForm
+          onUpload={handleUpload}
+          isUploading={isUploading}
+        />
 
         {error && (
-          <div className="mb-5 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <span>{error}</span>
+          <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span className="inline-flex items-center gap-2">
+              <AlertCircle size={16} />
+              {error}
+            </span>
 
             <button
               type="button"
               onClick={clearError}
-              className="font-semibold hover:underline"
+              className="text-xs font-bold uppercase tracking-wide hover:underline"
             >
-              Đóng
+              Close
             </button>
           </div>
         )}
 
         <section>
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                Danh sách tài liệu
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Tổng cộng {resources.length} tài liệu.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={fetchResources}
-              disabled={isFetching}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isFetching ? "Đang tải..." : "Refresh"}
-            </button>
+          <div className="mb-4 flex items-center gap-2">
+            <BookOpenText size={20} className="text-[#1F6F5F]" />
+            <h2 className="text-xl font-extrabold text-[#18332D]">
+              Uploaded documents
+            </h2>
           </div>
 
           {isFetching ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-              Đang tải tài liệu...
+            <div className="rounded-3xl border border-[#B9D8CC] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+              Loading documents...
             </div>
           ) : (
             <ResourceGrid
@@ -138,5 +141,16 @@ export default function ResourceManagementPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-[#B9D8CC] bg-[#F7F1E8]/60 px-4 py-3">
+      <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-extrabold text-[#18332D]">{value}</p>
+    </div>
   );
 }

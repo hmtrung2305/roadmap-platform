@@ -87,7 +87,7 @@ export default function AuthRoadmapPanel() {
         <AuthLogo compact />
 
         <div className="mt-4 max-w-sm">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-600">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1F6F5F]">
             Guided Learning Path
           </p>
 

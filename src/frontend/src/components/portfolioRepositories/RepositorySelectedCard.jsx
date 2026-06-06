@@ -6,7 +6,7 @@ export default function RepositorySelectCard({ repo, checked, onToggle }) {
       className={`rounded-2xl border bg-white p-6 shadow-sm transition ${
         checked
           ? "border-blue-300 ring-2 ring-blue-100"
-          : "border-slate-200 hover:border-blue-200"
+          : "border-slate-200 hover:border-[#B9D8CC]"
       }`}
     >
       <div className="flex items-start gap-4">
@@ -24,7 +24,7 @@ export default function RepositorySelectCard({ repo, checked, onToggle }) {
                 href={repo.htmlUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="font-bold text-blue-700 hover:underline"
+                className="font-bold text-[#1F6F5F] hover:underline"
               >
                 {repo.name}
               </a>
@@ -38,7 +38,7 @@ export default function RepositorySelectCard({ repo, checked, onToggle }) {
               href={repo.htmlUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-slate-400 hover:text-blue-700"
+              className="text-slate-400 hover:text-[#1F6F5F]"
             >
               <ExternalLink size={18} />
             </a>
@@ -50,7 +50,7 @@ export default function RepositorySelectCard({ repo, checked, onToggle }) {
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {repo.primaryLanguage && (
-              <span className="rounded-md bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+              <span className="rounded-md bg-[#6FCF97]/15 px-3 py-1 text-sm font-medium text-[#1F6F5F]">
                 {repo.primaryLanguage}
               </span>
             )}

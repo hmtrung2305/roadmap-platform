@@ -1,99 +1,100 @@
-import { Briefcase, Link2, MapPin, UserRound } from "lucide-react";
-import { FaGithub } from "react-icons/fa";
+import { Globe2, Mail, MapPin, UserRound } from "lucide-react";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
 
-export default function PortfolioHeader({ portfolio }) {
-  const displayName = portfolio.displayName || "Unnamed User";
-  const headline = portfolio.headline || "No headline yet";
+export default function PortfolioHeader({ portfolio, username }) {
+  const displayName = portfolio?.displayName || username || "Unnamed User";
+
+  const headline =
+    portfolio?.headline ||
+    [portfolio?.currentRole, portfolio?.careerGoal].filter(Boolean).join(" | ") ||
+    "Developer Portfolio";
+
+  const coverImageUrl = portfolio?.coverImageUrl;
+  const avatarUrl = portfolio?.avatarUrl;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="relative h-52 bg-linear-to-r from-blue-800 via-slate-800 to-slate-950">
-        {portfolio.coverImageUrl && (
+    <section className="relative rounded-3xl border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]">
+      <div className="relative z-0 h-52 overflow-hidden rounded-t-3xl bg-[#1F6F5F] sm:h-60">
+        {coverImageUrl ? (
           <img
-            src={portfolio.coverImageUrl}
-            alt="Portfolio cover"
+            src={coverImageUrl}
+            alt={`${displayName} cover`}
             className="h-full w-full object-cover"
           />
+        ) : (
+          <div className="grid h-full grid-rows-3">
+            <div className="bg-[#1F6F5F]" />
+            <div className="bg-[#2FA084]" />
+            <div className="bg-[#6FCF97]" />
+          </div>
         )}
-
-        <div className="absolute inset-0 bg-linear-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
       </div>
 
-      <div className="relative px-8 pb-8">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="flex flex-col gap-5 md:flex-row md:items-start">
-            <div className="-mt-20 h-32 w-32 shrink-0 overflow-hidden rounded-full border-4 border-white bg-blue-100 shadow-md">
-              {portfolio.avatarUrl ? (
-                <img
-                  src={portfolio.avatarUrl}
-                  alt={displayName}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-blue-700">
-                  <UserRound size={50} />
-                </div>
-              )}
-            </div>
-
-            <div className="pt-5">
-              <h2 className="text-3xl font-bold text-slate-900">
-                {displayName}
-              </h2>
-
-              <p className="mt-1 text-lg font-bold text-blue-700">
-                {headline}
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
-                {portfolio.location && (
-                  <InfoItem icon={<MapPin size={15} />}>
-                    {portfolio.location}
-                  </InfoItem>
-                )}
-
-                {portfolio.currentRole && (
-                  <InfoItem icon={<Briefcase size={15} />}>
-                    {portfolio.currentRole}
-                  </InfoItem>
-                )}
-
-                {portfolio.githubUrl && (
-                  <a
-                    href={portfolio.githubUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-700 hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    <FaGithub size={15} />
-                    GitHub
-                  </a>
-                )}
-
-                {portfolio.personalWebsiteUrl && (
-                  <a
-                    href={portfolio.personalWebsiteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-700 hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    <Link2 size={15} />
-                    Website
-                  </a>
-                )}
+      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex items-end gap-4">
+          <div className="-mt-14 h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-[0_16px_34px_rgba(31,111,95,0.22)] ring-1 ring-[#B9D8CC] sm:-mt-16 sm:h-28 sm:w-28">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#EEEEEE] text-[#1F6F5F]">
+                <UserRound size={42} />
               </div>
-            </div>
+            )}
           </div>
 
-          {(portfolio.currentRole || portfolio.careerGoal) && (
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 md:min-w-56">
-              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
-                Career Direction
-              </p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">
-                {portfolio.careerGoal || portfolio.currentRole}
-              </p>
-            </div>
+          <div className="pb-1 pt-3">
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#18332D] sm:text-3xl">
+              {displayName}
+            </h1>
+
+            <p className="mt-1 text-sm font-bold text-slate-700">
+              {headline}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 pb-1">
+          {portfolio?.location && (
+            <InfoButton
+              icon={<MapPin size={14} />}
+              label={portfolio.location}
+            />
+          )}
+
+          {portfolio?.githubUrl && (
+            <ExternalButton
+              href={portfolio.githubUrl}
+              icon={<FaGithub size={14} />}
+              label="GitHub"
+            />
+          )}
+
+          {portfolio?.linkedinUrl && (
+            <ExternalButton
+              href={portfolio.linkedinUrl}
+              icon={<FaLinkedin size={14} />}
+              label="LinkedIn"
+            />
+          )}
+
+          {portfolio?.personalWebsiteUrl && (
+            <ExternalButton
+              href={portfolio.personalWebsiteUrl}
+              icon={<Globe2 size={14} />}
+              label="Website"
+            />
+          )}
+
+          {portfolio?.publicEmail && (
+            <ExternalButton
+              href={`mailto:${portfolio.publicEmail}`}
+              icon={<Mail size={14} />}
+              label="Email"
+            />
           )}
         </div>
       </div>
@@ -101,11 +102,25 @@ export default function PortfolioHeader({ portfolio }) {
   );
 }
 
-function InfoItem({ icon, children }) {
+function InfoButton({ icon, label }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+    <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs font-extrabold text-[#18332D]">
       {icon}
-      {children}
+      {label}
     </span>
+  );
+}
+
+function ExternalButton({ href, icon, label }) {
+  return (
+    <a
+      href={href}
+      target={href.startsWith("mailto:") ? undefined : "_blank"}
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-xl border border-[#B9D8CC] bg-white px-3 py-2 text-xs font-extrabold text-[#18332D] transition hover:border-[#6FCF97] hover:bg-[#6FCF97]/25 hover:text-[#1F6F5F]"
+    >
+      {icon}
+      {label}
+    </a>
   );
 }

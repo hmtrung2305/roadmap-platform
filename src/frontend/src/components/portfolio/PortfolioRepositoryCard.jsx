@@ -1,53 +1,81 @@
 import { ExternalLink, GitFork, Star } from "lucide-react";
+import { FaGithub } from "react-icons/fa";
 
 export default function PortfolioRepositoryCard({ repository }) {
+  const name = repository.name || repository.repoName || "Untitled repository";
+  const href = repository.htmlUrl || repository.repoUrl;
+
+  const description =
+    repository.summary || repository.description || "No description provided.";
+
+  const tags = [
+    repository.primaryLanguage || repository.language,
+    ...(repository.techStack || repository.detectedSkills || []),
+  ].filter(Boolean);
+
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="flex min-h-[240px] flex-col rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <a
-            href={repository.htmlUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="font-bold text-blue-700 hover:underline"
-          >
-            {repository.name}
-          </a>
+          <h3 className="line-clamp-1 text-lg font-extrabold text-[#18332D]">
+            {name}
+          </h3>
 
-          <p className="mt-1 truncate text-sm text-slate-500">
-            {repository.fullName}
+          <p className="mt-1 text-xs font-extrabold uppercase tracking-[0.14em] text-[#2FA084]">
+            Repository
           </p>
         </div>
 
-        <a
-          href={repository.htmlUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-slate-400 hover:text-blue-700"
-        >
-          <ExternalLink size={18} />
-        </a>
+        {href && (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className="shrink-0 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-2 text-[#1F6F5F] transition hover:bg-[#6FCF97]/30"
+            aria-label="Open repository"
+          >
+            <ExternalLink size={15} />
+          </a>
+        )}
       </div>
 
-      <p className="mt-4 min-h-16 text-sm leading-6 text-slate-600">
-        {repository.description || "No repository description."}
+      <p className="mt-4 line-clamp-2 min-h-[3rem] text-sm font-medium leading-6 text-slate-600">
+        {description}
       </p>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
-        {repository.primaryLanguage && (
-          <span className="rounded-md bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-            {repository.primaryLanguage}
+      <div className="mt-4 min-h-[2rem]">
+        {tags.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {tags.slice(0, 4).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-lg bg-[#F7F1E8] px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-[#B9D8CC]"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs font-medium text-slate-400">
+            No tech tags
           </span>
         )}
+      </div>
 
-        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-700">
-          <Star size={14} />
-          {repository.stars}
+      <div className="mt-auto flex items-center gap-2 border-t border-[#DCEBE5] pt-4 text-xs font-extrabold text-slate-600">
+        <span className="inline-flex items-center gap-1 rounded-lg bg-[#EEEEEE] px-2 py-1">
+          <Star size={13} />
+          {repository.stars ?? repository.starCount ?? 0}
         </span>
 
-        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-700">
-          <GitFork size={14} />
-          {repository.forks}
+        <span className="inline-flex items-center gap-1 rounded-lg bg-[#EEEEEE] px-2 py-1">
+          <GitFork size={13} />
+          {repository.forks ?? repository.forkCount ?? 0}
+        </span>
+
+        <span className="ml-auto text-[#1F6F5F]">
+          <FaGithub size={15} />
         </span>
       </div>
     </article>

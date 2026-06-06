@@ -10,7 +10,8 @@ const EMPTY_MESSAGES = [];
 export default function AiChatPanel({
   resource,
   isOpen,
-  width = 390,
+  width = 360,
+  topOffset = 0,
   onStartResize,
   onClose,
 }) {
@@ -67,27 +68,31 @@ export default function AiChatPanel({
       )}
 
       <aside
-        style={{ width }}
-        className={`fixed right-0 top-16 z-40 flex h-[calc(100vh-4rem)] max-w-[calc(100vw-1rem)] flex-col border-l border-slate-200 bg-slate-50 shadow-xl transition-transform duration-300 ${
+        style={{
+          width,
+          top: topOffset,
+          height: `calc(100vh - ${topOffset}px)`,
+        }}
+        className={`fixed right-0 z-40 flex max-w-[calc(100vw-1rem)] flex-col border-l border-[#B9D8CC] bg-[#F7F1E8]/95 shadow-xl shadow-emerald-900/10 backdrop-blur-xl transition-[transform,top,height] duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div
           onMouseDown={onStartResize}
-          className="absolute left-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-300"
+          className="absolute left-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-[#6FCF97]"
           title="Resize chat panel"
         />
 
-        <div className="border-b border-slate-200 bg-white p-4">
+        <div className="border-b border-[#B9D8CC] bg-white p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#6FCF97]/20 text-[#1F6F5F]">
                 <Bot size={20} />
               </div>
 
               <div className="min-w-0">
-                <h2 className="font-bold text-slate-900">AI Mentor</h2>
-                <p className="line-clamp-1 text-xs text-slate-500">
+                <h2 className="font-extrabold text-[#18332D]">AI Mentor</h2>
+                <p className="line-clamp-1 text-xs font-medium text-slate-500">
                   Ask questions about the current document
                 </p>
               </div>
@@ -116,19 +121,19 @@ export default function AiChatPanel({
           </div>
 
           {resource?.title && (
-            <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
-              <p className="line-clamp-2 text-xs font-medium text-blue-700">
+            <div className="mt-3 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2">
+              <p className="line-clamp-2 text-xs font-bold text-[#1F6F5F]">
                 {resource.title}
               </p>
             </div>
           )}
 
           {creditStatus && (
-            <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs">
               <span className="font-medium text-slate-600">
                 AI credits today
               </span>
-              <span className="font-semibold text-slate-900">
+              <span className="font-semibold text-[#18332D]">
                 {creditStatus.remainingCreditsToday}/
                 {creditStatus.dailyCreditLimit}
               </span>
@@ -155,12 +160,12 @@ export default function AiChatPanel({
 
           {messages.length === 0 ? (
             <div className="space-y-5">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+              <div className="rounded-2xl border border-[#B9D8CC] bg-white p-4 text-sm text-slate-600 shadow-sm">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6FCF97]/20 text-[#1F6F5F]">
                   <MessageCircle size={18} />
                 </div>
 
-                <p className="font-semibold text-slate-900">
+                <p className="font-extrabold text-[#18332D]">
                   Start asking about this document
                 </p>
 
@@ -183,7 +188,7 @@ export default function AiChatPanel({
 
               {isSending && (
                 <div className="flex justify-start">
-                  <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+                  <div className="inline-flex items-center gap-2 rounded-2xl border border-[#B9D8CC] bg-white px-4 py-3 text-sm text-slate-500">
                     <Loader2 size={16} className="animate-spin" />
                     AI is replying...
                   </div>

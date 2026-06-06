@@ -1,3 +1,4 @@
+import { FileUp, UploadCloud } from "lucide-react";
 import { useState } from "react";
 
 export default function UploadResourceForm({ onUpload, isUploading }) {
@@ -11,17 +12,17 @@ export default function UploadResourceForm({ onUpload, isUploading }) {
     const formElement = event.currentTarget;
 
     if (!title.trim()) {
-      alert("Vui lòng nhập tiêu đề tài liệu.");
+      alert("Please enter a document title.");
       return;
     }
 
     if (!skillName.trim()) {
-      alert("Vui lòng nhập kỹ năng hoặc chủ đề.");
+      alert("Please enter a skill or topic.");
       return;
     }
 
     if (!file) {
-      alert("Vui lòng chọn file markdown.");
+      alert("Please choose a markdown file.");
       return;
     }
 
@@ -44,66 +45,88 @@ export default function UploadResourceForm({ onUpload, isUploading }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="overflow-hidden rounded-3xl border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]"
     >
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Upload tài liệu học
-        </h2>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Tiêu đề tài liệu
-          </label>
-
-          <input
-            type="text"
-            placeholder="Ví dụ: React useEffect cơ bản"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Kỹ năng / chủ đề
-          </label>
-
-          <input
-            type="text"
-            placeholder="Ví dụ: ReactJS"
-            value={skillName}
-            onChange={(event) => setSkillName(event.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
+      <div className="border-b border-[#DCEBE5] bg-gradient-to-r from-[#F7F1E8] via-white to-[#EEF7F1] px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#2FA084] text-white">
+            <UploadCloud size={21} />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-[#18332D]">
+              Upload learning document
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Upload markdown files and let AI use them as learning context.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4">
-        <label className="mb-1 block text-sm font-medium text-slate-700">
-          File markdown
-        </label>
+      <div className="p-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Document title">
+            <input
+              type="text"
+              placeholder="Example: React useEffect basics"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              className="w-full rounded-xl border border-[#B9D8CC] bg-[#F7F1E8]/60 px-4 py-2.5 text-sm outline-none transition focus:border-[#2FA084] focus:bg-white focus:ring-4 focus:ring-[#6FCF97]/20"
+            />
+          </Field>
 
-        <input
-          type="file"
-          accept=".md"
-          onChange={(event) => setFile(event.target.files?.[0] || null)}
-          className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm"
-        />
-      </div>
+          <Field label="Skill / topic">
+            <input
+              type="text"
+              placeholder="Example: ReactJS"
+              value={skillName}
+              onChange={(event) => setSkillName(event.target.value)}
+              className="w-full rounded-xl border border-[#B9D8CC] bg-[#F7F1E8]/60 px-4 py-2.5 text-sm outline-none transition focus:border-[#2FA084] focus:bg-white focus:ring-4 focus:ring-[#6FCF97]/20"
+            />
+          </Field>
+        </div>
 
-      <div className="mt-5 flex justify-end">
-        <button
-          type="submit"
-          disabled={isUploading}
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-        >
-          {isUploading ? "Đang upload..." : "Upload tài liệu"}
-        </button>
+        <div className="mt-4">
+          <Field label="Markdown file">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 px-4 py-6 text-center transition hover:border-[#2FA084] hover:bg-[#6FCF97]/10">
+              <FileUp className="text-[#1F6F5F]" size={24} />
+              <span className="mt-2 text-sm font-bold text-[#18332D]">
+                {file ? file.name : "Choose a .md file"}
+              </span>
+              <span className="mt-1 text-xs text-slate-500">
+                Markdown only
+              </span>
+              <input
+                type="file"
+                accept=".md"
+                onChange={(event) => setFile(event.target.files?.[0] || null)}
+                className="hidden"
+              />
+            </label>
+          </Field>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="submit"
+            disabled={isUploading}
+            className="rounded-xl bg-[#2FA084] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:bg-[#6FCF97]"
+          >
+            {isUploading ? "Uploading..." : "Upload document"}
+          </button>
+        </div>
       </div>
     </form>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-bold text-[#18332D]">
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
