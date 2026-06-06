@@ -1,8 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using RoadmapPlatform.Application.Interfaces.Security;
 
 namespace RoadmapPlatform.Application.DTOs.Auth
 {
-    public class RegisterRequestDto
+    public class RegisterRequestDto : ICaptchaProtectedRequest
     {
         [Required(ErrorMessage = "Username is required")]
         [StringLength(40, MinimumLength = 3,
@@ -23,5 +24,7 @@ namespace RoadmapPlatform.Application.DTOs.Auth
             "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}",
             ErrorMessage = "Password must contain at least 8 characters with uppercase, lowercase, number, and special character.")]
         public string? Password { get; set; }
+
+        public string? CaptchaToken { get; set; }
     }
 }

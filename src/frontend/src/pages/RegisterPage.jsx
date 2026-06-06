@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GITHUB_AUTH_URL, GOOGLE_AUTH_URL } from "../api/authApi";
+import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import { useAuthStore } from "../stores/useAuthStore";
 import AuthLogo from "../components/auth/AuthLogo";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import MotionWrapper from "../components/auth/MotionWrapper";
 import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
+import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -25,8 +27,15 @@ export default function RegisterPage() {
   });
 
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   const displayError = error || authError;
+
+  const handleCaptchaVerify = useCallback((token) => {
+    setCaptchaToken(token);
+    setError("");
+  }, []);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -66,6 +75,10 @@ export default function RegisterPage() {
       return "Bạn cần đồng ý với Terms of Service và Privacy Policy.";
     }
 
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      return "Please complete the CAPTCHA challenge.";
+    }
+
     return "";
   };
 
@@ -87,6 +100,7 @@ export default function RegisterPage() {
         Username: form.username.trim(),
         Email: form.email.trim(),
         Password: form.password,
+        CaptchaToken: captchaToken,
       });
 
       navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}`);
@@ -94,6 +108,9 @@ export default function RegisterPage() {
       console.error("Register failed:", error);
 
       setError(error.message || "Register failed. Please try again.");
+    } finally {
+      setCaptchaToken("");
+      setCaptchaResetKey((prev) => prev + 1);
     }
   };
 
@@ -234,9 +251,16 @@ export default function RegisterPage() {
                 </span>
               </label>
 
+              <TurnstileCaptcha
+                action="register"
+                resetKey={captchaResetKey}
+                onVerify={handleCaptchaVerify}
+                className="flex justify-center"
+              />
+
               <button
                 type="submit"
-                disabled={authLoading}
+                disabled={authLoading || (CAPTCHA_ENABLED && !captchaToken)}
                 className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Creating account..." : "Create account"}

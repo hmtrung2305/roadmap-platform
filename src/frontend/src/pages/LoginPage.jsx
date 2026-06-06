@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GITHUB_AUTH_URL, GOOGLE_AUTH_URL } from "../api/authApi";
+import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import AuthLogo from "../components/auth/AuthLogo";
 import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
+import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -26,12 +28,24 @@ export default function LoginPage() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [captchaError, setCaptchaError] = useState("");
+
+  const handleCaptchaVerify = useCallback((token) => {
+    setCaptchaToken(token);
+    setCaptchaError("");
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     if (authError) {
       clearAuthError();
+    }
+
+    if (captchaError) {
+      setCaptchaError("");
     }
 
     setForm((prev) => ({
@@ -43,14 +57,25 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      setCaptchaError("Please complete the CAPTCHA challenge.");
+      return;
+    }
+
     try {
-      await login(form);
+      await login({
+        ...form,
+        captchaToken,
+      });
 
       setTimeout(() => {
         navigate("/dashboard");
       }, 250);
     } catch (error) {
       console.log("Login failed:", error.response?.data || error);
+    } finally {
+      setCaptchaToken("");
+      setCaptchaResetKey((prev) => prev + 1);
     }
   };
 
@@ -97,9 +122,9 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {(authError || oauthError) && (
+            {(authError || oauthError || captchaError) && (
               <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {authError || oauthError}
+                {authError || oauthError || captchaError}
               </div>
             )}
 
@@ -161,9 +186,16 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <TurnstileCaptcha
+                action="login"
+                resetKey={captchaResetKey}
+                onVerify={handleCaptchaVerify}
+                className="flex justify-center"
+              />
+
               <button
                 type="submit"
-                disabled={authLoading}
+                disabled={authLoading || (CAPTCHA_ENABLED && !captchaToken)}
                 className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Signing in..." : "Sign in"}

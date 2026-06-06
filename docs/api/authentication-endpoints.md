@@ -10,17 +10,17 @@ Source controller: `AuthController`
 
 ## Endpoint Summary
 
-| Method | Endpoint | Auth Required | Purpose |
-|---|---|---:|---|
-| `POST` | `/api/auth/register` | No | Register a local account |
-| `POST` | `/api/auth/login` | No | Login with local email/password |
-| `POST` | `/api/auth/registration/verify-email` | No | Verify registration email and log in |
-| `POST` | `/api/auth/registration/resend-verification` | No | Resend registration verification code |
-| `GET` | `/api/auth/google/login` | No | Start Google OAuth login |
-| `GET` | `/api/auth/google/callback` | No | Handle Google OAuth callback |
-| `GET` | `/api/auth/github/login` | No | Start GitHub OAuth login |
-| `GET` | `/api/auth/github/callback` | No | Handle GitHub OAuth callback |
-| `POST` | `/api/auth/logout` | No | Clear auth cookie |
+| Method | Endpoint | Auth Required | CAPTCHA | Purpose |
+|---|---|---:|---:|---|
+| `POST` | `/api/auth/register` | No | Yes | Register a local account |
+| `POST` | `/api/auth/login` | No | Yes | Login with local email/password |
+| `POST` | `/api/auth/registration/verify-email` | No | No | Verify registration email and log in |
+| `POST` | `/api/auth/registration/resend-verification` | No | Yes | Resend registration verification code |
+| `GET` | `/api/auth/google/login` | No | No | Start Google OAuth login |
+| `GET` | `/api/auth/google/callback` | No | No | Handle Google OAuth callback |
+| `GET` | `/api/auth/github/login` | No | No | Start GitHub OAuth login |
+| `GET` | `/api/auth/github/callback` | No | No | Handle GitHub OAuth callback |
+| `POST` | `/api/auth/logout` | No | No | Clear auth cookie |
 
 > [!NOTE]
 > The route should be explicitly configured as `[Route("api/auth")]` to avoid documenting `/api/Auth` from `[Route("api/[controller]")]`.
@@ -38,6 +38,7 @@ Registers a new local account.
 | `username` | `string` | Yes | 3-40 chars; letters, numbers, `.`, `_`, `-` only |
 | `email` | `string` | Yes | Valid email format |
 | `password` | `string` | Yes | Min 8 chars; uppercase, lowercase, number, special char |
+| `captchaToken` | `string` | Yes when CAPTCHA is enabled | Cloudflare Turnstile token for action `register` |
 
 ### Success Response
 
@@ -75,6 +76,7 @@ Body:
 | Duplicate local email | Conflict |
 | New account profile | Created automatically with `isPublic = false` |
 | Email verification | Verification code is sent after registration |
+| CAPTCHA | Required when `Captcha:Enabled = true` |
 
 > [!IMPORTANT]
 > Register does not immediately authenticate the user. The user must verify the email first.
@@ -89,8 +91,9 @@ Logs in with local email/password.
 
 | Field | Type | Required | Validation |
 |---|---|---:|---|
-| `email` | `string` | Yes | Valid email format |
+| `emailOrUsername` | `string` | Yes | Email address or username |
 | `password` | `string` | Yes | Required |
+| `captchaToken` | `string` | Yes when CAPTCHA is enabled | Cloudflare Turnstile token for action `login` |
 
 ### Success Response
 
@@ -132,6 +135,7 @@ Body:
 | Deleted account | Unauthorized |
 | Suspended account | Forbidden |
 | Successful login | JWT is stored in `access_token` cookie |
+| CAPTCHA | Required when `Captcha:Enabled = true` |
 
 ---
 
@@ -186,6 +190,10 @@ Body:
 | Too many attempts | Error |
 | Valid OTP | Marks local email as verified and logs user in |
 
+> [!NOTE]
+> This endpoint does not require CAPTCHA. The OTP itself is the proof step. The
+> resend endpoint is protected instead because it can be abused to send emails.
+
 ---
 
 ## `POST /api/auth/registration/resend-verification`
@@ -197,6 +205,7 @@ Resends registration verification code.
 | Field | Type | Required | Validation |
 |---|---|---:|---|
 | `email` | `string` | Yes | Valid email format |
+| `captchaToken` | `string` | Yes when CAPTCHA is enabled | Cloudflare Turnstile token for action `resend-registration-verification` |
 
 ### Success Response
 
@@ -214,6 +223,7 @@ Resends registration verification code.
 | Email already verified | Error |
 | Resend too soon | Error with remaining seconds |
 | Existing unused tokens | Invalidated before new token is created |
+| CAPTCHA | Required when `Captcha:Enabled = true` |
 
 ---
 

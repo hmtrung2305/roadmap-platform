@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   resendRegistrationVerificationApi,
   verifyRegistrationEmailApi,
 } from "../api/authApi";
+import { CAPTCHA_ENABLED } from "../api/apiConfig";
+import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -17,6 +19,13 @@ export default function VerifyEmailPage() {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [resendCaptchaToken, setResendCaptchaToken] = useState("");
+  const [resendCaptchaResetKey, setResendCaptchaResetKey] = useState(0);
+
+  const handleResendCaptchaVerify = useCallback((token) => {
+    setResendCaptchaToken(token);
+    setError("");
+  }, []);
 
   const handleOtpChange = (e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 6);
@@ -66,6 +75,7 @@ export default function VerifyEmailPage() {
       console.error("Verify email failed:", error.response?.data || error);
 
       const serverMessage =
+        error.message ||
         error.response?.data?.message ||
         "Invalid or expired verification code.";
 
@@ -81,6 +91,11 @@ export default function VerifyEmailPage() {
       return;
     }
 
+    if (CAPTCHA_ENABLED && !resendCaptchaToken) {
+      setError("Please complete the CAPTCHA challenge.");
+      return;
+    }
+
     try {
       setResending(true);
       setError("");
@@ -88,6 +103,7 @@ export default function VerifyEmailPage() {
 
       await resendRegistrationVerificationApi({
         Email: email,
+        CaptchaToken: resendCaptchaToken,
       });
 
       setMessage("A new verification code has been sent to your email.");
@@ -95,12 +111,15 @@ export default function VerifyEmailPage() {
       console.error("Resend code failed:", error.response?.data || error);
 
       const serverMessage =
+        error.message ||
         error.response?.data?.message ||
         "Unable to resend verification code.";
 
       setError(serverMessage);
     } finally {
       setResending(false);
+      setResendCaptchaToken("");
+      setResendCaptchaResetKey((prev) => prev + 1);
     }
   };
 
@@ -181,10 +200,17 @@ export default function VerifyEmailPage() {
           </form>
 
           <div className="mt-5 text-center">
+            <TurnstileCaptcha
+              action="resend-registration-verification"
+              resetKey={resendCaptchaResetKey}
+              onVerify={handleResendCaptchaVerify}
+              className="mb-4 flex justify-center"
+            />
+
             <button
               type="button"
               onClick={handleResendCode}
-              disabled={resending}
+              disabled={resending || (CAPTCHA_ENABLED && !resendCaptchaToken)}
               className="text-sm font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {resending ? "Sending..." : "Resend verification code"}

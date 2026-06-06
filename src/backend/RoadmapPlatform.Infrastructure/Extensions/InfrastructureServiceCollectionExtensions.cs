@@ -11,6 +11,7 @@ using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Rag;
 using RoadmapPlatform.Application.Interfaces.Users;
 using RoadmapPlatform.Application.Interfaces.Resources;
+using RoadmapPlatform.Application.Interfaces.Security;
 using RoadmapPlatform.Infrastructure.Clients;
 using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
@@ -24,6 +25,7 @@ using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Rag;
 using RoadmapPlatform.Infrastructure.Services.Resources;
+using RoadmapPlatform.Infrastructure.Services.Security;
 using RoadmapPlatform.Infrastructure.Services.Users;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
@@ -67,6 +69,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<RagSettings>(configuration.GetSection("Rag"));
             services.Configure<FileStorageSettings>(configuration.GetSection("FileStorage"));
             services.Configure<SupabaseStorageSettings>(configuration.GetSection("SupabaseStorage"));
+            services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
 
             // Đăng ký implementation cho external services ở đây sau.
             // Ví dụ:
@@ -77,6 +80,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IOAuthLoginService, OAuthLoginService>();
             services.AddScoped<IAuthProviderService, AuthProviderService>();
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+            services.AddHttpClient<ICaptchaService, TurnstileCaptchaService>();
 
             // Email Services
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();

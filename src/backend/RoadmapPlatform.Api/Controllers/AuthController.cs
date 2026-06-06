@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using RoadmapPlatform.Api.Filters;
 using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.Interfaces.Auth;
 
@@ -25,6 +26,7 @@ namespace RoadmapPlatform.Api.Controllers
         }
 
         [HttpPost("register")]
+        [RequireCaptcha("register")]
         public async Task<IActionResult> Register(RegisterRequestDto request)
         {
             var response = await _authService.RegisterAsync(request);
@@ -33,6 +35,7 @@ namespace RoadmapPlatform.Api.Controllers
         }
 
         [HttpPost("login")]
+        [RequireCaptcha("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)
         {
             var loginResponse = await _authService.LoginAsync(request);
@@ -62,6 +65,7 @@ namespace RoadmapPlatform.Api.Controllers
         }
 
         [HttpPost("registration/resend-verification")]
+        [RequireCaptcha("resend-registration-verification")]
         public async Task<IActionResult> ResendRegistrationVerification(
             ResendRegistrationVerificationRequestDto request)
         {
