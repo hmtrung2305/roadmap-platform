@@ -1,22 +1,17 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaFireAlt } from "react-icons/fa";
 
+import AuthLogo from "../auth/AuthLogo";
 import { useStreakStore } from "../../stores/useStreakStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { getMyProfileApi } from "../../api/profileApi";
 import AvatarDropdown from "./AvatarDropdown";
 
 export default function TopNavbar() {
-  const navItems = [
-    { label: "Dashboard", path: "/dashboard" },
-    { label: "Resources", path: "/resources" },
-    { label: "Portfolio", path: "/portfolio" },
-    { label: "Market Pulse", path: "/market-pulse" },
-  ];
-
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams();
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -27,8 +22,26 @@ export default function TopNavbar() {
   const currentStreak = streak?.currentStreak ?? 0;
   const isCompletedStreakToday = streak?.isCompletedStreakToday ?? false;
 
+  const portfolioPath = useMemo(() => {
+    if (user) return "/portfolio";
+    if (location.pathname.startsWith("/portfolio/")) return location.pathname;
+    if (location.pathname.startsWith("/portfolios/")) return location.pathname;
+    if (params?.username) return `/portfolio/${params.username}`;
+    return "/login";
+  }, [user, location.pathname, params]);
+
+  const navItems = [
+    { label: "Dashboard", path: user ? "/dashboard" : "/login" },
+    { label: "Roadmaps", path: user ? "/roadmap" : "/login" },
+    { label: "Resources", path: user ? "/resources" : "/login" },
+    { label: "Public Page", path: portfolioPath },
+  ];
+
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setProfile(null);
+      return;
+    }
 
     async function fetchProfile() {
       try {
@@ -48,73 +61,66 @@ export default function TopNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between">
-        {/* LEFT SIDE - giữ nguyên */}
-        <div className="flex items-center gap-8">
+    <header className="sticky top-0 z-50 border-b border-[#B9D8CC] bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-8">
           <button
             type="button"
-            onClick={() => navigate("/dashboard")}
-            className="text-2xl font-bold text-blue-700"
+            onClick={() => navigate(user ? "/dashboard" : "/")}
+            className="shrink-0"
           >
-            TechMap
+            <AuthLogo compact showTagline={false} />
           </button>
 
-          <nav className="flex items-center gap-6 text-sm font-medium text-slate-600">
+          <nav className="hidden items-center gap-2 md:flex">
             {navItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
-                location.pathname.startsWith(`${item.path}/`);
+                (item.path !== "/login" && location.pathname.startsWith(`${item.path}/`));
 
               return (
                 <button
                   key={item.label}
                   type="button"
                   onClick={() => navigate(item.path)}
-                  className={`group relative pb-1 transition-all duration-200 hover:-translate-y-0.5 hover:text-blue-700 ${
-                    isActive ? "text-blue-700" : "text-slate-600"
+                  className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${
+                    isActive
+                      ? "border-[#6FCF97] bg-[#6FCF97]/24 text-[#1F6F5F]"
+                      : "border-transparent text-slate-600 hover:border-[#B9D8CC] hover:bg-white hover:text-[#1F6F5F]"
                   }`}
                 >
                   {item.label}
-
-                  <span
-                    className={`absolute bottom-0 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-blue-700 transition-all duration-300 ease-out ${
-                      isActive ? "w-full" : "w-0 group-hover:w-full"
-                    }`}
-                  />
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* RIGHT SIDE - cụm bên phải */}
-        <div className="flex items-center gap-4">
-          <div
-            className={`flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold shadow-sm transition ${
-              isCompletedStreakToday
-                ? "border-orange-200 bg-orange-50 text-orange-600"
-                : "border-slate-200 bg-white text-slate-500"
-            }`}
-            title={
-              isCompletedStreakToday
-                ? "You completed your streak today"
-                : "Open a learning resource to complete today's streak"
-            }
-          >
-            <FaFireAlt
-              className={`text-base ${
-                isCompletedStreakToday ? "text-orange-500" : "text-slate-400"
+        <div className="flex items-center gap-3">
+          {user && (
+            <div
+              className={`hidden h-10 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold shadow-sm sm:inline-flex ${
+                isCompletedStreakToday
+                  ? "border-[#6FCF97] bg-[#6FCF97]/30 text-[#1F6F5F]"
+                  : "border-[#B9D8CC] bg-white text-[#18332D]"
               }`}
-            />
-            <span>{currentStreak}</span>
-          </div>
+            >
+              <FaFireAlt className={isCompletedStreakToday ? "text-orange-600" : "text-[#2FA084]"} />
+              <span>{currentStreak} STREAK</span>
+            </div>
+          )}
 
-          <AvatarDropdown
-            user={user}
-            profile={profile}
-            onLogout={handleLogout}
-          />
+          {user ? (
+            <AvatarDropdown user={user} profile={profile} onLogout={handleLogout} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate("/login")}
+              className="rounded-xl bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
+            >
+              Open dashboard
+            </button>
+          )}
         </div>
       </div>
     </header>

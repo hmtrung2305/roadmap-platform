@@ -13,17 +13,30 @@ export const useAuthStore = create((set, get) => ({
   authInitialized: false,
   authError: "",
 
+  clearAuth: () => {
+    set({
+      user: null,
+      authLoading: false,
+      authInitialized: true,
+    });
+
+    localStorage.removeItem("isLoggedIn");
+    useStreakStore.getState().resetStreakState();
+  },
+
   login: async (payload) => {
     try {
       set({
         authLoading: true,
         authError: "",
       });
+
       const data = await loginApi(payload);
 
       if (!data?.user) {
         throw new Error("Login response does not contain user.");
       }
+
       set({
         user: data.user,
         authInitialized: true,
@@ -37,7 +50,10 @@ export const useAuthStore = create((set, get) => ({
         authError: error?.message || "Login failed. Please try again.",
         authInitialized: true,
       });
+
+      localStorage.removeItem("isLoggedIn");
       useStreakStore.getState().resetStreakState();
+
       throw error;
     } finally {
       set({ authLoading: false });
@@ -66,20 +82,14 @@ export const useAuthStore = create((set, get) => ({
       });
     }
   },
+
   logout: async () => {
     try {
       await logoutApi();
     } catch (error) {
       console.log("Logout failed:", error);
     } finally {
-      set({
-        user: null,
-        authLoading: false,
-        authInitialized: true,
-      });
-
-      localStorage.removeItem("isLoggedIn");
-      useStreakStore.getState().resetStreakState();
+      get().clearAuth();
     }
   },
 
@@ -92,25 +102,65 @@ export const useAuthStore = create((set, get) => ({
 
       const currentUser = await getCurrentUserApi();
 
-      set({ user: currentUser });
-      localStorage.setItem("isLoggedIn", "true");
+      set({
+        user: currentUser,
+        authInitialized: true,
+      });
 
+      localStorage.setItem("isLoggedIn", "true");
       await useStreakStore.getState().fetchStreak();
+
+      return currentUser;
     } catch (error) {
-      if (error.response?.status !== 401) {
+      if (error?.status !== 401) {
         console.log("Load current user failed:", error);
       }
-      set({ user: null });
 
-      localStorage.removeItem("isLoggedIn");
-      await useStreakStore.getState().resetStreakState();
+      get().clearAuth();
+      return null;
     } finally {
-      set({ authLoading: false, authInitialized: true });
+      set({
+        authLoading: false,
+        authInitialized: true,
+      });
     }
   },
+
+  revalidateCurrentUser: async () => {
+    try {
+      set({
+        authLoading: true,
+        authError: "",
+      });
+
+      const currentUser = await getCurrentUserApi();
+
+      set({
+        user: currentUser,
+        authInitialized: true,
+      });
+
+      localStorage.setItem("isLoggedIn", "true");
+      return currentUser;
+    } catch (error) {
+      if (error?.status !== 401) {
+        console.log("Revalidate current user failed:", error);
+      }
+
+      get().clearAuth();
+      return null;
+    } finally {
+      set({
+        authLoading: false,
+        authInitialized: true,
+      });
+    }
+  },
+
   clearAuthError: () => {
     set({ authError: "" });
   },
+
   getIsAuthenticated: () => {
     return !!get().user;
   },

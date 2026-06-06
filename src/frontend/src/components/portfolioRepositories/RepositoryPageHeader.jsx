@@ -35,7 +35,7 @@ export default function RepositoryPageHeader({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save size={16} />
             {saving ? "Saving..." : "Save Selection"}
@@ -43,7 +43,7 @@ export default function RepositoryPageHeader({
         </div>
       </div>
 
-      <div className="mt-6 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
+      <div className="mt-6 rounded-xl bg-[#6FCF97]/15 px-4 py-3 text-sm font-medium text-[#1F6F5F]">
         {selectedCount} repositories selected for your portfolio.
       </div>
     </section>

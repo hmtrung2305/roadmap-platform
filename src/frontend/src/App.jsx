@@ -1,5 +1,5 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -22,14 +22,49 @@ import ProfileSettingsPage from "./pages/settings/ProfileSettingsPage";
 import PointsSettingsPage from "./pages/settings/PointSettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 
+const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
+
+function isPublicPortfolioPath(pathname) {
+  return pathname.startsWith("/portfolio/") || pathname.startsWith("/portfolios/");
+}
+
+function isPublicPath(pathname) {
+  return publicPaths.includes(pathname) || isPublicPortfolioPath(pathname);
+}
+
 function AuthBootstrap({ children }) {
+  const location = useLocation();
+  const lastValidatedPathRef = useRef("");
+
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
+  const revalidateCurrentUser = useAuthStore((state) => state.revalidateCurrentUser);
+  const user = useAuthStore((state) => state.user);
+
   useEffect(() => {
+    const pathname = location.pathname;
+
+    if (isPublicPath(pathname)) {
+      useAuthStore.setState({ authInitialized: true });
+      return;
+    }
+
+    if (lastValidatedPathRef.current === pathname) {
+      return;
+    }
+
+    lastValidatedPathRef.current = pathname;
+
+    if (user) {
+      revalidateCurrentUser();
+      return;
+    }
+
     loadCurrentUser();
-  }, [loadCurrentUser]);
+  }, [loadCurrentUser, revalidateCurrentUser, user, location.pathname]);
 
   return children;
 }
+
 export default function App() {
   return (
     <AuthBootstrap>
@@ -42,6 +77,7 @@ export default function App() {
         pauseOnHover
         draggable
       />
+
       <AnimatePresence>
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -54,6 +90,7 @@ export default function App() {
               </PublicRoute>
             }
           />
+
           <Route
             path="/verify-email"
             element={
@@ -72,11 +109,11 @@ export default function App() {
             }
           />
 
-          {/* Public demo routes can be added here when they do not require auth. */}
+          <Route element={<MainLayout />}>
+            <Route path="/portfolio/:username" element={<PortfolioPage />} />
+            <Route path="/portfolios/:username" element={<PortfolioPage />} />
+          </Route>
 
-          <Route element={<MainLayout />}></Route>
-
-          {/* Authenticated workspace routes. */}
           <Route
             element={
               <ProtectedRoute>
@@ -96,12 +133,15 @@ export default function App() {
             <Route path="/study/:resourceId" element={<StudyRoomPage />} />
           </Route>
 
-          {/*Setting pages */}
-          <Route path="/settings" element={<SettingsLayout />}>
-            <Route
-              index
-              element={<Navigate to="/settings/account" replace />}
-            />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/settings/account" replace />} />
             <Route path="account" element={<AccountSettingsPage />} />
             <Route path="privacy" element={<PrivacySettingsPage />} />
             <Route path="points" element={<PointsSettingsPage />} />

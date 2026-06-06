@@ -3,13 +3,13 @@ import ResourceCard from "./ResourceCard";
 export default function ResourceGrid({ resources, onOpen, onDelete }) {
   if (!resources || resources.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-        <h3 className="text-base font-semibold text-slate-800">
-          Chưa có tài liệu nào
+      <div className="rounded-3xl border border-dashed border-[#B9D8CC] bg-white p-10 text-center shadow-sm">
+        <h3 className="text-base font-extrabold text-[#18332D]">
+          No documents yet
         </h3>
 
         <p className="mt-2 text-sm text-slate-500">
-          Upload tài liệu markdown đầu tiên để bắt đầu xây dựng kho học liệu.
+          Upload your first markdown document to start building your learning library.
         </p>
       </div>
     );

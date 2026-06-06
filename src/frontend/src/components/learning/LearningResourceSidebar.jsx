@@ -1,10 +1,12 @@
 import { BookOpen, CheckCircle2, Circle, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import AuthLogo from "../auth/AuthLogo";
 
 export default function LearningResourceSidebar({
   resources,
   isOpen,
-  width = 200,
+  width = 248,
+  topOffset = 0,
   onStartResize,
   onClose,
 }) {
@@ -21,35 +23,39 @@ export default function LearningResourceSidebar({
       )}
 
       <aside
-        style={{ width }}
-        className={`fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 ${
+        style={{
+          width,
+          top: topOffset,
+          height: `calc(100vh - ${topOffset}px)`,
+        }}
+        className={`fixed left-0 z-40 border-r border-[#B9D8CC] bg-white/95 shadow-xl shadow-emerald-900/10 backdrop-blur-xl transition-[transform,top,height] duration-300 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 p-5">
+        <div className="flex h-20 items-center justify-between border-b border-[#B9D8CC] px-5">
           <div>
-            <h2 className="text-lg font-bold text-blue-700">TechMap</h2>
-            <p className="mt-1 text-sm text-slate-500">Learning Resources</p>
+            <AuthLogo compact showTagline={false} />
+            <p className="mt-1 text-sm font-medium text-slate-500">Learning Resources</p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-xl p-2 text-slate-400 hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="h-[calc(100%-81px)] overflow-y-auto p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <div className="h-[calc(100%-5rem)] overflow-y-auto p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-[#18332D]">
             <BookOpen size={16} />
             Documents
           </div>
 
           {resources.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-              Chưa có tài liệu nào.
+            <div className="rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8] p-4 text-sm font-medium text-slate-500">
+              No documents yet.
             </div>
           ) : (
             <div className="space-y-2">
@@ -76,35 +82,35 @@ export default function LearningResourceSidebar({
                         },
                       });
                     }}
-                    className={`w-full rounded-xl px-3 py-3 text-left text-sm transition ${
+                    className={`w-full rounded-2xl px-3 py-3 text-left text-sm transition ${
                       isActive
-                        ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        ? "bg-[#6FCF97]/20 text-[#1F6F5F] ring-1 ring-[#6FCF97]"
+                        : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"
                     }`}
                   >
                     <div className="flex items-start gap-2">
                       {resource.isCompleted ? (
                         <CheckCircle2
                           size={16}
-                          className="mt-0.5 shrink-0 text-emerald-600"
+                          className="mt-0.5 shrink-0 text-[#2FA084]"
                         />
                       ) : (
                         <Circle
                           size={16}
                           className={`mt-0.5 shrink-0 ${
-                            isActive ? "text-blue-600" : "text-slate-400"
+                            isActive ? "text-[#2FA084]" : "text-slate-400"
                           }`}
                         />
                       )}
 
                       <div className="min-w-0">
-                        <p className="line-clamp-2 font-semibold">
+                        <p className="line-clamp-2 font-extrabold">
                           {resource.title}
                         </p>
 
                         <p className="mt-1 text-xs opacity-75">
                           {resource.skillName || "General"} ·{" "}
-                          {resource.durationMinutes || 15} phút
+                          {resource.durationMinutes || 15} min
                         </p>
                       </div>
                     </div>
@@ -115,10 +121,9 @@ export default function LearningResourceSidebar({
           )}
         </div>
 
-        {/* Resize handle */}
         <div
           onMouseDown={onStartResize}
-          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-300"
+          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-[#6FCF97]"
           title="Resize sidebar"
         />
       </aside>

@@ -84,7 +84,7 @@ function SummaryItem({ icon, label, children }) {
   return (
     <div className="rounded-xl bg-slate-50 p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-        <span className="text-blue-700">{icon}</span>
+        <span className="text-[#1F6F5F]">{icon}</span>
         {label}
       </div>
 
@@ -99,10 +99,10 @@ function LinkItem({ icon, label, href }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+      className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:border-[#B9D8CC] hover:bg-[#6FCF97]/15 hover:text-[#1F6F5F]"
     >
       <span className="flex min-w-0 items-center gap-2">
-        <span className="text-blue-700">{icon}</span>
+        <span className="text-[#1F6F5F]">{icon}</span>
         <span className="truncate">{label}</span>
       </span>
 

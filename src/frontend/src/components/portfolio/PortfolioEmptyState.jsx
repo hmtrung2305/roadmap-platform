@@ -1,13 +1,10 @@
 export default function PortfolioEmptyState() {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-      <p className="font-semibold text-slate-700">
-        No repositories selected yet.
+    <section className="rounded-2xl border border-dashed border-[#B9D8CC] bg-white p-8 text-center shadow-sm">
+      <h3 className="text-lg font-extrabold text-[#18332D]">No projects selected yet</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-600">
+        Selected repositories will appear here as public portfolio projects.
       </p>
-
-      <p className="mt-2 text-sm text-slate-500">
-        Connect GitHub, sync repositories, then choose which projects to show.
-      </p>
-    </div>
+    </section>
   );
 }

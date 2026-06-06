@@ -121,7 +121,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#1F6F5F]">
                 Start learning
               </p>
 
@@ -151,7 +151,7 @@ export default function RegisterPage() {
                   value={form.username}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
@@ -167,7 +167,7 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
@@ -184,7 +184,7 @@ export default function RegisterPage() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
                 </div>
@@ -200,7 +200,7 @@ export default function RegisterPage() {
                     value={form.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
                 </div>
@@ -212,21 +212,21 @@ export default function RegisterPage() {
                   type="checkbox"
                   checked={form.agreeTerms}
                   onChange={handleChange}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-[#1F6F5F] focus:ring-blue-500"
                 />
 
                 <span>
                   I agree to the{" "}
                   <button
                     type="button"
-                    className="font-semibold text-blue-600 transition hover:text-blue-700"
+                    className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
                   >
                     Terms of Service
                   </button>{" "}
                   and{" "}
                   <button
                     type="button"
-                    className="font-semibold text-blue-600 transition hover:text-blue-700"
+                    className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
                   >
                     Privacy Policy
                   </button>
@@ -237,7 +237,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="h-11 w-full rounded-xl bg-blue-700 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Creating account..." : "Create account"}
               </button>
@@ -275,7 +275,7 @@ export default function RegisterPage() {
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-semibold text-blue-600 transition hover:text-blue-700"
+                className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
               >
                 Sign in
               </Link>
