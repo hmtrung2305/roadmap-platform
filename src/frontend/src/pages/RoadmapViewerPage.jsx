@@ -1,0 +1,442 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  Background,
+  Controls,
+  MiniMap,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+
+import { roadmapApi } from "../api/roadmapApi";
+import BalancedRoadmapEdge from "../components/roadmap/BalancedRoadmapEdge";
+import RoadmapDetailDrawer from "../components/roadmap/RoadmapDetailDrawer";
+import RoadmapFlowNode from "../components/roadmap/RoadmapFlowNode";
+import RoadmapFullScreen from "../components/roadmap/RoadmapFullScreen";
+import RoadmapLegend from "../components/roadmap/RoadmapLegend";
+import {
+  NODE_WIDTH,
+  buildRoadmapFlow,
+  focusRoadmapStart,
+  getMiniMapColor,
+  getNodeId,
+  normalizeRoadmap,
+  mergeGraphNodeWithDetail,
+  patchNodeProgress,
+  applyProgressUpdateResult,
+  patchCachedNodeProgress,
+  findChangedProgress,
+  formatReadableLabel,
+} from "../components/roadmap/roadmapUtils";
+
+const nodeTypes = {
+  roadmapNode: RoadmapFlowNode,
+};
+
+const edgeTypes = {
+  balanced: BalancedRoadmapEdge,
+};
+
+export default function RoadmapViewerPage() {
+  const navigate = useNavigate();
+  const { slug } = useParams();
+
+  const [roadmap, setRoadmap] = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [nodeDetailCache, setNodeDetailCache] = useState({});
+  const [isLoadingNodeDetail, setIsLoadingNodeDetail] = useState(false);
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [flowInstance, setFlowInstance] = useState(null);
+  const [isInitialViewportReady, setIsInitialViewportReady] = useState(false);
+  const flowWrapperRef = useRef(null);
+  const focusedRoadmapKeyRef = useRef(null);
+
+  const { flowNodes, flowEdges, nodeLookup } = useMemo(() => {
+    if (!roadmap?.nodes?.length) {
+      return { flowNodes: [], flowEdges: [], nodeLookup: new Map() };
+    }
+
+    return buildRoadmapFlow(roadmap, selectedNode ? getNodeId(selectedNode) : null);
+  }, [roadmap, selectedNode]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  useEffect(() => {
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+  }, [flowNodes, flowEdges, setNodes, setEdges]);
+
+  useLayoutEffect(() => {
+    if (!flowInstance || flowNodes.length === 0) return;
+
+    const roadmapFocusKey = roadmap?.roadmapVersionId || slug || "current-roadmap";
+
+    if (focusedRoadmapKeyRef.current === roadmapFocusKey) {
+      setIsInitialViewportReady(true);
+      return;
+    }
+
+    focusedRoadmapKeyRef.current = roadmapFocusKey;
+    focusRoadmapStart(flowInstance, flowNodes, flowWrapperRef.current);
+    setIsInitialViewportReady(true);
+  }, [flowInstance, flowNodes, roadmap?.roadmapVersionId, slug]);
+
+  useEffect(() => {
+    loadPage();
+  }, [slug]);
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setSelectedNode(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  const handleNodeClick = useCallback(
+    (_, node) => {
+      const sourceNode = nodeLookup.get(node.id);
+
+      if (sourceNode) {
+        loadNodeDetail(sourceNode);
+      }
+    },
+    [nodeLookup, roadmap?.roadmapVersionId, nodeDetailCache]
+  );
+
+  async function loadNodeDetail(graphNode) {
+    if (!graphNode || !roadmap?.roadmapVersionId) return;
+
+    const nodeId = getNodeId(graphNode);
+    const cachedNode = nodeDetailCache[nodeId];
+
+    if (cachedNode) {
+      setSelectedNode(mergeGraphNodeWithDetail(graphNode, cachedNode));
+      return;
+    }
+
+    setSelectedNode(graphNode);
+    setIsLoadingNodeDetail(true);
+    setMessage("");
+
+    try {
+      const detail = await roadmapApi.getNodeDetail(roadmap.roadmapVersionId, nodeId);
+
+      setNodeDetailCache((current) => ({
+        ...current,
+        [nodeId]: detail,
+      }));
+
+      setSelectedNode(mergeGraphNodeWithDetail(graphNode, detail));
+    } catch (error) {
+      console.error(error);
+      setMessage(error?.message || "Failed to load node details.");
+    } finally {
+      setIsLoadingNodeDetail(false);
+    }
+  }
+
+  async function loadPage() {
+    if (!slug) return;
+
+    setStatus("loading");
+    setMessage("");
+
+    try {
+      const data = await roadmapApi.getRoadmapGraph(slug);
+      const normalizedRoadmap = normalizeRoadmap(data);
+
+      focusedRoadmapKeyRef.current = null;
+      setIsInitialViewportReady(false);
+      setRoadmap(normalizedRoadmap);
+      setNodeDetailCache({});
+      setSelectedNode(null);
+      setStatus("success");
+    } catch (error) {
+      console.error(error);
+      setMessage(error?.message || "Failed to load roadmap. Check that the API is running.");
+      setStatus("error");
+    }
+  }
+
+  async function handleEnroll() {
+    if (!roadmap?.roadmapVersionId || isEnrolling) return;
+
+    setIsEnrolling(true);
+    setMessage("");
+
+    try {
+      await roadmapApi.enroll(roadmap.roadmapVersionId);
+      await loadPage();
+    } catch (error) {
+      console.error(error);
+      setMessage(error?.message || "Failed to enroll in roadmap.");
+    } finally {
+      setIsEnrolling(false);
+    }
+  }
+
+  async function handleProgressChange(nextStatus) {
+    const enrollmentId = roadmap?.enrollment?.roadmapEnrollmentId;
+    const selectedNodeId = selectedNode ? getNodeId(selectedNode) : null;
+
+    if (!enrollmentId || !selectedNodeId || isUpdatingProgress) return;
+
+    setIsUpdatingProgress(true);
+    setMessage("");
+
+    const previousRoadmap = roadmap;
+    const previousSelectedNode = selectedNode;
+
+    setRoadmap((current) => patchNodeProgress(current, selectedNodeId, nextStatus));
+
+    setSelectedNode((current) =>
+      current
+        ? {
+            ...current,
+            progress: {
+              ...(current.progress || {}),
+              status: nextStatus,
+            },
+          }
+        : current
+    );
+
+    try {
+      const result = await roadmapApi.updateNodeProgress({
+        enrollmentId,
+        nodeId: selectedNodeId,
+        status: nextStatus,
+      });
+
+      setRoadmap((current) => applyProgressUpdateResult(current, result));
+      setNodeDetailCache((current) => patchCachedNodeProgress(current, result));
+
+      setSelectedNode((current) => {
+        if (!current) return current;
+
+        const changedProgress = findChangedProgress(result, selectedNodeId);
+        const nextStatusFromResult = changedProgress?.status || nextStatus;
+
+        return {
+          ...current,
+          progress: {
+            ...(current.progress || {}),
+            ...(changedProgress || {}),
+            status: nextStatusFromResult,
+          },
+        };
+      });
+    } catch (error) {
+      console.error(error);
+      setRoadmap(previousRoadmap);
+      setSelectedNode(previousSelectedNode);
+      setMessage(error?.message || "Failed to update progress.");
+    } finally {
+      setIsUpdatingProgress(false);
+    }
+  }
+
+  if (status === "loading") {
+    return <RoadmapFullScreen>Loading roadmap…</RoadmapFullScreen>;
+  }
+
+  if (status === "error") {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-[#F7F1E8] text-[#18332D]">
+        <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-7xl items-center justify-center px-6 py-8">
+          <div className="max-w-md rounded-xl border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
+            <h1 className="text-2xl font-black text-[#18332D]">Couldn&apos;t load roadmap</h1>
+
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{message}</p>
+
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/roadmaps")}
+                className="rounded-xl border border-[#B9D8CC] bg-white px-5 py-2 text-sm font-extrabold shadow-sm"
+              >
+                Back
+              </button>
+
+              <button
+                type="button"
+                onClick={loadPage}
+                className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const progressPercent = roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
+  const isEnrolled = Boolean(roadmap?.enrollment);
+  const shouldShowMiniMap = nodes.length <= 150;
+
+  return (
+    <div className="flex min-h-[calc(100vh-64px)] flex-col bg-[#F7F1E8] text-[#18332D]">
+      <main className="relative min-h-0 w-full overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
+        <section className="grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)]">
+          <div className="z-10 border-b border-[#B9D8CC] bg-white px-5 py-4 shadow-sm">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => navigate("/roadmaps")}
+                  className="mb-2 text-xs font-extrabold tracking-[0.16em] text-[#1F6F5F] hover:underline"
+                >
+                  ← Roadmap selection
+                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="truncate text-2xl font-black tracking-tight text-[#18332D] sm:text-3xl">
+                    {roadmap.title}
+                  </h1>
+
+                  {roadmap.enrollment?.status && (
+                    <HeaderBadge>{formatReadableLabel(roadmap.enrollment.status)}</HeaderBadge>
+                  )}
+
+                  {roadmap.generationStatus && roadmap.generationStatus !== "none" && (
+                    <HeaderBadge>{formatReadableLabel(roadmap.generationStatus)}</HeaderBadge>
+                  )}
+                </div>
+
+                <p className="mt-1 max-w-3xl truncate text-sm font-semibold text-slate-600">
+                  {roadmap.description}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-[190px] rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 text-xs font-extrabold tracking-tight text-slate-500">
+                    <span>Progress</span>
+                    <span>{Math.round(progressPercent)}%</span>
+                  </div>
+
+                  <div className="mt-2 h-2 border border-[#B9D8CC] bg-white">
+                    <div
+                      className="h-full bg-[#2FA084]"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, progressPercent))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {!isEnrolled && (
+                  <button
+                    type="button"
+                    onClick={handleEnroll}
+                    disabled={isEnrolling}
+                    className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-3 text-sm font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+                  >
+                    {isEnrolling ? "Starting..." : "Start roadmap"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {message && (
+              <div className="mt-4 rounded-xl border border-[#B9D8CC] bg-[#FEE2E2] px-4 py-3 text-sm font-black text-[#18332D]">
+                {message}
+              </div>
+            )}
+          </div>
+
+          <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
+            {nodes.length === 0 ? (
+              <div className="flex h-full items-center justify-center p-8">
+                <div className="rounded-xl border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
+                  <h2 className="text-xl font-black text-[#18332D]">No roadmap nodes found</h2>
+                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                    The roadmap loaded, but the API did not return any nodes.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div
+                ref={flowWrapperRef}
+                className={[
+                  "absolute inset-0 h-full w-full",
+                  isInitialViewportReady ? "opacity-100" : "opacity-0",
+                ].join(" ")}
+              >
+                <ReactFlow
+                  className="h-full w-full"
+                  style={{ height: "100%", width: "100%" }}
+                  nodes={nodes}
+                  edges={edges}
+                  nodeTypes={nodeTypes}
+                  edgeTypes={edgeTypes}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onNodeClick={handleNodeClick}
+                  onPaneClick={() => setSelectedNode(null)}
+                  onInit={setFlowInstance}
+                  nodesDraggable={false}
+                  nodesConnectable={false}
+                  elementsSelectable
+                  defaultViewport={{ x: 0, y: 0, zoom: 0.74 }}
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background color="#2FA084" gap={28} size={1} />
+
+                  {shouldShowMiniMap && (
+                    <MiniMap
+                      pannable
+                      zoomable
+                      nodeStrokeWidth={2}
+                      nodeColor={(node) => getMiniMapColor(node.data?.status, node.data?.nodeType)}
+                      className="!rounded-xl !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
+                    />
+                  )}
+
+                  <Controls className="!rounded-xl !border-2 !border-[#B9D8CC] !bg-white !shadow-sm" />
+
+                  <RoadmapLegend
+                    isOpen={isLegendOpen}
+                    onToggle={() => setIsLegendOpen((current) => !current)}
+                  />
+                </ReactFlow>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {selectedNode && (
+          <RoadmapDetailDrawer
+            node={selectedNode}
+            isEnrolled={isEnrolled}
+            isUpdating={isUpdatingProgress}
+            isLoadingDetail={isLoadingNodeDetail}
+            onClose={() => setSelectedNode(null)}
+            onProgressChange={handleProgressChange}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+function HeaderBadge({ children }) {
+  return (
+    <span className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
+      {children}
+    </span>
+  );
+}
