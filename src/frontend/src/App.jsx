@@ -21,6 +21,8 @@ import PrivacySettingsPage from "./pages/settings/PrivacySettingsPage";
 import ProfileSettingsPage from "./pages/settings/ProfileSettingsPage";
 import PointsSettingsPage from "./pages/settings/PointSettingsPage";
 import ProfilePage from "./pages/ProfilePage";
+import RoadmapSelectionPage from "./pages/RoadmapSelectionPage";
+import RoadmapViewerPage from "./pages/RoadmapViewerPage";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -131,6 +133,10 @@ export default function App() {
             />
             <Route path="/resources" element={<ResourceManagementPage />} />
             <Route path="/study/:resourceId" element={<StudyRoomPage />} />
+
+            <Route path="/roadmaps" element={<RoadmapSelectionPage />} />
+            <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
+            <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
           </Route>
 
           <Route

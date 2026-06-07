@@ -27,7 +27,15 @@ public partial class User
 
     public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
 
+    public virtual ICollection<ProgressEvent> ProgressEvents { get; set; } = new List<ProgressEvent>();
+
     public virtual ICollection<Repository> Repositories { get; set; } = new List<Repository>();
+
+    public virtual ICollection<RoadmapEnrollment> RoadmapEnrollments { get; set; } = new List<RoadmapEnrollment>();
+
+    public virtual ICollection<RoadmapVersion> RoadmapVersions { get; set; } = new List<RoadmapVersion>();
+
+    public virtual ICollection<Roadmap> Roadmaps { get; set; } = new List<Roadmap>();
 
     public virtual UserActivityStat? UserActivityStat { get; set; }
 
@@ -39,9 +47,5 @@ public partial class User
 
     public virtual UserProfile? UserProfile { get; set; }
 
-    public virtual ICollection<UserRoadmapStatus> UserRoadmapStatuses { get; set; } = new List<UserRoadmapStatus>();
-
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
-
-    public virtual ICollection<UserSkillProgress> UserSkillProgresses { get; set; } = new List<UserSkillProgress>();
 }

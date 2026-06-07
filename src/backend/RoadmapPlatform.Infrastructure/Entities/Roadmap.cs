@@ -7,21 +7,25 @@ public partial class Roadmap
 {
     public Guid RoadmapId { get; set; }
 
-    public Guid SpecialtyId { get; set; }
+    public Guid CareerRoleId { get; set; }
 
-    public string RoadmapName { get; set; } = null!;
+    public Guid? OwnerUserId { get; set; }
 
-    public int Version { get; set; }
+    public string Title { get; set; } = null!;
 
-    public bool IsActive { get; set; }
+    public string? Description { get; set; }
+
+    public string RoadmapType { get; set; } = null!;
+
+    public string SourceType { get; set; } = null!;
+
+    public string Visibility { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
 
-    public virtual ICollection<RoadmapEdge> RoadmapEdges { get; set; } = new List<RoadmapEdge>();
+    public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<RoadmapNode> RoadmapNodes { get; set; } = new List<RoadmapNode>();
+    public virtual CareerRole CareerRole { get; set; } = null!;
 
-    public virtual Specialty Specialty { get; set; } = null!;
-
-    public virtual ICollection<UserRoadmapStatus> UserRoadmapStatuses { get; set; } = new List<UserRoadmapStatus>();
+    public virtual User? OwnerUser { get; set; }
 }

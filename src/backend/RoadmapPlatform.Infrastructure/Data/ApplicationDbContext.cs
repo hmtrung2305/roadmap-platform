@@ -7,10 +7,6 @@ namespace RoadmapPlatform.Infrastructure.Data;
 
 public partial class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext()
-    {
-    }
-
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
@@ -20,6 +16,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<AiCreditUsage> AiCreditUsages { get; set; }
 
+    public virtual DbSet<CareerRole> CareerRoles { get; set; }
+
     public virtual DbSet<ChatbotMessage> ChatbotMessages { get; set; }
 
     public virtual DbSet<Conversation> Conversations { get; set; }
@@ -28,9 +26,11 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Invoice> Invoices { get; set; }
 
-    public virtual DbSet<MyResource> MyResources { get; set; }
+    public virtual DbSet<LearningResource> LearningResources { get; set; }
 
-    public virtual DbSet<NodeSkill> NodeSkills { get; set; }
+    public virtual DbSet<LearningResourceSkill> LearningResourceSkills { get; set; }
+
+    public virtual DbSet<MyResource> MyResources { get; set; }
 
     public virtual DbSet<OtherResource> OtherResources { get; set; }
 
@@ -39,6 +39,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Permission> Permissions { get; set; }
 
     public virtual DbSet<PermissionRole> PermissionRoles { get; set; }
+
+    public virtual DbSet<ProgressEvent> ProgressEvents { get; set; }
 
     public virtual DbSet<RepoInsight> RepoInsights { get; set; }
 
@@ -52,13 +54,23 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<RoadmapEdge> RoadmapEdges { get; set; }
 
+    public virtual DbSet<RoadmapEnrollment> RoadmapEnrollments { get; set; }
+
     public virtual DbSet<RoadmapNode> RoadmapNodes { get; set; }
+
+    public virtual DbSet<RoadmapNodeResource> RoadmapNodeResources { get; set; }
+
+    public virtual DbSet<RoadmapNodeSkill> RoadmapNodeSkills { get; set; }
+
+    public virtual DbSet<RoadmapVersion> RoadmapVersions { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
-    public virtual DbSet<Skill> Skills { get; set; }
+    public virtual DbSet<SeedResourceMap> SeedResourceMaps { get; set; }
 
-    public virtual DbSet<Specialty> Specialties { get; set; }
+    public virtual DbSet<SeedRoadmapMap> SeedRoadmapMaps { get; set; }
+
+    public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -70,13 +82,11 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<UserInsight> UserInsights { get; set; }
 
+    public virtual DbSet<UserNodeProgress> UserNodeProgresses { get; set; }
+
     public virtual DbSet<UserProfile> UserProfiles { get; set; }
 
-    public virtual DbSet<UserRoadmapStatus> UserRoadmapStatuses { get; set; }
-
     public virtual DbSet<UserRole> UserRoles { get; set; }
-
-    public virtual DbSet<UserSkillProgress> UserSkillProgresses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,9 +117,9 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("ai_credit_usage");
 
-            entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_ai_credit_usage_user_created_at");
-
             entity.HasIndex(e => new { e.FeatureName, e.CreatedAt }, "idx_ai_credit_usage_feature_created_at");
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_ai_credit_usage_user_created_at");
 
             entity.Property(e => e.UsageId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -132,6 +142,44 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.AiCreditUsages)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_ai_credit_usage_user_id");
+        });
+
+        modelBuilder.Entity<CareerRole>(entity =>
+        {
+            entity.HasKey(e => e.CareerRoleId).HasName("career_role_pkey");
+
+            entity.ToTable("career_role");
+
+            entity.HasIndex(e => e.Name, "career_role_name_key").IsUnique();
+
+            entity.HasIndex(e => e.Slug, "career_role_slug_key").IsUnique();
+
+            entity.HasIndex(e => e.Category, "ix_career_role_category");
+
+            entity.HasIndex(e => e.Slug, "ix_career_role_slug");
+
+            entity.Property(e => e.CareerRoleId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("career_role_id");
+            entity.Property(e => e.Category)
+                .HasMaxLength(100)
+                .HasColumnName("category");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(120)
+                .HasColumnName("slug");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<ChatbotMessage>(entity =>
@@ -249,6 +297,76 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_invoice_user_id");
         });
 
+        modelBuilder.Entity<LearningResource>(entity =>
+        {
+            entity.HasKey(e => e.LearningResourceId).HasName("learning_resource_pkey");
+
+            entity.ToTable("learning_resource");
+
+            entity.HasIndex(e => e.Provider, "ix_learning_resource_provider");
+
+            entity.HasIndex(e => e.ResourceType, "ix_learning_resource_type");
+
+            entity.Property(e => e.LearningResourceId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("learning_resource_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.DifficultyLevel)
+                .HasMaxLength(30)
+                .HasColumnName("difficulty_level");
+            entity.Property(e => e.LanguageCode)
+                .HasMaxLength(10)
+                .HasDefaultValueSql("'en'::character varying")
+                .HasColumnName("language_code");
+            entity.Property(e => e.Provider)
+                .HasMaxLength(100)
+                .HasColumnName("provider");
+            entity.Property(e => e.ResourceType)
+                .HasMaxLength(30)
+                .HasColumnName("resource_type");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Url).HasColumnName("url");
+            entity.Property(e => e.VerificationStatus)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'verified'::character varying")
+                .HasColumnName("verification_status");
+        });
+
+        modelBuilder.Entity<LearningResourceSkill>(entity =>
+        {
+            entity.HasKey(e => e.LearningResourceSkillId).HasName("learning_resource_skill_pkey");
+
+            entity.ToTable("learning_resource_skill");
+
+            entity.HasIndex(e => e.LearningResourceId, "ix_learning_resource_skill_resource");
+
+            entity.HasIndex(e => e.SkillId, "ix_learning_resource_skill_skill");
+
+            entity.HasIndex(e => new { e.LearningResourceId, e.SkillId }, "uq_learning_resource_skill").IsUnique();
+
+            entity.Property(e => e.LearningResourceSkillId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("learning_resource_skill_id");
+            entity.Property(e => e.LearningResourceId).HasColumnName("learning_resource_id");
+            entity.Property(e => e.SkillId).HasColumnName("skill_id");
+
+            entity.HasOne(d => d.LearningResource).WithMany(p => p.LearningResourceSkills)
+                .HasForeignKey(d => d.LearningResourceId)
+                .HasConstraintName("fk_learning_resource_skill_resource");
+
+            entity.HasOne(d => d.Skill).WithMany(p => p.LearningResourceSkills)
+                .HasForeignKey(d => d.SkillId)
+                .HasConstraintName("fk_learning_resource_skill_skill");
+        });
+
         modelBuilder.Entity<MyResource>(entity =>
         {
             entity.HasKey(e => e.ResourceId).HasName("my_resource_pkey");
@@ -262,29 +380,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Resource).WithOne(p => p.MyResource)
                 .HasForeignKey<MyResource>(d => d.ResourceId)
                 .HasConstraintName("fk_my_resource_id");
-        });
-
-        modelBuilder.Entity<NodeSkill>(entity =>
-        {
-            entity.HasKey(e => e.NodeSkillId).HasName("node_skill_pkey");
-
-            entity.ToTable("node_skill");
-
-            entity.HasIndex(e => new { e.RoadmapNodeId, e.SkillId }, "uq_node_skill").IsUnique();
-
-            entity.Property(e => e.NodeSkillId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("node_skill_id");
-            entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
-            entity.Property(e => e.SkillId).HasColumnName("skill_id");
-
-            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.NodeSkills)
-                .HasForeignKey(d => d.RoadmapNodeId)
-                .HasConstraintName("fk_node_skill_roadmap_node_id");
-
-            entity.HasOne(d => d.Skill).WithMany(p => p.NodeSkills)
-                .HasForeignKey(d => d.SkillId)
-                .HasConstraintName("fk_node_skill_skill_id");
         });
 
         modelBuilder.Entity<OtherResource>(entity =>
@@ -379,6 +474,48 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Role).WithMany(p => p.PermissionRoles)
                 .HasForeignKey(d => d.RoleId)
                 .HasConstraintName("fk_permission_role_role_id");
+        });
+
+        modelBuilder.Entity<ProgressEvent>(entity =>
+        {
+            entity.HasKey(e => e.ProgressEventId).HasName("progress_event_pkey");
+
+            entity.ToTable("progress_event");
+
+            entity.HasIndex(e => e.RoadmapEnrollmentId, "ix_progress_event_enrollment_id");
+
+            entity.HasIndex(e => e.UserId, "ix_progress_event_user_id");
+
+            entity.HasIndex(e => new { e.RoadmapEnrollmentId, e.IdempotencyKey }, "uq_progress_event_idempotency_not_null")
+                .IsUnique()
+                .HasFilter("(idempotency_key IS NOT NULL)");
+
+            entity.Property(e => e.ProgressEventId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("progress_event_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.IdempotencyKey)
+                .HasMaxLength(100)
+                .HasColumnName("idempotency_key");
+            entity.Property(e => e.NewStatus)
+                .HasMaxLength(30)
+                .HasColumnName("new_status");
+            entity.Property(e => e.OldStatus)
+                .HasMaxLength(30)
+                .HasColumnName("old_status");
+            entity.Property(e => e.RoadmapEnrollmentId).HasColumnName("roadmap_enrollment_id");
+            entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.RoadmapEnrollment).WithMany(p => p.ProgressEvents)
+                .HasForeignKey(d => d.RoadmapEnrollmentId)
+                .HasConstraintName("fk_progress_event_enrollment");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ProgressEvents)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_progress_event_user");
         });
 
         modelBuilder.Entity<RepoInsight>(entity =>
@@ -506,80 +643,358 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("roadmap");
 
+            entity.HasIndex(e => e.CareerRoleId, "ix_roadmap_career_role_id");
+
+            entity.HasIndex(e => e.OwnerUserId, "ix_roadmap_owner_user_id");
+
+            entity.HasIndex(e => e.SourceType, "ix_roadmap_source_type");
+
+            entity.HasIndex(e => new { e.RoadmapType, e.Visibility }, "ix_roadmap_type_visibility");
+
             entity.Property(e => e.RoadmapId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("roadmap_id");
+            entity.Property(e => e.CareerRoleId).HasColumnName("career_role_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("is_active");
-            entity.Property(e => e.RoadmapName)
-                .HasMaxLength(100)
-                .HasColumnName("roadmap_name");
-            entity.Property(e => e.SpecialtyId).HasColumnName("specialty_id");
-            entity.Property(e => e.Version)
-                .HasDefaultValue(1)
-                .HasColumnName("version");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
+            entity.Property(e => e.RoadmapType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'template'::character varying")
+                .HasColumnName("roadmap_type");
+            entity.Property(e => e.SourceType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'static'::character varying")
+                .HasColumnName("source_type");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Visibility)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'public'::character varying")
+                .HasColumnName("visibility");
 
-            entity.HasOne(d => d.Specialty).WithMany(p => p.Roadmaps)
-                .HasForeignKey(d => d.SpecialtyId)
+            entity.HasOne(d => d.CareerRole).WithMany(p => p.Roadmaps)
+                .HasForeignKey(d => d.CareerRoleId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_roadmap_specialty_id");
+                .HasConstraintName("fk_roadmap_career_role");
+
+            entity.HasOne(d => d.OwnerUser).WithMany(p => p.Roadmaps)
+                .HasForeignKey(d => d.OwnerUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_roadmap_owner_user");
         });
 
         modelBuilder.Entity<RoadmapEdge>(entity =>
         {
-            entity.HasKey(e => e.EdgeId).HasName("roadmap_edge_pkey");
+            entity.HasKey(e => e.RoadmapEdgeId).HasName("roadmap_edge_pkey");
 
             entity.ToTable("roadmap_edge");
 
-            entity.HasIndex(e => new { e.RoadmapId, e.AncestorNodeId, e.DescendantNodeId }, "uq_roadmap_edge").IsUnique();
+            entity.HasIndex(e => e.FromNodeId, "ix_roadmap_edge_from_node");
 
-            entity.Property(e => e.EdgeId)
+            entity.HasIndex(e => e.ToNodeId, "ix_roadmap_edge_to_node");
+
+            entity.HasIndex(e => e.EdgeType, "ix_roadmap_edge_type");
+
+            entity.HasIndex(e => e.RoadmapVersionId, "ix_roadmap_edge_version_id");
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.FromNodeId, e.ToNodeId, e.EdgeType }, "uq_roadmap_edge").IsUnique();
+
+            entity.Property(e => e.RoadmapEdgeId)
                 .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("edge_id");
-            entity.Property(e => e.AncestorNodeId).HasColumnName("ancestor_node_id");
-            entity.Property(e => e.DescendantNodeId).HasColumnName("descendant_node_id");
-            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
+                .HasColumnName("roadmap_edge_id");
+            entity.Property(e => e.Condition)
+                .HasDefaultValueSql("'{}'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("condition");
+            entity.Property(e => e.DependencyType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'required'::character varying")
+                .HasColumnName("dependency_type");
+            entity.Property(e => e.EdgeType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'dependency'::character varying")
+                .HasColumnName("edge_type");
+            entity.Property(e => e.FromNodeId).HasColumnName("from_node_id");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+            entity.Property(e => e.ToNodeId).HasColumnName("to_node_id");
 
-            entity.HasOne(d => d.AncestorNode).WithMany(p => p.RoadmapEdgeAncestorNodes)
-                .HasForeignKey(d => d.AncestorNodeId)
-                .HasConstraintName("fk_roadmap_edge_ancestor_node_id");
+            entity.HasOne(d => d.RoadmapVersion).WithMany(p => p.RoadmapEdges)
+                .HasForeignKey(d => d.RoadmapVersionId)
+                .HasConstraintName("fk_roadmap_edge_version");
 
-            entity.HasOne(d => d.DescendantNode).WithMany(p => p.RoadmapEdgeDescendantNodes)
-                .HasForeignKey(d => d.DescendantNodeId)
-                .HasConstraintName("fk_roadmap_edge_descendant_node_id");
+            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.RoadmapEdgeRoadmapNodes)
+                .HasPrincipalKey(p => new { p.RoadmapVersionId, p.RoadmapNodeId })
+                .HasForeignKey(d => new { d.RoadmapVersionId, d.FromNodeId })
+                .HasConstraintName("fk_roadmap_edge_from_node");
 
-            entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapEdges)
-                .HasForeignKey(d => d.RoadmapId)
-                .HasConstraintName("fk_roadmap_edge_roadmap_id");
+            entity.HasOne(d => d.RoadmapNodeNavigation).WithMany(p => p.RoadmapEdgeRoadmapNodeNavigations)
+                .HasPrincipalKey(p => new { p.RoadmapVersionId, p.RoadmapNodeId })
+                .HasForeignKey(d => new { d.RoadmapVersionId, d.ToNodeId })
+                .HasConstraintName("fk_roadmap_edge_to_node");
+        });
+
+        modelBuilder.Entity<RoadmapEnrollment>(entity =>
+        {
+            entity.HasKey(e => e.RoadmapEnrollmentId).HasName("roadmap_enrollment_pkey");
+
+            entity.ToTable("roadmap_enrollment");
+
+            entity.HasIndex(e => e.UserId, "ix_roadmap_enrollment_user_id");
+
+            entity.HasIndex(e => e.RoadmapVersionId, "ix_roadmap_enrollment_version_id");
+
+            entity.HasIndex(e => new { e.UserId, e.RoadmapVersionId }, "uq_user_roadmap_version_enrollment").IsUnique();
+
+            entity.Property(e => e.RoadmapEnrollmentId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("roadmap_enrollment_id");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.ProgressPercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("progress_percent");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("started_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'active'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.RoadmapVersion).WithMany(p => p.RoadmapEnrollments)
+                .HasForeignKey(d => d.RoadmapVersionId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_roadmap_enrollment_version");
+
+            entity.HasOne(d => d.User).WithMany(p => p.RoadmapEnrollments)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_roadmap_enrollment_user");
         });
 
         modelBuilder.Entity<RoadmapNode>(entity =>
         {
-            entity.HasKey(e => e.NodeId).HasName("roadmap_node_pkey");
+            entity.HasKey(e => e.RoadmapNodeId).HasName("roadmap_node_pkey");
 
             entity.ToTable("roadmap_node");
 
-            entity.Property(e => e.NodeId)
+            entity.HasIndex(e => e.CheckpointType, "ix_roadmap_node_checkpoint_type");
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.LayoutGroup }, "ix_roadmap_node_layout_group");
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.LayoutRank, e.LayoutOrder }, "ix_roadmap_node_layout_rank_order");
+
+            entity.HasIndex(e => e.LayoutRole, "ix_roadmap_node_layout_role");
+
+            entity.HasIndex(e => e.ParentNodeId, "ix_roadmap_node_parent_id");
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.PositionX, e.PositionY }, "ix_roadmap_node_position");
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.Slug }, "ix_roadmap_node_slug");
+
+            entity.HasIndex(e => e.NodeType, "ix_roadmap_node_type");
+
+            entity.HasIndex(e => e.RoadmapVersionId, "ix_roadmap_node_version_id");
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.Slug }, "uq_roadmap_node_version_slug").IsUnique();
+
+            entity.HasIndex(e => new { e.RoadmapVersionId, e.RoadmapNodeId }, "uq_roadmap_version_node").IsUnique();
+
+            entity.Property(e => e.RoadmapNodeId)
                 .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("node_id");
+                .HasColumnName("roadmap_node_id");
+            entity.Property(e => e.CheckpointType)
+                .HasMaxLength(30)
+                .HasColumnName("checkpoint_type");
+            entity.Property(e => e.CompletionCriteria)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("completion_criteria");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.IsMandatory)
+            entity.Property(e => e.DifficultyLevel)
+                .HasMaxLength(30)
+                .HasColumnName("difficulty_level");
+            entity.Property(e => e.EstimatedHours).HasColumnName("estimated_hours");
+            entity.Property(e => e.IsRequired)
                 .HasDefaultValue(true)
-                .HasColumnName("is_mandatory");
-            entity.Property(e => e.PositionX).HasColumnName("position_x");
-            entity.Property(e => e.PositionY).HasColumnName("position_y");
-            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
+                .HasColumnName("is_required");
+            entity.Property(e => e.IsTrackable)
+                .HasDefaultValue(true)
+                .HasColumnName("is_trackable");
+            entity.Property(e => e.LayoutGroup)
+                .HasMaxLength(80)
+                .HasColumnName("layout_group");
+            entity.Property(e => e.LayoutOrder).HasColumnName("layout_order");
+            entity.Property(e => e.LayoutRank).HasColumnName("layout_rank");
+            entity.Property(e => e.LayoutRole)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'side'::character varying")
+                .HasColumnName("layout_role");
+            entity.Property(e => e.LearningOutcomes)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("learning_outcomes");
+            entity.Property(e => e.Metadata)
+                .HasDefaultValueSql("'{}'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("metadata");
+            entity.Property(e => e.NodeType)
+                .HasMaxLength(30)
+                .HasColumnName("node_type");
+            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
+            entity.Property(e => e.ParentNodeId).HasColumnName("parent_node_id");
+            entity.Property(e => e.PositionX)
+                .HasPrecision(10, 2)
+                .HasColumnName("position_x");
+            entity.Property(e => e.PositionY)
+                .HasPrecision(10, 2)
+                .HasColumnName("position_y");
+            entity.Property(e => e.Priority).HasColumnName("priority");
+            entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.RequiredCount).HasColumnName("required_count");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+            entity.Property(e => e.SelectionType)
+                .HasMaxLength(30)
+                .HasColumnName("selection_type");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(120)
+                .HasColumnName("slug");
             entity.Property(e => e.Title)
-                .HasMaxLength(50)
+                .HasMaxLength(200)
                 .HasColumnName("title");
 
-            entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapNodes)
-                .HasForeignKey(d => d.RoadmapId)
-                .HasConstraintName("fk_roadmap_node_roadmap_id");
+            entity.HasOne(d => d.ParentNode).WithMany(p => p.InverseParentNode)
+                .HasForeignKey(d => d.ParentNodeId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_roadmap_node_parent");
+
+            entity.HasOne(d => d.RoadmapVersion).WithMany(p => p.RoadmapNodes)
+                .HasForeignKey(d => d.RoadmapVersionId)
+                .HasConstraintName("fk_roadmap_node_version");
+        });
+
+        modelBuilder.Entity<RoadmapNodeResource>(entity =>
+        {
+            entity.HasKey(e => e.RoadmapNodeResourceId).HasName("roadmap_node_resource_pkey");
+
+            entity.ToTable("roadmap_node_resource");
+
+            entity.HasIndex(e => e.RoadmapNodeId, "ix_roadmap_node_resource_node_id");
+
+            entity.HasIndex(e => e.LearningResourceId, "ix_roadmap_node_resource_resource_id");
+
+            entity.HasIndex(e => new { e.RoadmapNodeId, e.LearningResourceId }, "uq_roadmap_node_resource").IsUnique();
+
+            entity.Property(e => e.RoadmapNodeResourceId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("roadmap_node_resource_id");
+            entity.Property(e => e.IsPrimary).HasColumnName("is_primary");
+            entity.Property(e => e.LearningResourceId).HasColumnName("learning_resource_id");
+            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
+            entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
+
+            entity.HasOne(d => d.LearningResource).WithMany(p => p.RoadmapNodeResources)
+                .HasForeignKey(d => d.LearningResourceId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_roadmap_node_resource_resource");
+        });
+
+        modelBuilder.Entity<RoadmapNodeSkill>(entity =>
+        {
+            entity.HasKey(e => e.RoadmapNodeSkillId).HasName("roadmap_node_skill_pkey");
+
+            entity.ToTable("roadmap_node_skill");
+
+            entity.HasIndex(e => e.RoadmapNodeId, "ix_roadmap_node_skill_node");
+
+            entity.HasIndex(e => e.SkillId, "ix_roadmap_node_skill_skill");
+
+            entity.HasIndex(e => new { e.RoadmapNodeId, e.SkillId }, "uq_roadmap_node_skill").IsUnique();
+
+            entity.Property(e => e.RoadmapNodeSkillId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("roadmap_node_skill_id");
+            entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
+            entity.Property(e => e.SkillId).HasColumnName("skill_id");
+
+            entity.HasOne(d => d.Skill).WithMany(p => p.RoadmapNodeSkills)
+                .HasForeignKey(d => d.SkillId)
+                .HasConstraintName("fk_roadmap_node_skill_skill");
+        });
+
+        modelBuilder.Entity<RoadmapVersion>(entity =>
+        {
+            entity.HasKey(e => e.RoadmapVersionId).HasName("roadmap_version_pkey");
+
+            entity.ToTable("roadmap_version");
+
+            entity.HasIndex(e => e.GeneratedByUserId, "ix_roadmap_version_generated_by_user_id");
+
+            entity.HasIndex(e => e.GenerationStatus, "ix_roadmap_version_generation_status");
+
+            entity.HasIndex(e => e.RoadmapId, "ix_roadmap_version_roadmap_id");
+
+            entity.HasIndex(e => e.Status, "ix_roadmap_version_status");
+
+            entity.HasIndex(e => new { e.RoadmapId, e.VersionNumber }, "uq_roadmap_version_number").IsUnique();
+
+            entity.Property(e => e.RoadmapVersionId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("roadmap_version_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.EstimatedTotalHours).HasColumnName("estimated_total_hours");
+            entity.Property(e => e.GeneratedByUserId).HasColumnName("generated_by_user_id");
+            entity.Property(e => e.GenerationContext)
+                .HasDefaultValueSql("'{}'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("generation_context");
+            entity.Property(e => e.GenerationError).HasColumnName("generation_error");
+            entity.Property(e => e.GenerationModel)
+                .HasMaxLength(100)
+                .HasColumnName("generation_model");
+            entity.Property(e => e.GenerationPrompt).HasColumnName("generation_prompt");
+            entity.Property(e => e.GenerationStatus)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'none'::character varying")
+                .HasColumnName("generation_status");
+            entity.Property(e => e.LayoutAlgorithm)
+                .HasMaxLength(50)
+                .HasColumnName("layout_algorithm");
+            entity.Property(e => e.LayoutDirection)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'TB'::character varying")
+                .HasColumnName("layout_direction");
+            entity.Property(e => e.PublishedAt).HasColumnName("published_at");
+            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'draft'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.VersionNumber).HasColumnName("version_number");
+
+            entity.HasOne(d => d.GeneratedByUser).WithMany(p => p.RoadmapVersions)
+                .HasForeignKey(d => d.GeneratedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_roadmap_version_generated_by_user");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -598,41 +1013,64 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("role_name");
         });
 
+        modelBuilder.Entity<SeedResourceMap>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToTable("seed_resource_map", "pg_temp_1");
+
+            entity.Property(e => e.LearningResourceId).HasColumnName("learning_resource_id");
+            entity.Property(e => e.ResourceKey).HasColumnName("resource_key");
+        });
+
+        modelBuilder.Entity<SeedRoadmapMap>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToTable("seed_roadmap_map", "pg_temp_1");
+
+            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+        });
+
         modelBuilder.Entity<Skill>(entity =>
         {
             entity.HasKey(e => e.SkillId).HasName("skill_pkey");
 
             entity.ToTable("skill");
 
-            entity.HasIndex(e => e.SkillName, "skill_skill_name_key").IsUnique();
+            entity.HasIndex(e => e.Category, "ix_skill_category");
+
+            entity.HasIndex(e => e.Slug, "ix_skill_slug");
+
+            entity.HasIndex(e => e.Name, "skill_skill_name_key").IsUnique();
+
+            entity.HasIndex(e => e.Name, "uq_skill_name").IsUnique();
+
+            entity.HasIndex(e => e.Slug, "uq_skill_slug").IsUnique();
 
             entity.Property(e => e.SkillId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("skill_id");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.SkillName)
+            entity.Property(e => e.Category)
                 .HasMaxLength(100)
-                .HasColumnName("skill_name");
-        });
-
-        modelBuilder.Entity<Specialty>(entity =>
-        {
-            entity.HasKey(e => e.SpecialtyId).HasName("specialty_pkey");
-
-            entity.ToTable("specialty");
-
-            entity.HasIndex(e => e.SpecialtyName, "specialty_specialty_name_key").IsUnique();
-
-            entity.Property(e => e.SpecialtyId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("specialty_id");
+                .HasColumnName("category");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.SpecialtyName)
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.Name)
                 .HasMaxLength(100)
-                .HasColumnName("specialty_name");
+                .HasColumnName("name");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(120)
+                .HasColumnName("slug");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -705,7 +1143,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
 
-            entity.HasOne(d => d.Plan).WithMany(p => p.UserAiCreditPlans)
+            entity.HasOne(d => d.PlanCodeNavigation).WithMany(p => p.UserAiCreditPlans)
                 .HasForeignKey(d => d.PlanCode)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_user_ai_credit_plan_plan_code");
@@ -774,6 +1212,41 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_user_insight_user_id");
         });
 
+        modelBuilder.Entity<UserNodeProgress>(entity =>
+        {
+            entity.HasKey(e => e.UserNodeProgressId).HasName("user_node_progress_pkey");
+
+            entity.ToTable("user_node_progress");
+
+            entity.HasIndex(e => e.RoadmapEnrollmentId, "ix_user_node_progress_enrollment_id");
+
+            entity.HasIndex(e => e.RoadmapNodeId, "ix_user_node_progress_node_id");
+
+            entity.HasIndex(e => new { e.RoadmapEnrollmentId, e.RoadmapNodeId }, "uq_enrollment_node_progress").IsUnique();
+
+            entity.Property(e => e.UserNodeProgressId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("user_node_progress_id");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.EvidenceUrl).HasColumnName("evidence_url");
+            entity.Property(e => e.LearnerNote).HasColumnName("learner_note");
+            entity.Property(e => e.RoadmapEnrollmentId).HasColumnName("roadmap_enrollment_id");
+            entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
+            entity.Property(e => e.SkippedAt).HasColumnName("skipped_at");
+            entity.Property(e => e.StartedAt).HasColumnName("started_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'pending'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.RoadmapEnrollment).WithMany(p => p.UserNodeProgresses)
+                .HasForeignKey(d => d.RoadmapEnrollmentId)
+                .HasConstraintName("fk_user_node_progress_enrollment");
+        });
+
         modelBuilder.Entity<UserProfile>(entity =>
         {
             entity.HasKey(e => e.UserId).HasName("user_profile_pkey");
@@ -823,35 +1296,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_user_profile_user_id");
         });
 
-        modelBuilder.Entity<UserRoadmapStatus>(entity =>
-        {
-            entity.HasKey(e => e.EnrollmentId).HasName("user_roadmap_status_pkey");
-
-            entity.ToTable("user_roadmap_status");
-
-            entity.HasIndex(e => new { e.UserId, e.RoadmapId }, "uq_user_roadmap_status").IsUnique();
-
-            entity.Property(e => e.EnrollmentId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("enrollment_id");
-            entity.Property(e => e.LastTime)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("last_time");
-            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
-            entity.Property(e => e.Status)
-                .HasMaxLength(30)
-                .HasColumnName("status");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.Roadmap).WithMany(p => p.UserRoadmapStatuses)
-                .HasForeignKey(d => d.RoadmapId)
-                .HasConstraintName("fk_user_roadmap_status_roadmap_id");
-
-            entity.HasOne(d => d.User).WithMany(p => p.UserRoadmapStatuses)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("fk_user_roadmap_status_user_id");
-        });
-
         modelBuilder.Entity<UserRole>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("user_role_pkey");
@@ -873,38 +1317,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_user_role_user_id");
-        });
-
-        modelBuilder.Entity<UserSkillProgress>(entity =>
-        {
-            entity.HasKey(e => e.ProgressId).HasName("user_skill_progress_pkey");
-
-            entity.ToTable("user_skill_progress");
-
-            entity.HasIndex(e => new { e.UserId, e.SkillId }, "uq_user_skill_progress").IsUnique();
-
-            entity.Property(e => e.ProgressId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("progress_id");
-            entity.Property(e => e.SkillId).HasColumnName("skill_id");
-            entity.Property(e => e.Status)
-                .HasMaxLength(30)
-                .HasColumnName("status");
-            entity.Property(e => e.UnlockMethod)
-                .HasColumnType("jsonb")
-                .HasColumnName("unlock_method");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.Skill).WithMany(p => p.UserSkillProgresses)
-                .HasForeignKey(d => d.SkillId)
-                .HasConstraintName("fk_user_skill_progress_skill_id");
-
-            entity.HasOne(d => d.User).WithMany(p => p.UserSkillProgresses)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("fk_user_skill_progress_user_id");
         });
 
         OnModelCreatingPartial(modelBuilder);
