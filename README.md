@@ -1,11 +1,58 @@
-# Learning Roadmap Platform
+# Roadmap Platform Docs Guide
 
-## Useful Docs
+This README is a quick map for the project documentation.
+
+Use it to find the right guide, API endpoint docs, database scripts, and seed files.
+
+## General Docs
 
 | Document | Purpose |
 |---|---|
-| `docs/project-structure.md` | Backend project layout and dependency direction |
-| `docs/project-workflow.md` | ASP.NET Core workflow, User Secrets, and scaffolding notes |
-| `docs/database-workflow.md` | Database schema, seed, and migration workflow |
-| `docs/api/authentication-endpoints.md` | Authentication API contract |
-| `docs/captcha.md` | CAPTCHA setup, protected flows, and extension guide |
+| `docs/project-structure.md` | Explains the project structure, backend layers, and dependency direction. |
+| `docs/project-workflow.md` | Explains the development workflow and backend setup notes. |
+| `docs/database-workflow.md` | Explains the database workflow for schema changes, migrations, seeds, resets, and scaffolding. |
+| `docs/git-workflow.md` | Explains branch naming, commits, pull requests, and team Git workflow. |
+| `docs/naming-conventions.md` | Defines naming rules used across the project. |
+| `docs/captcha.md` | Explains CAPTCHA setup and integration behavior. |
+| `docs/supabase-storage.md` | Explains Supabase storage setup for uploaded resources. |
+| `docs/ai-credit-limits.md` | Explains AI credit limit rules and implementation behavior. |
+
+## API Docs
+
+| Folder | Purpose |
+|---|---|
+| `docs/api/` | Contains API endpoint documentation grouped by feature. |
+
+API docs should focus on endpoint contracts, including routes, methods, request bodies, responses, rules, and caveats.
+
+## Database Docs
+
+| File | Purpose |
+|---|---|
+| `docs/database/schema.sql` | Full database schema snapshot. Use this to understand the current database structure. |
+| `docs/database/reset-database.sql` | Database reset script. Use this when a clean database state is needed. |
+| `docs/database/seed.sql` | Main seed runner for `psql`. This file can include other seed files and should not be pasted directly into Supabase SQL Editor unless converted to plain SQL. |
+
+## Database Migrations
+
+| Folder | Purpose |
+|---|---|
+| `docs/database/migrations/` | Holds ordered database migration scripts. Each migration should represent a clear schema change. |
+
+## Database Seeds
+
+| Folder Pattern | Purpose |
+|---|---|
+| `docs/database/seeds/core/` | Holds shared seed data used across multiple features, such as shared skills. |
+| `docs/database/seeds/<feature>/*.seed.sql` | Holds feature-specific seed files. For example, roadmap seeds live under `docs/database/seeds/roadmaps/`. |
+
+## Notes
+
+- For detailed implementation explanations view the matching file in `docs/`.
+- Put endpoint-specific documentation inside `docs/api/`.
+- Put schema, migration, reset, and seed workflow details inside the database docs.
+- Update this README only when documentation structure changes.
+
+## Summary
+
+This README is a documentation map. Use `docs/` for guides, `docs/api/` for endpoint docs, and `docs/database/` for schema, migration, reset, and seed files.
