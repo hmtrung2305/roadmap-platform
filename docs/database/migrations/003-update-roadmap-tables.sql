@@ -1,251 +1,47 @@
--- =========================
--- User, Role, Permission
--- =========================
+-- ============================================================
+-- 002-roadmap-tables.sql
+-- Purpose:
+--   Replace the old roadmap schema with the new roadmap catalog,
+--   versioning, node, resource, enrollment, and progress structure.
+--
+-- Notes:
+--   - This is a DB-first SQL migration.
+--   - This migration drops old roadmap-specific tables.
+--   - It preserves public.resource, public.resource_chunk,
+--     public.conversation, and public.chatbot_message because those
+--     are used by the existing AI/RAG resource upload feature.
+--   - The existing public.skill table is modernized and reused instead
+--     of dropped, because public.resource currently references it.
+-- ============================================================
+
+BEGIN;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE IF NOT EXISTS public.permission
-(
-    permission_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    permission_name varchar(50) NOT NULL UNIQUE
-);
+-- ============================================================
+-- Drop old roadmap/progress mapping tables
+-- ============================================================
 
-CREATE TABLE IF NOT EXISTS public.role
-(
-    role_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_name varchar(15) NOT NULL UNIQUE
-);
+DROP TABLE IF EXISTS public.user_skill_progress CASCADE;
+DROP TABLE IF EXISTS public.user_roadmap_status CASCADE;
+DROP TABLE IF EXISTS public.node_skill CASCADE;
+DROP TABLE IF EXISTS public.roadmap_edge CASCADE;
+DROP TABLE IF EXISTS public.roadmap_node CASCADE;
+DROP TABLE IF EXISTS public.roadmap CASCADE;
+DROP TABLE IF EXISTS public.specialty CASCADE;
 
-CREATE TABLE IF NOT EXISTS public.user
-(
-    user_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    username varchar(50) UNIQUE NOT NULL,
-    username_normalized varchar(50) UNIQUE NOT NULL,
-    status varchar(30) NOT NULL DEFAULT 'active',
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz,
-
-    CONSTRAINT chk_user_status
-        CHECK (status in ('active', 'suspended', 'deleted'))
-);
-
-CREATE TABLE IF NOT EXISTS public.user_profile
-(
-    user_id uuid PRIMARY KEY,
-
-    display_name varchar(50),
-    headline varchar(150),
-    bio varchar(500),
-    location varchar(100),
-
-    avatar_url text,
-    cover_image_url text,
-
-    career_goal varchar(150),
-    "current_role" varchar(100),
-
-    public_email varchar(254),
-    github_url text,
-    linkedin_url text,
-    resume_url text,
-    personal_website_url text,
-
-    is_public bool NOT NULL DEFAULT false,
-
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_user_profile_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.user_activity_stats
-(
-    user_id uuid PRIMARY KEY,
-
-    current_streak integer NOT NULL DEFAULT 0,
-    longest_streak integer NOT NULL DEFAULT 0,
-    last_interaction timestamptz,
-
-    CONSTRAINT fk_user_activity_stats_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.ai_credit_plan
-(
-    plan_code varchar(30) PRIMARY KEY,
-    daily_credit_limit int NOT NULL,
-    monthly_credit_limit int,
-    description text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT chk_ai_credit_plan_daily_limit
-        CHECK (daily_credit_limit >= 0),
-
-    CONSTRAINT chk_ai_credit_plan_monthly_limit
-        CHECK (monthly_credit_limit IS NULL OR monthly_credit_limit >= 0)
-);
-
-INSERT INTO public.ai_credit_plan
-    (plan_code, daily_credit_limit, monthly_credit_limit, description)
-VALUES
-    ('free', 5, NULL, 'Default experimental plan for regular users.'),
-    ('premium', 100, NULL, 'Higher daily credit limit for future paid users.'),
-    ('admin', 1000, NULL, 'High daily credit limit for administrators and internal testing.')
-ON CONFLICT (plan_code) DO UPDATE
-SET
-    daily_credit_limit = EXCLUDED.daily_credit_limit,
-    monthly_credit_limit = EXCLUDED.monthly_credit_limit,
-    description = EXCLUDED.description;
-
-CREATE TABLE IF NOT EXISTS public.user_ai_credit_plan
-(
-    user_id uuid PRIMARY KEY,
-    plan_code varchar(30) NOT NULL,
-    expires_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_user_ai_credit_plan_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_user_ai_credit_plan_plan_code
-        FOREIGN KEY (plan_code)
-        REFERENCES public.ai_credit_plan(plan_code)
-        ON DELETE RESTRICT
-);
-
-CREATE TABLE IF NOT EXISTS public.ai_credit_usage
-(
-    usage_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    feature_name varchar(80) NOT NULL,
-    credit_cost int NOT NULL DEFAULT 1,
-    request_ref_id uuid,
-    metadata jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_ai_credit_usage_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT chk_ai_credit_usage_credit_cost
-        CHECK (credit_cost > 0)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ai_credit_usage_user_created_at
-    ON public.ai_credit_usage(user_id, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_ai_credit_usage_feature_created_at
-    ON public.ai_credit_usage(feature_name, created_at);
-
-CREATE TABLE IF NOT EXISTS public.permission_role
-(
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),    permission_id uuid NOT NULL,
-    role_id uuid NOT NULL,
-
-    CONSTRAINT fk_permission_role_permission_id
-        FOREIGN KEY (permission_id)
-        REFERENCES public.permission(permission_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_permission_role_role_id
-        FOREIGN KEY (role_id)
-        REFERENCES public.role(role_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT uq_permission_role
-        UNIQUE (permission_id, role_id)
-);
-
-CREATE TABLE IF NOT EXISTS public.user_role
-(
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-
-    CONSTRAINT fk_user_role_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_user_role_role_id
-        FOREIGN KEY (role_id)
-        REFERENCES public.role(role_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT uq_user_role
-        UNIQUE (user_id, role_id)
-);
-
-CREATE TABLE IF NOT EXISTS public.user_auth_provider
-(
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    email varchar(254),
-    password_hash text,
-    provider varchar(100) NOT NULL,
-    provider_user_id varchar(255) NOT NULL,
-    provider_username varchar(50),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    pending_email varchar(254),
-    email_verified_at timestamptz,
-
-    CONSTRAINT fk_user_auth_provider_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT uq_provider_identity
-        UNIQUE (provider, provider_user_id),
-
-    CONSTRAINT uq_user_provider
-        UNIQUE (user_id, provider)
-);
-
-CREATE TABLE IF NOT EXISTS public.email_verification_token
-(
-    verification_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    user_id uuid NOT NULL,
-
-    provider varchar(50) NOT NULL,
-    email varchar(255) NOT NULL,
-
-    purpose varchar(50) NOT NULL,
-    otp_hash text NOT NULL,
-
-    expires_at timestamptz NOT NULL,
-    used_at timestamptz NULL,
-
-    attempt_count int NOT NULL DEFAULT 0,
-    max_attempts int NOT NULL DEFAULT 5,
-
-    created_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_email_verification_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
-);
-
--- =========================
--- Roadmap
--- =========================
+-- ============================================================
+-- Skill Taxonomy
+-- Keep this separate from roadmap_node.
+-- A skill is a reusable concept such as React, SQL, REST API, Git.
+-- A roadmap node is a learning step such as "Learn React Hooks".
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.skill
 (
     skill_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name varchar(100) NOT NULL,
-    slug varchar(120) NOT NULL,
+    name varchar(100),
+    slug varchar(120),
     description text,
     category varchar(100),
     is_active boolean NOT NULL DEFAULT true,
@@ -253,11 +49,117 @@ CREATE TABLE IF NOT EXISTS public.skill
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+DO $$
+BEGIN
+    -- Old schema used skill_name. New schema uses name.
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'skill_name'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'name'
+    ) THEN
+        ALTER TABLE public.skill RENAME COLUMN skill_name TO name;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'name'
+    ) THEN
+        ALTER TABLE public.skill ADD COLUMN name varchar(100);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'slug'
+    ) THEN
+        ALTER TABLE public.skill ADD COLUMN slug varchar(120);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'category'
+    ) THEN
+        ALTER TABLE public.skill ADD COLUMN category varchar(100);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'is_active'
+    ) THEN
+        ALTER TABLE public.skill ADD COLUMN is_active boolean NOT NULL DEFAULT true;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'created_at'
+    ) THEN
+        ALTER TABLE public.skill ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'skill'
+          AND column_name = 'updated_at'
+    ) THEN
+        ALTER TABLE public.skill ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+    END IF;
+END $$;
+
+UPDATE public.skill
+SET name = 'unnamed-skill-' || skill_id::text
+WHERE name IS NULL OR btrim(name) = '';
+
+UPDATE public.skill
+SET slug = trim(both '-' from regexp_replace(lower(name), '[^a-z0-9]+', '-', 'g'))
+WHERE slug IS NULL OR btrim(slug) = '';
+
+-- Ensure generated slugs are never empty.
+UPDATE public.skill
+SET slug = 'skill-' || skill_id::text
+WHERE slug IS NULL OR btrim(slug) = '';
+
+ALTER TABLE public.skill
+    ALTER COLUMN name SET NOT NULL,
+    ALTER COLUMN slug SET NOT NULL;
+
+ALTER TABLE public.skill
+    DROP CONSTRAINT IF EXISTS uq_skill_name,
+    DROP CONSTRAINT IF EXISTS uq_skill_slug;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_skill_name
     ON public.skill(name);
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_skill_slug
     ON public.skill(slug);
+
+-- ============================================================
+-- Career Role
+-- Examples: Frontend Developer, Backend Developer, Data Analyst.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.career_role
 (
@@ -270,6 +172,11 @@ CREATE TABLE IF NOT EXISTS public.career_role
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- ============================================================
+-- Learning Resource Catalog
+-- Static roadmap resources, separate from uploaded RAG resources.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.learning_resource
 (
@@ -307,6 +214,7 @@ CREATE TABLE IF NOT EXISTS public.learning_resource
         CHECK (verification_status IN ('pending', 'verified', 'broken', 'rejected'))
 );
 
+-- Optional mapping: one resource can cover multiple skills.
 CREATE TABLE IF NOT EXISTS public.learning_resource_skill
 (
     learning_resource_skill_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -326,6 +234,12 @@ CREATE TABLE IF NOT EXISTS public.learning_resource_skill
     CONSTRAINT uq_learning_resource_skill
         UNIQUE (learning_resource_id, skill_id)
 );
+
+-- ============================================================
+-- Roadmap
+-- A roadmap is the stable parent object.
+-- Versions hold the actual published/draft node graph.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.roadmap
 (
@@ -408,6 +322,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
     CONSTRAINT chk_roadmap_version_estimated_total_hours
         CHECK (estimated_total_hours IS NULL OR estimated_total_hours > 0)
 );
+
+-- ============================================================
+-- Roadmap Node
+-- Nodes are visible roadmap units. Phase and choice_group nodes are computed; topic, choice_option, checkpoint, and project nodes are user-trackable.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.roadmap_node
 (
@@ -536,6 +455,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node_skill
         UNIQUE (roadmap_node_id, skill_id)
 );
 
+-- ============================================================
+-- Roadmap Edge / Layout + Progress Semantics
+-- Edges distinguish sequence, containment, choice, dependency, unlock, and recommendation relationships.
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.roadmap_edge
 (
     roadmap_edge_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -574,6 +498,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap_edge
         CHECK (dependency_type IN ('required', 'recommended', 'optional'))
 );
 
+-- ============================================================
+-- Node Resource Mapping
+-- Links roadmap nodes to static catalog resources.
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.roadmap_node_resource
 (
     roadmap_node_resource_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -595,6 +524,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node_resource
     CONSTRAINT uq_roadmap_node_resource
         UNIQUE (roadmap_node_id, learning_resource_id)
 );
+
+-- ============================================================
+-- Enrollment
+-- User starts a specific published roadmap version.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.roadmap_enrollment
 (
@@ -627,6 +561,11 @@ CREATE TABLE IF NOT EXISTS public.roadmap_enrollment
         CHECK (progress_percent >= 0 AND progress_percent <= 100)
 );
 
+-- ============================================================
+-- User Node Progress
+-- Stores manual user progress only. Locked/phase/choice_group statuses are computed by the backend.
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.user_node_progress
 (
     user_node_progress_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -656,6 +595,11 @@ CREATE TABLE IF NOT EXISTS public.user_node_progress
     CONSTRAINT chk_user_node_progress_status
         CHECK (status IN ('pending', 'in_progress', 'completed', 'skipped'))
 );
+
+-- ============================================================
+-- Progress Audit Event
+-- Append-only history for progress changes.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.progress_event
 (
@@ -696,6 +640,10 @@ CREATE TABLE IF NOT EXISTS public.progress_event
 CREATE UNIQUE INDEX IF NOT EXISTS uq_progress_event_idempotency_not_null
     ON public.progress_event(roadmap_enrollment_id, idempotency_key)
     WHERE idempotency_key IS NOT NULL;
+
+-- ============================================================
+-- Indexes
+-- ============================================================
 
 CREATE INDEX IF NOT EXISTS ix_skill_slug
     ON public.skill(slug);
@@ -814,189 +762,4 @@ CREATE INDEX IF NOT EXISTS ix_progress_event_enrollment_id
 CREATE INDEX IF NOT EXISTS ix_progress_event_user_id
     ON public.progress_event(user_id);
 
--- =========================
--- Uploaded AI/RAG Resources
--- =========================
-
-CREATE TABLE IF NOT EXISTS public.resource
-(
-	resource_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	skill_id uuid NOT NULL,
-	title varchar(100),
-	url varchar(100) NOT NULL,
-	created_at timestamptz default now(),
-	metadata jsonb,
-
-	CONSTRAINT fk_skill_id
-		FOREIGN KEY (skill_id)
-		REFERENCES public.skill(skill_id)
-);
-
-CREATE TABLE IF NOT EXISTS public.my_resource
-(
-	resource_id uuid PRIMARY KEY,
-    
-	CONSTRAINT fk_my_resource_id
-		FOREIGN KEY (resource_id)
-		REFERENCES public.resource(resource_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.other_resource
-(
-	resource_id uuid PRIMARY KEY,
-	resource_type varchar(100),
-	provider varchar(100),
-
-	CONSTRAINT fk_other_resource_id
-		FOREIGN KEY (resource_id)
-		REFERENCES public.resource(resource_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.resource_chunk
-(
-    chunk_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    resource_id uuid NOT NULL,
-    chunk_content text NOT NULL,
-	embedding vector(3072),
-
-    CONSTRAINT fk_chunk_resource
-        FOREIGN KEY (resource_id)
-        REFERENCES public.resource(resource_id) ON DELETE CASCADE
-);
-
--- =========================
--- Chatbot AI
--- =========================
-
-CREATE TABLE IF NOT EXISTS public.conversation
-(
-    conversation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    resource_id uuid NOT NULL,
-    title varchar(100),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_conversation_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_conversation_resource_id
-        FOREIGN KEY (resource_id)
-        REFERENCES public.resource(resource_id)
-        ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.chatbot_message
-(
-    request_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id uuid NOT NULL,
-    content_message text NOT NULL,
-    metadata jsonb,
-
-    CONSTRAINT fk_chatbot_message_conversation_id
-        FOREIGN KEY (conversation_id)
-        REFERENCES public.conversation(conversation_id)
-        ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.user_insight
-(
-    insight_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    metadata jsonb,
-
-    CONSTRAINT fk_user_insight_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
-);
-
--- =========================
--- GitHub Repository
--- =========================
-
-CREATE TABLE IF NOT EXISTS public.repository
-(
-    repository_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-
-    github_repo_id bigint NOT NULL,
-    name varchar(150) NOT NULL,
-    full_name varchar(255) NOT NULL,
-    html_url text NOT NULL,
-    description text,
-
-    primary_language varchar(50),
-    stars int NOT NULL DEFAULT 0,
-    forks int NOT NULL DEFAULT 0,
-
-    is_private bool NOT NULL DEFAULT false,
-    is_selected_for_portfolio bool NOT NULL DEFAULT true,
-
-    github_created_at timestamptz,
-    github_updated_at timestamptz,
-    synced_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_repository_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT uq_user_github_repo
-        UNIQUE (user_id, github_repo_id)
-);
-
-CREATE TABLE IF NOT EXISTS public.repo_insight
-(
-    insight_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    repository_id uuid NOT NULL,
-    summary text,
-    tech_stack jsonb,
-    detected_skills jsonb,
-    project_type varchar(100),
-    analyzed_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_repo_insight_repository_id
-        FOREIGN KEY (repository_id)
-        REFERENCES public.repository(repository_id)
-        ON DELETE CASCADE
-);
-
--- =========================
--- Payment
--- =========================
-
-CREATE TABLE IF NOT EXISTS public.invoice
-(
-    invoice_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    total_amount decimal(12, 2) NOT NULL,
-    currency varchar(10) NOT NULL DEFAULT 'VND',
-    status varchar(30) NOT NULL,
-    description text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_invoice_user_id
-        FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.payment_transaction
-(
-    transaction_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    invoice_id uuid NOT NULL,
-    gateway varchar(30),
-    gateway_transaction_id varchar(100),
-    amount decimal(12, 2) NOT NULL,
-    status varchar(30) NOT NULL,
-    webhook_payload jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_payment_transaction_invoice_id
-        FOREIGN KEY (invoice_id)
-        REFERENCES public.invoice(invoice_id)
-        ON DELETE CASCADE
-);
+COMMIT;
