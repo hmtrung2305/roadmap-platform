@@ -42,7 +42,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
                     Url = resource.Url,
                     CreatedAt = resource.CreatedAt,
                     Metadata = resource.Metadata,
-                    SkillName = resource.Skill.Name
+                    SkillName = resource.Skill != null ? resource.Skill.Name : null
                 })
                 .ToListAsync();
         }
@@ -81,11 +81,18 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
 
             if (skill == null)
             {
+                var now = DateTime.UtcNow;
+                var skillDisplayName = skillName.Trim();
+
                 skill = new Skill
                 {
                     SkillId = Guid.NewGuid(),
-                    Name = skillName.Trim(),
-                    Description = "Auto-generated from upload"
+                    Name = skillDisplayName,
+                    Slug = await BuildUniqueSkillSlugAsync(skillDisplayName),
+                    Description = "Auto-generated from upload",
+                    IsActive = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
                 };
 
                 _context.Skills.Add(skill);
@@ -314,6 +321,51 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
             {
                 return null;
             }
+        }
+
+        private async Task<string> BuildUniqueSkillSlugAsync(string skillName)
+        {
+            var baseSlug = BuildSlug(skillName);
+
+            if (string.IsNullOrWhiteSpace(baseSlug))
+            {
+                baseSlug = "skill";
+            }
+
+            var slug = baseSlug;
+            var suffix = 2;
+
+            while (await _context.Skills.AnyAsync(skill => skill.Slug == slug))
+            {
+                slug = $"{baseSlug}-{suffix}";
+                suffix++;
+            }
+
+            return slug;
+        }
+
+        private static string BuildSlug(string value)
+        {
+            var builder = new StringBuilder();
+            var previousWasDash = false;
+
+            foreach (var character in value.Trim().ToLowerInvariant())
+            {
+                if (char.IsLetterOrDigit(character))
+                {
+                    builder.Append(character);
+                    previousWasDash = false;
+                    continue;
+                }
+
+                if (!previousWasDash)
+                {
+                    builder.Append('-');
+                    previousWasDash = true;
+                }
+            }
+
+            return builder.ToString().Trim('-');
         }
 
         private sealed record ResourceStorageMetadata(
