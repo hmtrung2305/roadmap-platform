@@ -42,7 +42,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
                     Url = resource.Url,
                     CreatedAt = resource.CreatedAt,
                     Metadata = resource.Metadata,
-                    SkillName = resource.Skill.SkillName
+                    SkillName = resource.Skill.Name
                 })
                 .ToListAsync();
         }
@@ -77,14 +77,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
             var normalizedSkillName = skillName.Trim().ToLower();
 
             var skill = await _context.Skills
-                .FirstOrDefaultAsync(s => s.SkillName.ToLower() == normalizedSkillName);
+                .FirstOrDefaultAsync(s => s.Name.ToLower() == normalizedSkillName);
 
             if (skill == null)
             {
                 skill = new Skill
                 {
                     SkillId = Guid.NewGuid(),
-                    SkillName = skillName.Trim(),
+                    Name = skillName.Trim(),
                     Description = "Auto-generated from upload"
                 };
 
@@ -159,7 +159,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Resources
                 Url = resource.Url,
                 CreatedAt = resource.CreatedAt,
                 Metadata = resource.Metadata,
-                SkillName = skill.SkillName
+                SkillName = skill.Name
             };
         }
 

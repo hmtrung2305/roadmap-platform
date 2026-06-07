@@ -1,3 +1,6 @@
+﻿using System;
+using System.Collections.Generic;
+
 namespace RoadmapPlatform.Infrastructure.Entities;
 
 public partial class AiCreditPlan
@@ -10,7 +13,7 @@ public partial class AiCreditPlan
 
     public string? Description { get; set; }
 
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<UserAiCreditPlan> UserAiCreditPlans { get; set; } = new List<UserAiCreditPlan>();
 }

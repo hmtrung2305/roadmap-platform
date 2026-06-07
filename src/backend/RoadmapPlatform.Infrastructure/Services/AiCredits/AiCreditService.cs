@@ -71,9 +71,10 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
             Guid userId,
             CancellationToken cancellationToken)
         {
-            var now = DateTimeOffset.UtcNow;
-            var dayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
+            var now = DateTime.UtcNow;
+            var dayStart = now.Date;
             var resetAt = dayStart.AddDays(1);
+
             var plan = await GetActivePlanAsync(userId, now, cancellationToken);
 
             var usedToday = await _dbContext.AiCreditUsages
@@ -92,26 +93,26 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
                 DailyCreditLimit = plan.DailyCreditLimit,
                 UsedCreditsToday = usedToday,
                 RemainingCreditsToday = remaining,
-                ResetAt = resetAt
+                ResetAt = new DateTimeOffset(resetAt, TimeSpan.Zero)
             };
         }
 
         private async Task<AiCreditPlan> GetActivePlanAsync(
             Guid userId,
-            DateTimeOffset now,
+            DateTime now,
             CancellationToken cancellationToken)
         {
             var userPlan = await _dbContext.UserAiCreditPlans
                 .AsNoTracking()
-                .Include(userAiCreditPlan => userAiCreditPlan.Plan)
+                .Include(userAiCreditPlan => userAiCreditPlan.PlanCodeNavigation)
                 .FirstOrDefaultAsync(userAiCreditPlan =>
                     userAiCreditPlan.UserId == userId &&
                     (userAiCreditPlan.ExpiresAt == null || userAiCreditPlan.ExpiresAt > now),
                     cancellationToken);
 
-            if (userPlan?.Plan != null)
+            if (userPlan?.PlanCodeNavigation != null)
             {
-                return userPlan.Plan;
+                return userPlan.PlanCodeNavigation;
             }
 
             var defaultPlan = await _dbContext.AiCreditPlans

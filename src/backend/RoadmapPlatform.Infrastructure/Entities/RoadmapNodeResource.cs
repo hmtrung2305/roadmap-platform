@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace RoadmapPlatform.Infrastructure.Entities;
+
+public partial class RoadmapNodeResource
+{
+    public Guid RoadmapNodeResourceId { get; set; }
+
+    public Guid RoadmapNodeId { get; set; }
+
+    public Guid LearningResourceId { get; set; }
+
+    public int OrderIndex { get; set; }
+
+    public bool IsPrimary { get; set; }
+
+    public virtual LearningResource LearningResource { get; set; } = null!;
+}

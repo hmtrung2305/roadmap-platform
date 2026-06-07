@@ -1,3 +1,6 @@
+﻿using System;
+using System.Collections.Generic;
+
 namespace RoadmapPlatform.Infrastructure.Entities;
 
 public partial class UserAiCreditPlan
@@ -6,13 +9,13 @@ public partial class UserAiCreditPlan
 
     public string PlanCode { get; set; } = null!;
 
-    public DateTimeOffset? ExpiresAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
-    public virtual AiCreditPlan Plan { get; set; } = null!;
+    public virtual AiCreditPlan PlanCodeNavigation { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
 }

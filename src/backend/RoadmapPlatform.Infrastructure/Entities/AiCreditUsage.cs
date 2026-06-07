@@ -1,3 +1,6 @@
+﻿using System;
+using System.Collections.Generic;
+
 namespace RoadmapPlatform.Infrastructure.Entities;
 
 public partial class AiCreditUsage
@@ -14,7 +17,7 @@ public partial class AiCreditUsage
 
     public string? Metadata { get; set; }
 
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;
 }
