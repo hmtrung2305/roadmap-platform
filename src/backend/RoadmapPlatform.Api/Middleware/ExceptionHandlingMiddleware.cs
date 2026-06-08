@@ -39,8 +39,10 @@ namespace RoadmapPlatform.Api.Middleware
                     {
                         code = "EMAIL_NOT_VERIFIED",
                         message = emailEx.Message,
+                        email = emailEx.Email,
                         requiresEmailVerification = true,
-                        email = emailEx.Email
+                        verificationPurpose = emailEx.VerificationPurpose,
+                        canResendVerification = emailEx.CanResendVerification
                     },
 
                     _ => new

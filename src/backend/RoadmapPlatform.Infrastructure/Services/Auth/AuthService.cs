@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Auth;
@@ -52,23 +52,30 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Password was not provided");
         }
 
+        var existingLocalProvider = await _dbContext.UserAuthProviders
+            .Include(x => x.User)
+            .FirstOrDefaultAsync(
+                x => x.Provider == AuthProviders.Local &&
+                     x.ProviderUserId == email,
+                cancellationToken);
+
+        if (existingLocalProvider != null)
+        {
+            if (existingLocalProvider.EmailVerifiedAt == null ||
+                existingLocalProvider.User?.Status == UserStatuses.PendingVerification)
+            {
+                return CreatePendingRegistrationResponse(email);
+            }
+
+            throw new ConflictException("Email is already registered");
+        }
+
         var usernameExists = await _dbContext.Users
             .AnyAsync(x => x.UsernameNormalized == normalizedUsername, cancellationToken);
 
         if (usernameExists)
         {
             throw new ConflictException("Username is already taken");
-        }
-
-        var emailExists = await _dbContext.UserAuthProviders
-            .AnyAsync(
-                x => x.Provider == AuthProviders.Local &&
-                     x.ProviderUserId == email,
-                cancellationToken);
-
-        if (emailExists)
-        {
-            throw new ConflictException("Email is already registered");
         }
 
         var now = DateTime.UtcNow;
@@ -78,7 +85,7 @@ public class AuthService : IAuthService
             UserId = Guid.NewGuid(),
             Username = username,
             UsernameNormalized = normalizedUsername,
-            Status = UserStatuses.Active,
+            Status = UserStatuses.PendingVerification,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -130,9 +137,11 @@ public class AuthService : IAuthService
 
         return new RegistrationResponseDto
         {
-            Message = "Registration successful. Please verify your email.",
+            Message = "Registration started. Please verify your email.",
             Email = email,
-            RequiresEmailVerification = true
+            RequiresEmailVerification = true,
+            VerificationPurpose = EmailVerificationPurposes.Register,
+            CanResendVerification = true
         };
     }
 
@@ -248,7 +257,6 @@ public class AuthService : IAuthService
         var user = await _dbContext.Users
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
-            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.UserId == verificationResult.UserId, cancellationToken);
 
         if (user == null)
@@ -257,6 +265,14 @@ public class AuthService : IAuthService
         }
 
         ValidateAccountStatus(user.Status);
+
+        if (user.Status == UserStatuses.PendingVerification)
+        {
+            user.Status = UserStatuses.Active;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         var authenticatedUser = new AuthenticatedUserDto
         {
@@ -353,6 +369,18 @@ public class AuthService : IAuthService
         ValidateAccountStatus(user.Status);
 
         return CreateLoginResponse(user);
+    }
+
+    private static RegistrationResponseDto CreatePendingRegistrationResponse(string email)
+    {
+        return new RegistrationResponseDto
+        {
+            Message = "Registration is already pending. Please verify your email to continue.",
+            Email = email,
+            RequiresEmailVerification = true,
+            VerificationPurpose = EmailVerificationPurposes.Register,
+            CanResendVerification = true
+        };
     }
 
     private LoginResponseDto CreateLoginResponse(AuthenticatedUserDto user)

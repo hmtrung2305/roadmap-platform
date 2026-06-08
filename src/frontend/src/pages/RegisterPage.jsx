@@ -9,6 +9,12 @@ import { FaGithub } from "react-icons/fa";
 import MotionWrapper from "../components/auth/MotionWrapper";
 import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
+import {
+  getErrorMessage,
+  goToVerificationPage,
+  isEmailVerificationRequired,
+  VERIFICATION_PURPOSES,
+} from "../utils/authVerificationFlow";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -96,18 +102,38 @@ export default function RegisterPage() {
       setError("");
       clearAuthError();
 
-      await register({
+      const data = await register({
         Username: form.username.trim(),
         Email: form.email.trim(),
         Password: form.password,
         CaptchaToken: captchaToken,
       });
 
-      navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}`);
+      if (isEmailVerificationRequired(data)) {
+        goToVerificationPage(
+          navigate,
+          data,
+          form.email.trim(),
+          VERIFICATION_PURPOSES.REGISTER,
+        );
+        return;
+      }
+
+      navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}&purpose=register`);
     } catch (error) {
       console.error("Register failed:", error);
 
-      setError(error.message || "Register failed. Please try again.");
+      if (isEmailVerificationRequired(error)) {
+        goToVerificationPage(
+          navigate,
+          error,
+          form.email.trim(),
+          VERIFICATION_PURPOSES.REGISTER,
+        );
+        return;
+      }
+
+      setError(getErrorMessage(error, "Register failed. Please try again."));
     } finally {
       setCaptchaToken("");
       setCaptchaResetKey((prev) => prev + 1);
