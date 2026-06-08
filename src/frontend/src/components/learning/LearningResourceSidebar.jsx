@@ -41,7 +41,7 @@ export default function LearningResourceSidebar({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
+            className="rounded-lg p-2 text-slate-400 hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
           >
             <X size={18} />
           </button>
@@ -54,7 +54,7 @@ export default function LearningResourceSidebar({
           </div>
 
           {resources.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8] p-4 text-sm font-medium text-slate-500">
+            <div className="rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8] p-4 text-sm font-medium text-slate-500">
               No documents yet.
             </div>
           ) : (
@@ -82,7 +82,7 @@ export default function LearningResourceSidebar({
                         },
                       });
                     }}
-                    className={`w-full rounded-2xl px-3 py-3 text-left text-sm transition ${
+                    className={`w-full rounded-lg px-3 py-3 text-left text-sm transition ${
                       isActive
                         ? "bg-[#6FCF97]/20 text-[#1F6F5F] ring-1 ring-[#6FCF97]"
                         : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"

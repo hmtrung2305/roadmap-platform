@@ -4,13 +4,13 @@ export default function RoadmapLegend({ isOpen, onToggle }) {
       <button
         type="button"
         onClick={onToggle}
-        className="rounded-xl border border-[#B9D8CC] bg-white px-4 py-2 text-xs font-extrabold tracking-tight text-[#18332D] shadow-sm"
+        className="rounded-lg border border-[#B9D8CC] bg-white px-4 py-2 text-xs font-extrabold tracking-tight text-[#18332D] shadow-sm"
       >
         {isOpen ? "Hide legend" : "Show legend"}
       </button>
 
       {isOpen && (
-        <div className="mt-3 w-[330px] rounded-xl border border-[#B9D8CC] bg-white p-4 text-[#18332D] shadow-lg">
+        <div className="mt-3 w-[330px] rounded-lg border border-[#B9D8CC] bg-white p-4 text-[#18332D] shadow-lg">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-extrabold tracking-tight text-[#18332D]">Roadmap legend</h3>
@@ -22,7 +22,7 @@ export default function RoadmapLegend({ isOpen, onToggle }) {
             <button
               type="button"
               onClick={onToggle}
-              className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold"
+              className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold"
             >
               Close
             </button>
@@ -66,7 +66,7 @@ function LegendSection({ title, children }) {
 function LegendItem({ color, label, description }) {
   return (
     <div className="flex gap-2 text-xs leading-5">
-      <span className="mt-1 h-3 w-3 shrink-0 rounded-xl border border-[#B9D8CC]" style={{ background: color }} />
+      <span className="mt-1 h-3 w-3 shrink-0 rounded-lg border border-[#B9D8CC]" style={{ background: color }} />
       <p>
         <span className="font-black">{label}</span>
         <span className="font-semibold text-slate-600"> — {description}</span>

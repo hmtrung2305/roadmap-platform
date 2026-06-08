@@ -8,7 +8,7 @@ export default function SettingsRow({
   danger = false,
   isDelete = false,
   disabled = false,
-  iconClassName = "bg-indigo-50 text-indigo-700",
+  iconClassName = "bg-[#5A9CB5]/12 text-[#2F7F98]",
   actionClassName = "",
   onClick,
 }) {
@@ -17,11 +17,11 @@ export default function SettingsRow({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex w-full items-center gap-4 px-6 py-5 text-left transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full items-center gap-4 px-6 py-5 text-left transition hover:bg-[#6FCF97]/8 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {Icon && (
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
             danger ? "bg-red-50 text-red-600" : iconClassName
           }`}
         >

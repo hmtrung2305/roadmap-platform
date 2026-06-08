@@ -179,7 +179,7 @@ export default function StudyRoomPage() {
             {isFetching || isLoadingDocument ? (
               <DocumentLoading />
             ) : documentError ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
                 {documentError}
               </div>
             ) : (

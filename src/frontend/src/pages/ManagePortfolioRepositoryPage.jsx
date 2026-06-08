@@ -132,7 +132,7 @@ export default function ManagePortfolioRepositoriesPage() {
   if (loading) {
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-slate-100 px-6 py-8">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="mx-auto max-w-6xl rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
           <p className="text-slate-500">Loading repositories...</p>
         </div>
       </main>

@@ -13,8 +13,8 @@ export default function PortfolioHeader({ portfolio, username }) {
   const avatarUrl = portfolio?.avatarUrl;
 
   return (
-    <section className="relative rounded-3xl border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]">
-      <div className="relative z-0 h-52 overflow-hidden rounded-t-3xl bg-[#1F6F5F] sm:h-60">
+    <section className="relative rounded-lg border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]">
+      <div className="relative z-0 h-52 overflow-hidden rounded-t-lg bg-[#1F6F5F] sm:h-60">
         {coverImageUrl ? (
           <img
             src={coverImageUrl}
@@ -32,7 +32,7 @@ export default function PortfolioHeader({ portfolio, username }) {
 
       <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-end gap-4">
-          <div className="-mt-14 h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-[0_16px_34px_rgba(31,111,95,0.22)] ring-1 ring-[#B9D8CC] sm:-mt-16 sm:h-28 sm:w-28">
+          <div className="-mt-14 h-24 w-24 shrink-0 overflow-hidden rounded-lg border-4 border-white bg-white shadow-[0_16px_34px_rgba(31,111,95,0.22)] ring-1 ring-[#B9D8CC] sm:-mt-16 sm:h-28 sm:w-28">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -104,7 +104,7 @@ export default function PortfolioHeader({ portfolio, username }) {
 
 function InfoButton({ icon, label }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs font-extrabold text-[#18332D]">
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs font-extrabold text-[#18332D]">
       {icon}
       {label}
     </span>
@@ -117,7 +117,7 @@ function ExternalButton({ href, icon, label }) {
       href={href}
       target={href.startsWith("mailto:") ? undefined : "_blank"}
       rel="noreferrer"
-      className="inline-flex items-center gap-1.5 rounded-xl border border-[#B9D8CC] bg-white px-3 py-2 text-xs font-extrabold text-[#18332D] transition hover:border-[#6FCF97] hover:bg-[#6FCF97]/25 hover:text-[#1F6F5F]"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-white px-3 py-2 text-xs font-extrabold text-[#18332D] transition hover:border-[#6FCF97] hover:bg-[#6FCF97]/25 hover:text-[#1F6F5F]"
     >
       {icon}
       {label}

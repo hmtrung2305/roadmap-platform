@@ -27,7 +27,7 @@ const items = [
 
 export default function SettingsSidebar() {
   return (
-    <aside className="sticky top-24 hidden h-fit w-64 shrink-0 rounded-3xl border border-[#B9D8CC] bg-white p-3 shadow-[0_14px_34px_rgba(31,111,95,0.08)] lg:block">
+    <aside className="sticky top-24 hidden h-fit w-64 shrink-0 rounded-lg border border-[#B9D8CC] bg-white p-3 shadow-[0_14px_34px_rgba(31,111,95,0.08)] lg:block">
       <div className="px-3 py-3">
         <h1 className="text-xl font-extrabold tracking-tight text-[#18332D]">
           Settings
@@ -47,21 +47,21 @@ export default function SettingsSidebar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition ${
+                `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold transition ${
                   isActive
-                    ? "bg-[#6FCF97]/20 text-[#1F6F5F]"
-                    : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"
+                    ? "bg-[#6FCF97]/20 text-[#1F6F5F] shadow-sm shadow-[#6FCF97]/20"
+                    : "text-slate-600 hover:bg-[#6FCF97]/10 hover:text-[#1F6F5F]"
                 }`
               }
             >
-              <Icon size={18} />
+              <Icon size={18} className="shrink-0" />
               {item.label}
             </NavLink>
           );
         })}
       </nav>
 
-      <div className="mt-4 rounded-2xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-3 text-xs leading-5 text-[#1F6F5F]">
+      <div className="mt-4 rounded-lg border border-[#B9D8CC] bg-[#6FCF97]/12 px-3 py-3 text-xs leading-5 text-[#1F6F5F]">
         Keep at least one login method connected to avoid losing access.
       </div>
     </aside>

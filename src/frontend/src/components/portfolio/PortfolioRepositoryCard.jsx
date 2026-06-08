@@ -14,7 +14,7 @@ export default function PortfolioRepositoryCard({ repository }) {
   ].filter(Boolean);
 
   return (
-    <article className="flex min-h-[240px] flex-col rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
+    <article className="flex min-h-[240px] flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="line-clamp-1 text-lg font-extrabold text-[#18332D]">
@@ -32,7 +32,7 @@ export default function PortfolioRepositoryCard({ repository }) {
             target="_blank"
             rel="noreferrer"
             onClick={(event) => event.stopPropagation()}
-            className="shrink-0 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-2 text-[#1F6F5F] transition hover:bg-[#6FCF97]/30"
+            className="shrink-0 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] p-2 text-[#1F6F5F] transition hover:bg-[#6FCF97]/30"
             aria-label="Open repository"
           >
             <ExternalLink size={15} />

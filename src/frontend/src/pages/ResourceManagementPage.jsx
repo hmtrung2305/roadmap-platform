@@ -70,7 +70,7 @@ export default function ResourceManagementPage() {
         <header className="overflow-hidden rounded-[2rem] border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]">
           <div className="bg-gradient-to-r from-[#1F6F5F] via-[#2FA084] to-[#6FCF97] px-6 py-8 text-white">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/15 text-white ring-1 ring-white/25">
                 <Library size={24} />
               </div>
               <div>
@@ -103,7 +103,7 @@ export default function ResourceManagementPage() {
         />
 
         {error && (
-          <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <span className="inline-flex items-center gap-2">
               <AlertCircle size={16} />
               {error}
@@ -128,7 +128,7 @@ export default function ResourceManagementPage() {
           </div>
 
           {isFetching ? (
-            <div className="rounded-3xl border border-[#B9D8CC] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+            <div className="rounded-lg border border-[#B9D8CC] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
               Loading documents...
             </div>
           ) : (
@@ -146,7 +146,7 @@ export default function ResourceManagementPage() {
 
 function Metric({ label, value }) {
   return (
-    <div className="rounded-2xl border border-[#B9D8CC] bg-[#F7F1E8]/60 px-4 py-3">
+    <div className="rounded-lg border border-[#B9D8CC] bg-[#F7F1E8]/60 px-4 py-3">
       <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
         {label}
       </p>

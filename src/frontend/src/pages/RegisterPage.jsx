@@ -129,7 +129,7 @@ export default function RegisterPage() {
 
         <section className="flex min-h-dvh items-center justify-center bg-white px-6 py-5">
           <div
-            className={`w-full max-w-[420px] rounded-3xl border border-slate-100 bg-white px-6 py-6 shadow-xl shadow-slate-200/60 transition duration-200 ${
+            className={`w-full max-w-[420px] rounded-lg border border-slate-100 bg-white px-6 py-6 shadow-xl shadow-slate-200/60 transition duration-200 ${
               authLoading ? "scale-[0.99] opacity-70" : ""
             }`}
           >
@@ -152,7 +152,7 @@ export default function RegisterPage() {
             </div>
 
             {displayError && (
-              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {displayError}
               </div>
             )}
@@ -168,7 +168,7 @@ export default function RegisterPage() {
                   value={form.username}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
@@ -184,7 +184,7 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
@@ -201,7 +201,7 @@ export default function RegisterPage() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
                 </div>
@@ -217,7 +217,7 @@ export default function RegisterPage() {
                     value={form.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
                 </div>
@@ -261,7 +261,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={authLoading || (CAPTCHA_ENABLED && !captchaToken)}
-                className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-lg bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Creating account..." : "Create account"}
               </button>

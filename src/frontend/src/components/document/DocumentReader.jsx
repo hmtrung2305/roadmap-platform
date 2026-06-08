@@ -8,7 +8,7 @@ function isCodeBlock(className, children) {
 export default function DocumentReader({ markdownContent }) {
   if (!markdownContent) {
     return (
-      <div className="rounded-3xl border border-dashed border-[#B9D8CC] bg-white p-10 text-center shadow-sm">
+      <div className="rounded-lg border border-dashed border-[#B9D8CC] bg-white p-10 text-center shadow-sm">
         <h2 className="text-lg font-extrabold text-[#18332D]">
           No document content
         </h2>
@@ -76,7 +76,7 @@ export default function DocumentReader({ markdownContent }) {
               </li>
             ),
             blockquote: ({ children }) => (
-              <blockquote className="my-6 rounded-2xl border-l-4 border-[#2FA084] bg-[#EEF7F1] px-5 py-4 text-slate-700">
+              <blockquote className="my-6 rounded-lg border-l-4 border-[#2FA084] bg-[#EEF7F1] px-5 py-4 text-slate-700">
                 {children}
               </blockquote>
             ),
@@ -94,7 +94,7 @@ export default function DocumentReader({ markdownContent }) {
 
               return (
                 <code
-                  className="block overflow-x-auto whitespace-pre rounded-2xl bg-[#18332D] p-4 text-sm leading-7 text-[#EEF7F1]"
+                  className="block overflow-x-auto whitespace-pre rounded-lg bg-[#18332D] p-4 text-sm leading-7 text-[#EEF7F1]"
                   {...props}
                 >
                   {children}
@@ -102,12 +102,12 @@ export default function DocumentReader({ markdownContent }) {
               );
             },
             pre: ({ children }) => (
-              <pre className="my-6 overflow-hidden rounded-2xl bg-[#18332D] p-0 shadow-lg shadow-emerald-900/10">
+              <pre className="my-6 overflow-hidden rounded-lg bg-[#18332D] p-0 shadow-lg shadow-emerald-900/10">
                 {children}
               </pre>
             ),
             table: ({ children }) => (
-              <div className="my-7 overflow-x-auto rounded-2xl border border-[#B9D8CC]">
+              <div className="my-7 overflow-x-auto rounded-lg border border-[#B9D8CC]">
                 <table className="w-full border-collapse text-left text-sm">
                   {children}
                 </table>

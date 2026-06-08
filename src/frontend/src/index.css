@@ -3,6 +3,15 @@
 
 @theme {
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif, "Segoe UI", "Roboto";
+
+  /* Global radius system: soft education dashboard style */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.125rem;
 }
 
 @plugin "@tailwindcss/typography";
@@ -51,6 +60,47 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+/*
+  TechMap global radius polish
+  - Keeps the whole app soft and consistent
+  - Does not touch rounded-full avatars/badges
+  - Works with existing Tailwind rounded-* classes through the theme above
+*/
+:root {
+  --tm-radius-card: 0.875rem;
+  --tm-radius-panel: 1rem;
+  --tm-radius-control: 0.75rem;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  border-radius: var(--tm-radius-control);
+}
+
+/* Common app surfaces that may not explicitly use Tailwind rounded utilities */
+.card,
+.panel,
+.surface,
+.modal,
+.dropdown,
+.toast,
+.dialog,
+[role="dialog"],
+[role="menu"],
+[data-radix-popper-content-wrapper] > * {
+  border-radius: var(--tm-radius-panel);
+}
+
+/* Keep circular UI elements circular */
+.rounded-full,
+[aria-label*="avatar" i],
+[aria-label*="profile" i] {
+  border-radius: 9999px;
 }
 
 @keyframes streak-pop {

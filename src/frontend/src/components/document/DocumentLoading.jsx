@@ -4,7 +4,7 @@ export default function DocumentLoading() {
   return (
     <div className="overflow-hidden rounded-[2rem] border border-[#B9D8CC] bg-white shadow-[0_20px_60px_rgba(31,111,95,0.10)]">
       <div className="flex items-center gap-3 border-b border-[#DCEBE5] bg-gradient-to-r from-[#F7F1E8] via-white to-[#EEF7F1] px-7 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6FCF97]/20 text-[#1F6F5F]">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#6FCF97]/20 text-[#1F6F5F]">
           <Loader2 className="animate-spin" size={20} />
         </div>
 
@@ -19,14 +19,14 @@ export default function DocumentLoading() {
       </div>
 
       <div className="px-7 py-8 sm:px-10">
-        <div className="h-10 w-3/4 animate-pulse rounded-2xl bg-[#DCEBE5]" />
+        <div className="h-10 w-3/4 animate-pulse rounded-lg bg-[#DCEBE5]" />
         <div className="mt-8 space-y-4">
           <div className="h-4 animate-pulse rounded-full bg-[#DCEBE5]" />
           <div className="h-4 w-11/12 animate-pulse rounded-full bg-[#DCEBE5]" />
           <div className="h-4 w-10/12 animate-pulse rounded-full bg-[#DCEBE5]" />
         </div>
 
-        <div className="mt-9 h-40 animate-pulse rounded-3xl bg-[#EEF7F1]" />
+        <div className="mt-9 h-40 animate-pulse rounded-lg bg-[#EEF7F1]" />
 
         <div className="mt-8 space-y-4">
           <div className="h-4 w-11/12 animate-pulse rounded-full bg-[#DCEBE5]" />

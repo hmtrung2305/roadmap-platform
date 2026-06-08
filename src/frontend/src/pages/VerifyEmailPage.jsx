@@ -127,7 +127,7 @@ export default function VerifyEmailPage() {
     <div className="min-h-dvh bg-slate-50 px-6 py-10 text-slate-900">
       <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-md items-center justify-center">
         <div
-          className={`w-full rounded-3xl border border-slate-200 bg-white px-6 py-7 shadow-xl shadow-slate-200/60 transition duration-200 ${
+          className={`w-full rounded-lg border border-slate-200 bg-white px-6 py-7 shadow-xl shadow-slate-200/60 transition duration-200 ${
             loading ? "scale-[0.99] opacity-70" : ""
           }`}
         >
@@ -146,13 +146,13 @@ export default function VerifyEmailPage() {
           </div>
 
           {error && (
-            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {message}
             </div>
           )}
@@ -169,7 +169,7 @@ export default function VerifyEmailPage() {
                 value={email}
                 onChange={handleEmailChange}
                 placeholder="name@example.com"
-                className="h-11 w-full rounded-xl border border-slate-300 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                 required
               />
             </div>
@@ -185,7 +185,7 @@ export default function VerifyEmailPage() {
                 onChange={handleOtpChange}
                 placeholder="Enter 6-digit code"
                 inputMode="numeric"
-                className="h-12 w-full rounded-xl border border-slate-300 px-4 text-center text-lg font-semibold tracking-[0.4em] text-slate-900 outline-none transition placeholder:text-sm placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                className="h-12 w-full rounded-lg border border-slate-300 px-4 text-center text-lg font-semibold tracking-[0.4em] text-slate-900 outline-none transition placeholder:text-sm placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                 required
               />
             </div>
@@ -193,7 +193,7 @@ export default function VerifyEmailPage() {
             <button
               type="submit"
               disabled={loading}
-              className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-11 w-full rounded-lg bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Verifying..." : "Verify email"}
             </button>

@@ -86,7 +86,7 @@ export default function AiChatPanel({
         <div className="border-b border-[#B9D8CC] bg-white p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#6FCF97]/20 text-[#1F6F5F]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#6FCF97]/20 text-[#1F6F5F]">
                 <Bot size={20} />
               </div>
 
@@ -103,7 +103,7 @@ export default function AiChatPanel({
                 type="button"
                 onClick={handleClear}
                 disabled={!resourceId || messages.length === 0}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                 title="Clear chat"
               >
                 <Trash2 size={16} />
@@ -112,7 +112,7 @@ export default function AiChatPanel({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 title="Close chat"
               >
                 <X size={16} />
@@ -121,7 +121,7 @@ export default function AiChatPanel({
           </div>
 
           {resource?.title && (
-            <div className="mt-3 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2">
+            <div className="mt-3 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2">
               <p className="line-clamp-2 text-xs font-bold text-[#1F6F5F]">
                 {resource.title}
               </p>
@@ -129,7 +129,7 @@ export default function AiChatPanel({
           )}
 
           {creditStatus && (
-            <div className="mt-3 flex items-center justify-between rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs">
+            <div className="mt-3 flex items-center justify-between rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs">
               <span className="font-medium text-slate-600">
                 AI credits today
               </span>
@@ -143,7 +143,7 @@ export default function AiChatPanel({
 
         <div className="flex-1 overflow-y-auto p-4">
           {error && (
-            <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               <div className="flex items-start justify-between gap-2">
                 <span>{error}</span>
 
@@ -160,8 +160,8 @@ export default function AiChatPanel({
 
           {messages.length === 0 ? (
             <div className="space-y-5">
-              <div className="rounded-2xl border border-[#B9D8CC] bg-white p-4 text-sm text-slate-600 shadow-sm">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6FCF97]/20 text-[#1F6F5F]">
+              <div className="rounded-lg border border-[#B9D8CC] bg-white p-4 text-sm text-slate-600 shadow-sm">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-[#6FCF97]/20 text-[#1F6F5F]">
                   <MessageCircle size={18} />
                 </div>
 
@@ -188,7 +188,7 @@ export default function AiChatPanel({
 
               {isSending && (
                 <div className="flex justify-start">
-                  <div className="inline-flex items-center gap-2 rounded-2xl border border-[#B9D8CC] bg-white px-4 py-3 text-sm text-slate-500">
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-3 text-sm text-slate-500">
                     <Loader2 size={16} className="animate-spin" />
                     AI is replying...
                   </div>

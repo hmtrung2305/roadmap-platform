@@ -71,7 +71,7 @@ export default function ProfileSettingsPage() {
 
   const handleCancel = () => {
     toast.info("Profile editing cancelled.");
-    navigate("/profile");
+    navigate("/portfolio");
   };
 
   const handleSubmit = async (event) => {
@@ -84,7 +84,7 @@ export default function ProfileSettingsPage() {
       await updateMyProfileApi(form);
 
       toast.success("Profile updated successfully.");
-      navigate("/profile");
+      navigate("/portfolio");
     } catch (error) {
       console.error("Failed to update profile:", error.response?.data || error);
 
@@ -100,7 +100,7 @@ export default function ProfileSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Loading profile...</p>
         </div>
       </div>
@@ -118,22 +118,22 @@ export default function ProfileSettingsPage() {
 
         <button
           type="button"
-          onClick={() => navigate("/profile")}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          onClick={() => navigate("/portfolio")}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
           <Eye size={16} />
-          View profile
+          View portfolio
         </button>
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative h-40 bg-indigo-50">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="relative h-40 bg-[#5A9CB5]/10">
           {form.coverImageUrl ? (
             <img
               src={form.coverImageUrl}
@@ -141,10 +141,10 @@ export default function ProfileSettingsPage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-r from-indigo-100 via-blue-50 to-teal-50" />
+            <div className="h-full w-full bg-gradient-to-r from-[#DDEFF4] via-[#F7F1E8] to-[#DDF7EC]" />
           )}
 
-          <div className="absolute -bottom-12 left-6 h-24 w-24 overflow-hidden rounded-3xl border-4 border-white bg-indigo-50 shadow-sm">
+          <div className="absolute -bottom-12 left-6 h-24 w-24 overflow-hidden rounded-lg border-4 border-white bg-[#5A9CB5]/10 shadow-sm">
             {form.avatarUrl ? (
               <img
                 src={form.avatarUrl}
@@ -152,7 +152,7 @@ export default function ProfileSettingsPage() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-indigo-700">
+              <div className="flex h-full w-full items-center justify-center text-[#2F7F98]">
                 <UserRound size={38} />
               </div>
             )}
@@ -206,7 +206,7 @@ export default function ProfileSettingsPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="text-base font-bold text-slate-900">Basic info</h2>
         </div>
@@ -271,13 +271,13 @@ export default function ProfileSettingsPage() {
               onChange={handleChange}
               rows={4}
               placeholder="Write a short introduction..."
-              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+              className="w-full resize-none rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
             />
           </div>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="text-base font-bold text-slate-900">Links & media</h2>
         </div>
@@ -322,31 +322,15 @@ export default function ProfileSettingsPage() {
             onChange={handleChange}
             placeholder="https://your-site.com"
           />
-
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div>
-              <p className="text-sm font-bold text-slate-900">
-                Public profile
-              </p>
-            </div>
-
-            <input
-              type="checkbox"
-              name="isPublic"
-              checked={form.isPublic}
-              onChange={handleChange}
-              className="h-5 w-5 accent-indigo-700"
-            />
-          </label>
         </div>
       </section>
 
-      <div className="flex justify-end gap-3 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+      <div className="flex justify-end gap-3 rounded-lg border border-slate-200 bg-white px-6 py-5 shadow-sm">
         <button
           type="button"
           onClick={handleCancel}
           disabled={saving}
-          className="h-10 rounded-xl px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-10 rounded-lg px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Cancel
         </button>
@@ -354,7 +338,7 @@ export default function ProfileSettingsPage() {
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-700 px-5 text-sm font-semibold text-white shadow-lg shadow-indigo-700/20 transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#2FA084] px-5 text-sm font-semibold text-white shadow-lg shadow-[#2FA084]/20 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Save size={16} />
           {saving ? "Saving..." : "Save changes"}
@@ -376,7 +360,7 @@ function Input({ label, name, value, onChange, placeholder }) {
         value={value || ""}
         onChange={onChange}
         placeholder={placeholder}
-        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+        className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
       />
     </div>
   );
@@ -385,7 +369,7 @@ function Input({ label, name, value, onChange, placeholder }) {
 function PreviewItem({ icon, text }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5">
-      <span className="text-indigo-700">{icon}</span>
+      <span className="text-[#2F7F98]">{icon}</span>
       <span className="truncate">{text}</span>
     </div>
   );

@@ -4,7 +4,7 @@ import {
   ChevronDown,
   LogOut,
   Settings,
-  UserRound,
+  Code2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -70,9 +70,9 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
     redirectToGitHubLink();
   };
 
-  const handleGoToProfile = () => {
+  const handleGoToEditPortfolio = () => {
     setOpen(false);
-    navigate("/profile");
+    navigate("/portfolio/edit");
   };
 
   const handleGoToSettings = () => {
@@ -123,12 +123,12 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-[100] w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
+        <div className="absolute right-0 top-12 z-[100] w-64 overflow-hidden rounded-lg border border-slate-200 bg-white py-2 shadow-xl">
           <div className="p-2">
             <DropdownItem
-              icon={<UserRound size={18} />}
-              label="View Profile"
-              onClick={handleGoToProfile}
+              icon={<Code2 size={18} />}
+              label="Edit portfolio"
+              onClick={handleGoToEditPortfolio}
             />
 
             <DropdownItem

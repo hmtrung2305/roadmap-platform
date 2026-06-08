@@ -79,7 +79,7 @@ export default function PortfolioPage() {
   if (portfolioLoading) {
     return (
       <main className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+        <div className="mx-auto max-w-6xl rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
           <div className="flex items-center gap-3 text-slate-600">
             <Loader2 className="animate-spin" size={18} />
             Loading portfolio...
@@ -92,7 +92,7 @@ export default function PortfolioPage() {
   if (portfolioError) {
     return (
       <main className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6">
-        <section className="mx-auto max-w-3xl rounded-2xl border border-[#B9D8CC] bg-white p-8 text-center shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+        <section className="mx-auto max-w-3xl rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
           <p className="text-lg font-extrabold text-[#18332D]">Portfolio unavailable</p>
           <p className="mt-2 text-sm font-bold text-red-600">{portfolioError}</p>
         </section>
@@ -104,10 +104,10 @@ export default function PortfolioPage() {
     <main className="min-h-[calc(100vh-4rem)] px-4 py-7 sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
         {isOwnPortfolio && (
-          <section className="rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+          <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2FA084] text-white shadow-sm">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#2FA084] text-white shadow-sm">
                   <FaGithub size={20} />
                 </div>
                 <div>
@@ -122,18 +122,18 @@ export default function PortfolioPage() {
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#B9D8CC] bg-[#EEEEEE] px-4 py-2 text-sm font-extrabold text-[#18332D] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/35"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-[#EEEEEE] px-4 py-2 text-sm font-extrabold text-[#18332D] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/35"
                 >
                   <Copy size={15} />
                   {copied ? "Copied" : "Copy public link"}
                 </button>
 
                 <Link
-                  to="/portfolio/repositories"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
+                  to="/portfolio/edit"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
                 >
                   <PencilLine size={15} />
-                  Manage repositories
+                  Edit portfolio
                 </Link>
               </div>
             </div>
