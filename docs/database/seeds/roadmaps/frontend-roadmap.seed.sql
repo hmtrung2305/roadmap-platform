@@ -8,6 +8,7 @@
 -- Re-runnable/idempotent for this roadmap title.
 -- ============================================================
 
+-- Shared-skill aliases normalized against core/shared-skills.seed.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -105,8 +106,6 @@ DROP TABLE IF EXISTS seed_skill;
 CREATE TEMP TABLE seed_skill (slug text PRIMARY KEY, name text NOT NULL, category text NOT NULL, description text NOT NULL) ON COMMIT DROP;
 
 INSERT INTO seed_skill VALUES
-('accessibility-basics', 'Accessibility Basics', 'Accessibility', 'Understand keyboard access, focus management, screen readers, ARIA basics, semantic structure, contrast, and WCAG intent.'),
-('accessibility-fundamentals', 'Accessibility Fundamentals', 'Accessibility', 'Core accessibility concepts for frontend development.'),
 ('accessibility-testing', 'Accessibility Testing', 'Accessibility', 'Use automated checks plus manual keyboard/screen reader review to catch accessibility issues.'),
 ('angular', 'Angular', 'Frameworks', 'Learn Angular components, templates, services, dependency injection, routing, forms, RxJS, and CLI workflow.'),
 ('apollo-client', 'Apollo Client', 'API Integration', 'Use Apollo Client for queries, mutations, cache policies, error handling, and GraphQL developer workflow.'),
@@ -123,7 +122,6 @@ INSERT INTO seed_skill VALUES
 ('component-documentation-and-storybook', 'Component Documentation and Storybook', 'Frontend', 'Document UI components, states, variants, accessibility notes, and interaction examples.'),
 ('component-libraries-and-design-systems', 'Component Libraries and Design Systems', 'CSS', 'Evaluate and use libraries such as shadcn/ui, Mantine, and design-system primitives responsibly.'),
 ('content-security-policy', 'Content Security Policy', 'Security', 'Use CSP to reduce XSS impact and understand nonce/hash/source directives.'),
-('cors-and-https', 'CORS and HTTPS', 'Security', 'Debug CORS failures, preflight requests, secure origins, HTTPS requirements, cookies, and browser enforcement.'),
 ('credentials-and-payments', 'Credentials and Payments', 'Browser APIs', 'Understand credential management, passkey awareness, payment request flows, permissions, and browser support limitations.'),
 ('css-basics', 'CSS Basics', 'CSS', 'Understand selectors, declarations, inheritance, cascade, specificity, colors, typography, units, and variables.'),
 ('css-fundamentals', 'CSS Fundamentals', 'CSS', 'Core css concepts for frontend development.'),
@@ -144,23 +142,18 @@ INSERT INTO seed_skill VALUES
 ('forms-in-frameworks', 'Forms in Frameworks', 'HTML', 'Build validated framework forms with controlled/uncontrolled inputs, schema validation awareness, and accessible error UX.'),
 ('frameworks-fundamentals', 'Frameworks Fundamentals', 'Frameworks', 'Core frameworks concepts for frontend development.'),
 ('frontend-architecture-notes', 'Frontend Architecture Notes', 'Frontend', 'Explain component structure, state choices, API boundaries, routing, auth, testing, and performance decisions.'),
-('frontend-ci-cd', 'Frontend CI/CD', 'Deployment', 'Run type checks, linting, tests, builds, preview deployments, and release checks automatically.'),
 ('frontend-code-review', 'Frontend Code Review', 'Frontend', 'Review UI code for accessibility, state bugs, component boundaries, naming, testability, and performance risks.'),
 ('frontend-deployment', 'Frontend Deployment', 'Deployment', 'Deploy SPAs, static sites, and SSR apps to Vercel, Netlify, Cloudflare Pages, or similar platforms.'),
-('frontend-development', 'Frontend Development', 'Frontend', 'Building user-facing web applications.'),
 ('frontend-error-monitoring', 'Frontend Error Monitoring', 'Deployment', 'Track runtime errors, source maps, performance traces, releases, and user-impacting failures.'),
 ('frontend-project-work', 'Frontend Project Work', 'Project', 'Building portfolio-ready frontend projects.'),
 ('frontend-readme-and-setup-docs', 'Frontend README and Setup Docs', 'Frontend', 'Write clear setup, env var, script, test, deployment, architecture, and known-limitations documentation.'),
 ('frontend-system-design-basics', 'Frontend System Design Basics', 'Frontend', 'Discuss rendering, routing, state, caching, API contracts, performance budgets, design systems, and deployment strategy.'),
-('git-basics', 'Git Basics', 'Tools', 'Use init, clone, add, commit, branch, merge, rebase awareness, stash, log, reset, and conflict resolution.'),
 ('hosting-basics', 'Hosting Basics', 'Internet', 'Understand static hosting, CDN-backed hosting, PaaS, serverless frontend hosting, and deployment targets.'),
 ('how-browsers-work', 'How Browsers Work', 'Internet', 'Understand browser networking, parsing, DOM/CSSOM, rendering, paint, compositing, cache, and DevTools basics.'),
-('how-the-internet-works', 'How the Internet Works', 'Internet', 'Understand clients, servers, packets, IP addresses, routing, and request paths.'),
 ('html-basics', 'HTML Basics', 'HTML', 'Use elements, attributes, document structure, links, images, lists, tables, scripts, and metadata correctly.'),
 ('html-fundamentals', 'HTML Fundamentals', 'HTML', 'Core html concepts for frontend development.'),
 ('html-templates', 'HTML Templates', 'HTML', 'Use template and slot elements to define reusable markup and component content projection.'),
 ('http-fundamentals', 'HTTP Fundamentals', 'Internet', 'Understand requests, responses, methods, status codes, headers, caching, cookies, and content negotiation.'),
-('https-and-certificates', 'HTTPS and Certificates', 'Security', 'Understand TLS, HTTPS, certificates, mixed content, secure origins, and why HTTPS matters for frontend APIs.'),
 ('internationalization-awareness', 'Internationalization Awareness', 'Frontend', 'Understand locale formatting, translated content length, RTL layout issues, pluralization, and accessibility impact.'),
 ('ionic', 'Ionic', 'Deployment', 'Understand hybrid mobile apps using web technology and native bridges.'),
 ('javascript-basics', 'JavaScript Basics', 'JavaScript', 'Understand variables, functions, arrays, objects, control flow, modules, scope, closures, and error handling.'),
@@ -208,21 +201,27 @@ INSERT INTO seed_skill VALUES
 ('tauri', 'Tauri', 'Deployment', 'Understand lightweight desktop apps using web UI with Rust-backed shells.'),
 ('testing-fundamentals', 'Testing Fundamentals', 'Testing', 'Core testing concepts for frontend development.'),
 ('testing-library', 'Testing Library', 'Testing', 'Test components through user behavior, accessible queries, events, and async UI states.'),
-('testing-strategy', 'Testing Strategy', 'Testing', 'Understand unit, component, integration, e2e, accessibility, visual, and manual exploratory testing tradeoffs.'),
 ('typescript', 'TypeScript', 'TypeScript', 'Use types, interfaces, unions, narrowing, generics basics, utility types, configuration, and strict mode.'),
 ('typescript-fundamentals', 'TypeScript Fundamentals', 'TypeScript', 'Core typescript concepts for frontend development.'),
-('ui-engineering', 'UI Engineering', 'Frontend', 'Designing maintainable interactive interfaces.'),
 ('ui-states-and-empty-states', 'UI States and Empty States', 'Frameworks', 'Design loading, empty, error, success, disabled, skeleton, optimistic, and permission-denied states.'),
 ('using-devtools', 'Using DevTools', 'Performance', 'Debug network waterfalls, layout shifts, long tasks, memory leaks, rendering, and JavaScript performance.'),
 ('using-lighthouse', 'Using Lighthouse', 'Performance', 'Run Lighthouse, interpret audits, avoid gaming scores, and prioritize meaningful fixes.'),
 ('vite', 'Vite', 'Build Tools', 'Use Vite dev server, config, environment variables, production build, preview, plugins, and dependency pre-bundling.'),
 ('vue-js', 'Vue.js', 'Frameworks', 'Learn Vue components, directives, reactivity, composition API, routing, Pinia, and project structure.'),
 ('vuepress', 'VuePress', 'Frameworks', 'Build documentation sites with Vue-powered static pages.'),
-('web-platform', 'Web Platform', 'Frontend', 'Understanding browser-native technologies and APIs.'),
 ('webpack', 'Webpack', 'Build Tools', 'Understand entries, outputs, loaders, plugins, code splitting, and legacy project maintenance.'),
 ('websockets-and-server-sent-events', 'WebSockets and Server-Sent Events', 'Browser APIs', 'Build realtime UI with WebSocket and SSE tradeoffs, reconnection, loading states, and backpressure awareness.'),
 ('writing-semantic-html', 'Writing Semantic HTML', 'HTML', 'Use landmarks, headings, sections, navigation, main content, articles, buttons, labels, and meaningful markup.'),
-('yarn', 'Yarn', 'Package Management', 'Understand Yarn workflows and when a project standardizes on Yarn.');
+('yarn', 'Yarn', 'Package Management', 'Understand Yarn workflows and when a project standardizes on Yarn.'),
+('accessibility', 'Accessibility', 'Quality', 'Designing and validating digital experiences that are usable by people with disabilities and compatible with assistive technologies.'),
+('bitbucket', 'Bitbucket', 'Tools', 'Repositories, branches, pull requests, code review, and team collaboration workflows in Bitbucket.'),
+('ci-cd', 'CI/CD', 'DevOps', 'Continuous integration and continuous delivery practices for automated validation, release, deployment, rollback, and delivery confidence.'),
+('git', 'Git', 'Tools', 'Commits, branches, merge, rebase, history, and collaborative version control.'),
+('github', 'GitHub', 'Tools', 'Repositories, pull requests, issues, Actions, code review, and collaboration workflows.'),
+('gitlab', 'GitLab', 'Tools', 'Repositories, merge requests, issues, CI/CD, and team collaboration workflows.'),
+('graphql', 'GraphQL', 'API', 'GraphQL schemas, queries, mutations, fragments, pagination, caching, and API tradeoffs.'),
+('internet-basics', 'Internet Basics', 'Web', 'Foundational internet concepts including DNS, HTTP, browsers, servers, hosting, TCP/IP, and client-server communication.'),
+('testing', 'Testing', 'Quality', 'Automated and manual verification practices that improve correctness, confidence, and maintainability.');
 
 INSERT INTO public.skill (name, slug, category, description, is_active)
 SELECT ss.name, ss.slug, ss.category, ss.description, true
@@ -718,10 +717,9 @@ DROP TABLE IF EXISTS seed_node_skill;
 CREATE TEMP TABLE seed_node_skill (node_key text NOT NULL, skill_slug text NOT NULL) ON COMMIT DROP;
 
 INSERT INTO seed_node_skill VALUES
-('a11y-testing', 'accessibility-fundamentals'),
+('a11y-testing', 'accessibility'),
 ('a11y-testing', 'accessibility-testing'),
-('accessibility-basics', 'accessibility-basics'),
-('accessibility-basics', 'accessibility-fundamentals'),
+('accessibility-basics', 'accessibility'),
 ('angular-path', 'angular'),
 ('angular-path', 'frameworks-fundamentals'),
 ('apollo-client', 'apollo-client'),
@@ -744,7 +742,7 @@ INSERT INTO seed_node_skill VALUES
 ('component-libraries', 'css-fundamentals'),
 ('content-security-policy', 'content-security-policy'),
 ('content-security-policy', 'security-fundamentals'),
-('cors-https', 'cors-and-https'),
+('cors-https', 'http-fundamentals'),
 ('cors-https', 'security-fundamentals'),
 ('credentials-payments', 'credentials-and-payments'),
 ('css-basics', 'css-basics'),
@@ -775,7 +773,7 @@ INSERT INTO seed_node_skill VALUES
 ('forms-validation', 'forms-and-validation'),
 ('forms-validation', 'html-fundamentals'),
 ('frontend-architecture-notes', 'frontend-architecture-notes'),
-('frontend-ci-cd', 'frontend-ci-cd'),
+('frontend-ci-cd', 'ci-cd'),
 ('frontend-code-review', 'frontend-code-review'),
 ('frontend-debugging-stories', 'debugging-stories'),
 ('frontend-deployment', 'frontend-deployment'),
@@ -786,7 +784,7 @@ INSERT INTO seed_node_skill VALUES
 ('gate-final-review', 'frontend-project-work'),
 ('gate-frontend-quality', 'frontend-project-work'),
 ('gate-portfolio-review', 'frontend-project-work'),
-('git-basics', 'git-basics'),
+('git-basics', 'git'),
 ('github-workflow', 'github'),
 ('gitlab-workflow', 'gitlab'),
 ('graphql-basics', 'graphql'),
@@ -797,9 +795,9 @@ INSERT INTO seed_node_skill VALUES
 ('html-templates', 'html-fundamentals'),
 ('html-templates', 'html-templates'),
 ('http-fundamentals', 'http-fundamentals'),
-('https-certificates', 'https-and-certificates'),
+('https-certificates', 'http-fundamentals'),
 ('https-certificates', 'security-fundamentals'),
-('internet-how-it-works', 'how-the-internet-works'),
+('internet-how-it-works', 'internet-basics'),
 ('ionic-mobile', 'ionic'),
 ('jest-vitest', 'jest-and-vitest'),
 ('js-basics', 'javascript-basics'),
@@ -890,7 +888,7 @@ INSERT INTO seed_node_skill VALUES
 ('testing-library', 'testing-fundamentals'),
 ('testing-library', 'testing-library'),
 ('testing-strategy', 'testing-fundamentals'),
-('testing-strategy', 'testing-strategy'),
+('testing-strategy', 'testing'),
 ('typescript-core', 'typescript'),
 ('typescript-core', 'typescript-fundamentals'),
 ('ui-state-patterns', 'frameworks-fundamentals'),
