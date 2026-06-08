@@ -4,6 +4,7 @@
 -- Idempotent seed: safe to rerun in the same database/session.
 -- ============================================================
 
+-- Shared-skill aliases normalized against core/shared-skills.seed.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -53,9 +54,6 @@ INSERT INTO seed_skill VALUES
 ('game-jams-and-prototype-mindset', 'Game Jams and Prototype Mindset', 'Game Development', 'Practical game development skill: Game Jams and Prototype Mindset.'),
 ('player-feedback-and-iteration-basics', 'Player Feedback and Iteration Basics', 'Game Development', 'Practical game development skill: Player Feedback and Iteration Basics.'),
 ('developer-tooling-for-games', 'Developer Tooling for Games', 'Game Development', 'Grouped skill area: Developer Tooling for Games.'),
-('git-workflow-for-game-projects', 'Git Workflow for Game Projects', 'Game Development', 'Practical game development skill: Git Workflow for Game Projects.'),
-('git-lfs-for-binary-assets', 'Git LFS for Binary Assets', 'Game Development', 'Practical game development skill: Git LFS for Binary Assets.'),
-('github-issues-and-project-boards', 'GitHub Issues and Project Boards', 'Game Development', 'Practical game development skill: GitHub Issues and Project Boards.'),
 ('file-organization-and-naming-conventions', 'File Organization and Naming Conventions', 'Game Development', 'Practical game development skill: File Organization and Naming Conventions.'),
 ('asset-licensing-and-attribution', 'Asset Licensing and Attribution', 'Game Development', 'Practical game development skill: Asset Licensing and Attribution.'),
 ('basic-build-and-export-workflow', 'Basic Build and Export Workflow', 'Game Development', 'Practical game development skill: Basic Build and Export Workflow.'),
@@ -164,7 +162,6 @@ INSERT INTO seed_skill VALUES
 ('data-oriented-design-awareness', 'Data-Oriented Design Awareness', 'Game Development', 'Practical game development skill: Data-Oriented Design Awareness.'),
 ('ecs-awareness', 'ECS Awareness', 'Game Development', 'Practical game development skill: ECS Awareness.'),
 ('required-gameplay-systems-project', 'Required Gameplay Systems Project', 'Game Development', 'Practical game development skill: Required Gameplay Systems Project.'),
-('ui-input-ux-and-accessibility', 'UI, Input, UX, and Accessibility', 'Game Development', 'Roadmap section skill: UI, Input, UX, and Accessibility.'),
 ('game-ui-and-hud', 'Game UI and HUD', 'Game Development', 'Grouped skill area: Game UI and HUD.'),
 ('menus-huds-and-screen-flow', 'Menus, HUDs, and Screen Flow', 'Game Development', 'Practical game development skill: Menus, HUDs, and Screen Flow.'),
 ('ui-layout-anchors-and-scaling', 'UI Layout, Anchors, and Scaling', 'Game Development', 'Practical game development skill: UI Layout, Anchors, and Scaling.'),
@@ -244,7 +241,6 @@ INSERT INTO seed_skill VALUES
 ('debugging-tools-and-breakpoints', 'Debugging Tools and Breakpoints', 'Game Development', 'Practical game development skill: Debugging Tools and Breakpoints.'),
 ('unit-tests-for-pure-game-logic', 'Unit Tests for Pure Game Logic', 'Game Development', 'Practical game development skill: Unit Tests for Pure Game Logic.'),
 ('play-mode-or-integration-tests', 'Play Mode or Integration Tests', 'Game Development', 'Practical game development skill: Play Mode or Integration Tests.'),
-('input-and-save-compatibility-testing', 'Input and Save Compatibility Testing', 'Game Development', 'Practical game development skill: Input and Save Compatibility Testing.'),
 ('crash-reporting-and-error-logs', 'Crash Reporting and Error Logs', 'Game Development', 'Practical game development skill: Crash Reporting and Error Logs.'),
 ('qa-checklists-and-bug-reports', 'QA Checklists and Bug Reports', 'Game Development', 'Practical game development skill: QA Checklists and Bug Reports.'),
 ('regression-testing-for-builds', 'Regression Testing for Builds', 'Game Development', 'Practical game development skill: Regression Testing for Builds.'),
@@ -276,11 +272,16 @@ INSERT INTO seed_skill VALUES
 ('portfolio-and-career-readiness', 'Portfolio and Career Readiness', 'Game Development', 'Grouped skill area: Portfolio and Career Readiness.'),
 ('portfolio-website-and-game-pages', 'Portfolio Website and Game Pages', 'Game Development', 'Practical game development skill: Portfolio Website and Game Pages.'),
 ('gameplay-gifs-trailers-and-screenshots', 'Gameplay GIFs, Trailers, and Screenshots', 'Game Development', 'Practical game development skill: Gameplay GIFs, Trailers, and Screenshots.'),
-('readable-github-repositories', 'Readable GitHub Repositories', 'Game Development', 'Practical game development skill: Readable GitHub Repositories.'),
 ('game-developer-resume-and-role-targeting', 'Game Developer Resume and Role Targeting', 'Game Development', 'Practical game development skill: Game Developer Resume and Role Targeting.'),
 ('interview-prep-gameplay-and-engine-questions', 'Interview Prep: Gameplay and Engine Questions', 'Game Development', 'Practical game development skill: Interview Prep: Gameplay and Engine Questions.'),
 ('final-game-developer-review', 'Final Game Developer Review', 'Game Development', 'Practical game development skill: Final Game Developer Review.'),
-('required-game-developer-capstone', 'Required Game Developer Capstone', 'Game Development', 'Practical game development skill: Required Game Developer Capstone.');
+('required-game-developer-capstone', 'Required Game Developer Capstone', 'Game Development', 'Practical game development skill: Required Game Developer Capstone.'),
+('accessibility', 'Accessibility', 'Quality', 'Designing and validating digital experiences that are usable by people with disabilities and compatible with assistive technologies.'),
+('foundation-readiness-check', 'Foundation Readiness Check', 'Readiness', 'Checkpoint for validating prerequisite knowledge before progressing into more advanced roadmap sections.'),
+('git', 'Git', 'Tools', 'Commits, branches, merge, rebase, history, and collaborative version control.'),
+('github', 'GitHub', 'Tools', 'Repositories, pull requests, issues, Actions, code review, and collaboration workflows.'),
+('technical-case-studies', 'Technical Case Studies', 'Career Readiness', 'Analyzing realistic technical scenarios and explaining architecture, tradeoffs, debugging, and implementation decisions.'),
+('testing', 'Testing', 'Quality', 'Automated and manual verification practices that improve correctness, confidence, and maintainability.');
 INSERT INTO public.skill (name, slug, category, description, is_active)
 SELECT ss.name, ss.slug, ss.category, ss.description, true
 FROM seed_skill ss
@@ -889,11 +890,11 @@ INSERT INTO seed_node_skill VALUES
 ('gdscript-for-godot', 'choose-primary-game-language'),
 ('gdscript-for-godot', 'gdscript-for-godot'),
 ('git-lfs-for-binary-assets', 'developer-tooling-for-games'),
-('git-lfs-for-binary-assets', 'git-lfs-for-binary-assets'),
+('git-lfs-for-binary-assets', 'git'),
 ('git-workflow-for-game-projects', 'developer-tooling-for-games'),
-('git-workflow-for-game-projects', 'git-workflow-for-game-projects'),
+('git-workflow-for-game-projects', 'git'),
 ('github-issues-and-project-boards', 'developer-tooling-for-games'),
-('github-issues-and-project-boards', 'github-issues-and-project-boards'),
+('github-issues-and-project-boards', 'github'),
 ('godot-engine-path', 'choose-game-engine'),
 ('godot-engine-path', 'godot-engine-path'),
 ('gpu-instancing-and-lod-awareness', 'gpu-instancing-and-lod-awareness'),
@@ -914,7 +915,7 @@ INSERT INTO seed_node_skill VALUES
 ('hlsl-glsl-shader-fundamentals', 'hlsl-glsl-shader-fundamentals'),
 ('hlsl-glsl-shader-fundamentals', 'shader-and-rendering-path'),
 ('input-and-player-experience', 'input-and-player-experience'),
-('input-and-save-compatibility-testing', 'input-and-save-compatibility-testing'),
+('input-and-save-compatibility-testing', 'testing'),
 ('input-and-save-compatibility-testing', 'testing-and-debugging'),
 ('input-mapping-and-action-systems', 'input-and-player-experience'),
 ('input-mapping-and-action-systems', 'input-mapping-and-action-systems'),
@@ -1056,7 +1057,7 @@ INSERT INTO seed_node_skill VALUES
 ('readability-signposting-and-flow', 'procedural-content'),
 ('readability-signposting-and-flow', 'readability-signposting-and-flow'),
 ('readable-github-repositories', 'portfolio-and-career-readiness'),
-('readable-github-repositories', 'readable-github-repositories'),
+('readable-github-repositories', 'github'),
 ('reading-engine-api-documentation', 'programming-fundamentals'),
 ('reading-engine-api-documentation', 'reading-engine-api-documentation'),
 ('recursion-and-tree-traversal', 'cs-for-gameplay'),
@@ -1130,7 +1131,7 @@ INSERT INTO seed_node_skill VALUES
 ('trigonometry-for-movement-and-aiming', 'trigonometry-for-movement-and-aiming'),
 ('tutorials-onboarding-and-first-time-ux', 'input-and-player-experience'),
 ('tutorials-onboarding-and-first-time-ux', 'tutorials-onboarding-and-first-time-ux'),
-('ui-input-ux-and-accessibility', 'ui-input-ux-and-accessibility'),
+('ui-input-ux-and-accessibility', 'accessibility'),
 ('ui-layout-anchors-and-scaling', 'game-ui-and-hud'),
 ('ui-layout-anchors-and-scaling', 'ui-layout-anchors-and-scaling'),
 ('unit-tests-for-pure-game-logic', 'testing-and-debugging'),
