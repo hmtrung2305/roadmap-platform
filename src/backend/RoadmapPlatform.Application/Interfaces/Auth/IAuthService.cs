@@ -5,17 +5,27 @@ namespace RoadmapPlatform.Application.Interfaces.Auth;
 
 public interface IAuthService
 {
-    Task<RegistrationResponseDto> RegisterAsync(RegisterRequestDto request);
+    Task<RegistrationResponseDto> RegisterAsync(
+        RegisterRequestDto request,
+        CancellationToken cancellationToken = default);
 
-    Task<LoginResponseDto> LoginAsync(LoginRequestDto request);
+    Task<LoginResponseDto> LoginAsync(
+        LoginRequestDto request,
+        CancellationToken cancellationToken = default);
 
     Task<LoginResponseDto> VerifyRegistrationEmailAsync(
-        VerifyRegistrationEmailRequestDto request);
+        VerifyRegistrationEmailRequestDto request,
+        CancellationToken cancellationToken = default);
 
     Task ResendRegistrationVerificationAsync(
-        ResendRegistrationVerificationRequestDto request);
+        ResendRegistrationVerificationRequestDto request,
+        CancellationToken cancellationToken = default);
 
-    Task<LoginResponseDto> LoginWithGoogleAsync(ClaimsPrincipal googleUser);
+    Task<LoginResponseDto> LoginWithGoogleAsync(
+        ClaimsPrincipal googleUser,
+        CancellationToken cancellationToken = default);
 
-    Task<LoginResponseDto> LoginWithGitHubAsync(ClaimsPrincipal githubUser);
+    Task<LoginResponseDto> LoginWithGitHubAsync(
+        ClaimsPrincipal githubUser,
+        CancellationToken cancellationToken = default);
 }

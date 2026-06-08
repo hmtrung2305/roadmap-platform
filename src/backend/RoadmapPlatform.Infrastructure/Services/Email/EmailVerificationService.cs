@@ -8,6 +8,7 @@ using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Email.Templates;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -33,22 +34,34 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             Guid userId,
             string provider,
             string email,
-            string purpose)
+            string purpose,
+            CancellationToken cancellationToken = default)
         {
             provider = NormalizeOrThrow(provider, "Provider was not provided");
             email = NormalizeOrThrow(email, "Email was not provided");
             purpose = NormalizeOrThrow(purpose, "Purpose was not provided");
 
             var userExists = await _dbContext.Users
-                .AnyAsync(x => x.UserId == userId);
+                .AnyAsync(x => x.UserId == userId, cancellationToken);
 
             if (!userExists)
             {
                 throw new NotFoundException("User was not found");
             }
 
-            await EnsureResendCooldownHasPassedAsync(userId, provider, email, purpose);
-            await InvalidateExistingTokensAsync(userId, provider, email, purpose);
+            await EnsureResendCooldownHasPassedAsync(
+                userId,
+                provider,
+                email,
+                purpose,
+                cancellationToken);
+
+            await InvalidateExistingTokensAsync(
+                userId,
+                provider,
+                email,
+                purpose,
+                cancellationToken);
 
             var otp = GenerateOtp(_settings.OtpLength);
             var otpHash = HashOtp(otp);
@@ -69,12 +82,17 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
 
             _dbContext.EmailVerificationTokens.Add(token);
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            var htmlBody = EmailVerificationTemplate.Build(
+                otp,
+                _settings.ExpirationMinutes);
 
             await _emailSender.SendEmailAsync(
                 email,
-                "Your verification code",
-                $"Your verification code is: {otp}\n\nThis code expires in {_settings.ExpirationMinutes} minutes.");
+                "Verify your Roadmap Platform email",
+                htmlBody,
+                cancellationToken);
         }
 
         public async Task VerifyVerificationCodeAsync(
@@ -82,14 +100,20 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             string provider,
             string email,
             string purpose,
-            string otp)
+            string otp,
+            CancellationToken cancellationToken = default)
         {
             provider = NormalizeOrThrow(provider, "Provider was not provided");
             email = NormalizeOrThrow(email, "Email was not provided");
             purpose = NormalizeOrThrow(purpose, "Purpose was not provided");
             otp = NormalizeOrThrow(otp, "OTP was not provided");
 
-            var token = await GetLatestUsableTokenAsync(userId, provider, email, purpose);
+            var token = await GetLatestUsableTokenAsync(
+                userId,
+                provider,
+                email,
+                purpose,
+                cancellationToken);
 
             if (token.ExpiresAt <= DateTime.UtcNow)
             {
@@ -106,24 +130,29 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             if (!FixedTimeEquals(token.OtpHash, providedOtpHash))
             {
                 token.AttemptCount++;
-                await _dbContext.SaveChangesAsync();
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 throw new InvalidOperationException("Invalid verification code");
             }
 
             token.UsedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<EmailVerificationResultDto> VerifyRegistrationEmailAsync(string email, string otp)
+        public async Task<EmailVerificationResultDto> VerifyRegistrationEmailAsync(
+            string email,
+            string otp,
+            CancellationToken cancellationToken = default)
         {
             email = NormalizeOrThrow(email, "Email was not provided");
 
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                     x.Provider == AuthProviders.Local &&
-                    x.ProviderUserId == email);
+                    x.ProviderUserId == email,
+                    cancellationToken);
 
             if (localProvider == null)
             {
@@ -140,11 +169,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 AuthProviders.Local,
                 email,
                 EmailVerificationPurposes.Register,
-                otp);
+                otp,
+                cancellationToken);
 
             localProvider.EmailVerifiedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return new EmailVerificationResultDto
             {
@@ -153,14 +183,17 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             };
         }
 
-        public async Task ResendRegistrationVerificationAsync(string email)
+        public async Task ResendRegistrationVerificationAsync(
+            string email,
+            CancellationToken cancellationToken = default)
         {
             email = NormalizeOrThrow(email, "Email was not provided");
 
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                     x.Provider == AuthProviders.Local &&
-                    x.ProviderUserId == email);
+                    x.ProviderUserId == email,
+                    cancellationToken);
 
             if (localProvider == null)
             {
@@ -176,15 +209,19 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 localProvider.UserId,
                 AuthProviders.Local,
                 email,
-                EmailVerificationPurposes.Register);
+                EmailVerificationPurposes.Register,
+                cancellationToken);
         }
 
-        public async Task ResendLinkedLocalVerificationAsync(Guid userId)
+        public async Task ResendLinkedLocalVerificationAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                     x.UserId == userId &&
-                    x.Provider == AuthProviders.Local);
+                    x.Provider == AuthProviders.Local,
+                    cancellationToken);
 
             if (localProvider == null)
             {
@@ -205,17 +242,22 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 userId,
                 AuthProviders.Local,
                 localProvider.Email,
-                EmailVerificationPurposes.LinkLocal);
+                EmailVerificationPurposes.LinkLocal,
+                cancellationToken);
         }
 
-        public async Task VerifyLinkedLocalEmailAsync(Guid userId, string otp)
+        public async Task VerifyLinkedLocalEmailAsync(
+            Guid userId,
+            string otp,
+            CancellationToken cancellationToken = default)
         {
             otp = NormalizeOrThrow(otp, "OTP was not provided");
 
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                     x.UserId == userId &&
-                    x.Provider == AuthProviders.Local);
+                    x.Provider == AuthProviders.Local,
+                    cancellationToken);
 
             if (localProvider == null)
             {
@@ -237,21 +279,26 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 AuthProviders.Local,
                 localProvider.Email,
                 EmailVerificationPurposes.LinkLocal,
-                otp);
+                otp,
+                cancellationToken);
 
             localProvider.EmailVerifiedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task RequestLocalEmailChangeAsync(Guid userId, string newEmail)
+        public async Task RequestLocalEmailChangeAsync(
+            Guid userId,
+            string newEmail,
+            CancellationToken cancellationToken = default)
         {
             newEmail = NormalizeOrThrow(newEmail, "New email was not provided");
 
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                     x.UserId == userId &&
-                    x.Provider == AuthProviders.Local);
+                    x.Provider == AuthProviders.Local,
+                    cancellationToken);
 
             if (localProvider == null)
             {
@@ -272,7 +319,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 .AnyAsync(x =>
                     x.Provider == AuthProviders.Local &&
                     x.ProviderUserId == newEmail &&
-                    x.UserId != userId);
+                    x.UserId != userId,
+                    cancellationToken);
 
             if (emailExists)
             {
@@ -281,23 +329,28 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
 
             localProvider.PendingEmail = newEmail;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             await SendVerificationCodeAsync(
                 userId,
                 AuthProviders.Local,
                 newEmail,
-                EmailVerificationPurposes.ChangeEmail);
+                EmailVerificationPurposes.ChangeEmail,
+                cancellationToken);
         }
 
-        public async Task VerifyLocalEmailChangeAsync(Guid userId, string otp)
+        public async Task VerifyLocalEmailChangeAsync(
+            Guid userId,
+            string otp,
+            CancellationToken cancellationToken = default)
         {
             otp = NormalizeOrThrow(otp, "OTP was not provided");
 
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                     x.UserId == userId &&
-                    x.Provider == AuthProviders.Local);
+                    x.Provider == AuthProviders.Local,
+                    cancellationToken);
 
             if (localProvider == null)
             {
@@ -315,7 +368,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 .AnyAsync(x =>
                     x.Provider == AuthProviders.Local &&
                     x.ProviderUserId == pendingEmail &&
-                    x.UserId != userId);
+                    x.UserId != userId,
+                    cancellationToken);
 
             if (emailExists)
             {
@@ -327,14 +381,15 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 AuthProviders.Local,
                 pendingEmail,
                 EmailVerificationPurposes.ChangeEmail,
-                otp);
+                otp,
+                cancellationToken);
 
             localProvider.Email = pendingEmail;
             localProvider.ProviderUserId = pendingEmail;
             localProvider.PendingEmail = null;
             localProvider.EmailVerifiedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         private static string GenerateOtp(int length)
@@ -369,7 +424,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             Guid userId,
             string provider,
             string email,
-            string purpose)
+            string purpose,
+            CancellationToken cancellationToken = default)
         {
             var token = await _dbContext.EmailVerificationTokens
                 .Where(x =>
@@ -379,7 +435,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                     x.Purpose == purpose &&
                     x.UsedAt == null)
                 .OrderByDescending(x => x.CreatedAt)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (token == null)
             {
@@ -393,7 +449,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             Guid userId,
             string provider,
             string email,
-            string purpose)
+            string purpose,
+            CancellationToken cancellationToken = default)
         {
             var latestToken = await _dbContext.EmailVerificationTokens
                 .Where(x =>
@@ -402,7 +459,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                     x.Email == email &&
                     x.Purpose == purpose)
                 .OrderByDescending(x => x.CreatedAt)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (latestToken == null)
             {
@@ -413,7 +470,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
 
             if (DateTime.UtcNow < nextAllowedAt)
             {
-                var remainingSeconds = (int)Math.Ceiling((nextAllowedAt - DateTime.UtcNow).TotalSeconds);
+                var remainingSeconds = (int)Math.Ceiling(
+                    (nextAllowedAt - DateTime.UtcNow).TotalSeconds);
 
                 throw new InvalidOperationException(
                     $"Please wait {remainingSeconds} seconds before requesting another code");
@@ -424,7 +482,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             Guid userId,
             string provider,
             string email,
-            string purpose)
+            string purpose,
+            CancellationToken cancellationToken = default)
         {
             var existingTokens = await _dbContext.EmailVerificationTokens
                 .Where(x =>
@@ -433,14 +492,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                     x.Email == email &&
                     x.Purpose == purpose &&
                     x.UsedAt == null)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             foreach (var token in existingTokens)
             {
                 token.UsedAt = DateTime.UtcNow;
             }
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         private static bool FixedTimeEquals(string valueA, string valueB)
