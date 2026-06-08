@@ -11,21 +11,25 @@ import {
 } from "../api/authApi";
 import {
   resendLinkedLocalVerificationApi,
+  resendLocalEmailChangeVerificationApi,
   verifyLinkedLocalEmailApi,
   verifyLocalEmailChangeApi,
 } from "../api/authProviderApi";
 import {
   getErrorMessage,
+  isValidEmailFormat,
   normalizeVerificationPurpose,
   VERIFICATION_PURPOSES,
 } from "../utils/authVerificationFlow";
 import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
+import { useAuthStore } from "../stores/useAuthStore";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const setAuthenticatedUser = useAuthStore((state) => state.setAuthenticatedUser);
 
   const verificationPurpose = normalizeVerificationPurpose(
     location.state?.verificationPurpose || searchParams.get("purpose"),
@@ -83,6 +87,11 @@ export default function VerifyEmailPage() {
       return;
     }
 
+    if (isRegisterVerification && !isValidEmailFormat(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     if (!otp.trim()) {
       setError("Please enter the verification code.");
       return;
@@ -123,15 +132,19 @@ export default function VerifyEmailPage() {
         return;
       }
 
-      await verifyRegistrationEmailApi({
+      const data = await verifyRegistrationEmailApi({
         Email: email.trim(),
         Otp: otp,
       });
 
+      if (data?.user) {
+        setAuthenticatedUser(data.user);
+      }
+
       navigate("/dashboard", {
         replace: true,
         state: {
-          message: "Email verified successfully.",
+          message: data?.message || "Email verified successfully.",
         },
       });
     } catch (error) {
@@ -149,8 +162,8 @@ export default function VerifyEmailPage() {
       return;
     }
 
-    if (isChangeEmailVerification) {
-      setError("Please request another email change code from account settings.");
+    if (isRegisterVerification && !isValidEmailFormat(email)) {
+      setError("Please enter a valid email address before requesting a new code.");
       return;
     }
 
@@ -166,6 +179,8 @@ export default function VerifyEmailPage() {
 
       if (isLinkLocalVerification) {
         await resendLinkedLocalVerificationApi();
+      } else if (isChangeEmailVerification) {
+        await resendLocalEmailChangeVerificationApi();
       } else {
         await resendRegistrationVerificationApi({
           Email: email.trim(),
@@ -303,7 +318,6 @@ export default function VerifyEmailPage() {
               onClick={handleResendCode}
               disabled={
                 resending ||
-                isChangeEmailVerification ||
                 (CAPTCHA_ENABLED && isRegisterVerification && !resendCaptchaToken)
               }
               className="text-sm font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"

@@ -2,9 +2,11 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import {
   resendLinkedLocalVerificationApi,
+  resendLocalEmailChangeVerificationApi,
   verifyLinkedLocalEmailApi,
   verifyLocalEmailChangeApi,
 } from "../../api/authProviderApi";
+import { getErrorMessage } from "../../utils/authVerificationFlow";
 
 export default function VerifyLocalEmailModal({
   email,
@@ -61,12 +63,7 @@ export default function VerifyLocalEmailModal({
     } catch (error) {
       console.error("Verify email failed:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message ||
-        error.response?.data?.Message ||
-        "Invalid or expired verification code.";
-
-      setError(serverMessage);
+      setError(getErrorMessage(error, "Invalid or expired verification code."));
     } finally {
       setLoading(false);
     }
@@ -78,7 +75,11 @@ export default function VerifyLocalEmailModal({
       setError("");
       setMessage("");
 
-      await resendLinkedLocalVerificationApi();
+      if (isChangeEmailMode) {
+        await resendLocalEmailChangeVerificationApi();
+      } else {
+        await resendLinkedLocalVerificationApi();
+      }
 
       setMessage("A new verification code has been sent.");
     } catch (error) {
@@ -87,12 +88,7 @@ export default function VerifyLocalEmailModal({
         error.response?.data || error
       );
 
-      const serverMessage =
-        error.response?.data?.message ||
-        error.response?.data?.Message ||
-        "Unable to resend verification code.";
-
-      setError(serverMessage);
+      setError(getErrorMessage(error, "Unable to resend verification code."));
     } finally {
       setResending(false);
     }
@@ -151,20 +147,14 @@ export default function VerifyLocalEmailModal({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-2">
-            {!isChangeEmailMode ? (
-              <button
-                type="button"
-                onClick={handleResendCode}
-                disabled={resending || loading}
-                className="text-sm font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {resending ? "Sending..." : "Resend code"}
-              </button>
-            ) : (
-              <span className="text-xs text-slate-500">
-                Use the latest code sent to your new email.
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resending || loading}
+              className="text-sm font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resending ? "Sending..." : "Resend code"}
+            </button>
 
             <div className="flex gap-3">
               <button

@@ -8,7 +8,9 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth;
 
@@ -375,7 +377,7 @@ public class AuthService : IAuthService
     {
         return new RegistrationResponseDto
         {
-            Message = "Registration is already pending. Please verify your email to continue.",
+            Message = "This email already has a pending registration. Verify your email to continue with the original account details.",
             Email = email,
             RequiresEmailVerification = true,
             VerificationPurpose = EmailVerificationPurposes.Register,
@@ -385,15 +387,15 @@ public class AuthService : IAuthService
 
     private LoginResponseDto CreateLoginResponse(AuthenticatedUserDto user)
     {
-        var accessToken = _jwtTokenService.GenerateToken(
-            user.UserId,
-            user.Username ?? string.Empty,
-            user.Roles);
-
-        if (user?.Username == null)
+        if (string.IsNullOrWhiteSpace(user.Username))
         {
             throw new InvalidOperationException("Username was not provided");
         }
+
+        var accessToken = _jwtTokenService.GenerateToken(
+            user.UserId,
+            user.Username,
+            user.Roles);
 
         return new LoginResponseDto
         {
@@ -429,7 +431,20 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Email was not provided");
         }
 
-        return email.Trim().ToLowerInvariant();
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+
+        if (!IsValidEmailFormat(normalizedEmail))
+        {
+            throw new InvalidOperationException("Invalid email format");
+        }
+
+        return normalizedEmail;
+    }
+
+    private static bool IsValidEmailFormat(string email)
+    {
+        return new EmailAddressAttribute().IsValid(email) &&
+               Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
     }
 
     private static string NormalizeUsernameOrThrow(string? username)

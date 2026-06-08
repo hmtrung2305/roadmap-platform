@@ -24,6 +24,22 @@ export const useAuthStore = create((set, get) => ({
     useStreakStore.getState().resetStreakState();
   },
 
+  setAuthenticatedUser: (user) => {
+    if (!user) {
+      return;
+    }
+
+    set({
+      user,
+      authLoading: false,
+      authInitialized: true,
+      authError: "",
+    });
+
+    localStorage.setItem("isLoggedIn", "true");
+  },
+
+
   login: async (payload) => {
     try {
       set({

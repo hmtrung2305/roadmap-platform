@@ -87,7 +87,21 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         {
             var userId = GetCurrentUserId();
 
-            await _emailVerificationService.RequestLocalEmailChangeAsync(userId, request.NewEmail!);
+            var response = await _emailVerificationService.RequestLocalEmailChangeAsync(
+                userId,
+                request.NewEmail!);
+
+            return Ok(response);
+        }
+
+
+        [HttpPost("local/email/resend-verification")]
+        [Authorize]
+        public async Task<IActionResult> ResendLocalEmailChangeVerification(CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+
+            await _emailVerificationService.ResendLocalEmailChangeVerificationAsync(userId, cancellationToken);
 
             return Ok(new
             {

@@ -91,3 +91,12 @@ export function goToVerificationPage(
     },
   });
 }
+
+
+export function isValidEmailFormat(value) {
+  const email = String(value || "").trim();
+
+  if (!email) return false;
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}

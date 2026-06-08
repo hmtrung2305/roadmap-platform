@@ -13,6 +13,7 @@ import {
   getErrorMessage,
   goToVerificationPage,
   isEmailVerificationRequired,
+  isValidEmailFormat,
   VERIFICATION_PURPOSES,
 } from "../utils/authVerificationFlow";
 
@@ -67,6 +68,10 @@ export default function RegisterPage() {
 
     if (!form.email.trim()) {
       return "Vui lòng nhập email.";
+    }
+
+    if (!isValidEmailFormat(form.email)) {
+      return "Please enter a valid email address.";
     }
 
     if (form.password.length < 8) {

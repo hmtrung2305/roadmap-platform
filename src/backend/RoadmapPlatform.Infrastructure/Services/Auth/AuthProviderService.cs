@@ -6,7 +6,9 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth
 {
@@ -421,7 +423,20 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 throw new InvalidOperationException("Email was not provided");
             }
 
-            return email.Trim().ToLowerInvariant();
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            if (!IsValidEmailFormat(normalizedEmail))
+            {
+                throw new InvalidOperationException("Invalid email format");
+            }
+
+            return normalizedEmail;
+        }
+
+        private static bool IsValidEmailFormat(string email)
+        {
+            return new EmailAddressAttribute().IsValid(email) &&
+                   Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
 
         private static string? NormalizeNullable(string? value)
