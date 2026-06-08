@@ -1,0 +1,197 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "login status is 200": {
+                            "path": "::setup::login status is 200",
+                            "id": "bb27b460b057923f4a083e3603c038b9",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "login status is 200"
+                        },
+                        "login returned cookies": {
+                            "path": "::setup::login returned cookies",
+                            "id": "b5e4f00f96ccd36f5e05aae46022c730",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "login returned cookies"
+                        },
+                        "setup graph status is 200": {
+                            "id": "31cca02d44500bf6c3074454b5200533",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "setup graph status is 200",
+                            "path": "::setup::setup graph status is 200"
+                        }
+                    },
+                "name": "setup"
+            },
+            "update node progress to in_progress": {
+                "name": "update node progress to in_progress",
+                "path": "::update node progress to in_progress",
+                "id": "ad30eb168a3107105eddcf07dd5412a3",
+                "groups": {},
+                "checks": {
+                        "progress in_progress status is 200": {
+                            "fails": 0,
+                            "name": "progress in_progress status is 200",
+                            "path": "::update node progress to in_progress::progress in_progress status is 200",
+                            "id": "59adad76bc323c5380baf533ae839f4f",
+                            "passes": 90
+                        }
+                    }
+            },
+            "update node progress to completed": {
+                "id": "818bb67c92b1e0321b5af2e76b1f48b2",
+                "groups": {},
+                "checks": {
+                        "progress completed status is 200": {
+                            "name": "progress completed status is 200",
+                            "path": "::update node progress to completed::progress completed status is 200",
+                            "id": "ad7d2c39e8135076c02c256d9028fb3b",
+                            "passes": 90,
+                            "fails": 0
+                        }
+                    },
+                "name": "update node progress to completed",
+                "path": "::update node progress to completed"
+            }
+        },
+        "checks": {}
+    },
+    "metrics": {
+        "http_req_failed": {
+            "fails": 182,
+            "passes": 0,
+            "thresholds": {
+                "rate<0.02": false
+            },
+            "value": 0
+        },
+        "http_req_tls_handshaking": {
+            "p(95)": 0,
+            "avg": 0.04539395604395604,
+            "min": 0,
+            "med": 0,
+            "max": 2.7662,
+            "p(90)": 0
+        },
+        "http_req_sending": {
+            "avg": 0.09817857142857143,
+            "min": 0,
+            "med": 0,
+            "max": 0.6433,
+            "p(90)": 0.5092,
+            "p(95)": 0.5273899999999999
+        },
+        "group_duration": {
+            "avg": 13.252375,
+            "min": 6.3932,
+            "med": 8.72905,
+            "max": 230.045,
+            "p(90)": 12.688,
+            "p(95)": 13.490495
+        },
+        "iterations": {
+            "count": 90,
+            "rate": 2.91219500068079
+        },
+        "http_req_blocked": {
+            "avg": 0.1508456043956044,
+            "min": 0,
+            "med": 0,
+            "max": 19.9144,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "vus_max": {
+            "value": 3,
+            "min": 3,
+            "max": 3
+        },
+        "checks": {
+            "passes": 183,
+            "fails": 0,
+            "value": 1
+        },
+        "data_sent": {
+            "count": 27040,
+            "rate": 874.9528090934285
+        },
+        "http_reqs": {
+            "count": 182,
+            "rate": 5.889105445821153
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 12.6757,
+            "p(95)": 13.522805,
+            "avg": 13.420600000000004,
+            "min": 6.3932,
+            "med": 8.7123,
+            "max": 227.8678
+        },
+        "data_received": {
+            "count": 341697,
+            "rate": 11056.536612751377
+        },
+        "vus": {
+            "min": 3,
+            "max": 3,
+            "value": 3
+        },
+        "http_req_duration": {
+            "p(95)": 13.522805,
+            "avg": 13.420600000000004,
+            "min": 6.3932,
+            "med": 8.7123,
+            "max": 227.8678,
+            "p(90)": 12.6757,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_req_connecting": {
+            "p(95)": 0,
+            "avg": 0.011245054945054947,
+            "min": 0,
+            "med": 0,
+            "max": 0.5133,
+            "p(90)": 0
+        },
+        "http_req_receiving": {
+            "min": 0,
+            "med": 0,
+            "max": 1.1367,
+            "p(90)": 0,
+            "p(95)": 0.50594,
+            "avg": 0.05068296703296704
+        },
+        "iteration_duration": {
+            "min": 1015.8276,
+            "med": 1019.6079,
+            "max": 1243.3009,
+            "p(90)": 1021.71772,
+            "p(95)": 1026.80033,
+            "avg": 1026.8412988888886
+        },
+        "http_req_waiting": {
+            "min": 6.3932,
+            "med": 8.5701,
+            "max": 227.8678,
+            "p(90)": 12.48377,
+            "p(95)": 13.522805,
+            "avg": 13.271738461538467
+        }
+    },
+    "setup_data": {
+        "cookieHeader": "access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjU1NTU1NTU1LTU1NTUtNTU1NS01NTU1LTU1NTU1NTU1NTU1NSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJkZW1vLnVzZXIiLCJleHAiOjE3ODA5MzA3MTQsImlzcyI6IlJvYWRtYXBQbGF0Zm9ybSIsImF1ZCI6IlJvYWRtYXBQbGF0Zm9ybVVzZXJzIn0.lmdA3j8i5kFMDwXVuS5MAz3weVcmHMJ2jqaIvOQwesQ",
+        "roadmapNodeId": "fa5ff2b4-090c-4d2e-81ba-7c4087278370"
+    }
+}
