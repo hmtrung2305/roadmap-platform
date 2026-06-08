@@ -139,12 +139,7 @@ public sealed class RoadmapQueryService(
             .Where(n => n.RoadmapVersionId == roadmapVersionId)
             .ToListAsync(cancellationToken);
 
-        var node = await dbContext.Set<RoadmapNode>()
-            .AsNoTracking()
-            .Where(n =>
-                n.RoadmapVersionId == roadmapVersionId &&
-                n.RoadmapNodeId == roadmapNodeId)
-            .FirstOrDefaultAsync(cancellationToken);
+        var node = nodes.FirstOrDefault(n => n.RoadmapNodeId == roadmapNodeId);
 
         if (node == null)
         {
