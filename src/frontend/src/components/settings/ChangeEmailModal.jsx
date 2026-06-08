@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { requestLocalEmailChangeApi } from "../../api/authProviderApi";
+import { getErrorMessage, isEmailVerificationRequired, isValidEmailFormat } from "../../utils/authVerificationFlow";
 
 export default function ChangeEmailModal({
   currentEmail,
@@ -16,6 +17,10 @@ export default function ChangeEmailModal({
 
     if (!trimmedEmail) {
       return "Please enter your new email address.";
+    }
+
+    if (!isValidEmailFormat(trimmedEmail)) {
+      return "Please enter a valid email address.";
     }
 
     if (trimmedEmail === currentEmail) {
@@ -39,20 +44,20 @@ export default function ChangeEmailModal({
       setLoading(true);
       setError("");
 
-      await requestLocalEmailChangeApi({
+      const response = await requestLocalEmailChangeApi({
         NewEmail: email.trim(),
       });
 
-      onSuccess?.(email.trim());
+      if (isEmailVerificationRequired(response)) {
+        onSuccess?.(response.email || email.trim(), response);
+        return;
+      }
+
+      onSuccess?.(email.trim(), response);
     } catch (error) {
       console.error("Request email change failed:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message ||
-        error.response?.data?.Message ||
-        "Unable to request email change.";
-
-      setError(serverMessage);
+      setError(getErrorMessage(error, "Unable to request email change."));
     } finally {
       setLoading(false);
     }

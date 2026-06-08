@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { linkLocalLoginApi } from "../../api/authProviderApi";
+import { isValidEmailFormat } from "../../utils/authVerificationFlow";
 
 export default function AddLocalLoginModal({
   defaultEmail,
@@ -34,6 +35,10 @@ export default function AddLocalLoginModal({
       return "Please enter your email address.";
     }
 
+    if (!isValidEmailFormat(form.email)) {
+      return "Please enter a valid email address.";
+    }
+
     if (form.password.length < 6) {
       return "Password must be at least 6 characters.";
     }
@@ -60,11 +65,11 @@ export default function AddLocalLoginModal({
       setError("");
 
       await linkLocalLoginApi({
-        Email: form.email,
+        Email: form.email.trim(),
         Password: form.password,
       });
 
-      onSuccess?.(form.email);
+      onSuccess?.(form.email.trim());
     } catch (error) {
       console.error("Add local login failed:", error.response?.data || error);
 

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Auth;
@@ -8,7 +8,9 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth;
 
@@ -52,23 +54,30 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Password was not provided");
         }
 
+        var existingLocalProvider = await _dbContext.UserAuthProviders
+            .Include(x => x.User)
+            .FirstOrDefaultAsync(
+                x => x.Provider == AuthProviders.Local &&
+                     x.ProviderUserId == email,
+                cancellationToken);
+
+        if (existingLocalProvider != null)
+        {
+            if (existingLocalProvider.EmailVerifiedAt == null ||
+                existingLocalProvider.User?.Status == UserStatuses.PendingVerification)
+            {
+                return CreatePendingRegistrationResponse(email);
+            }
+
+            throw new ConflictException("Email is already registered");
+        }
+
         var usernameExists = await _dbContext.Users
             .AnyAsync(x => x.UsernameNormalized == normalizedUsername, cancellationToken);
 
         if (usernameExists)
         {
             throw new ConflictException("Username is already taken");
-        }
-
-        var emailExists = await _dbContext.UserAuthProviders
-            .AnyAsync(
-                x => x.Provider == AuthProviders.Local &&
-                     x.ProviderUserId == email,
-                cancellationToken);
-
-        if (emailExists)
-        {
-            throw new ConflictException("Email is already registered");
         }
 
         var now = DateTime.UtcNow;
@@ -78,7 +87,7 @@ public class AuthService : IAuthService
             UserId = Guid.NewGuid(),
             Username = username,
             UsernameNormalized = normalizedUsername,
-            Status = UserStatuses.Active,
+            Status = UserStatuses.PendingVerification,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -130,9 +139,11 @@ public class AuthService : IAuthService
 
         return new RegistrationResponseDto
         {
-            Message = "Registration successful. Please verify your email.",
+            Message = "Registration started. Please verify your email.",
             Email = email,
-            RequiresEmailVerification = true
+            RequiresEmailVerification = true,
+            VerificationPurpose = EmailVerificationPurposes.Register,
+            CanResendVerification = true
         };
     }
 
@@ -248,7 +259,6 @@ public class AuthService : IAuthService
         var user = await _dbContext.Users
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
-            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.UserId == verificationResult.UserId, cancellationToken);
 
         if (user == null)
@@ -257,6 +267,14 @@ public class AuthService : IAuthService
         }
 
         ValidateAccountStatus(user.Status);
+
+        if (user.Status == UserStatuses.PendingVerification)
+        {
+            user.Status = UserStatuses.Active;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         var authenticatedUser = new AuthenticatedUserDto
         {
@@ -355,17 +373,29 @@ public class AuthService : IAuthService
         return CreateLoginResponse(user);
     }
 
+    private static RegistrationResponseDto CreatePendingRegistrationResponse(string email)
+    {
+        return new RegistrationResponseDto
+        {
+            Message = "This email already has a pending registration. Verify your email to continue with the original account details.",
+            Email = email,
+            RequiresEmailVerification = true,
+            VerificationPurpose = EmailVerificationPurposes.Register,
+            CanResendVerification = true
+        };
+    }
+
     private LoginResponseDto CreateLoginResponse(AuthenticatedUserDto user)
     {
-        var accessToken = _jwtTokenService.GenerateToken(
-            user.UserId,
-            user.Username ?? string.Empty,
-            user.Roles);
-
-        if (user?.Username == null)
+        if (string.IsNullOrWhiteSpace(user.Username))
         {
             throw new InvalidOperationException("Username was not provided");
         }
+
+        var accessToken = _jwtTokenService.GenerateToken(
+            user.UserId,
+            user.Username,
+            user.Roles);
 
         return new LoginResponseDto
         {
@@ -401,7 +431,20 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Email was not provided");
         }
 
-        return email.Trim().ToLowerInvariant();
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+
+        if (!IsValidEmailFormat(normalizedEmail))
+        {
+            throw new InvalidOperationException("Invalid email format");
+        }
+
+        return normalizedEmail;
+    }
+
+    private static bool IsValidEmailFormat(string email)
+    {
+        return new EmailAddressAttribute().IsValid(email) &&
+               Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
     }
 
     private static string NormalizeUsernameOrThrow(string? username)

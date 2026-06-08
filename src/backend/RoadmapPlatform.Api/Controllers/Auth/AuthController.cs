@@ -31,7 +31,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         {
             var response = await _authService.RegisterAsync(request);
 
-            return Ok(response);
+            return StatusCode(StatusCodes.Status202Accepted, response);
         }
 
         [HttpPost("login")]

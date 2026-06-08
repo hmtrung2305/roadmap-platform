@@ -6,7 +6,9 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth
 {
@@ -40,16 +42,28 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             var linkedProviders = await _dbContext.UserAuthProviders
                 .Where(x => x.UserId == userId)
-                .Select(x => x.Provider)
+                .Select(x => new
+                {
+                    x.Provider,
+                    x.EmailVerifiedAt
+                })
                 .ToListAsync(cancellationToken);
 
-            var linkedProviderCount = linkedProviders
-                .Distinct()
-                .Count();
+            var hasVerifiedLocal = linkedProviders.Any(x =>
+                x.Provider == AuthProviders.Local &&
+                x.EmailVerifiedAt != null);
 
-            var hasLocal = linkedProviders.Contains(AuthProviders.Local);
-            var hasGoogle = linkedProviders.Contains(AuthProviders.Google);
-            var hasGitHub = linkedProviders.Contains(AuthProviders.GitHub);
+            var hasPendingLocal = linkedProviders.Any(x =>
+                x.Provider == AuthProviders.Local &&
+                x.EmailVerifiedAt == null);
+
+            var hasGoogle = linkedProviders.Any(x => x.Provider == AuthProviders.Google);
+            var hasGitHub = linkedProviders.Any(x => x.Provider == AuthProviders.GitHub);
+
+            var usableProviderCount = 0;
+            usableProviderCount += hasVerifiedLocal ? 1 : 0;
+            usableProviderCount += hasGoogle ? 1 : 0;
+            usableProviderCount += hasGitHub ? 1 : 0;
 
             return new List<LoginMethodStatusDto>
             {
@@ -57,27 +71,28 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 {
                     Provider = AuthProviders.Local,
                     DisplayName = "Local",
-                    IsLinked = hasLocal,
-                    CanUnlink = hasLocal && linkedProviderCount > 1
+                    IsLinked = hasVerifiedLocal,
+                    CanUnlink = hasVerifiedLocal && usableProviderCount > 1,
+                    RequiresVerification = hasPendingLocal
                 },
                 new LoginMethodStatusDto
                 {
                     Provider = AuthProviders.Google,
                     DisplayName = "Google",
                     IsLinked = hasGoogle,
-                    CanUnlink = hasGoogle && linkedProviderCount > 1
+                    CanUnlink = hasGoogle && usableProviderCount > 1
                 },
                 new LoginMethodStatusDto
                 {
                     Provider = AuthProviders.GitHub,
                     DisplayName = "GitHub",
                     IsLinked = hasGitHub,
-                    CanUnlink = hasGitHub && linkedProviderCount > 1
+                    CanUnlink = hasGitHub && usableProviderCount > 1
                 }
             };
         }
 
-        public async Task LinkLocalLoginAsync(
+        public async Task<LinkLocalLoginResponseDto> LinkLocalLoginAsync(
             Guid userId,
             LinkLocalLoginRequestDto request,
             CancellationToken cancellationToken = default)
@@ -112,7 +127,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             {
                 if (existingLocalProvider.EmailVerifiedAt == null)
                 {
-                    throw new ConflictException("This account already has a pending local login verification");
+                    return CreatePendingLocalLinkResponse(
+                        existingLocalProvider.Email ?? existingLocalProvider.ProviderUserId);
                 }
 
                 throw new ConflictException("This account already has a local login method");
@@ -154,6 +170,20 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 email,
                 EmailVerificationPurposes.LinkLocal,
                 cancellationToken);
+
+            return CreatePendingLocalLinkResponse(email);
+        }
+
+        private static LinkLocalLoginResponseDto CreatePendingLocalLinkResponse(string? email)
+        {
+            return new LinkLocalLoginResponseDto
+            {
+                Message = "Password login is pending verification. Please verify your email to finish linking it.",
+                Email = email ?? string.Empty,
+                RequiresEmailVerification = true,
+                VerificationPurpose = EmailVerificationPurposes.LinkLocal,
+                CanResendVerification = true
+            };
         }
 
         public async Task ChangePasswordAsync(
@@ -393,7 +423,20 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 throw new InvalidOperationException("Email was not provided");
             }
 
-            return email.Trim().ToLowerInvariant();
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            if (!IsValidEmailFormat(normalizedEmail))
+            {
+                throw new InvalidOperationException("Invalid email format");
+            }
+
+            return normalizedEmail;
+        }
+
+        private static bool IsValidEmailFormat(string email)
+        {
+            return new EmailAddressAttribute().IsValid(email) &&
+                   Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
 
         private static string? NormalizeNullable(string? value)

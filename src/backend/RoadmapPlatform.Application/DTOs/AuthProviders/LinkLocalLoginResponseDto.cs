@@ -1,6 +1,6 @@
-﻿namespace RoadmapPlatform.Application.DTOs.Auth;
+namespace RoadmapPlatform.Application.DTOs.AuthProviders;
 
-public class RegistrationResponseDto
+public class LinkLocalLoginResponseDto
 {
     public string Message { get; set; } = string.Empty;
 

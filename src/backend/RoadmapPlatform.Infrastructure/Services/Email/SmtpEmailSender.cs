@@ -44,7 +44,7 @@ namespace RoadmapPlatform.Infrastructure.Services
             message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
 
-            message.Body = new TextPart("plain")
+            message.Body = new TextPart("html")
             {
                 Text = body
             };
@@ -55,13 +55,20 @@ namespace RoadmapPlatform.Infrastructure.Services
                 ? SecureSocketOptions.StartTls
                 : SecureSocketOptions.Auto;
 
-            await client.ConnectAsync(_settings.Host, _settings.Port, secureSocketOptions);
+            await client.ConnectAsync(
+                _settings.Host,
+                _settings.Port,
+                secureSocketOptions,
+                cancellationToken);
 
-            await client.AuthenticateAsync(_settings.Username, _settings.Password);
+            await client.AuthenticateAsync(
+                _settings.Username,
+                _settings.Password,
+                cancellationToken);
 
-            await client.SendAsync(message);
+            await client.SendAsync(message, cancellationToken);
 
-            await client.DisconnectAsync(true);
+            await client.DisconnectAsync(true, cancellationToken);
         }
     }
 }
