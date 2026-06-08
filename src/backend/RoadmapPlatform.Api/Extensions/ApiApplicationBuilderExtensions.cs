@@ -12,6 +12,8 @@ namespace RoadmapPlatform.Api.Extensions
         {
             app.UseHttpsRedirection();
 
+            app.UseResponseCompression();
+
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
             app.UseCors("DefaultCorsPolicy");
