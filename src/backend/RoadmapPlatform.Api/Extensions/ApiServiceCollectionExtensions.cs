@@ -16,6 +16,8 @@
 
             services.AddHttpClient();
 
+            services.AddResponseCompression();
+
             services.AddControllers();
 
             services.AddHttpContextAccessor();
