@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
@@ -6,7 +6,6 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
-using RoadmapPlatform.Infrastructure.Services.Email;
 using System.Security.Claims;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth
@@ -27,10 +26,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             _emailVerificationService = emailVerificationService;
         }
 
-        public async Task<List<LoginMethodStatusDto>> GetAuthProviderStatusAsync(Guid userId)
+        public async Task<List<LoginMethodStatusDto>> GetAuthProviderStatusAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
             var userExists = await _dbContext.Users
-                .AnyAsync(x => x.UserId == userId);
+                .AnyAsync(x => x.UserId == userId, cancellationToken);
 
             if (!userExists)
             {
@@ -40,7 +41,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             var linkedProviders = await _dbContext.UserAuthProviders
                 .Where(x => x.UserId == userId)
                 .Select(x => x.Provider)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var linkedProviderCount = linkedProviders
                 .Distinct()
@@ -76,7 +77,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             };
         }
 
-        public async Task LinkLocalLoginAsync(Guid userId, LinkLocalLoginRequestDto request)
+        public async Task LinkLocalLoginAsync(
+            Guid userId,
+            LinkLocalLoginRequestDto request,
+            CancellationToken cancellationToken = default)
         {
             if (request == null)
             {
@@ -91,7 +95,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             }
 
             var user = await _dbContext.Users
-                .FirstOrDefaultAsync(x => x.UserId == userId);
+                .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
 
             if (user == null)
             {
@@ -99,9 +103,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             }
 
             var existingLocalProvider = await _dbContext.UserAuthProviders
-                .FirstOrDefaultAsync(x =>
-                    x.UserId == userId &&
-                    x.Provider == AuthProviders.Local);
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId &&
+                         x.Provider == AuthProviders.Local,
+                    cancellationToken);
 
             if (existingLocalProvider != null)
             {
@@ -114,9 +119,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             }
 
             var emailAlreadyRegistered = await _dbContext.UserAuthProviders
-                .AnyAsync(x =>
-                    x.Provider == AuthProviders.Local &&
-                    x.ProviderUserId == email);
+                .AnyAsync(
+                    x => x.Provider == AuthProviders.Local &&
+                         x.ProviderUserId == email,
+                    cancellationToken);
 
             if (emailAlreadyRegistered)
             {
@@ -135,21 +141,25 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 PendingEmail = null,
                 PasswordHash = _passwordHasher.HashPassword(user, request.Password),
                 EmailVerifiedAt = null,
-                CreatedAt = now,
+                CreatedAt = now
             };
 
             _dbContext.UserAuthProviders.Add(localProvider);
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _emailVerificationService.SendVerificationCodeAsync(
                 userId,
                 AuthProviders.Local,
                 email,
-                EmailVerificationPurposes.LinkLocal);
+                EmailVerificationPurposes.LinkLocal,
+                cancellationToken);
         }
 
-        public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request)
+        public async Task ChangePasswordAsync(
+            Guid userId,
+            ChangePasswordRequestDto request,
+            CancellationToken cancellationToken = default)
         {
             if (request == null)
             {
@@ -173,9 +183,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             var localProvider = await _dbContext.UserAuthProviders
                 .Include(x => x.User)
-                .FirstOrDefaultAsync(x =>
-                    x.UserId == userId &&
-                    x.Provider == AuthProviders.Local);
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId &&
+                         x.Provider == AuthProviders.Local,
+                    cancellationToken);
 
             if (localProvider == null ||
                 localProvider.User == null ||
@@ -203,10 +214,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 localProvider.User,
                 request.NewPassword);
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task LinkGitHubAsync(Guid userId, ClaimsPrincipal githubUser)
+        public async Task LinkGitHubAsync(
+            Guid userId,
+            ClaimsPrincipal githubUser,
+            CancellationToken cancellationToken = default)
         {
             var githubUserId = githubUser.FindFirstValue(ClaimTypes.NameIdentifier);
             var githubEmail = githubUser.FindFirstValue(ClaimTypes.Email);
@@ -228,10 +242,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 providerUserId: githubUserId,
                 email: githubEmail,
                 providerUsername: githubUsername,
-                emailVerifiedAt: githubEmail == null ? null : DateTime.UtcNow);
+                emailVerifiedAt: githubEmail == null ? null : DateTime.UtcNow,
+                cancellationToken: cancellationToken);
         }
 
-        public async Task LinkGoogleAsync(Guid userId, ClaimsPrincipal googleUser)
+        public async Task LinkGoogleAsync(
+            Guid userId,
+            ClaimsPrincipal googleUser,
+            CancellationToken cancellationToken = default)
         {
             var googleUserId = googleUser.FindFirstValue(ClaimTypes.NameIdentifier);
             var googleEmail = googleUser.FindFirstValue(ClaimTypes.Email);
@@ -253,10 +271,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 providerUserId: googleUserId,
                 email: googleEmail,
                 providerUsername: googleUsername,
-                emailVerifiedAt: DateTime.UtcNow);
+                emailVerifiedAt: DateTime.UtcNow,
+                cancellationToken: cancellationToken);
         }
 
-        public async Task UnlinkProviderAsync(Guid userId, string provider)
+        public async Task UnlinkProviderAsync(
+            Guid userId,
+            string provider,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(provider))
             {
@@ -271,7 +293,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             }
 
             var userExists = await _dbContext.Users
-                .AnyAsync(x => x.UserId == userId);
+                .AnyAsync(x => x.UserId == userId, cancellationToken);
 
             if (!userExists)
             {
@@ -280,7 +302,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             var linkedProviders = await _dbContext.UserAuthProviders
                 .Where(x => x.UserId == userId)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var providerToRemove = linkedProviders
                 .FirstOrDefault(x => x.Provider == provider);
@@ -302,7 +324,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             _dbContext.UserAuthProviders.Remove(providerToRemove);
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         private async Task LinkExternalProviderAsync(
@@ -311,10 +333,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             string providerUserId,
             string? email,
             string? providerUsername,
-            DateTime? emailVerifiedAt)
+            DateTime? emailVerifiedAt,
+            CancellationToken cancellationToken = default)
         {
             var userExists = await _dbContext.Users
-                .AnyAsync(x => x.UserId == userId);
+                .AnyAsync(x => x.UserId == userId, cancellationToken);
 
             if (!userExists)
             {
@@ -322,9 +345,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             }
 
             var alreadyLinkedToCurrentUser = await _dbContext.UserAuthProviders
-                .AnyAsync(x =>
-                    x.UserId == userId &&
-                    x.Provider == provider);
+                .AnyAsync(
+                    x => x.UserId == userId &&
+                         x.Provider == provider,
+                    cancellationToken);
 
             if (alreadyLinkedToCurrentUser)
             {
@@ -332,9 +356,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             }
 
             var existingProviderAccount = await _dbContext.UserAuthProviders
-                .FirstOrDefaultAsync(x =>
-                    x.Provider == provider &&
-                    x.ProviderUserId == providerUserId);
+                .FirstOrDefaultAsync(
+                    x => x.Provider == provider &&
+                         x.ProviderUserId == providerUserId,
+                    cancellationToken);
 
             if (existingProviderAccount != null)
             {
@@ -358,7 +383,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             _dbContext.UserAuthProviders.Add(authProvider);
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         private static string NormalizeEmailOrThrow(string? email)

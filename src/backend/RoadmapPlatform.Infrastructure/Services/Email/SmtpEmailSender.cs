@@ -16,7 +16,7 @@ namespace RoadmapPlatform.Infrastructure.Services
             _settings = options.Value;
         }
 
-        public async Task SendEmailAsync(string to, string subject, string body)
+        public async Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken)
         {
             if (!_settings.Enabled)
             {

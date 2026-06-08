@@ -49,6 +49,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             IConfiguration configuration)
         {
 
+            // Database connection
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("DefaultConnection"),
@@ -61,13 +62,6 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<JwtSettings>(
                 configuration.GetSection("Jwt"));
 
-            // Email Settings
-            services.Configure<EmailVerificationSettings>(
-                configuration.GetSection("EmailVerification"));
-
-            services.Configure<SmtpEmailSettings>(
-                configuration.GetSection("SmtpEmail"));
-
             // AI, RAG Settings
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<RagSettings>(configuration.GetSection("Rag"));
@@ -76,7 +70,6 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
 
             // Đăng ký implementation cho external services ở đây sau.
-            // Ví dụ:
 
             // Authentication Services
             services.AddScoped<IAuthService, AuthService>();
@@ -85,19 +78,6 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IAuthProviderService, AuthProviderService>();
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
             services.AddHttpClient<ICaptchaService, TurnstileCaptchaService>();
-
-            // Email Services
-            services.AddScoped<IEmailVerificationService, EmailVerificationService>();
-            var smtpEnabled = configuration.GetValue<bool>("SmtpEmail:Enabled");
-
-            if (smtpEnabled)
-            {
-                services.AddScoped<IEmailSender, SmtpEmailSender>();
-            }
-            else
-            {
-                services.AddScoped<IEmailSender, ConsoleEmailSender>();
-            }
 
             // User Services
             services.AddScoped<IUserService, UserService>();

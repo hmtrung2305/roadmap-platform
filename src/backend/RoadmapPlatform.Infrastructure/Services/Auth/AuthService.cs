@@ -8,7 +8,6 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
-using RoadmapPlatform.Infrastructure.Services.Email;
 using System.Security.Claims;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth;
@@ -35,7 +34,9 @@ public class AuthService : IAuthService
         _emailVerificationService = emailVerificationService;
     }
 
-    public async Task<RegistrationResponseDto> RegisterAsync(RegisterRequestDto request)
+    public async Task<RegistrationResponseDto> RegisterAsync(
+        RegisterRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         if (request == null)
         {
@@ -52,7 +53,7 @@ public class AuthService : IAuthService
         }
 
         var usernameExists = await _dbContext.Users
-            .AnyAsync(x => x.UsernameNormalized == normalizedUsername);
+            .AnyAsync(x => x.UsernameNormalized == normalizedUsername, cancellationToken);
 
         if (usernameExists)
         {
@@ -60,9 +61,10 @@ public class AuthService : IAuthService
         }
 
         var emailExists = await _dbContext.UserAuthProviders
-            .AnyAsync(x =>
-                x.Provider == AuthProviders.Local &&
-                x.ProviderUserId == email);
+            .AnyAsync(
+                x => x.Provider == AuthProviders.Local &&
+                     x.ProviderUserId == email,
+                cancellationToken);
 
         if (emailExists)
         {
@@ -76,7 +78,7 @@ public class AuthService : IAuthService
             UserId = Guid.NewGuid(),
             Username = username,
             UsernameNormalized = normalizedUsername,
-            Status = "active",
+            Status = UserStatuses.Active,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -85,8 +87,8 @@ public class AuthService : IAuthService
         {
             User = user,
             IsPublic = false,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
         var localProvider = new UserAuthProvider
@@ -98,7 +100,7 @@ public class AuthService : IAuthService
             PendingEmail = null,
             PasswordHash = _passwordHasher.HashPassword(user, request.Password),
             EmailVerifiedAt = null,
-            CreatedAt = now,
+            CreatedAt = now
         };
 
         _dbContext.Users.Add(user);
@@ -106,7 +108,7 @@ public class AuthService : IAuthService
         _dbContext.UserAuthProviders.Add(localProvider);
 
         var learnerRole = await _dbContext.Roles
-            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner);
+            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner, cancellationToken);
 
         if (learnerRole != null)
         {
@@ -117,13 +119,14 @@ public class AuthService : IAuthService
             });
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         await _emailVerificationService.SendVerificationCodeAsync(
             user.UserId,
             AuthProviders.Local,
             email,
-            EmailVerificationPurposes.Register);
+            EmailVerificationPurposes.Register,
+            cancellationToken);
 
         return new RegistrationResponseDto
         {
@@ -133,7 +136,9 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
+    public async Task<LoginResponseDto> LoginAsync(
+        LoginRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         if (request == null)
         {
@@ -156,30 +161,30 @@ public class AuthService : IAuthService
 
         if (emailOrUsername.Contains('@'))
         {
-            // Find the user by email
             var email = NormalizeEmailOrThrow(emailOrUsername);
 
             localProvider = await _dbContext.UserAuthProviders
                 .Include(x => x.User)
                 .ThenInclude(u => u!.UserRoles)
                 .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(x =>
-                    x.Provider == AuthProviders.Local &&
-                    x.ProviderUserId == email);
+                .FirstOrDefaultAsync(
+                    x => x.Provider == AuthProviders.Local &&
+                         x.ProviderUserId == email,
+                    cancellationToken);
         }
         else
         {
-            // Find the user by username
             var usernameNormalized = NormalizeUsernameOrThrow(emailOrUsername).ToLowerInvariant();
 
             localProvider = await _dbContext.UserAuthProviders
                 .Include(x => x.User)
-                .ThenInclude(u=> u!.UserRoles)
+                .ThenInclude(u => u!.UserRoles)
                 .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(x =>
-                    x.Provider == AuthProviders.Local &&
-                    x.User != null &&
-                    x.User.UsernameNormalized == usernameNormalized);
+                .FirstOrDefaultAsync(
+                    x => x.Provider == AuthProviders.Local &&
+                         x.User != null &&
+                         x.User.UsernameNormalized == usernameNormalized,
+                    cancellationToken);
         }
 
         if (localProvider == null ||
@@ -213,16 +218,17 @@ public class AuthService : IAuthService
             Email = localProvider.Email,
             Status = localProvider.User.Status,
             Roles = localProvider.User.UserRoles
-                    .Where(ur => ur.Role != null)
-                    .Select(ur => ur.Role!.RoleName)
-                    .ToList()
+                .Where(ur => ur.Role != null)
+                .Select(ur => ur.Role!.RoleName)
+                .ToList()
         };
 
         return CreateLoginResponse(authenticatedUser);
     }
 
     public async Task<LoginResponseDto> VerifyRegistrationEmailAsync(
-        VerifyRegistrationEmailRequestDto request)
+        VerifyRegistrationEmailRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         if (request == null)
         {
@@ -237,13 +243,13 @@ public class AuthService : IAuthService
         }
 
         var verificationResult = await _emailVerificationService
-            .VerifyRegistrationEmailAsync(email, request.Otp);
+            .VerifyRegistrationEmailAsync(email, request.Otp, cancellationToken);
 
         var user = await _dbContext.Users
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.UserId == verificationResult.UserId);
+            .FirstOrDefaultAsync(x => x.UserId == verificationResult.UserId, cancellationToken);
 
         if (user == null)
         {
@@ -259,16 +265,17 @@ public class AuthService : IAuthService
             Email = verificationResult.Email,
             Status = user.Status,
             Roles = user.UserRoles
-                    .Where(ur => ur.Role != null)
-                    .Select(ur => ur.Role!.RoleName)
-                    .ToList()
+                .Where(ur => ur.Role != null)
+                .Select(ur => ur.Role!.RoleName)
+                .ToList()
         };
 
         return CreateLoginResponse(authenticatedUser);
     }
 
     public async Task ResendRegistrationVerificationAsync(
-        ResendRegistrationVerificationRequestDto request)
+        ResendRegistrationVerificationRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         if (request == null)
         {
@@ -277,10 +284,14 @@ public class AuthService : IAuthService
 
         var email = NormalizeEmailOrThrow(request.Email);
 
-        await _emailVerificationService.ResendRegistrationVerificationAsync(email);
+        await _emailVerificationService.ResendRegistrationVerificationAsync(
+            email,
+            cancellationToken);
     }
 
-    public async Task<LoginResponseDto> LoginWithGitHubAsync(ClaimsPrincipal githubUser)
+    public async Task<LoginResponseDto> LoginWithGitHubAsync(
+        ClaimsPrincipal githubUser,
+        CancellationToken cancellationToken = default)
     {
         var githubUserId = githubUser.FindFirstValue(ClaimTypes.NameIdentifier);
         var githubEmail = githubUser.FindFirstValue(ClaimTypes.Email);
@@ -311,7 +322,9 @@ public class AuthService : IAuthService
         return CreateLoginResponse(user);
     }
 
-    public async Task<LoginResponseDto> LoginWithGoogleAsync(ClaimsPrincipal googleUser)
+    public async Task<LoginResponseDto> LoginWithGoogleAsync(
+        ClaimsPrincipal googleUser,
+        CancellationToken cancellationToken = default)
     {
         var googleUserId = googleUser.FindFirstValue(ClaimTypes.NameIdentifier);
         var googleEmail = googleUser.FindFirstValue(ClaimTypes.Email);
@@ -344,9 +357,15 @@ public class AuthService : IAuthService
 
     private LoginResponseDto CreateLoginResponse(AuthenticatedUserDto user)
     {
-        string username = user.Username;
+        var accessToken = _jwtTokenService.GenerateToken(
+            user.UserId,
+            user.Username ?? string.Empty,
+            user.Roles);
 
-        var accessToken = _jwtTokenService.GenerateToken(user.UserId, user.Username ?? string.Empty,user.Roles);
+        if (user?.Username == null)
+        {
+            throw new InvalidOperationException("Username was not provided");
+        }
 
         return new LoginResponseDto
         {
@@ -355,7 +374,7 @@ public class AuthService : IAuthService
             User = new UserResponseDto
             {
                 UserId = user.UserId,
-                Username = username,
+                Username = user.Username,
                 Email = user.Email,
                 Status = user.Status
             }

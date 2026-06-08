@@ -15,7 +15,8 @@ namespace RoadmapPlatform.Api
                 .AddApiAuthentication(builder.Configuration)
                 .AddApiAuthorization()
                 .AddApplicationServices()
-                .AddInfrastructureServices(builder.Configuration);
+                .AddInfrastructureServices(builder.Configuration)
+                .AddEmailServices(builder.Configuration);
 
             var app = builder.Build();
 

@@ -4,7 +4,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
 {
     public class ConsoleEmailSender : IEmailSender
     {
-        public Task SendEmailAsync(string to, string subject, string body)
+        public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
         {
             Console.WriteLine("========== EMAIL ==========");
             Console.WriteLine($"To: {to}");

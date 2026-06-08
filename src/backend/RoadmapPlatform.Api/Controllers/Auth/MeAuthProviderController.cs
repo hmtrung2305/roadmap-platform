@@ -58,11 +58,11 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
         [HttpPost("local/resend-verification")]
         [Authorize]
-        public async Task<IActionResult> ResendLinkedLocalVerification()
+        public async Task<IActionResult> ResendLinkedLocalVerification(CancellationToken cancellationToken)
         {
             var userId = GetCurrentUserId();
 
-            await _emailVerificationService.ResendLinkedLocalVerificationAsync(userId);
+            await _emailVerificationService.ResendLinkedLocalVerificationAsync(userId, cancellationToken);
 
             return Ok(new
             {
