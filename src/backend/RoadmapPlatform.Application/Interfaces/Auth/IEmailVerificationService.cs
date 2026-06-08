@@ -1,4 +1,5 @@
-﻿using RoadmapPlatform.Application.DTOs.Auth;
+using RoadmapPlatform.Application.DTOs.Auth;
+using RoadmapPlatform.Application.DTOs.AuthProviders;
 
 namespace RoadmapPlatform.Application.Interfaces.Auth
 {
@@ -37,9 +38,13 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
             string otp,
             CancellationToken cancellationToken = default);
 
-        Task RequestLocalEmailChangeAsync(
+        Task<UpdateLocalEmailResponseDto> RequestLocalEmailChangeAsync(
             Guid userId, 
             string newEmail,
+            CancellationToken cancellationToken = default);
+
+        Task ResendLocalEmailChangeVerificationAsync(
+            Guid userId,
             CancellationToken cancellationToken = default);
 
         Task VerifyLocalEmailChangeAsync(

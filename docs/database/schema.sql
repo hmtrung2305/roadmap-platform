@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.user
     deleted_at timestamptz,
 
     CONSTRAINT chk_user_status
-        CHECK (status in ('active', 'suspended', 'deleted'))
+        CHECK (status in ('active', 'pending_verification', 'suspended', 'deleted'))
 );
 
 CREATE TABLE IF NOT EXISTS public.user_profile

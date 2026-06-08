@@ -42,6 +42,10 @@ export default function AccountSettingsPage() {
     return providers.find((item) => item.provider?.toLowerCase() === "github");
   }, [providers]);
 
+  const localRequiresVerification = Boolean(
+    localProvider?.requiresVerification || localProvider?.RequiresVerification,
+  );
+
   const getProviderDisplayName = (provider) => {
     if (provider === "google") return "Google";
     if (provider === "github") return "GitHub";
@@ -171,9 +175,27 @@ export default function AccountSettingsPage() {
         <SettingsRow
           icon={MdEmail}
           title="Email"
-          value={me?.email ? me.email : "Not connected"}
-          actionLabel={localProvider?.isLinked ? "Change" : "Add"}
+          value={
+            localRequiresVerification
+              ? "Pending verification"
+              : me?.email
+                ? me.email
+                : "Not connected"
+          }
+          actionLabel={
+            localRequiresVerification
+              ? "Verify"
+              : localProvider?.isLinked
+                ? "Change"
+                : "Add"
+          }
           onClick={() => {
+            if (localRequiresVerification) {
+              setPendingLocalEmail(localProvider?.email || me?.email || "");
+              setActiveModal("verify-local-email");
+              return;
+            }
+
             if (localProvider?.isLinked) {
               setActiveModal("change-email");
               return;
@@ -186,14 +208,32 @@ export default function AccountSettingsPage() {
         <SettingsRow
           icon={FaKey}
           title="Password"
-          value={localProvider?.isLinked ? "Set" : "Not set"}
-          actionLabel={localProvider?.isLinked ? "Change" : "Add"}
+          value={
+            localRequiresVerification
+              ? "Pending verification"
+              : localProvider?.isLinked
+                ? "Set"
+                : "Not set"
+          }
+          actionLabel={
+            localRequiresVerification
+              ? "Verify"
+              : localProvider?.isLinked
+                ? "Change"
+                : "Add"
+          }
           actionClassName={
             localProvider?.isLinked
               ? "bg-slate-100 text-slate-700"
               : "bg-indigo-50 text-indigo-700"
           }
           onClick={() => {
+            if (localRequiresVerification) {
+              setPendingLocalEmail(localProvider?.email || me?.email || "");
+              setActiveModal("verify-local-email");
+              return;
+            }
+
             if (localProvider?.isLinked) {
               setActiveModal("change-password");
               return;

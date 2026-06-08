@@ -9,6 +9,11 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useAuthStore } from "../stores/useAuthStore";
 import MotionWrapper from "../components/auth/MotionWrapper";
+import {
+  goToVerificationPage,
+  isEmailVerificationRequired,
+  VERIFICATION_PURPOSES,
+} from "../utils/authVerificationFlow";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -73,6 +78,16 @@ export default function LoginPage() {
       }, 250);
     } catch (error) {
       console.log("Login failed:", error.response?.data || error);
+
+      if (isEmailVerificationRequired(error)) {
+        clearAuthError();
+        goToVerificationPage(
+          navigate,
+          error,
+          form.emailOrUsername.includes("@") ? form.emailOrUsername.trim() : "",
+          VERIFICATION_PURPOSES.REGISTER,
+        );
+      }
     } finally {
       setCaptchaToken("");
       setCaptchaResetKey((prev) => prev + 1);
