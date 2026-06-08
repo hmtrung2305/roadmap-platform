@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +9,7 @@ using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
+using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Rag;
 using RoadmapPlatform.Application.Interfaces.Resources;
@@ -28,6 +29,7 @@ using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
+using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Rag;
 using RoadmapPlatform.Infrastructure.Services.Resources;
@@ -68,6 +70,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<FileStorageSettings>(configuration.GetSection("FileStorage"));
             services.Configure<SupabaseStorageSettings>(configuration.GetSection("SupabaseStorage"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
+            services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
 
             // Đăng ký implementation cho external services ở đây sau.
 
@@ -113,6 +116,17 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Streak Service
             services.AddScoped<IStreakService, StreakService>();
+
+            // Market Pulse Services
+            services.AddSingleton<MarketPulseKeywordAnalyzer>();
+            services.AddScoped<IJobPortalScraper, JobPortalScraper>();
+            services.AddScoped<IMarketPulseService, MarketPulseService>();
+            services.AddHostedService<MarketPulseHostedService>();
+            services.AddHttpClient("market-pulse", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("RoadmapPlatform-MarketPulse/1.0");
+            });
 
             // Roadmap Services
             services.AddScoped<RoadmapDetailBuilder>();

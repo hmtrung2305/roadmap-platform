@@ -34,6 +34,7 @@ export default function TopNavbar() {
     { label: "Dashboard", path: user ? "/dashboard" : "/login" },
     { label: "Roadmaps", path: user ? "/roadmap" : "/login" },
     { label: "Resources", path: user ? "/resources" : "/login" },
+    { label: "Market Pulse", path: user ? "/market-pulse" : "/login" },
     { label: "Public Page", path: portfolioPath },
   ];
 
