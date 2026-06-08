@@ -17,6 +17,16 @@ import {
   VERIFICATION_PURPOSES,
 } from "../utils/authVerificationFlow";
 
+const PASSWORD_REQUIREMENT_MESSAGE =
+  "Password must contain at least 8 characters with uppercase, lowercase, number, and special character.";
+
+const PASSWORD_REQUIREMENT_PATTERN =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+
+function isValidPasswordFormat(password) {
+  return PASSWORD_REQUIREMENT_PATTERN.test(password);
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate();
 
@@ -34,6 +44,7 @@ export default function RegisterPage() {
   });
 
   const [error, setError] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
@@ -63,27 +74,35 @@ export default function RegisterPage() {
 
   const validateForm = () => {
     if (!form.username.trim()) {
-      return "Vui lòng nhập username.";
+      return "Please enter a username.";
     }
 
     if (!form.email.trim()) {
-      return "Vui lòng nhập email.";
+      return "Please enter an email address.";
     }
 
     if (!isValidEmailFormat(form.email)) {
       return "Please enter a valid email address.";
     }
 
-    if (form.password.length < 8) {
-      return "Mật khẩu nên có ít nhất 8 ký tự.";
+    if (!form.password) {
+      return "Please enter a password.";
+    }
+
+    if (!isValidPasswordFormat(form.password)) {
+      return PASSWORD_REQUIREMENT_MESSAGE;
+    }
+
+    if (!form.confirmPassword) {
+      return "Please confirm your password.";
     }
 
     if (form.password !== form.confirmPassword) {
-      return "Confirm password không khớp.";
+      return "Passwords do not match.";
     }
 
     if (!form.agreeTerms) {
-      return "Bạn cần đồng ý với Terms of Service và Privacy Policy.";
+      return "Please agree to the Terms of Service and Privacy Policy.";
     }
 
     if (CAPTCHA_ENABLED && !captchaToken) {
@@ -138,7 +157,7 @@ export default function RegisterPage() {
         return;
       }
 
-      setError(getErrorMessage(error, "Register failed. Please try again."));
+      setError(getErrorMessage(error, "Registration failed. Please try again."));
     } finally {
       setCaptchaToken("");
       setCaptchaResetKey((prev) => prev + 1);
@@ -221,7 +240,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
+                <div className="relative">
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                     Password
                   </label>
@@ -231,15 +250,23 @@ export default function RegisterPage() {
                     type="password"
                     value={form.password}
                     onChange={handleChange}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                     placeholder="••••••••"
                     className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
+
+                  {passwordFocused && (
+                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
+                      {PASSWORD_REQUIREMENT_MESSAGE}
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                    Confirm
+                    Confirm password
                   </label>
 
                   <input
