@@ -1,0 +1,70 @@
+name: Refresh Market Pulse
+
+on:
+  schedule:
+    - cron: "30 19 * * *"
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: "Max TopCV list pages to crawl for this manual run"
+        required: false
+        default: "2"
+      max_postings:
+        description: "Max job postings to save for this manual run"
+        required: false
+        default: "80"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: market-pulse-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-market-pulse:
+    name: Refresh Market Pulse data
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: ${{ secrets.MARKET_PULSE_DB_CONNECTION_STRING }}
+      MarketPulse__Enabled: "true"
+      MarketPulse__RunOnStartup: "false"
+      MarketPulse__PythonExecutablePath: python3
+      MarketPulse__MaxPagesPerSource: ${{ github.event.inputs.max_pages || vars.MARKET_PULSE_MAX_PAGES || '4' }}
+      MarketPulse__MaxPostingsPerSource: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_MAX_POSTINGS || '160' }}
+      MarketPulse__RequestDelaySeconds: ${{ vars.MARKET_PULSE_REQUEST_DELAY_SECONDS || '2' }}
+      MarketPulse__RequestTimeoutSeconds: ${{ vars.MARKET_PULSE_REQUEST_TIMEOUT_SECONDS || '30' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          if [ -z "$ConnectionStrings__DefaultConnection" ]; then
+            echo "Missing MARKET_PULSE_DB_CONNECTION_STRING secret."
+            exit 1
+          fi
+
+      - name: Restore Market Pulse job
+        run: dotnet restore src/backend/RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj
+
+      - name: Build Market Pulse job
+        run: dotnet build src/backend/RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj --configuration Release --no-restore
+
+      - name: Run Market Pulse refresh
+        run: dotnet run --project src/backend/RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj --configuration Release --no-build
