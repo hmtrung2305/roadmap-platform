@@ -201,7 +201,7 @@ public sealed class RoadmapQueryService(
 
         var normalizedSlug = slug.Trim().ToLowerInvariant();
 
-        var rows = await (
+        var roadmapVersionId = await (
             from version in dbContext.Set<RoadmapVersion>().AsNoTracking()
             join roadmap in dbContext.Set<Roadmap>().AsNoTracking()
                 on version.RoadmapId equals roadmap.RoadmapId
@@ -210,13 +210,9 @@ public sealed class RoadmapQueryService(
             where version.Status == "published" &&
                   roadmap.Visibility == "public" &&
                   careerRole.Slug == normalizedSlug
-            select version)
-            .ToListAsync(cancellationToken);
-
-        var roadmapVersionId = rows
-            .OrderByDescending(v => v.VersionNumber)
-            .Select(v => v.RoadmapVersionId)
-            .FirstOrDefault();
+            orderby version.VersionNumber descending
+            select version.RoadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (roadmapVersionId == Guid.Empty)
         {
