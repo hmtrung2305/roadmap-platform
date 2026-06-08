@@ -98,7 +98,7 @@ export default function LoginPage() {
       <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <AuthRoadmapPanel />
 
-        <section className="flex min-h-dvh items-center justify-center bg-white px-6 py-6">
+        <section className="flex min-h-dvh items-center justify-center bg-[#FAF8F1] px-6 py-6">
           <div
             className={`w-full max-w-[390px] rounded-3xl border border-slate-100 bg-white px-6 py-7 shadow-xl shadow-slate-200/60 transition duration-200 ${
               authLoading ? "scale-[0.99] opacity-70" : ""
