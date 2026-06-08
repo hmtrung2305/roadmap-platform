@@ -233,8 +233,6 @@ public sealed class RoadmapQueryService(
     {
         var version = await dbContext.Set<RoadmapVersion>()
             .AsNoTracking()
-            .Include(v => v.RoadmapNodes)
-            .Include(v => v.RoadmapEdges)
             .Where(v => v.RoadmapVersionId == roadmapVersionId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -242,6 +240,47 @@ public sealed class RoadmapQueryService(
         {
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
+
+        var nodes = await dbContext.Set<RoadmapNode>()
+            .AsNoTracking()
+            .Where(n => n.RoadmapVersionId == roadmapVersionId)
+            .Select(n => new RoadmapNode
+            {
+                RoadmapNodeId = n.RoadmapNodeId,
+                RoadmapVersionId = n.RoadmapVersionId,
+                ParentNodeId = n.ParentNodeId,
+                Slug = n.Slug,
+                NodeType = n.NodeType,
+                CheckpointType = n.CheckpointType,
+                SelectionType = n.SelectionType,
+                RequiredCount = n.RequiredCount,
+                Title = n.Title,
+                OrderIndex = n.OrderIndex,
+                LayoutRole = n.LayoutRole,
+                LayoutGroup = n.LayoutGroup,
+                LayoutRank = n.LayoutRank,
+                LayoutOrder = n.LayoutOrder,
+                EstimatedHours = n.EstimatedHours,
+                PositionX = n.PositionX,
+                PositionY = n.PositionY,
+                IsRequired = n.IsRequired,
+                IsTrackable = n.IsTrackable
+            })
+            .ToListAsync(cancellationToken);
+
+        var edges = await dbContext.Set<RoadmapEdge>()
+            .AsNoTracking()
+            .Where(e => e.RoadmapVersionId == roadmapVersionId)
+            .Select(e => new RoadmapEdge
+            {
+                RoadmapEdgeId = e.RoadmapEdgeId,
+                RoadmapVersionId = e.RoadmapVersionId,
+                FromNodeId = e.FromNodeId,
+                ToNodeId = e.ToNodeId,
+                EdgeType = e.EdgeType,
+                DependencyType = e.DependencyType
+            })
+            .ToListAsync(cancellationToken);
 
         var roadmap = await dbContext.Set<Roadmap>()
             .AsNoTracking()
@@ -275,8 +314,6 @@ public sealed class RoadmapQueryService(
             }
         }
 
-        var nodes = version.RoadmapNodes.ToList();
-        var edges = version.RoadmapEdges.ToList();
         var progressByNodeId = progressRows.ToDictionary(p => p.RoadmapNodeId);
         var statusByNodeId = RoadmapProgressCalculator.CalculateStatuses(nodes, edges, progressByNodeId);
         var progressSummary = RoadmapProgressCalculator.CalculateRoadmapProgress(nodes, edges, statusByNodeId);
