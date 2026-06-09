@@ -9,13 +9,15 @@ using RoadmapPlatform.Infrastructure.Extensions;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 using var host = builder.Build();
+
 var logger = host.Services
     .GetRequiredService<ILoggerFactory>()
     .CreateLogger("MarketPulseCronJob");
