@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
 
@@ -45,7 +46,7 @@ public partial class JobPosting
     public DateTime? LastChangedAt { get; set; }
 
     public DateTime? ClosedDetectedAt { get; set; }
-    
+
     public DateTime ScrapedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -53,4 +54,6 @@ public partial class JobPosting
     public DateTime UpdatedAt { get; set; }
 
     public virtual JobPortalSource JobPortalSource { get; set; } = null!;
+
+    public virtual ICollection<JobPostingDailySnapshot> JobPostingDailySnapshots { get; set; } = new List<JobPostingDailySnapshot>();
 }
