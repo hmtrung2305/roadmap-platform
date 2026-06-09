@@ -318,11 +318,41 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
         UNIQUE (user_id, provider)
 );
 
+CREATE TABLE IF NOT EXISTS public.pending_local_registration
+(
+    pending_local_registration_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    username varchar(50) NOT NULL,
+    username_normalized varchar(50) NOT NULL,
+
+    email varchar(254) NOT NULL,
+    password_hash text NOT NULL,
+
+    expires_at timestamptz NOT NULL,
+
+    used_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_local_registration_email_active
+    ON public.pending_local_registration(email)
+    WHERE used_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_local_registration_username_active
+    ON public.pending_local_registration(username_normalized)
+    WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS ix_pending_local_registration_expires_at
+    ON public.pending_local_registration(expires_at)
+    WHERE used_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS public.email_verification_token
 (
     verification_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    user_id uuid NOT NULL,
+    user_id uuid,
+    pending_local_registration_id uuid,
 
     provider varchar(50) NOT NULL,
     email varchar(255) NOT NULL,
@@ -341,8 +371,23 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
     CONSTRAINT fk_email_verification_user_id
         FOREIGN KEY (user_id)
         REFERENCES public.user(user_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_email_verification_pending_local_registration_id
+        FOREIGN KEY (pending_local_registration_id)
+        REFERENCES public.pending_local_registration(pending_local_registration_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_email_verification_token_single_owner
+        CHECK (
+            (user_id IS NOT NULL AND pending_local_registration_id IS NULL)
+            OR
+            (user_id IS NULL AND pending_local_registration_id IS NOT NULL)
+        )
 );
+
+CREATE INDEX IF NOT EXISTS ix_email_verification_token_pending_local_registration_id
+    ON public.email_verification_token(pending_local_registration_id);
 
 -- =========================
 -- Roadmap
