@@ -1,0 +1,197 @@
+{
+    "metrics": {
+        "http_req_duration": {
+            "avg": 5.870175824175827,
+            "min": 0.5068,
+            "med": 1.7614,
+            "max": 686.531,
+            "p(90)": 2.2391,
+            "p(95)": 2.947884999999999,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_req_sending": {
+            "p(90)": 0,
+            "p(95)": 0.3037,
+            "avg": 0.032788461538461544,
+            "min": 0,
+            "med": 0,
+            "max": 1.0295
+        },
+        "data_received": {
+            "count": 253002,
+            "rate": 8191.02004462413
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 2.2391,
+            "p(95)": 2.947884999999999,
+            "avg": 5.870175824175827,
+            "min": 0.5068,
+            "med": 1.7614,
+            "max": 686.531
+        },
+        "http_req_blocked": {
+            "min": 0,
+            "med": 0,
+            "max": 17.0238,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.13452692307692307
+        },
+        "http_req_waiting": {
+            "avg": 5.72908956043956,
+            "min": 0.5055,
+            "med": 1.6817,
+            "max": 684.9646,
+            "p(90)": 2.1463,
+            "p(95)": 2.613
+        },
+        "iteration_duration": {
+            "min": 1002.5237,
+            "med": 1003.8278,
+            "max": 1010.4529,
+            "p(90)": 1004.7598,
+            "p(95)": 1005.0996,
+            "avg": 1004.0597833333331
+        },
+        "group_duration": {
+            "min": 0.5068,
+            "med": 1.7610999999999999,
+            "max": 8.1243,
+            "p(90)": 2.20679,
+            "p(95)": 2.8906,
+            "avg": 1.852287777777776
+        },
+        "vus_max": {
+            "value": 3,
+            "min": 3,
+            "max": 3
+        },
+        "iterations": {
+            "count": 90,
+            "rate": 2.9137785630792314
+        },
+        "checks": {
+            "passes": 183,
+            "fails": 0,
+            "value": 1
+        },
+        "http_reqs": {
+            "count": 182,
+            "rate": 5.892307760893557
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 2.9713,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.04868296703296703
+        },
+        "data_sent": {
+            "count": 24760,
+            "rate": 801.6128580204642
+        },
+        "vus": {
+            "value": 3,
+            "min": 3,
+            "max": 3
+        },
+        "http_req_connecting": {
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0
+        },
+        "http_req_receiving": {
+            "max": 1.5664,
+            "p(90)": 0.4436,
+            "p(95)": 0.8275799999999998,
+            "avg": 0.10829780219780218,
+            "min": 0,
+            "med": 0
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 182,
+            "thresholds": {
+                "rate<0.02": false
+            },
+            "value": 0
+        }
+    },
+    "setup_data": {
+        "cookieHeader": "access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjU1NTU1NTU1LTU1NTUtNTU1NS01NTU1LTU1NTU1NTU1NTU1NSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJkZW1vLnVzZXIiLCJleHAiOjE3ODA5Mjg5OTgsImlzcyI6IlJvYWRtYXBQbGF0Zm9ybSIsImF1ZCI6IlJvYWRtYXBQbGF0Zm9ybVVzZXJzIn0.NxmLGAn0wAP2IcQ1ZKeyebyxqlBHYqQbVpM47f750_0",
+        "roadmapVersionId": "04900148-b972-4765-9c12-c63abe4c4277"
+    },
+    "root_group": {
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "login status is 200": {
+                            "name": "login status is 200",
+                            "path": "::setup::login status is 200",
+                            "id": "bb27b460b057923f4a083e3603c038b9",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "login returned cookies": {
+                            "name": "login returned cookies",
+                            "path": "::setup::login returned cookies",
+                            "id": "b5e4f00f96ccd36f5e05aae46022c730",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "setup graph status is 200": {
+                            "name": "setup graph status is 200",
+                            "path": "::setup::setup graph status is 200",
+                            "id": "31cca02d44500bf6c3074454b5200533",
+                            "passes": 1,
+                            "fails": 0
+                        }
+                    }
+            },
+            "get current enrollment": {
+                "checks": {
+                    "current enrollment status is 200 or 204": {
+                        "name": "current enrollment status is 200 or 204",
+                        "path": "::get current enrollment::current enrollment status is 200 or 204",
+                        "id": "9ad24fa5fac0d62c766f1a22d84a8c2b",
+                        "passes": 90,
+                        "fails": 0
+                    }
+                },
+                "name": "get current enrollment",
+                "path": "::get current enrollment",
+                "id": "1e3834cbfc5c9d588e0772a290572916",
+                "groups": {}
+            },
+            "enroll roadmap": {
+                "groups": {},
+                "checks": {
+                        "enroll status is 200 or already-enrolled 400": {
+                            "id": "8838eab5b67f230959c366f6ab9fda6b",
+                            "passes": 90,
+                            "fails": 0,
+                            "name": "enroll status is 200 or already-enrolled 400",
+                            "path": "::enroll roadmap::enroll status is 200 or already-enrolled 400"
+                        }
+                    },
+                "name": "enroll roadmap",
+                "path": "::enroll roadmap",
+                "id": "edd5f19e18e83969d0003d9b2c12e302"
+            }
+        },
+        "checks": {},
+        "name": ""
+    }
+}

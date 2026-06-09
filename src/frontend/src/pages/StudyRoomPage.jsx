@@ -11,6 +11,7 @@ import AiChatPanel from "../components/chat/AiChatPanel";
 import { BACKEND_BASE_URL } from "../api/apiConfig";
 
 const HEADER_HEIGHT = 72;
+const PAGE_GAP = 20;
 
 export default function StudyRoomPage() {
   const { resourceId } = useParams();
@@ -32,7 +33,7 @@ export default function StudyRoomPage() {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
   const [sidebarWidth, setSidebarWidth] = useState(248);
-  const [chatWidth, setChatWidth] = useState(360);
+  const [chatWidth, setChatWidth] = useState(380);
   const [resizingPanel, setResizingPanel] = useState(null);
 
   const currentResource = useMemo(() => {
@@ -84,14 +85,14 @@ export default function StudyRoomPage() {
       event.preventDefault();
 
       if (resizingPanel === "sidebar") {
-        const nextWidth = Math.min(Math.max(event.clientX, 220), 520);
+        const nextWidth = Math.min(Math.max(event.clientX - PAGE_GAP, 220), 420);
         setSidebarWidth(nextWidth);
       }
 
       if (resizingPanel === "chat") {
         const nextWidth = Math.min(
-          Math.max(window.innerWidth - event.clientX, 260),
-          620,
+          Math.max(window.innerWidth - event.clientX - PAGE_GAP, 320),
+          640,
         );
         setChatWidth(nextWidth);
       }
@@ -137,10 +138,16 @@ export default function StudyRoomPage() {
     lastScrollTopRef.current = currentScrollTop;
   };
 
-  const sidePanelTopOffset = isHeaderVisible ? HEADER_HEIGHT : 0;
+  const gridTemplateColumns = [
+    isSidebarOpen ? `${sidebarWidth}px` : null,
+    "minmax(0, 1fr)",
+    isChatOpen ? `${chatWidth}px` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-[#F7F1E8] text-[#18332D]">
+    <div className="relative h-screen overflow-hidden bg-[#F7F1E8] text-[#18332D]">
       <div
         className={`fixed left-0 right-0 top-0 z-50 transition-transform duration-300 ease-out ${
           isHeaderVisible ? "translate-y-0" : "-translate-y-full"
@@ -149,23 +156,11 @@ export default function StudyRoomPage() {
         <DocumentHeader resource={currentResource} />
       </div>
 
-      <LearningResourceSidebar
-        resources={resources}
-        isOpen={isSidebarOpen}
-        width={sidebarWidth}
-        topOffset={sidePanelTopOffset}
-        onStartResize={(event) => {
-          event.preventDefault();
-          setResizingPanel("sidebar");
-        }}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-
-      <div
-        className="flex min-w-0 flex-1 flex-col transition-[margin] duration-300"
+      <main
+        className="grid h-full w-full gap-5 overflow-hidden px-4 pb-5 transition-[padding] duration-300 sm:px-5 lg:px-6"
         style={{
-          marginLeft: isSidebarOpen ? sidebarWidth : 0,
-          marginRight: isChatOpen ? chatWidth : 0,
+          gridTemplateColumns,
+          paddingTop: isHeaderVisible ? HEADER_HEIGHT + PAGE_GAP : PAGE_GAP,
         }}
       >
         <main
@@ -205,7 +200,7 @@ export default function StudyRoomPage() {
         <button
           type="button"
           onClick={() => setIsSidebarOpen(true)}
-          className="fixed left-5 z-50 inline-flex items-center gap-2 rounded-full border border-[#B9D8CC] bg-white px-4 py-2 text-sm font-bold text-[#1F6F5F] shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/20"
+          className="fixed left-5 z-50 inline-flex items-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2 text-sm font-bold text-[#1F6F5F] shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/20"
           style={{ top: isHeaderVisible ? HEADER_HEIGHT + 16 : 16 }}
         >
           <PanelLeftOpen size={17} />
@@ -217,7 +212,7 @@ export default function StudyRoomPage() {
         <button
           type="button"
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full bg-[#2FA084] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-lg bg-[#2FA084] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
         >
           <Bot size={18} />
           AI Mentor

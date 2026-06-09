@@ -14,6 +14,7 @@ Use it to find the right guide, API endpoint docs, database scripts, and seed fi
 | `docs/git-workflow.md` | Explains branch naming, commits, pull requests, and team Git workflow. |
 | `docs/naming-conventions.md` | Defines naming rules used across the project. |
 | `docs/captcha.md` | Explains CAPTCHA setup and integration behavior. |
+| `docs/market-pulse-topcv.md` | Explains the Market Pulse TopCV ingestion pipeline, configuration, smoke tests, logs, and troubleshooting. |
 | `docs/supabase-storage.md` | Explains Supabase storage setup for uploaded resources. |
 | `docs/ai-credit-limits.md` | Explains AI credit limit rules and implementation behavior. |
 

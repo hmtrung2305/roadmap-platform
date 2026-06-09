@@ -24,6 +24,7 @@ import PointsSettingsPage from "./pages/settings/PointSettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import RoadmapSelectionPage from "./pages/RoadmapSelectionPage";
 import RoadmapViewerPage from "./pages/RoadmapViewerPage";
+import MarketPulsePage from "./pages/MarketPulsePage";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -145,6 +146,7 @@ export default function App() {
             <Route path="/roadmaps" element={<RoadmapSelectionPage />} />
             <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
             <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
+            <Route path="/market-pulse" element={<MarketPulsePage />} />
           </Route>
 
           <Route

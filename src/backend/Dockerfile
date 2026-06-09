@@ -5,6 +5,7 @@ COPY RoadmapPlatform.slnx ./
 COPY RoadmapPlatform.Api/RoadmapPlatform.Api.csproj RoadmapPlatform.Api/
 COPY RoadmapPlatform.Application/RoadmapPlatform.Application.csproj RoadmapPlatform.Application/
 COPY RoadmapPlatform.Infrastructure/RoadmapPlatform.Infrastructure.csproj RoadmapPlatform.Infrastructure/
+COPY RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj RoadmapPlatform.MarketPulseJob/
 
 RUN dotnet restore RoadmapPlatform.slnx
 

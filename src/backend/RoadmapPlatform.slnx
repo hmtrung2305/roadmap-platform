@@ -2,4 +2,5 @@
   <Project Path="RoadmapPlatform.Api/RoadmapPlatform.Api.csproj" />
   <Project Path="RoadmapPlatform.Application/RoadmapPlatform.Application.csproj" />
   <Project Path="RoadmapPlatform.Infrastructure/RoadmapPlatform.Infrastructure.csproj" />
+  <Project Path="RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj" />
 </Solution>

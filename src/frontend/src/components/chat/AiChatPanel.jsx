@@ -1,5 +1,5 @@
 import { Bot, Loader2, MessageCircle, Trash2, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useChatStore } from "../../stores/useChatStore";
 import ChatInput from "./ChatInput";
 import ChatMessage from "./ChatMessage";
@@ -16,6 +16,8 @@ export default function AiChatPanel({
   onClose,
 }) {
   const resourceId = resource?.resourceId;
+  const messagesEndRef = useRef(null);
+  const messageAreaRef = useRef(null);
 
   const isSending = useChatStore((state) => state.isSending);
   const creditStatus = useChatStore((state) => state.creditStatus);
@@ -32,11 +34,34 @@ export default function AiChatPanel({
     return state.messagesByResourceId[resourceId] ?? EMPTY_MESSAGES;
   });
 
+  const isOutOfCredits = creditStatus?.remainingCreditsToday === 0;
+
   useEffect(() => {
     if (isOpen) {
       loadCreditStatus();
     }
   }, [isOpen, loadCreditStatus]);
+
+  const scrollToBottom = (behavior = "smooth") => {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior,
+        block: "end",
+      });
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    scrollToBottom("smooth");
+
+    const timerId = window.setTimeout(() => {
+      scrollToBottom("smooth");
+    }, 80);
+
+    return () => window.clearTimeout(timerId);
+  }, [isOpen, resourceId, messages.length, isSending]);
 
   const handleSend = async (text) => {
     if (!resourceId) return;
@@ -55,8 +80,6 @@ export default function AiChatPanel({
 
     clearChatByResourceId(resourceId);
   };
-
-  const isOutOfCredits = creditStatus?.remainingCreditsToday === 0;
 
   return (
     <>
@@ -141,7 +164,10 @@ export default function AiChatPanel({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div
+          ref={messageAreaRef}
+          className="min-h-0 flex-1 overflow-y-auto p-4"
+        >
           {error && (
             <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               <div className="flex items-start justify-between gap-2">
@@ -196,6 +222,8 @@ export default function AiChatPanel({
               )}
             </div>
           )}
+
+          <div ref={messagesEndRef} />
         </div>
 
         <ChatInput
