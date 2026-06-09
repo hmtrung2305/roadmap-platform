@@ -101,7 +101,7 @@ export default function RoadmapSelectionPage() {
     return (
       <PageShell centered>
         <div className="rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto mb-4 h-7 w-7 animate-spin rounded-lg border border-[#B9D8CC] border-t-[#2FA084]" />
+          <div className="mx-auto mb-4 h-7 w-7 animate-spin rounded-full border-2 border-[#B9D8CC] border-t-[#2FA084]" />
           <p className="animate-pulse text-sm font-extrabold tracking-tight text-slate-600">
             Loading roadmaps
           </p>
@@ -131,54 +131,73 @@ export default function RoadmapSelectionPage() {
 
   return (
     <PageShell>
-      <main className="mx-auto max-w-7xl space-y-12 px-6 py-8 pb-16">
-        <section className="overflow-visible rounded-lg border border-[#B9D8CC] bg-white shadow-lg">
-          <div className="border-b border-[#B9D8CC] bg-[#EAF8F1] px-6 py-3">
-            <p className="text-xs font-extrabold tracking-[0.2em] text-[#1F6F5F]">
-              Learning paths
-            </p>
-          </div>
+      <style>{`
+        @keyframes roadmapHeaderIn {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
 
-          <div className="grid gap-8 p-7 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-            <div>
-              <h1 className="text-4xl font-black tracking-tight text-[#18332D] sm:text-5xl">
-                Choose your roadmap
-              </h1>
+        @keyframes roadmapCardIn {
+          from { opacity: 0; transform: translateY(14px) scale(0.985); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
 
-              <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-600">
-                Pick a learning path, then open the graph to track topics, projects,
-                prerequisites, resources, and skills.
-              </p>
-            </div>
+      <main className="mx-auto max-w-7xl px-6 py-10 pb-16">
+        <section
+          className="mx-auto max-w-4xl text-center"
+          style={{ animation: "roadmapHeaderIn 420ms ease-out both" }}
+        >
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#1F6F5F]">
+            Learning paths
+          </p>
 
-            <div className="rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-sm">
-              <label className="mb-2 block text-xs font-extrabold tracking-[0.16em] text-slate-500">
-                Search roadmaps
-              </label>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-[#18332D] sm:text-5xl">
+            Choose a career role
+          </h1>
 
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="frontend, backend, api, fullstack..."
-                className="w-full rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-4 py-3 text-sm font-bold outline-none placeholder:text-slate-500 transition-colors duration-150 focus:bg-[#EAF8F1]"
-              />
-            </div>
+          <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-600 sm:text-base">
+            Select a career path to open a curated learning roadmap.
+          </p>
+
+          <div className="relative mx-auto mt-7 max-w-4xl">
+            <svg
+              aria-hidden
+              className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search career role"
+              className="w-full rounded-lg border border-[#B9D8CC] bg-white py-3 pl-12 pr-4 text-sm font-bold text-[#18332D] shadow-sm outline-none placeholder:text-slate-400 transition-colors duration-150 focus:border-[#2FA084] focus:bg-[#EAF8F1] focus:ring-4 focus:ring-[#2FA084]/10"
+            />
           </div>
         </section>
 
         {filteredRoadmaps.length === 0 ? (
-          <section className="rounded-lg border-2 border-dashed border-[#B9D8CC] bg-white p-10 text-center">
+          <section className="mt-10 rounded-lg border-2 border-dashed border-[#B9D8CC] bg-white p-10 text-center">
             <p className="text-sm font-black text-[#18332D]">No roadmaps found.</p>
             <p className="mt-2 text-sm font-semibold text-slate-500">
               Try a different search term.
             </p>
           </section>
         ) : (
-          <section className="grid items-stretch gap-3 overflow-visible pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filteredRoadmaps.map((roadmap) => (
+          <section className="mt-9 grid items-stretch gap-4 overflow-visible pb-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {filteredRoadmaps.map((roadmap, index) => (
               <RoadmapCard
                 key={roadmap.roadmapId || roadmap.roadmapVersionId || roadmap.slug}
                 roadmap={roadmap}
+                index={index}
                 onOpen={() => navigate(`/roadmaps/${encodeURIComponent(roadmap.slug)}`)}
               />
             ))}
