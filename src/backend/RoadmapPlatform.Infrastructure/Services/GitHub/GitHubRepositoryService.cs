@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.Interfaces.GitHub;
@@ -20,8 +20,6 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
         public async Task<List<GitHubRepositoryResponseDto>> SyncPublicRepositoriesAsync(Guid userId)
         {
-            // Find the user's linked GitHub account
-            // Used to get the GitHub username required for the GitHub API call
             var githubProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
                 x.UserId == userId && x.Provider == AuthProviders.GitHub);
@@ -36,29 +34,22 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 throw new InvalidOperationException("GitHub username was not found");
             }
 
-            // Fetch latest public repositories directly from GitHub API
             List<GitHubRepositorySyncDto> githubRepos = await _gitHubApiClient
                 .GetPublicRepositoriesAsync(githubProvider.ProviderUsername);
 
-            // Extract GitHub repository IDs
-            // Used to compare fetched GitHub repos with repos already stored in the database
             var githubRepoIds = githubRepos
                 .Select(x => x.GithubRepoId)
                 .ToList();
 
-            // Load repositories already stored in the database
             var existingRepos = await _dbContext.Repositories
                 .Where(x => x.UserId == userId && githubRepoIds.Contains(x.GithubRepoId))
                 .ToListAsync();
 
-            // Synchronize GitHub repositories into the database.
             foreach (var githubRepo in githubRepos)
             {
-                // Try to find matching repository already stored locally.
                 var existingRepo = existingRepos
                     .FirstOrDefault(x => x.GithubRepoId == githubRepo.GithubRepoId);
 
-                // Repository doesn't exist in the database yet -> create a new row
                 if (existingRepo == null)
                 {
                     var repo = new Repository
@@ -83,7 +74,6 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 }
                 else
                 {
-                    // Repository already exists locally -> update the exisiting repo with the latest GitHub information
                     existingRepo.Name = githubRepo.Name;
                     existingRepo.FullName = githubRepo.FullName;
                     existingRepo.HtmlUrl = githubRepo.HtmlUrl;
@@ -105,25 +95,40 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
         public async Task<List<GitHubRepositoryResponseDto>> GetSavedRepositoriesAsync(Guid userId)
         {
-            // Convert database entities into response DTO.
             var repos = await _dbContext.Repositories
+                .AsNoTracking()
+                .Include(x => x.RepoInsight)
                 .Where(x => x.UserId == userId)
                 .OrderByDescending(x => x.GithubUpdatedAt)
-                .Select(x => new GitHubRepositoryResponseDto
-                {
-                    RepositoryId = x.RepositoryId,
-                    Name = x.Name,
-                    FullName = x.FullName,
-                    HtmlUrl = x.HtmlUrl,
-                    Description = x.Description,
-                    PrimaryLanguage = x.PrimaryLanguage,
-                    Stars = x.Stars,
-                    Forks = x.Forks,
-                    IsSelectedForPortfolio = x.IsSelectedForPortfolio,
-                    SyncedAt = x.SyncedAt
-                }).ToListAsync();
+                .ToListAsync();
 
-            return repos;
+            return repos.Select(x => ToRepositoryDto(x, includeAllInsightStatuses: true)).ToList();
+        }
+
+        public static GitHubRepositoryResponseDto ToRepositoryDto(
+            Repository repository,
+            bool includeAllInsightStatuses)
+        {
+            var insight = includeAllInsightStatuses
+                ? repository.RepoInsight
+                : repository.RepoInsight?.AnalysisStatus == "completed"
+                    ? repository.RepoInsight
+                    : null;
+
+            return new GitHubRepositoryResponseDto
+            {
+                RepositoryId = repository.RepositoryId,
+                Name = repository.Name,
+                FullName = repository.FullName,
+                HtmlUrl = repository.HtmlUrl,
+                Description = repository.Description,
+                PrimaryLanguage = repository.PrimaryLanguage,
+                Stars = repository.Stars,
+                Forks = repository.Forks,
+                IsSelectedForPortfolio = repository.IsSelectedForPortfolio,
+                SyncedAt = repository.SyncedAt,
+                Insight = insight == null ? null : RepoInsightService.ToDto(insight)
+            };
         }
     }
 }

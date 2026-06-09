@@ -35,7 +35,7 @@ public partial class Repository
 
     public DateTime SyncedAt { get; set; }
 
-    public virtual ICollection<RepoInsight> RepoInsights { get; set; } = new List<RepoInsight>();
+    public virtual RepoInsight? RepoInsight { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

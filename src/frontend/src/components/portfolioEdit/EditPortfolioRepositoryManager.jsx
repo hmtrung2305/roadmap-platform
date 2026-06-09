@@ -14,12 +14,14 @@ export default function EditPortfolioRepositoryManager({
   repositoryLoading,
   syncing,
   saving,
+  analyzingRepositoryId,
   error,
   success,
   username,
   portfolio,
   onSave,
   onToggleRepository,
+  onGenerateInsight,
   onConnectGitHub,
 }) {
   return (
@@ -86,7 +88,9 @@ export default function EditPortfolioRepositoryManager({
                 repository={repo}
                 username={username}
                 isSelected={selectedIds.includes(repositoryId)}
+                isAnalyzing={analyzingRepositoryId === repositoryId}
                 onToggle={() => onToggleRepository(repositoryId)}
+                onGenerateInsight={onGenerateInsight}
               />
             );
           })}

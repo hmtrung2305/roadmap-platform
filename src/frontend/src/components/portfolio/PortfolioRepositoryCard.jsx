@@ -2,15 +2,21 @@ import { ExternalLink, GitFork, Star } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 
 export default function PortfolioRepositoryCard({ repository }) {
+  const insight = repository.insight;
+  const hasCompletedInsight = insight?.analysisStatus === "completed" && insight?.summary;
   const name = repository.name || repository.repoName || "Untitled repository";
   const href = repository.htmlUrl || repository.repoUrl;
 
   const description =
-    repository.summary || repository.description || "No description provided.";
+    (hasCompletedInsight ? insight.summary : null) ||
+    repository.summary ||
+    repository.description ||
+    "No description provided.";
 
   const tags = [
+    insight?.projectType,
     repository.primaryLanguage || repository.language,
-    ...(repository.techStack || repository.detectedSkills || []),
+    ...(insight?.techStack || repository.techStack || repository.detectedSkills || []),
   ].filter(Boolean);
 
   return (
@@ -22,7 +28,7 @@ export default function PortfolioRepositoryCard({ repository }) {
           </h3>
 
           <p className="mt-1 text-xs font-extrabold uppercase tracking-[0.14em] text-[#2FA084]">
-            Repository
+            {hasCompletedInsight ? "AI summarized project" : "Repository"}
           </p>
         </div>
 
@@ -44,7 +50,7 @@ export default function PortfolioRepositoryCard({ repository }) {
         {description}
       </p>
 
-      <div className="mt-4 min-h-[2rem]">
+      <div className="mt-4 min-h-[2rem] pb-4">
         {tags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {tags.slice(0, 4).map((tag) => (

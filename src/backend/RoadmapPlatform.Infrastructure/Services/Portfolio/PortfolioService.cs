@@ -4,6 +4,7 @@ using RoadmapPlatform.Application.DTOs.Portfolio;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Infrastructure.Data;
+using RoadmapPlatform.Infrastructure.Services.GitHub;
 
 namespace RoadmapPlatform.Infrastructure.Services.Portfolio
 {
@@ -117,25 +118,20 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
             }
 
             var repositories = await _dbContext.Repositories
+                .AsNoTracking()
+                .Include(x => x.RepoInsight)
                 .Where(x =>
                     x.UserId == userId &&
                     x.IsSelectedForPortfolio &&
                     !x.IsPrivate)
                 .OrderByDescending(x => x.GithubUpdatedAt)
-                .Select(x => new GitHubRepositoryResponseDto
-                {
-                    RepositoryId = x.RepositoryId,
-                    Name = x.Name,
-                    FullName = x.FullName,
-                    HtmlUrl = x.HtmlUrl,
-                    Description = x.Description,
-                    PrimaryLanguage = x.PrimaryLanguage,
-                    Stars = x.Stars,
-                    Forks = x.Forks,
-                    IsSelectedForPortfolio = x.IsSelectedForPortfolio,
-                    SyncedAt = x.SyncedAt
-                })
                 .ToListAsync();
+
+            var repositoryDtos = repositories
+                .Select(repository => GitHubRepositoryService.ToRepositoryDto(
+                    repository,
+                    includeAllInsightStatuses: false))
+                .ToList();
 
             return new PortfolioResponseDto
             {
@@ -151,7 +147,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
                 GithubUrl = profile.GithubUrl,
                 LinkedinUrl = profile.LinkedinUrl,
                 PersonalWebsiteUrl = profile.PersonalWebsiteUrl,
-                Repositories = repositories
+                Repositories = repositoryDtos
             };
         }
     }
