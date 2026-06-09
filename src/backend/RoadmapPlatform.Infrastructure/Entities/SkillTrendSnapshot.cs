@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
 
@@ -6,7 +7,7 @@ public partial class SkillTrendSnapshot
 {
     public Guid SkillTrendSnapshotId { get; set; }
 
-    public DateTime SnapshotDate { get; set; }
+    public DateOnly SnapshotDate { get; set; }
 
     public string SkillName { get; set; } = null!;
 
