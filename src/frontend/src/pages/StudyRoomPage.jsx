@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import axiosClient from "../api/axiosClient";
-import { useResourceStore } from "../stores/useResourceStore";
-import DocumentHeader from "../components/document/DocumentHeader";
-import DocumentReader from "../components/document/DocumentReader";
-import DocumentLoading from "../components/document/DocumentLoading";
-import LearningResourceSidebar from "../components/learning/LearningResourceSidebar";
 import { Bot, PanelLeftOpen } from "lucide-react";
-import AiChatPanel from "../components/chat/AiChatPanel";
+
+import axiosClient from "../api/axiosClient";
 import { BACKEND_BASE_URL } from "../api/apiConfig";
+import { useResourceStore } from "../stores/useResourceStore";
+
+import AiChatPanel from "../components/chat/AiChatPanel";
+import DocumentHeader from "../components/document/DocumentHeader";
+import DocumentLoading from "../components/document/DocumentLoading";
+import DocumentReader from "../components/document/DocumentReader";
+import LearningResourceSidebar from "../components/learning/LearningResourceSidebar";
 
 const HEADER_HEIGHT = 72;
 const PAGE_GAP = 20;
+
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 420;
+const CHAT_MIN_WIDTH = 320;
+const CHAT_MAX_WIDTH = 640;
 
 export default function StudyRoomPage() {
   const { resourceId } = useParams();
@@ -26,8 +33,6 @@ export default function StudyRoomPage() {
   const [isLoadingDocument, setIsLoadingDocument] = useState(false);
   const [documentError, setDocumentError] = useState(null);
 
-  const resourceFromState = location.state?.resource;
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -36,13 +41,17 @@ export default function StudyRoomPage() {
   const [chatWidth, setChatWidth] = useState(380);
   const [resizingPanel, setResizingPanel] = useState(null);
 
+  const resourceFromState = location.state?.resource;
+
   const currentResource = useMemo(() => {
     return (
-      resources.find((resource) => resource.resourceId === resourceId) ||
+      resources.find((resource) => String(resource.resourceId) === String(resourceId)) ||
       resourceFromState ||
       null
     );
   }, [resources, resourceId, resourceFromState]);
+
+  const sidePanelTopOffset = isHeaderVisible ? HEADER_HEIGHT : 0;
 
   useEffect(() => {
     if (resources.length === 0) {
@@ -52,7 +61,11 @@ export default function StudyRoomPage() {
 
   useEffect(() => {
     const loadMarkdown = async () => {
-      if (!currentResource?.url) return;
+      if (!currentResource?.url) {
+        setMarkdownContent("");
+        setDocumentError(null);
+        return;
+      }
 
       try {
         setIsLoadingDocument(true);
@@ -66,6 +79,7 @@ export default function StudyRoomPage() {
         setMarkdownContent(response.data);
       } catch (error) {
         console.error("Load markdown failed:", error);
+        setMarkdownContent("");
         setDocumentError("Unable to load the document content.");
       } finally {
         setIsLoadingDocument(false);
@@ -85,15 +99,21 @@ export default function StudyRoomPage() {
       event.preventDefault();
 
       if (resizingPanel === "sidebar") {
-        const nextWidth = Math.min(Math.max(event.clientX - PAGE_GAP, 220), 420);
+        const nextWidth = Math.min(
+          Math.max(event.clientX - PAGE_GAP, SIDEBAR_MIN_WIDTH),
+          SIDEBAR_MAX_WIDTH,
+        );
+
         setSidebarWidth(nextWidth);
+        return;
       }
 
       if (resizingPanel === "chat") {
         const nextWidth = Math.min(
-          Math.max(window.innerWidth - event.clientX - PAGE_GAP, 320),
-          640,
+          Math.max(window.innerWidth - event.clientX - PAGE_GAP, CHAT_MIN_WIDTH),
+          CHAT_MAX_WIDTH,
         );
+
         setChatWidth(nextWidth);
       }
     };
@@ -138,13 +158,8 @@ export default function StudyRoomPage() {
     lastScrollTopRef.current = currentScrollTop;
   };
 
-  const gridTemplateColumns = [
-    isSidebarOpen ? `${sidebarWidth}px` : null,
-    "minmax(0, 1fr)",
-    isChatOpen ? `${chatWidth}px` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const mainLeftPadding = isSidebarOpen ? sidebarWidth + PAGE_GAP : PAGE_GAP;
+  const mainRightPadding = isChatOpen ? chatWidth + PAGE_GAP : PAGE_GAP;
 
   return (
     <div className="relative h-screen overflow-hidden bg-[#F7F1E8] text-[#18332D]">
@@ -156,33 +171,17 @@ export default function StudyRoomPage() {
         <DocumentHeader resource={currentResource} />
       </div>
 
-      <main
-        className="grid h-full w-full gap-5 overflow-hidden px-4 pb-5 transition-[padding] duration-300 sm:px-5 lg:px-6"
-        style={{
-          gridTemplateColumns,
-          paddingTop: isHeaderVisible ? HEADER_HEIGHT + PAGE_GAP : PAGE_GAP,
+      <LearningResourceSidebar
+        resources={resources}
+        isOpen={isSidebarOpen}
+        width={sidebarWidth}
+        topOffset={sidePanelTopOffset}
+        onStartResize={(event) => {
+          event.preventDefault();
+          setResizingPanel("sidebar");
         }}
-      >
-        <main
-          onScroll={handleDocumentScroll}
-          className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 transition-[padding] duration-300 sm:px-6 lg:px-8"
-          style={{
-            paddingTop: isHeaderVisible ? HEADER_HEIGHT + 24 : 24,
-          }}
-        >
-          <div className="mx-auto max-w-4xl">
-            {isFetching || isLoadingDocument ? (
-              <DocumentLoading />
-            ) : documentError ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
-                {documentError}
-              </div>
-            ) : (
-              <DocumentReader markdownContent={markdownContent} />
-            )}
-          </div>
-        </main>
-      </div>
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       <AiChatPanel
         resource={currentResource}
@@ -195,6 +194,29 @@ export default function StudyRoomPage() {
         }}
         onClose={() => setIsChatOpen(false)}
       />
+
+      <main
+        onScroll={handleDocumentScroll}
+        className="h-full min-h-0 overflow-y-auto transition-[padding] duration-300"
+        style={{
+          paddingTop: isHeaderVisible ? HEADER_HEIGHT + PAGE_GAP : PAGE_GAP,
+          paddingLeft: mainLeftPadding,
+          paddingRight: mainRightPadding,
+          paddingBottom: PAGE_GAP,
+        }}
+      >
+        <section className="mx-auto min-w-0 max-w-5xl">
+          {isFetching || isLoadingDocument ? (
+            <DocumentLoading />
+          ) : documentError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
+              {documentError}
+            </div>
+          ) : (
+            <DocumentReader markdownContent={markdownContent} />
+          )}
+        </section>
+      </main>
 
       {!isSidebarOpen && (
         <button
