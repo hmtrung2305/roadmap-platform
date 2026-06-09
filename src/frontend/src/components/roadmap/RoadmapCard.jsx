@@ -1,9 +1,7 @@
-export default function RoadmapCard({ roadmap, onOpen }) {
-  const totalHours = roadmap.estimatedTotalHours ?? roadmap.estimatedHours ?? null;
-  const hoursLabel = typeof totalHours === "number" ? `${totalHours}h` : "Flexible";
-  const isFlexible = totalHours === null;
+export default function RoadmapCard({ roadmap, onOpen, index = 0 }) {
   const progressPercent = getRoadmapProgressPercent(roadmap);
-  const progressLabel = getRoadmapProgressLabel(roadmap, progressPercent);
+  const title = cleanRoadmapTitle(roadmap.careerRole?.name || roadmap.title || "Roadmap");
+  const enrollment = roadmap.enrollment || roadmap.currentEnrollment || roadmap.userProgress || null;
 
   function handleKeyDown(event) {
     if (event.key === "Enter" || event.key === " ") {
@@ -16,62 +14,30 @@ export default function RoadmapCard({ roadmap, onOpen }) {
     <article
       role="button"
       tabIndex={0}
-      aria-label={`Open ${roadmap.title}`}
+      aria-label={`Open ${title}`}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[#B9D8CC] bg-white shadow-sm outline-none transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#2FA084] hover:shadow-[0_12px_28px_rgba(31,111,95,0.12)] focus-visible:border-[#2FA084] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15 active:translate-y-0 active:shadow-sm"
+      className="group relative flex min-h-[68px] cursor-pointer items-center overflow-hidden rounded-lg border border-[#A8D3C4] bg-white px-4 py-2.5 shadow-sm outline-none transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-[0_10px_24px_rgba(31,111,95,0.12)] focus-visible:border-[#2FA084] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15 active:translate-y-0 active:shadow-sm"
+      style={{
+        animation: "roadmapCardIn 420ms ease-out both",
+        animationDelay: `${Math.min(index, 9) * 55}ms`,
+      }}
     >
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#2FA084] to-[#4EC9A8] opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-      />
+      <h2 className="min-w-0 flex-1 whitespace-normal pr-14 text-sm font-black leading-5 tracking-tight text-[#18332D] sm:text-[15px]">
+        {title}
+      </h2>
 
-      <div className="flex flex-1 flex-col gap-1 px-4 pb-3 pt-4">
-        <h2
-          className="text-sm font-black leading-snug tracking-tight text-[#18332D]"
-          style={{
-            display: "-webkit-box",
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {roadmap.title}
-        </h2>
-      </div>
+      {enrollment && (
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-2.5 py-1 text-[10px] font-extrabold text-[#1F6F5F] opacity-0 shadow-sm transition-all duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+          {progressPercent}%
+        </span>
+      )}
 
-      <div className="border-t border-[#EDF5F2] bg-[#F5FBF8] px-4 py-2.5">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-[11px] font-extrabold tracking-wide text-[#1F6F5F]">
-            {progressLabel}
-          </span>
-
-          <div className="flex items-center gap-1.5">
-            <svg
-              aria-hidden
-              className="h-3 w-3 shrink-0 text-[#2FA084]"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="8" cy="8" r="6.5" />
-              <path d="M8 4.5V8l2.5 1.5" />
-            </svg>
-            <span className={`text-[11px] font-extrabold tracking-wide ${isFlexible ? "text-slate-400" : "text-[#1F6F5F]"}`}>
-              {hoursLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="h-1.5 overflow-hidden rounded-full border border-[#B9D8CC] bg-white">
-          <div
-            className="h-full rounded-full bg-[#2FA084] transition-all duration-300"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
+      <div className="absolute inset-x-0 bottom-0 h-1 bg-[#E3EEE8]">
+        <div
+          className="h-full bg-[#22C55E] transition-[width] duration-300 ease-out"
+          style={{ width: `${progressPercent}%` }}
+        />
       </div>
     </article>
   );
@@ -92,12 +58,9 @@ function getRoadmapProgressPercent(roadmap) {
   return Math.min(100, Math.max(0, Math.round(numericValue)));
 }
 
-function getRoadmapProgressLabel(roadmap, progressPercent) {
-  const enrollment = roadmap.enrollment || roadmap.currentEnrollment || roadmap.userProgress || null;
-
-  if (progressPercent >= 100) return "Completed";
-  if (!enrollment && progressPercent === 0) return "Not started";
-  if (progressPercent === 0) return "0% done";
-
-  return `${progressPercent}% done`;
+function cleanRoadmapTitle(title) {
+  return String(title)
+    .replace(/\s*Roadmap\s*v\d+(\.\d+)?\s*$/i, "")
+    .replace(/\s*v\d+(\.\d+)?\s*$/i, "")
+    .trim();
 }

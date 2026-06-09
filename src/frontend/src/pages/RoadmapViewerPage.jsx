@@ -28,7 +28,6 @@ import {
   applyProgressUpdateResult,
   patchCachedNodeProgress,
   findChangedProgress,
-  formatReadableLabel,
 } from "../components/roadmap/roadmapUtils";
 
 const nodeTypes = {
@@ -302,23 +301,9 @@ export default function RoadmapViewerPage() {
                   ← Roadmap selection
                 </button>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-2xl font-black tracking-tight text-[#18332D] sm:text-3xl">
-                    {roadmap.title}
-                  </h1>
-
-                  {roadmap.enrollment?.status && (
-                    <HeaderBadge>{formatReadableLabel(roadmap.enrollment.status)}</HeaderBadge>
-                  )}
-
-                  {roadmap.generationStatus && roadmap.generationStatus !== "none" && (
-                    <HeaderBadge>{formatReadableLabel(roadmap.generationStatus)}</HeaderBadge>
-                  )}
-                </div>
-
-                <p className="mt-1 max-w-3xl truncate text-sm font-semibold text-slate-600">
-                  {roadmap.description}
-                </p>
+                <h1 className="truncate text-2xl font-black tracking-tight text-[#18332D] sm:text-3xl">
+                  {getViewerHeading(roadmap)}
+                </h1>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -328,9 +313,9 @@ export default function RoadmapViewerPage() {
                     <span>{Math.round(progressPercent)}%</span>
                   </div>
 
-                  <div className="mt-2 h-2 border border-[#B9D8CC] bg-white">
+                  <div className="mt-2 h-2 overflow-hidden rounded-md border border-[#B9D8CC] bg-white">
                     <div
-                      className="h-full bg-[#2FA084]"
+                      className="h-full rounded-md bg-[#22C55E]"
                       style={{
                         width: `${Math.min(100, Math.max(0, progressPercent))}%`,
                       }}
@@ -391,10 +376,13 @@ export default function RoadmapViewerPage() {
                   nodesDraggable={false}
                   nodesConnectable={false}
                   elementsSelectable
+                  onlyRenderVisibleElements
+                  minZoom={0.28}
+                  maxZoom={1.25}
                   defaultViewport={{ x: 0, y: 0, zoom: 0.74 }}
                   proOptions={{ hideAttribution: true }}
                 >
-                  <Background color="#2FA084" gap={28} size={1} />
+                  <Background color="#B9D8CC" gap={28} size={1} />
 
                   {shouldShowMiniMap && (
                     <MiniMap
@@ -406,7 +394,7 @@ export default function RoadmapViewerPage() {
                     />
                   )}
 
-                  <Controls className="!rounded-lg !border-2 !border-[#B9D8CC] !bg-white !shadow-sm" />
+                  <Controls className="!rounded-lg !border !border-[#B9D8CC] !bg-white !shadow-sm" />
 
                   <RoadmapLegend
                     isOpen={isLegendOpen}
@@ -433,10 +421,19 @@ export default function RoadmapViewerPage() {
   );
 }
 
-function HeaderBadge({ children }) {
-  return (
-    <span className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
-      {children}
-    </span>
-  );
+function getViewerHeading(roadmap) {
+  const baseTitle = cleanViewerTitle(roadmap?.careerRole?.name || roadmap?.title || "Roadmap");
+
+  if (!baseTitle) return "Roadmap";
+  if (/roadmap$/i.test(baseTitle)) return baseTitle;
+
+  return `${baseTitle} Roadmap`;
+}
+
+function cleanViewerTitle(title) {
+  return String(title)
+    .replace(/\s*Roadmap\s*v\d+(\.\d+)?\s*$/i, "")
+    .replace(/\s*Roadmap\s*$/i, "")
+    .replace(/\s*v\d+(\.\d+)?\s*$/i, "")
+    .trim();
 }
