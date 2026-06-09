@@ -11,13 +11,25 @@ public partial class RepoInsight
 
     public string? Summary { get; set; }
 
-    public string? TechStack { get; set; }
+    public string TechStack { get; set; } = null!;
 
-    public string? DetectedSkills { get; set; }
+    public string DetectedSkills { get; set; } = null!;
 
     public string? ProjectType { get; set; }
 
     public DateTime AnalyzedAt { get; set; }
+
+    public string AnalysisStatus { get; set; } = null!;
+
+    public string? ReadmeHash { get; set; }
+
+    public bool ReadmeTruncated { get; set; }
+
+    public string? AiModel { get; set; }
+
+    public string? ErrorMessage { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
 
     public virtual Repository Repository { get; set; } = null!;
 }

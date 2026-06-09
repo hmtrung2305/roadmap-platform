@@ -5,6 +5,7 @@ import {
   updatePortfolioRepositoriesApi,
 } from "../api/portfolioApi";
 import {
+  generateRepositoryInsightApi,
   getSavedGitHubRepositoriesApi,
   syncGitHubRepositoriesApi,
 } from "../api/githubRepositoryApi";
@@ -37,6 +38,7 @@ export default function EditPortfolioPage() {
   const [syncing, setSyncing] = useState(false);
   const [reloadingSelection, setReloadingSelection] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [analyzingRepositoryId, setAnalyzingRepositoryId] = useState(null);
   const [repoError, setRepoError] = useState("");
   const [repoSuccess, setRepoSuccess] = useState("");
 
@@ -148,6 +150,32 @@ export default function EditPortfolioPage() {
     });
   };
 
+
+  const handleGenerateInsight = async (repositoryId, force = false) => {
+    try {
+      setAnalyzingRepositoryId(repositoryId);
+      setRepoError("");
+      setRepoSuccess("");
+
+      const insight = await generateRepositoryInsightApi(repositoryId, { force });
+
+      setRepositories((current) =>
+        current.map((repo) =>
+          repo.repositoryId === repositoryId
+            ? { ...repo, insight }
+            : repo
+        )
+      );
+
+      setRepoSuccess(force ? "Repository AI summary regenerated." : "Repository AI summary generated.");
+    } catch (error) {
+      console.error("Failed to generate repository insight:", error);
+      setRepoError(error?.message || "Cannot generate repository AI summary.");
+    } finally {
+      setAnalyzingRepositoryId(null);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -224,12 +252,14 @@ export default function EditPortfolioPage() {
             repositoryLoading={repositoryLoading}
             syncing={syncing}
             saving={saving}
+            analyzingRepositoryId={analyzingRepositoryId}
             error={repoError}
             success={repoSuccess}
             username={username}
             portfolio={portfolio}
             onSave={handleSave}
             onToggleRepository={handleToggleRepository}
+            onGenerateInsight={handleGenerateInsight}
             onConnectGitHub={redirectToGitHubLink}
           />
         </section>
