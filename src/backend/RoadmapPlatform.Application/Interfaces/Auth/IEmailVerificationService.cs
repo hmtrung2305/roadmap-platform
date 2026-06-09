@@ -12,6 +12,11 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
             string purpose,
             CancellationToken cancellationToken = default);
 
+        Task SendPendingRegistrationVerificationCodeAsync(
+            Guid pendingLocalRegistrationId,
+            string email,
+            CancellationToken cancellationToken = default);
+
         Task VerifyVerificationCodeAsync(
             Guid userId,
             string provider,
@@ -20,8 +25,8 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
             string otp,
             CancellationToken cancellationToken = default);
 
-        Task<EmailVerificationResultDto> VerifyRegistrationEmailAsync(
-            string email, 
+        Task<PendingRegistrationVerificationResultDto> VerifyRegistrationEmailAsync(
+            string email,
             string otp,
             CancellationToken cancellationToken = default);
 
@@ -34,12 +39,12 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
             CancellationToken cancellationToken);
 
         Task VerifyLinkedLocalEmailAsync(
-            Guid userId, 
+            Guid userId,
             string otp,
             CancellationToken cancellationToken = default);
 
         Task<UpdateLocalEmailResponseDto> RequestLocalEmailChangeAsync(
-            Guid userId, 
+            Guid userId,
             string newEmail,
             CancellationToken cancellationToken = default);
 
@@ -48,7 +53,7 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
             CancellationToken cancellationToken = default);
 
         Task VerifyLocalEmailChangeAsync(
-            Guid userId, 
+            Guid userId,
             string otp,
             CancellationToken cancellationToken = default);
     }
