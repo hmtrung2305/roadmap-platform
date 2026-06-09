@@ -100,8 +100,8 @@ export default function RoadmapSelectionPage() {
   if (status === "loading") {
     return (
       <PageShell centered>
-        <div className="rounded-xl border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto mb-4 h-7 w-7 animate-spin rounded-xl border border-[#B9D8CC] border-t-[#2FA084]" />
+        <div className="rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
+          <div className="mx-auto mb-4 h-7 w-7 animate-spin rounded-lg border border-[#B9D8CC] border-t-[#2FA084]" />
           <p className="animate-pulse text-sm font-extrabold tracking-tight text-slate-600">
             Loading roadmaps
           </p>
@@ -113,14 +113,14 @@ export default function RoadmapSelectionPage() {
   if (status === "error") {
     return (
       <PageShell centered>
-        <div className="max-w-md rounded-xl border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
+        <div className="max-w-md rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
           <h1 className="text-2xl font-black text-[#18332D]">Couldn&apos;t load roadmaps</h1>
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{message}</p>
 
           <button
             type="button"
             onClick={loadPage}
-            className="mt-6 rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(31,111,95,0.10)] active:translate-y-0 active:shadow-sm"
+            className="mt-6 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(31,111,95,0.10)] active:translate-y-0 active:shadow-sm"
           >
             Retry
           </button>
@@ -132,7 +132,7 @@ export default function RoadmapSelectionPage() {
   return (
     <PageShell>
       <main className="mx-auto max-w-7xl space-y-12 px-6 py-8 pb-16">
-        <section className="overflow-visible rounded-xl border border-[#B9D8CC] bg-white shadow-lg">
+        <section className="overflow-visible rounded-lg border border-[#B9D8CC] bg-white shadow-lg">
           <div className="border-b border-[#B9D8CC] bg-[#EAF8F1] px-6 py-3">
             <p className="text-xs font-extrabold tracking-[0.2em] text-[#1F6F5F]">
               Learning paths
@@ -151,7 +151,7 @@ export default function RoadmapSelectionPage() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-sm">
+            <div className="rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-sm">
               <label className="mb-2 block text-xs font-extrabold tracking-[0.16em] text-slate-500">
                 Search roadmaps
               </label>
@@ -160,14 +160,14 @@ export default function RoadmapSelectionPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="frontend, backend, api, fullstack..."
-                className="w-full rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-4 py-3 text-sm font-bold outline-none placeholder:text-slate-500 transition-colors duration-150 focus:bg-[#EAF8F1]"
+                className="w-full rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-4 py-3 text-sm font-bold outline-none placeholder:text-slate-500 transition-colors duration-150 focus:bg-[#EAF8F1]"
               />
             </div>
           </div>
         </section>
 
         {filteredRoadmaps.length === 0 ? (
-          <section className="rounded-xl border-2 border-dashed border-[#B9D8CC] bg-white p-10 text-center">
+          <section className="rounded-lg border-2 border-dashed border-[#B9D8CC] bg-white p-10 text-center">
             <p className="text-sm font-black text-[#18332D]">No roadmaps found.</p>
             <p className="mt-2 text-sm font-semibold text-slate-500">
               Try a different search term.

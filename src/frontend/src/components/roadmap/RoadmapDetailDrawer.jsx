@@ -70,12 +70,12 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {isLoadingDetail && (
-            <div className="mb-4 rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-3 text-sm font-black text-[#18332D] shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+            <div className="mb-4 rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-3 text-sm font-black text-[#18332D] shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
               Loading full node details…
             </div>
           )}
 
-          <section className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] p-4 shadow-[4px_4px_0_rgba(0,0,0,0.22)]">
+          <section className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] p-4 shadow-[4px_4px_0_rgba(0,0,0,0.22)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
@@ -90,13 +90,13 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
             </div>
 
             {progressSummary && (
-              <p className="mt-3 rounded-xl border border-[#B9D8CC] bg-white p-3 text-sm font-black text-[#18332D]">
+              <p className="mt-3 rounded-lg border border-[#B9D8CC] bg-white p-3 text-sm font-black text-[#18332D]">
                 {progressSummary}
               </p>
             )}
 
             {status === "locked" && (
-              <p className="mt-3 rounded-xl border border-[#B9D8CC] bg-[#E5E7EB] p-3 text-sm font-bold leading-6 text-slate-700">
+              <p className="mt-3 rounded-lg border border-[#B9D8CC] bg-[#E5E7EB] p-3 text-sm font-bold leading-6 text-slate-700">
                 {lockedReason || "This node is locked until the required prerequisites are completed."}
               </p>
             )}
@@ -132,7 +132,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
             )}
           </section>
 
-          <section className="mt-5 rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+          <section className="mt-5 rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
             <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
               Planning info
             </h3>
@@ -152,7 +152,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
           </section>
 
           {(node.nodeType === "choice_group" || node.selectionType || node.nodeType === "choice_option" || node.nodeType === "checkpoint" || usefulMetadata.length > 0) && (
-            <section className="mt-5 rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+            <section className="mt-5 rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
               <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
                 Requirements
               </h3>
@@ -178,7 +178,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
           )}
 
           {node.skills?.length > 0 && (
-            <section className="mt-5 rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+            <section className="mt-5 rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
               <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
                 Skills covered
               </h3>
@@ -187,7 +187,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
                 {node.skills.map((skill, index) => (
                   <span
                     key={getDisplayKey(skill, index)}
-                    className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-3 py-1.5 text-xs font-black text-[#18332D]"
+                    className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-3 py-1.5 text-xs font-black text-[#18332D]"
                   >
                     {formatSkillLabel(skill)}
                   </span>
@@ -197,12 +197,12 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
           )}
 
           {resources.length > 0 && (
-            <section className="mt-5 rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+            <section className="mt-5 rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
                   Learning resources
                 </h3>
-                <span className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold text-[#18332D]">
+                <span className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold text-[#18332D]">
                   {resources.length} item{resources.length === 1 ? "" : "s"}
                 </span>
               </div>
@@ -240,7 +240,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
 
 function InfoCard({ title, children }) {
   return (
-    <section className="mt-5 rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+    <section className="mt-5 rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
       <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
         {title}
       </h3>
@@ -262,19 +262,19 @@ function ResourceCard({ resource, index = 0, isPrimary = false }) {
   const content = (
     <>
       <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#B9D8CC] bg-white text-xs font-black text-[#18332D]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#B9D8CC] bg-white text-xs font-black text-[#18332D]">
           {index + 1}
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {isPrimary && (
-              <span className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-2 py-0.5 text-[9px] font-extrabold text-white">
+              <span className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-2 py-0.5 text-[9px] font-extrabold text-white">
                 Recommended
               </span>
             )}
 
-            <span className="rounded-xl border border-[#B9D8CC] bg-white px-2 py-0.5 text-[9px] font-extrabold text-[#18332D]">
+            <span className="rounded-lg border border-[#B9D8CC] bg-white px-2 py-0.5 text-[9px] font-extrabold text-[#18332D]">
               {type}
             </span>
 
@@ -291,7 +291,7 @@ function ResourceCard({ resource, index = 0, isPrimary = false }) {
         </div>
 
         {url && (
-          <span className="shrink-0 rounded-xl border border-[#B9D8CC] bg-white px-3 py-1 text-[10px] font-extrabold text-[#18332D]">
+          <span className="shrink-0 rounded-lg border border-[#B9D8CC] bg-white px-3 py-1 text-[10px] font-extrabold text-[#18332D]">
             Open
           </span>
         )}
@@ -314,7 +314,7 @@ function ResourceCard({ resource, index = 0, isPrimary = false }) {
 
   if (!url) {
     return (
-      <div className="rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-3">
+      <div className="rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] p-3">
         {content}
       </div>
     );
@@ -325,7 +325,7 @@ function ResourceCard({ resource, index = 0, isPrimary = false }) {
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="block rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-3 transition-transform hover:-translate-y-0.5 hover:bg-[#EAF8F1]"
+      className="block rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] p-3 transition-transform hover:-translate-y-0.5 hover:bg-[#EAF8F1]"
     >
       {content}
     </a>
@@ -334,7 +334,7 @@ function ResourceCard({ resource, index = 0, isPrimary = false }) {
 
 function StatusBadge({ children }) {
   return (
-    <span className="rounded-xl border border-[#B9D8CC] bg-white px-2 py-1 text-[10px] font-extrabold tracking-tight text-[#18332D]">
+    <span className="rounded-lg border border-[#B9D8CC] bg-white px-2 py-1 text-[10px] font-extrabold tracking-tight text-[#18332D]">
       {children}
     </span>
   );
@@ -342,8 +342,8 @@ function StatusBadge({ children }) {
 
 function ActionButton({ children, disabled, onClick, variant = "secondary" }) {
   const className = variant === "primary"
-    ? "rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-4 py-3 text-sm font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
-    : "rounded-xl border border-[#B9D8CC] bg-white px-4 py-3 text-sm font-extrabold tracking-[0.08em] text-[#18332D] shadow-sm disabled:opacity-60";
+    ? "rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 py-3 text-sm font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+    : "rounded-lg border border-[#B9D8CC] bg-white px-4 py-3 text-sm font-extrabold tracking-[0.08em] text-[#18332D] shadow-sm disabled:opacity-60";
 
   return (
     <button type="button" disabled={disabled} onClick={onClick} className={className}>
@@ -358,7 +358,7 @@ function RequirementRow({ label, value }) {
   const values = Array.isArray(value) ? value : [value];
 
   return (
-    <div className="rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-3">
+    <div className="rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] p-3">
       <p className="text-[10px] font-extrabold tracking-tight text-slate-500">
         {label}
       </p>
@@ -367,7 +367,7 @@ function RequirementRow({ label, value }) {
         <ul className="mt-2 space-y-1 text-sm font-bold leading-6 text-[#18332D]">
           {values.map((item, index) => (
             <li key={`${label}-${index}`} className="flex gap-2">
-              <span className="mt-2 h-2 w-2 shrink-0 rounded-xl border border-[#B9D8CC] bg-[#2FA084]" />
+              <span className="mt-2 h-2 w-2 shrink-0 rounded-lg border border-[#B9D8CC] bg-[#2FA084]" />
               <span>{formatMetadataValue(item)}</span>
             </li>
           ))}
@@ -381,7 +381,7 @@ function RequirementRow({ label, value }) {
 
 function ResourceBadge({ children }) {
   return (
-    <span className="rounded-xl border border-[#B9D8CC] bg-white px-2 py-0.5 text-[10px] font-extrabold text-[#18332D]">
+    <span className="rounded-lg border border-[#B9D8CC] bg-white px-2 py-0.5 text-[10px] font-extrabold text-[#18332D]">
       {children}
     </span>
   );
@@ -389,7 +389,7 @@ function ResourceBadge({ children }) {
 
 function HeaderBadge({ children }) {
   return (
-    <span className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
+    <span className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
       {children}
     </span>
   );
@@ -397,7 +397,7 @@ function HeaderBadge({ children }) {
 
 function DetailStat({ label, value }) {
   return (
-    <div className="rounded-xl border border-[#B9D8CC] bg-white p-3">
+    <div className="rounded-lg border border-[#B9D8CC] bg-white p-3">
       <p className="text-[10px] font-extrabold tracking-tight text-slate-500">
         {label}
       </p>
@@ -411,7 +411,7 @@ function PanelSection({ title, items }) {
   if (!items?.length) return null;
 
   return (
-    <section className="mt-5 rounded-xl border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
+    <section className="mt-5 rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.18)]">
       <h3 className="text-xs font-extrabold tracking-[0.16em] text-slate-500">
         {title}
       </h3>
@@ -422,7 +422,7 @@ function PanelSection({ title, items }) {
             key={getDisplayKey(item, index)}
             className="flex gap-2 text-sm font-semibold leading-6 text-slate-700"
           >
-            <span className="mt-2 h-2 w-2 shrink-0 rounded-xl border border-[#B9D8CC] bg-[#2FA084]" />
+            <span className="mt-2 h-2 w-2 shrink-0 rounded-lg border border-[#B9D8CC] bg-[#2FA084]" />
             <span>{getDisplayText(item)}</span>
           </li>
         ))}

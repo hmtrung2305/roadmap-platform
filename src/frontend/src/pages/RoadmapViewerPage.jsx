@@ -255,7 +255,7 @@ export default function RoadmapViewerPage() {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-[#F7F1E8] text-[#18332D]">
         <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-7xl items-center justify-center px-6 py-8">
-          <div className="max-w-md rounded-xl border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
+          <div className="max-w-md rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
             <h1 className="text-2xl font-black text-[#18332D]">Couldn&apos;t load roadmap</h1>
 
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{message}</p>
@@ -264,7 +264,7 @@ export default function RoadmapViewerPage() {
               <button
                 type="button"
                 onClick={() => navigate("/roadmaps")}
-                className="rounded-xl border border-[#B9D8CC] bg-white px-5 py-2 text-sm font-extrabold shadow-sm"
+                className="rounded-lg border border-[#B9D8CC] bg-white px-5 py-2 text-sm font-extrabold shadow-sm"
               >
                 Back
               </button>
@@ -272,7 +272,7 @@ export default function RoadmapViewerPage() {
               <button
                 type="button"
                 onClick={loadPage}
-                className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm"
+                className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm"
               >
                 Retry
               </button>
@@ -322,7 +322,7 @@ export default function RoadmapViewerPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-[190px] rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 shadow-sm">
+                <div className="min-w-[190px] rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 shadow-sm">
                   <div className="flex items-center justify-between gap-3 text-xs font-extrabold tracking-tight text-slate-500">
                     <span>Progress</span>
                     <span>{Math.round(progressPercent)}%</span>
@@ -343,7 +343,7 @@ export default function RoadmapViewerPage() {
                     type="button"
                     onClick={handleEnroll}
                     disabled={isEnrolling}
-                    className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-3 text-sm font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+                    className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-5 py-3 text-sm font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
                   >
                     {isEnrolling ? "Starting..." : "Start roadmap"}
                   </button>
@@ -352,7 +352,7 @@ export default function RoadmapViewerPage() {
             </div>
 
             {message && (
-              <div className="mt-4 rounded-xl border border-[#B9D8CC] bg-[#FEE2E2] px-4 py-3 text-sm font-black text-[#18332D]">
+              <div className="mt-4 rounded-lg border border-[#B9D8CC] bg-[#FEE2E2] px-4 py-3 text-sm font-black text-[#18332D]">
                 {message}
               </div>
             )}
@@ -361,7 +361,7 @@ export default function RoadmapViewerPage() {
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
             {nodes.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8">
-                <div className="rounded-xl border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
+                <div className="rounded-lg border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
                   <h2 className="text-xl font-black text-[#18332D]">No roadmap nodes found</h2>
                   <p className="mt-2 text-sm font-semibold text-slate-600">
                     The roadmap loaded, but the API did not return any nodes.
@@ -402,11 +402,11 @@ export default function RoadmapViewerPage() {
                       zoomable
                       nodeStrokeWidth={2}
                       nodeColor={(node) => getMiniMapColor(node.data?.status, node.data?.nodeType)}
-                      className="!rounded-xl !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
+                      className="!rounded-lg !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
                     />
                   )}
 
-                  <Controls className="!rounded-xl !border-2 !border-[#B9D8CC] !bg-white !shadow-sm" />
+                  <Controls className="!rounded-lg !border-2 !border-[#B9D8CC] !bg-white !shadow-sm" />
 
                   <RoadmapLegend
                     isOpen={isLegendOpen}
@@ -435,7 +435,7 @@ export default function RoadmapViewerPage() {
 
 function HeaderBadge({ children }) {
   return (
-    <span className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
+    <span className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
       {children}
     </span>
   );

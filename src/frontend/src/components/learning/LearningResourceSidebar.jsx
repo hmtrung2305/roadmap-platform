@@ -33,10 +33,13 @@ export default function LearningResourceSidebar({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-[#18332D]">
-          <BookOpen size={16} />
-          Documents
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-400 hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {resources.length === 0 ? (
@@ -52,7 +55,21 @@ export default function LearningResourceSidebar({
                 resource.learningResourceId ||
                 resource.documentId;
 
-              const isActive = String(currentResourceId) === String(resourceId);
+          {resources.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8] p-4 text-sm font-medium text-slate-500">
+              No documents yet.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {resources.map((resource, index) => {
+                const currentResourceId =
+                  resource.resourceId ||
+                  resource.id ||
+                  resource.learningResourceId ||
+                  resource.documentId;
+
+                const isActive =
+                  String(currentResourceId) === String(resourceId);
 
               return (
                 <button
@@ -61,30 +78,32 @@ export default function LearningResourceSidebar({
                   onClick={() => {
                     if (!currentResourceId) return;
 
-                    navigate(`/study/${currentResourceId}`, {
-                      state: { resource },
-                    });
-                  }}
-                  className={`w-full rounded-lg px-3 py-3 text-left text-sm transition ${
-                    isActive
-                      ? "bg-[#6FCF97]/20 text-[#1F6F5F] ring-1 ring-[#6FCF97]"
-                      : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {resource.isCompleted ? (
-                      <CheckCircle2
-                        size={16}
-                        className="mt-0.5 shrink-0 text-[#2FA084]"
-                      />
-                    ) : (
-                      <Circle
-                        size={16}
-                        className={`mt-0.5 shrink-0 ${
-                          isActive ? "text-[#2FA084]" : "text-slate-400"
-                        }`}
-                      />
-                    )}
+                      navigate(`/study/${currentResourceId}`, {
+                        state: {
+                          resource,
+                        },
+                      });
+                    }}
+                    className={`w-full rounded-lg px-3 py-3 text-left text-sm transition ${
+                      isActive
+                        ? "bg-[#6FCF97]/20 text-[#1F6F5F] ring-1 ring-[#6FCF97]"
+                        : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {resource.isCompleted ? (
+                        <CheckCircle2
+                          size={16}
+                          className="mt-0.5 shrink-0 text-[#2FA084]"
+                        />
+                      ) : (
+                        <Circle
+                          size={16}
+                          className={`mt-0.5 shrink-0 ${
+                            isActive ? "text-[#2FA084]" : "text-slate-400"
+                          }`}
+                        />
+                      )}
 
                     <div className="min-w-0">
                       <p className="line-clamp-2 font-extrabold">

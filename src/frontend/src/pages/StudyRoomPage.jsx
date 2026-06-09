@@ -163,53 +163,38 @@ export default function StudyRoomPage() {
           paddingTop: isHeaderVisible ? HEADER_HEIGHT + PAGE_GAP : PAGE_GAP,
         }}
       >
-        {isSidebarOpen && (
-          <LearningResourceSidebar
-            resources={resources}
-            isOpen={isSidebarOpen}
-            width={sidebarWidth}
-            topOffset={0}
-            onStartResize={(event) => {
-              event.preventDefault();
-              setResizingPanel("sidebar");
-            }}
-            onClose={() => setIsSidebarOpen(false)}
-          />
-        )}
+        <main
+          onScroll={handleDocumentScroll}
+          className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 transition-[padding] duration-300 sm:px-6 lg:px-8"
+          style={{
+            paddingTop: isHeaderVisible ? HEADER_HEIGHT + 24 : 24,
+          }}
+        >
+          <div className="mx-auto max-w-4xl">
+            {isFetching || isLoadingDocument ? (
+              <DocumentLoading />
+            ) : documentError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
+                {documentError}
+              </div>
+            ) : (
+              <DocumentReader markdownContent={markdownContent} />
+            )}
+          </div>
+        </main>
+      </div>
 
-        <section className="min-h-0 min-w-0 overflow-hidden">
-          <main
-            onScroll={handleDocumentScroll}
-            className="h-full min-h-0 overflow-y-auto rounded-lg"
-          >
-            <div className="mx-auto max-w-5xl pb-6">
-              {isFetching || isLoadingDocument ? (
-                <DocumentLoading />
-              ) : documentError ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
-                  {documentError}
-                </div>
-              ) : (
-                <DocumentReader markdownContent={markdownContent} />
-              )}
-            </div>
-          </main>
-        </section>
-
-        {isChatOpen && (
-          <AiChatPanel
-            resource={currentResource}
-            isOpen={isChatOpen}
-            width={chatWidth}
-            topOffset={0}
-            onStartResize={(event) => {
-              event.preventDefault();
-              setResizingPanel("chat");
-            }}
-            onClose={() => setIsChatOpen(false)}
-          />
-        )}
-      </main>
+      <AiChatPanel
+        resource={currentResource}
+        isOpen={isChatOpen}
+        width={chatWidth}
+        topOffset={sidePanelTopOffset}
+        onStartResize={(event) => {
+          event.preventDefault();
+          setResizingPanel("chat");
+        }}
+        onClose={() => setIsChatOpen(false)}
+      />
 
       {!isSidebarOpen && (
         <button

@@ -6,7 +6,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-[#B9D8CC] bg-white/85 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 text-sm sm:px-6 md:grid-cols-[1.2fr_1fr_1fr_1fr] lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-8 px-3 py-3 text-sm sm:px-6 md:grid-cols-[1.2fr_1fr_1fr_1fr] lg:px-8">
         <div>
           <button type="button" onClick={() => navigate("/dashboard")}>
             <AuthLogo compact showTagline={false} />
@@ -47,7 +47,7 @@ export default function Footer() {
         />
       </div>
 
-      <div className="border-t border-[#B9D8CC] py-4 text-center text-xs font-semibold text-slate-500">
+      <div className="border-t border-[#B9D8CC] py-2 text-center text-xs font-semibold text-slate-500">
         © 2026 TechMap. All rights reserved.
       </div>
     </footer>

@@ -3,7 +3,7 @@ import { ExternalLink, GitFork, Star } from "lucide-react";
 export default function RepositorySelectCard({ repo, checked, onToggle }) {
   return (
     <article
-      className={`rounded-2xl border bg-white p-6 shadow-sm transition ${
+      className={`rounded-lg border bg-white p-6 shadow-sm transition ${
         checked
           ? "border-blue-300 ring-2 ring-blue-100"
           : "border-slate-200 hover:border-[#B9D8CC]"

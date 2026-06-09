@@ -19,7 +19,7 @@ export default function RoadmapCard({ roadmap, onOpen }) {
       aria-label={`Open ${roadmap.title}`}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[#B9D8CC] bg-white shadow-sm outline-none transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#2FA084] hover:shadow-[0_12px_28px_rgba(31,111,95,0.12)] focus-visible:border-[#2FA084] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15 active:translate-y-0 active:shadow-sm"
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[#B9D8CC] bg-white shadow-sm outline-none transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#2FA084] hover:shadow-[0_12px_28px_rgba(31,111,95,0.12)] focus-visible:border-[#2FA084] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15 active:translate-y-0 active:shadow-sm"
     >
       <span
         aria-hidden
