@@ -192,7 +192,7 @@ export default function RoadmapSelectionPage() {
             </p>
           </section>
         ) : (
-          <section className="mt-8 grid items-stretch gap-3 overflow-visible pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <section className="mt-9 grid items-stretch gap-4 overflow-visible pb-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filteredRoadmaps.map((roadmap, index) => (
               <RoadmapCard
                 key={roadmap.roadmapId || roadmap.roadmapVersionId || roadmap.slug}
