@@ -317,7 +317,7 @@ export default function RoadmapViewerPage() {
         style={{ height: "calc(100vh - 64px)" }}
       >
         <section className="grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)]">
-          <div className="z-10 border-b border-[#B9D8CC] bg-white/95 px-2 py-0.5  shadow-sm backdrop-blur">
+          <div className="z-10 border-b border-[#B9D8CC] bg-white/95 px-2 py-1 shadow-sm backdrop-blur">
             <div className="flex min-h-10 items-center gap-1">
               <button
                 type="button"

@@ -105,7 +105,7 @@ function PublicPortfolioPage() {
         .fu-1 { animation-delay:0.06s; } .fu-2 { animation-delay:0.12s; } .fu-3 { animation-delay:0.18s; }
       `}</style>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+      <main className="mx-auto max-w-7xl space-y-6 px-6 py-12">
         {toast && (
           <div className="fu flex items-center gap-3 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] px-4 py-3 text-sm font-medium text-slate-700">
             <span className="h-1.5 w-1.5 rounded-xl bg-[#2FA084]" />
@@ -179,7 +179,7 @@ function PublicPortfolioPage() {
               No projects selected yet.
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
               {repositories.map((repo, index) => (
                 <div key={repo.repositoryId} className="fu" style={{ animationDelay: `${0.12 + index * 0.03}s` }}>
                   <RepoCard repo={repo} />

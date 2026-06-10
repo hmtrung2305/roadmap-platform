@@ -34,9 +34,9 @@ export default function EditPortfolioGitHubSource({
             type="button"
             onClick={onSync}
             disabled={syncing || reloadingSelection || saving}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-3 py-2 !text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {syncing ? <Loader2 className="animate-spin" size={16} /> : <RefreshCcw size={16} />}
+            {syncing ? <Loader2 className="animate-spin" size={14} /> : <RefreshCcw size={14} />}
             {syncing ? "Syncing..." : "Sync repositories"}
           </button>
 
@@ -44,15 +44,15 @@ export default function EditPortfolioGitHubSource({
             type="button"
             onClick={onReloadSelection}
             disabled={syncing || reloadingSelection || saving}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-bold text-[#1F6F5F] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-3 py-2 !text-[14px] font-bold text-[#1F6F5F] shadow-sm transition-colors hover:bg-[#6FCF97]/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {reloadingSelection ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
+            {reloadingSelection ? <Loader2 className="animate-spin" size={14} /> : <ShieldCheck size={14} />}
             {reloadingSelection ? "Reloading..." : "Reload saved selection"}
           </button>
         </div>
       ) : (
-        <button type="button" onClick={onConnectGitHub} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]">
-          <FaGithub size={16} />
+        <button type="button" onClick={onConnectGitHub} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-3 py-2 !text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-[#1F6F5F]">
+          <FaGithub size={14} />
           Connect GitHub
         </button>
       )}
