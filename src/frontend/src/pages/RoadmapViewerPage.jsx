@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Background,
@@ -61,7 +68,10 @@ export default function RoadmapViewerPage() {
       return { flowNodes: [], flowEdges: [], nodeLookup: new Map() };
     }
 
-    return buildRoadmapFlow(roadmap, selectedNode ? getNodeId(selectedNode) : null);
+    return buildRoadmapFlow(
+      roadmap,
+      selectedNode ? getNodeId(selectedNode) : null,
+    );
   }, [roadmap, selectedNode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -75,7 +85,8 @@ export default function RoadmapViewerPage() {
   useLayoutEffect(() => {
     if (!flowInstance || flowNodes.length === 0) return;
 
-    const roadmapFocusKey = roadmap?.roadmapVersionId || slug || "current-roadmap";
+    const roadmapFocusKey =
+      roadmap?.roadmapVersionId || slug || "current-roadmap";
 
     if (focusedRoadmapKeyRef.current === roadmapFocusKey) {
       setIsInitialViewportReady(true);
@@ -110,7 +121,7 @@ export default function RoadmapViewerPage() {
         loadNodeDetail(sourceNode);
       }
     },
-    [nodeLookup, roadmap?.roadmapVersionId, nodeDetailCache]
+    [nodeLookup, roadmap?.roadmapVersionId, nodeDetailCache],
   );
 
   async function loadNodeDetail(graphNode) {
@@ -129,7 +140,10 @@ export default function RoadmapViewerPage() {
     setMessage("");
 
     try {
-      const detail = await roadmapApi.getNodeDetail(roadmap.roadmapVersionId, nodeId);
+      const detail = await roadmapApi.getNodeDetail(
+        roadmap.roadmapVersionId,
+        nodeId,
+      );
 
       setNodeDetailCache((current) => ({
         ...current,
@@ -163,7 +177,10 @@ export default function RoadmapViewerPage() {
       setStatus("success");
     } catch (error) {
       console.error(error);
-      setMessage(error?.message || "Failed to load roadmap. Check that the API is running.");
+      setMessage(
+        error?.message ||
+          "Failed to load roadmap. Check that the API is running.",
+      );
       setStatus("error");
     }
   }
@@ -197,7 +214,9 @@ export default function RoadmapViewerPage() {
     const previousRoadmap = roadmap;
     const previousSelectedNode = selectedNode;
 
-    setRoadmap((current) => patchNodeProgress(current, selectedNodeId, nextStatus));
+    setRoadmap((current) =>
+      patchNodeProgress(current, selectedNodeId, nextStatus),
+    );
 
     setSelectedNode((current) =>
       current
@@ -208,7 +227,7 @@ export default function RoadmapViewerPage() {
               status: nextStatus,
             },
           }
-        : current
+        : current,
     );
 
     try {
@@ -255,9 +274,13 @@ export default function RoadmapViewerPage() {
       <div className="min-h-[calc(100vh-64px)] bg-[#F7F1E8] text-[#18332D]">
         <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-7xl items-center justify-center px-6 py-8">
           <div className="max-w-md rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
-            <h1 className="text-2xl font-black text-[#18332D]">Couldn&apos;t load roadmap</h1>
+            <h1 className="text-2xl font-black text-[#18332D]">
+              Couldn&apos;t load roadmap
+            </h1>
 
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{message}</p>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+              {message}
+            </p>
 
             <div className="mt-6 flex justify-center gap-3">
               <button
@@ -282,20 +305,24 @@ export default function RoadmapViewerPage() {
     );
   }
 
-  const progressPercent = roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
+  const progressPercent =
+    roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
   const isEnrolled = Boolean(roadmap?.enrollment);
   const shouldShowMiniMap = nodes.length <= 150;
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] flex-col bg-[#F7F1E8] text-[#18332D]">
-      <main className="relative min-h-0 w-full overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
+      <main
+        className="relative min-h-0 w-full overflow-hidden"
+        style={{ height: "calc(100vh - 64px)" }}
+      >
         <section className="grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)]">
-          <div className="z-10 border-b border-[#B9D8CC] bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
-            <div className="flex min-h-10 items-center gap-3">
+          <div className="z-10 border-b border-[#B9D8CC] bg-white/95 px-2 py-1 shadow-sm backdrop-blur">
+            <div className="flex min-h-10 items-center gap-1">
               <button
                 type="button"
                 onClick={() => navigate("/roadmaps")}
-                className="shrink-0 rounded-lg border border-transparent px-2 py-1 text-xs font-extrabold tracking-[0.12em] text-[#1F6F5F] transition-colors hover:border-[#B9D8CC] hover:bg-[#EAF8F1]"
+                className="shrink-0 rounded-lg border border-transparent px-2 py-1 !text-[14px] font-extrabold tracking-[0.12em] text-[#1F6F5F] transition-colors hover:border-[#B9D8CC] hover:bg-[#EAF8F1]"
               >
                 ← Career Role Selection
               </button>
@@ -315,8 +342,8 @@ export default function RoadmapViewerPage() {
           </div>
 
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
-            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col items-end gap-2">
-              <div className="pointer-events-auto w-36 rounded-lg border border-[#B9D8CC] bg-white/95 px-3 py-2 shadow-sm backdrop-blur sm:w-44">
+            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-row items-stretch gap-2">
+              <div className="pointer-events-auto flex h-12 w-36 flex-col justify-center rounded-lg border border-[#B9D8CC] bg-white/95 px-3 shadow-sm backdrop-blur sm:w-44">
                 <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold tracking-tight text-slate-500">
                   <span>Progress</span>
                   <span>{Math.round(progressPercent)}%</span>
@@ -337,7 +364,7 @@ export default function RoadmapViewerPage() {
                   type="button"
                   onClick={handleEnroll}
                   disabled={isEnrolling}
-                  className="pointer-events-auto rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 py-2 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+                  className="pointer-events-auto h-12 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
                 >
                   {isEnrolling ? "Starting..." : "Start roadmap"}
                 </button>
@@ -346,7 +373,9 @@ export default function RoadmapViewerPage() {
             {nodes.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8">
                 <div className="rounded-lg border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
-                  <h2 className="text-xl font-black text-[#18332D]">No roadmap nodes found</h2>
+                  <h2 className="text-xl font-black text-[#18332D]">
+                    No roadmap nodes found
+                  </h2>
                   <p className="mt-2 text-sm font-semibold text-slate-600">
                     The roadmap loaded, but the API did not return any nodes.
                   </p>
@@ -388,7 +417,9 @@ export default function RoadmapViewerPage() {
                       pannable
                       zoomable
                       nodeStrokeWidth={2}
-                      nodeColor={(node) => getMiniMapColor(node.data?.status, node.data?.nodeType)}
+                      nodeColor={(node) =>
+                        getMiniMapColor(node.data?.status, node.data?.nodeType)
+                      }
                       className="!rounded-lg !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
                     />
                   )}
@@ -421,7 +452,9 @@ export default function RoadmapViewerPage() {
 }
 
 function getViewerHeading(roadmap) {
-  const baseTitle = cleanViewerTitle(roadmap?.careerRole?.name || roadmap?.title || "Roadmap");
+  const baseTitle = cleanViewerTitle(
+    roadmap?.careerRole?.name || roadmap?.title || "Roadmap",
+  );
 
   if (!baseTitle) return "Roadmap";
   if (/roadmap$/i.test(baseTitle)) return baseTitle;
