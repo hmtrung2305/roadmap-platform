@@ -38,7 +38,7 @@ export default function EditPortfolioHero({
               <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
                 Public portfolio editor
               </p>
-              <h1 className="portfolio-editor-nowrap text-3xl font-bold tracking-tight text-[#18332D] sm:text-4xl">{displayName}</h1>
+              <h1 className="portfolio-editor-nowrap !text-[30px] font-bold tracking-tight text-[#18332D] sm:text-4xl">{displayName}</h1>
               <p className="portfolio-editor-nowrap mt-1 max-w-2xl text-sm font-semibold leading-6 text-[#34544C]">{headline}</p>
             </div>
           </div>
@@ -47,7 +47,7 @@ export default function EditPortfolioHero({
             <button
               type="button"
               onClick={onCopyPublicLink}
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EEEEEE] px-4 py-2 !text-[12px] font-bold text-[#18332D] shadow-sm transition-colors hover:bg-[#6FCF97]/35"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EEEEEE] px-4 py-2 !text-[13px] font-bold text-[#18332D] shadow-sm transition-colors hover:bg-[#6FCF97]/35"
             >
               <Copy size={14} />
               {copied ? "Copied" : "Copy public link"}
@@ -55,7 +55,7 @@ export default function EditPortfolioHero({
 
             <Link
               to="/portfolio"
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 !text-[12px] font-extrabold text-[#1F6F5F] no-underline shadow-sm transition-colors hover:border-[#1F6F5F] hover:bg-[#18332D] hover:text-white"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 !text-[13px] font-extrabold text-[#1F6F5F] no-underline shadow-sm transition-colors hover:border-[#1F6F5F] hover:bg-[#18332D] hover:text-white"
             >
               Preview portfolio
               <ExternalLink size={14} />

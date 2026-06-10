@@ -96,7 +96,7 @@ export default function EditPortfolioPage() {
       observer.disconnect();
       window.removeEventListener("resize", updateManagerHeight);
     };
-  }, [portfolio, isGitHubLinked, syncing, reloadingSelection, saving]);
+  }, [portfolio, isGitHubLinked, repositories.length, syncing, reloadingSelection, saving]);
 
 
   async function initEditor() {

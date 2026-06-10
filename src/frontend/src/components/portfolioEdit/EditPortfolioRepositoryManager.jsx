@@ -25,14 +25,14 @@ export default function EditPortfolioRepositoryManager({
   onConnectGitHub,
   managerHeight,
 }) {
-  const lockedHeight = managerHeight ? Math.max(520, managerHeight) : null;
+  const lockedHeight = managerHeight || null;
 
   return (
     <section
       className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[0_18px_45px_rgba(31,111,95,0.08)] lg:self-start"
-      style={lockedHeight ? { height: `${lockedHeight}px`, maxHeight: `${lockedHeight}px` } : undefined}
+      style={lockedHeight ? { height: `${lockedHeight}px`, maxHeight: `${lockedHeight}px`, minHeight: 0 } : undefined}
     >
-      <div className="flex shrink-0 flex-col gap-3 border-b border-[#DCEBE5] pb-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex shrink-0 flex-col gap-2 border-b border-[#DCEBE5] pb-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2FA084]">Repository manager</p>
           <p className="mt-1.5 !text-[12px] font-semibold leading-4 text-[#667A73]">
@@ -63,13 +63,13 @@ export default function EditPortfolioRepositoryManager({
       </div>
 
       {error && (
-        <div className="mt-3 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+        <div className="mt-2 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mt-3 shrink-0 rounded-lg border border-[#B9D8CC] bg-[#6FCF97]/15 px-3 py-2 text-xs font-semibold text-[#1F6F5F]">
+        <div className="mt-2 shrink-0 rounded-lg border border-[#B9D8CC] bg-[#6FCF97]/15 px-3 py-2 text-xs font-semibold text-[#1F6F5F]">
           {success}
         </div>
       )}
