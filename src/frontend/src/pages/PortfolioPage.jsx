@@ -60,8 +60,8 @@ export default function PortfolioPage() {
 
   if (portfolioLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6">
-        <div className="mx-auto max-w-6xl rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
+        <div className="mx-auto max-w-7xl rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
           <div className="flex items-center gap-3 text-slate-600">
             <Loader2 className="animate-spin" size={18} />
             Loading portfolio...
@@ -73,7 +73,7 @@ export default function PortfolioPage() {
 
   if (portfolioError) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6">
+      <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
         <section className="mx-auto max-w-3xl rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
           <p className="text-lg font-extrabold text-[#18332D]">Portfolio unavailable</p>
           <p className="mt-2 text-sm font-bold text-red-600">{portfolioError}</p>
@@ -83,8 +83,8 @@ export default function PortfolioPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] px-4 py-7 sm:px-6">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
+      <div className="mx-auto max-w-7xl space-y-6">
         <PortfolioHeader portfolio={portfolio} username={username} isOwnPortfolio={isOwnPortfolio} />
         <PortfolioStats portfolio={portfolio} />
         <PortfolioAbout portfolio={portfolio} />

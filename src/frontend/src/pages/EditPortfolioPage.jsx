@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   getMyPortfolioApi,
@@ -42,6 +42,8 @@ export default function EditPortfolioPage() {
   const [repoError, setRepoError] = useState("");
   const [repoSuccess, setRepoSuccess] = useState("");
   const [copied, setCopied] = useState(false);
+  const leftColumnRef = useRef(null);
+  const [managerHeight, setManagerHeight] = useState(null);
 
   const username = useMemo(() => {
     return (
@@ -74,6 +76,28 @@ export default function EditPortfolioPage() {
   useEffect(() => {
     initEditor();
   }, []);
+  useLayoutEffect(() => {
+    if (!leftColumnRef.current) return;
+
+    function updateManagerHeight() {
+      const nextHeight = leftColumnRef.current?.getBoundingClientRect().height;
+      if (!nextHeight) return;
+      setManagerHeight(Math.round(nextHeight));
+    }
+
+    updateManagerHeight();
+
+    const observer = new ResizeObserver(updateManagerHeight);
+    observer.observe(leftColumnRef.current);
+
+    window.addEventListener("resize", updateManagerHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateManagerHeight);
+    };
+  }, [portfolio, isGitHubLinked, syncing, reloadingSelection, saving]);
+
 
   async function initEditor() {
     try {
@@ -220,7 +244,7 @@ export default function EditPortfolioPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8]/70 px-4 py-7 text-[#18332D] sm:px-6">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8]/70 px-6 py-12 text-[#18332D]">
       <style>{`
         .portfolio-editor-nowrap {
           overflow: hidden;
@@ -234,9 +258,27 @@ export default function EditPortfolioPage() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+
+        .portfolio-repo-list-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #8BA39B transparent;
+        }
+
+        .portfolio-repo-list-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .portfolio-repo-list-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .portfolio-repo-list-scroll::-webkit-scrollbar-thumb {
+          background: #8BA39B;
+          border-radius: 999px;
+        }
       `}</style>
 
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="mx-auto max-w-7xl space-y-5">
         <EditPortfolioHero
           portfolio={portfolio}
           displayName={displayName}
@@ -254,8 +296,8 @@ export default function EditPortfolioPage() {
           totalStars={totalStars}
         />
 
-        <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">
-          <aside className="flex flex-col gap-5 pr-1 lg:h-fit">
+        <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+          <aside ref={leftColumnRef} className="flex flex-col gap-5 pr-1">
             <EditPortfolioProfileDetails portfolio={portfolio} displayName={displayName} headline={headline} />
             <EditPortfolioGitHubSource
               isGitHubLinked={isGitHubLinked}
@@ -285,6 +327,7 @@ export default function EditPortfolioPage() {
             onToggleRepository={handleToggleRepository}
             onGenerateInsight={handleGenerateInsight}
             onConnectGitHub={redirectToGitHubLink}
+            managerHeight={managerHeight}
           />
         </section>
       </div>

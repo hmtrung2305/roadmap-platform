@@ -1,4 +1,4 @@
-import { Globe2, Mail, MapPin, UserRound } from "lucide-react";
+import { Globe2, Mail, MapPin, PencilLine, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 
@@ -56,11 +56,8 @@ export default function PortfolioHeader({ portfolio, username, isOwnPortfolio = 
           <div className="min-w-0 pb-1 pt-3">
             {isOwnPortfolio && (
               <div className="mb-2 flex flex-wrap gap-1.5">
-                <span className="rounded-lg bg-[#1F6F5F] px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-white">
-                  Private preview
-                </span>
                 <span className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#1F6F5F]">
-                  {portfolio?.isPublic ? "Public" : "Private"}
+                  Private preview
                 </span>
               </div>
             )}
@@ -79,10 +76,11 @@ export default function PortfolioHeader({ portfolio, username, isOwnPortfolio = 
           <div className="flex shrink-0 flex-col items-start gap-2 pb-1 sm:items-end">
             {isOwnPortfolio && (
               <Link
-                to="/profile"
-                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#18332D] px-4 py-2 text-xs font-extrabold text-white no-underline shadow-[0_12px_28px_rgba(24,51,45,0.18)] transition hover:bg-[#1F6F5F]"
+                to="/portfolio/edit"
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 text-xs font-extrabold text-[#1F6F5F] no-underline shadow-sm transition-colors hover:border-[#1F6F5F] hover:bg-[#18332D] hover:text-white"
               >
-                Back to profile
+                <PencilLine size={14} />
+                Edit portfolio
               </Link>
             )}
 

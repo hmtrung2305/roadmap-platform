@@ -47,18 +47,18 @@ export default function EditPortfolioHero({
             <button
               type="button"
               onClick={onCopyPublicLink}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-[#EEEEEE] px-5 py-3 text-sm font-bold text-[#18332D] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/35"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EEEEEE] px-4 py-2 !text-[12px] font-bold text-[#18332D] shadow-sm transition-colors hover:bg-[#6FCF97]/35"
             >
-              <Copy size={16} />
+              <Copy size={14} />
               {copied ? "Copied" : "Copy public link"}
             </button>
 
             <Link
               to="/portfolio"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#18332D] px-5 py-3 text-sm font-bold text-white no-underline shadow-[0_12px_28px_rgba(24,51,45,0.18)] transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 !text-[12px] font-extrabold text-[#1F6F5F] no-underline shadow-sm transition-colors hover:border-[#1F6F5F] hover:bg-[#18332D] hover:text-white"
             >
               Preview portfolio
-              <ExternalLink size={16} />
+              <ExternalLink size={14} />
             </Link>
           </div>
         </div>

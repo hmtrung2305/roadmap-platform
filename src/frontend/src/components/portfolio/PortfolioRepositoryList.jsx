@@ -23,7 +23,7 @@ export default function PortfolioRepositoryList({ repositories = [] }) {
       {repositories.length === 0 ? (
         <PortfolioEmptyState />
       ) : (
-        <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid items-stretch gap-5 lg:grid-cols-2 2xl:grid-cols-3">
           {repositories.map((repo) => (
             <PortfolioRepositoryCard
               key={repo.repositoryId || repo.repoName || repo.name}
