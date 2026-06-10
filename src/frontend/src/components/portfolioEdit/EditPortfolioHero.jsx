@@ -1,7 +1,13 @@
-import { ExternalLink, UserRound } from "lucide-react";
+import { Copy, ExternalLink, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
-export default function EditPortfolioHero({ portfolio, displayName, headline }) {
+export default function EditPortfolioHero({
+  portfolio,
+  displayName,
+  headline,
+  copied = false,
+  onCopyPublicLink,
+}) {
   return (
     <section className="overflow-hidden rounded-[1.6rem] border border-[#B9D8CC] bg-white shadow-[0_22px_60px_rgba(31,111,95,0.10)]">
       <div className="relative h-44 bg-[#1F6F5F] sm:h-52">
@@ -29,18 +35,32 @@ export default function EditPortfolioHero({ portfolio, displayName, headline }) 
             </div>
 
             <div className="min-w-0 pb-1">
+              <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
+                Public portfolio editor
+              </p>
               <h1 className="portfolio-editor-nowrap text-3xl font-bold tracking-tight text-[#18332D] sm:text-4xl">{displayName}</h1>
               <p className="portfolio-editor-nowrap mt-1 max-w-2xl text-sm font-semibold leading-6 text-[#34544C]">{headline}</p>
             </div>
           </div>
 
-          <Link
-            to="/portfolio"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#18332D] px-5 py-3 text-sm font-bold text-white no-underline shadow-[0_12px_28px_rgba(24,51,45,0.18)] transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
-          >
-            Preview portfolio
-            <ExternalLink size={16} />
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={onCopyPublicLink}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-[#EEEEEE] px-5 py-3 text-sm font-bold text-[#18332D] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/35"
+            >
+              <Copy size={16} />
+              {copied ? "Copied" : "Copy public link"}
+            </button>
+
+            <Link
+              to="/portfolio"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#18332D] px-5 py-3 text-sm font-bold text-white no-underline shadow-[0_12px_28px_rgba(24,51,45,0.18)] transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
+            >
+              Preview portfolio
+              <ExternalLink size={16} />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

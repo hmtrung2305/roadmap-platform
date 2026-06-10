@@ -127,7 +127,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
           <div className="p-2">
             <DropdownItem
               icon={<Code2 size={18} />}
-              label="Edit portfolio"
+              label="Profile"
               onClick={handleGoToEditPortfolio}
             />
 
