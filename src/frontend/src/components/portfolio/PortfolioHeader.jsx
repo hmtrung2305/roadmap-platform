@@ -1,7 +1,8 @@
 import { Globe2, Mail, MapPin, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 
-export default function PortfolioHeader({ portfolio, username }) {
+export default function PortfolioHeader({ portfolio, username, isOwnPortfolio = false }) {
   const displayName = portfolio?.displayName || username || "Unnamed User";
 
   const headline =
@@ -11,6 +12,12 @@ export default function PortfolioHeader({ portfolio, username }) {
 
   const coverImageUrl = portfolio?.coverImageUrl;
   const avatarUrl = portfolio?.avatarUrl;
+  const hasContact =
+    portfolio?.location ||
+    portfolio?.githubUrl ||
+    portfolio?.linkedinUrl ||
+    portfolio?.personalWebsiteUrl ||
+    portfolio?.publicEmail;
 
   return (
     <section className="relative rounded-lg border border-[#B9D8CC] bg-white shadow-[0_18px_50px_rgba(31,111,95,0.10)]">
@@ -31,8 +38,8 @@ export default function PortfolioHeader({ portfolio, username }) {
       </div>
 
       <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex items-end gap-4">
-          <div className="-mt-14 h-24 w-24 shrink-0 overflow-hidden rounded-lg border-4 border-white bg-white shadow-[0_16px_34px_rgba(31,111,95,0.22)] ring-1 ring-[#B9D8CC] sm:-mt-16 sm:h-28 sm:w-28">
+        <div className="flex min-w-0 items-end gap-4">
+          <div className="-mt-20 h-24 w-24 shrink-0 overflow-hidden rounded-lg border-4 border-white bg-white shadow-[0_16px_34px_rgba(31,111,95,0.22)] ring-1 ring-[#B9D8CC] sm:-mt-24 sm:h-28 sm:w-28">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -46,63 +53,70 @@ export default function PortfolioHeader({ portfolio, username }) {
             )}
           </div>
 
-          <div className="pb-1 pt-3">
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#18332D] sm:text-3xl">
+          <div className="min-w-0 pb-1 pt-3">
+            {isOwnPortfolio && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                <span className="rounded-lg bg-[#1F6F5F] px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-white">
+                  Private preview
+                </span>
+                <span className="rounded-lg border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#1F6F5F]">
+                  {portfolio?.isPublic ? "Public" : "Private"}
+                </span>
+              </div>
+            )}
+
+            <h1 className="truncate text-2xl font-extrabold tracking-tight text-[#18332D] sm:text-3xl">
               {displayName}
             </h1>
 
-            <p className="mt-1 text-sm font-bold text-slate-700">
+            <p className="mt-1 truncate text-sm font-bold text-slate-700">
               {headline}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 pb-1">
-          {portfolio?.location && (
-            <InfoButton
-              icon={<MapPin size={14} />}
-              label={portfolio.location}
-            />
-          )}
+        {(hasContact || isOwnPortfolio) && (
+          <div className="flex shrink-0 flex-col items-start gap-2 pb-1 sm:items-end">
+            {isOwnPortfolio && (
+              <Link
+                to="/profile"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#18332D] px-4 py-2 text-xs font-extrabold text-white no-underline shadow-[0_12px_28px_rgba(24,51,45,0.18)] transition hover:bg-[#1F6F5F]"
+              >
+                Back to profile
+              </Link>
+            )}
 
-          {portfolio?.githubUrl && (
-            <ExternalButton
-              href={portfolio.githubUrl}
-              icon={<FaGithub size={14} />}
-              label="GitHub"
-            />
-          )}
+            {hasContact && (
+              <div className="flex max-w-full flex-wrap items-center gap-2 sm:justify-end">
+                {portfolio?.location && (
+                  <InfoPill icon={<MapPin size={14} />} label={portfolio.location} />
+                )}
 
-          {portfolio?.linkedinUrl && (
-            <ExternalButton
-              href={portfolio.linkedinUrl}
-              icon={<FaLinkedin size={14} />}
-              label="LinkedIn"
-            />
-          )}
+                {portfolio?.githubUrl && (
+                  <ExternalPill href={portfolio.githubUrl} icon={<FaGithub size={14} />} label="GitHub" />
+                )}
 
-          {portfolio?.personalWebsiteUrl && (
-            <ExternalButton
-              href={portfolio.personalWebsiteUrl}
-              icon={<Globe2 size={14} />}
-              label="Website"
-            />
-          )}
+                {portfolio?.linkedinUrl && (
+                  <ExternalPill href={portfolio.linkedinUrl} icon={<FaLinkedin size={14} />} label="LinkedIn" />
+                )}
 
-          {portfolio?.publicEmail && (
-            <ExternalButton
-              href={`mailto:${portfolio.publicEmail}`}
-              icon={<Mail size={14} />}
-              label="Email"
-            />
-          )}
-        </div>
+                {portfolio?.personalWebsiteUrl && (
+                  <ExternalPill href={portfolio.personalWebsiteUrl} icon={<Globe2 size={14} />} label="Website" />
+                )}
+
+                {portfolio?.publicEmail && (
+                  <ExternalPill href={`mailto:${portfolio.publicEmail}`} icon={<Mail size={14} />} label="Email" />
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-function InfoButton({ icon, label }) {
+function InfoPill({ icon, label }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2 text-xs font-extrabold text-[#18332D]">
       {icon}
@@ -111,7 +125,7 @@ function InfoButton({ icon, label }) {
   );
 }
 
-function ExternalButton({ href, icon, label }) {
+function ExternalPill({ href, icon, label }) {
   return (
     <a
       href={href}

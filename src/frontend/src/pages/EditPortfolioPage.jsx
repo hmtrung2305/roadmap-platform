@@ -41,6 +41,7 @@ export default function EditPortfolioPage() {
   const [analyzingRepositoryId, setAnalyzingRepositoryId] = useState(null);
   const [repoError, setRepoError] = useState("");
   const [repoSuccess, setRepoSuccess] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const username = useMemo(() => {
     return (
@@ -65,6 +66,10 @@ export default function EditPortfolioPage() {
     (sum, repo) => sum + Number(repo?.stars ?? repo?.starCount ?? 0),
     0,
   );
+
+  const publicLink = username
+    ? `${window.location.origin}/portfolio/${encodeURIComponent(username)}`
+    : "";
 
   useEffect(() => {
     initEditor();
@@ -176,6 +181,19 @@ export default function EditPortfolioPage() {
     }
   };
 
+  const handleCopyPublicLink = async () => {
+    if (!publicLink) return;
+
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (error) {
+      console.error("Copy public portfolio link failed:", error);
+      setRepoError("Could not copy the public portfolio link.");
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -219,7 +237,13 @@ export default function EditPortfolioPage() {
       `}</style>
 
       <div className="mx-auto max-w-6xl space-y-5">
-        <EditPortfolioHero portfolio={portfolio} displayName={displayName} headline={headline} />
+        <EditPortfolioHero
+          portfolio={portfolio}
+          displayName={displayName}
+          headline={headline}
+          copied={copied}
+          onCopyPublicLink={handleCopyPublicLink}
+        />
 
         <EditPortfolioStatusBar selectedCount={selectedCount} availableCount={availableCount} />
 
@@ -230,8 +254,8 @@ export default function EditPortfolioPage() {
           totalStars={totalStars}
         />
 
-        <section className="grid gap-5 lg:grid-cols-[320px_1fr]">
-          <aside className="space-y-5">
+        <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">
+          <aside className="flex flex-col gap-5 pr-1 lg:h-fit">
             <EditPortfolioProfileDetails portfolio={portfolio} displayName={displayName} headline={headline} />
             <EditPortfolioGitHubSource
               isGitHubLinked={isGitHubLinked}
