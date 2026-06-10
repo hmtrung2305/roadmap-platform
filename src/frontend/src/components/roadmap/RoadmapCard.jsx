@@ -23,12 +23,12 @@ export default function RoadmapCard({ roadmap, onOpen, index = 0 }) {
         animationDelay: `${Math.min(index, 9) * 55}ms`,
       }}
     >
-      <h2 className="min-w-0 flex-1 whitespace-normal !text-nowrap pr-16 text-base font-black leading-6 tracking-tight text-[#18332D] sm:text-[17px]">
+      <h2 className="min-w-0 flex-1 whitespace-normal pr-14 text-base font-black leading-6 tracking-tight text-[#18332D] sm:text-[17px]">
         {title}
       </h2>
 
       {enrollment && (
-        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-2.5 py-1 text-[10px] font-extrabold text-[#1F6F5F] opacity-0 shadow-sm transition-all duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+        <span className="pointer-events-none absolute right-4 top-3 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-2.5 py-1 text-[10px] font-extrabold text-[#1F6F5F] opacity-0 shadow-sm transition-all duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
           {progressPercent}%
         </span>
       )}
