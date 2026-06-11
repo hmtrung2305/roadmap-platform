@@ -305,6 +305,7 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
     created_at timestamptz NOT NULL DEFAULT now(),
     pending_email varchar(254),
     email_verified_at timestamptz,
+    access_token text,
 
     CONSTRAINT fk_user_auth_provider_user_id
         FOREIGN KEY (user_id)
