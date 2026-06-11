@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.GitHub;
+using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.GitHub;
@@ -58,7 +60,28 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             var existingInsight = repository.RepoInsight;
             var (owner, repoName) = ParseRepositoryFullName(repository.FullName);
 
-            var readme = await _gitHubApiClient.GetRepositoryReadmeAsync(owner, repoName, cancellationToken);
+            var githubProvider = await _dbContext.UserAuthProviders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Provider == AuthProviders.GitHub,
+                    cancellationToken);
+
+            if (githubProvider == null)
+            {
+                throw new InvalidOperationException("GitHub account is not linked.");
+            }
+
+            if (string.IsNullOrWhiteSpace(githubProvider.AccessToken))
+            {
+                throw new InvalidOperationException("GitHub access token was not found. Please reconnect GitHub.");
+            }
+
+            var readme = await _gitHubApiClient.GetRepositoryReadmeAsync(
+                owner,
+                repoName,
+                githubProvider.AccessToken,
+                cancellationToken);
 
             if (string.IsNullOrWhiteSpace(readme))
             {
@@ -90,9 +113,11 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 RepoInsightCreditCost,
                 cancellationToken);
 
+            GeneratedRepoInsightDto generatedInsight;
+
             try
             {
-                var generatedInsight = await _repoSummaryGenerator.GenerateAsync(
+                generatedInsight = await _repoSummaryGenerator.GenerateAsync(
                     new RepoSummaryGenerationRequestDto
                     {
                         Name = repository.Name,
@@ -104,24 +129,6 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                         Readme = limitedReadme
                     },
                     cancellationToken);
-
-                var insight = UpsertCompletedInsight(
-                    repository,
-                    existingInsight,
-                    generatedInsight,
-                    readmeHash,
-                    readmeTruncated);
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                await _aiCreditService.RecordUsageAsync(
-                    userId,
-                    RepoInsightFeatureName,
-                    RepoInsightCreditCost,
-                    insight.InsightId,
-                    cancellationToken: cancellationToken);
-
-                return ToDto(insight);
             }
             catch (Exception ex)
             {
@@ -135,6 +142,24 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 return ToDto(failedInsight);
             }
+
+            var insight = UpsertCompletedInsight(
+                repository,
+                existingInsight,
+                generatedInsight,
+                readmeHash,
+                readmeTruncated);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            await _aiCreditService.RecordUsageAsync(
+                userId,
+                RepoInsightFeatureName,
+                RepoInsightCreditCost,
+                insight.InsightId,
+                cancellationToken: cancellationToken);
+
+            return ToDto(insight);
         }
 
         private static RepoInsight UpsertCompletedInsight(
@@ -179,6 +204,14 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             bool readmeTruncated = false)
         {
             var now = DateTime.UtcNow;
+
+            if (existingInsight?.AnalysisStatus == CompletedStatus)
+            {
+                existingInsight.ErrorMessage = $"Latest refresh failed: {errorMessage}";
+                existingInsight.UpdatedAt = now;
+                return existingInsight;
+            }
+
             var insight = existingInsight ?? new RepoInsight
             {
                 RepositoryId = repository.RepositoryId,

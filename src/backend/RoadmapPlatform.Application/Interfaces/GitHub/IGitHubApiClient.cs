@@ -6,11 +6,13 @@ namespace RoadmapPlatform.Application.Interfaces.GitHub
     {
         Task<List<GitHubRepositorySyncDto>> GetPublicRepositoriesAsync(
             string username,
+            string accessToken,
             CancellationToken cancellationToken = default);
 
         Task<string?> GetRepositoryReadmeAsync(
             string owner,
             string repositoryName,
+            string accessToken,
             CancellationToken cancellationToken = default);
     }
 }

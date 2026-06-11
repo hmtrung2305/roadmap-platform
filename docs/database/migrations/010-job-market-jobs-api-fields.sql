@@ -1,5 +1,5 @@
 -- ============================================================
--- 009-job-market-jobs-api-fields.sql
+-- 010-job-market-jobs-api-fields.sql
 -- Purpose:
 --   Preserve typed Jobs API fields in job_posting so Job Market
 --   data can be scaffolded and queried without parsing description.
