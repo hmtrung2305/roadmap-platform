@@ -94,6 +94,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // GitHub Services
             services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
+            services.AddScoped<IRepoInsightService, RepoInsightService>();
+            services.AddScoped<IRepoSummaryGenerator, AiRepoSummaryGenerator>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
 
             // Chatbot, RAG Services

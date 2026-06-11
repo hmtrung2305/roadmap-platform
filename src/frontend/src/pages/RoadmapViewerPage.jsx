@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Background,
@@ -28,7 +35,6 @@ import {
   applyProgressUpdateResult,
   patchCachedNodeProgress,
   findChangedProgress,
-  formatReadableLabel,
 } from "../components/roadmap/roadmapUtils";
 
 const nodeTypes = {
@@ -62,7 +68,10 @@ export default function RoadmapViewerPage() {
       return { flowNodes: [], flowEdges: [], nodeLookup: new Map() };
     }
 
-    return buildRoadmapFlow(roadmap, selectedNode ? getNodeId(selectedNode) : null);
+    return buildRoadmapFlow(
+      roadmap,
+      selectedNode ? getNodeId(selectedNode) : null,
+    );
   }, [roadmap, selectedNode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -76,7 +85,8 @@ export default function RoadmapViewerPage() {
   useLayoutEffect(() => {
     if (!flowInstance || flowNodes.length === 0) return;
 
-    const roadmapFocusKey = roadmap?.roadmapVersionId || slug || "current-roadmap";
+    const roadmapFocusKey =
+      roadmap?.roadmapVersionId || slug || "current-roadmap";
 
     if (focusedRoadmapKeyRef.current === roadmapFocusKey) {
       setIsInitialViewportReady(true);
@@ -111,7 +121,7 @@ export default function RoadmapViewerPage() {
         loadNodeDetail(sourceNode);
       }
     },
-    [nodeLookup, roadmap?.roadmapVersionId, nodeDetailCache]
+    [nodeLookup, roadmap?.roadmapVersionId, nodeDetailCache],
   );
 
   async function loadNodeDetail(graphNode) {
@@ -130,7 +140,10 @@ export default function RoadmapViewerPage() {
     setMessage("");
 
     try {
-      const detail = await roadmapApi.getNodeDetail(roadmap.roadmapVersionId, nodeId);
+      const detail = await roadmapApi.getNodeDetail(
+        roadmap.roadmapVersionId,
+        nodeId,
+      );
 
       setNodeDetailCache((current) => ({
         ...current,
@@ -164,7 +177,10 @@ export default function RoadmapViewerPage() {
       setStatus("success");
     } catch (error) {
       console.error(error);
-      setMessage(error?.message || "Failed to load roadmap. Check that the API is running.");
+      setMessage(
+        error?.message ||
+          "Failed to load roadmap. Check that the API is running.",
+      );
       setStatus("error");
     }
   }
@@ -198,7 +214,9 @@ export default function RoadmapViewerPage() {
     const previousRoadmap = roadmap;
     const previousSelectedNode = selectedNode;
 
-    setRoadmap((current) => patchNodeProgress(current, selectedNodeId, nextStatus));
+    setRoadmap((current) =>
+      patchNodeProgress(current, selectedNodeId, nextStatus),
+    );
 
     setSelectedNode((current) =>
       current
@@ -209,7 +227,7 @@ export default function RoadmapViewerPage() {
               status: nextStatus,
             },
           }
-        : current
+        : current,
     );
 
     try {
@@ -255,16 +273,20 @@ export default function RoadmapViewerPage() {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-[#F7F1E8] text-[#18332D]">
         <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-7xl items-center justify-center px-6 py-8">
-          <div className="max-w-md rounded-xl border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
-            <h1 className="text-2xl font-black text-[#18332D]">Couldn&apos;t load roadmap</h1>
+          <div className="max-w-md rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
+            <h1 className="text-2xl font-black text-[#18332D]">
+              Couldn&apos;t load roadmap
+            </h1>
 
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{message}</p>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+              {message}
+            </p>
 
             <div className="mt-6 flex justify-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate("/roadmaps")}
-                className="rounded-xl border border-[#B9D8CC] bg-white px-5 py-2 text-sm font-extrabold shadow-sm"
+                className="rounded-lg border border-[#B9D8CC] bg-white px-5 py-2 text-sm font-extrabold shadow-sm"
               >
                 Back
               </button>
@@ -272,7 +294,7 @@ export default function RoadmapViewerPage() {
               <button
                 type="button"
                 onClick={loadPage}
-                className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm"
+                className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm"
               >
                 Retry
               </button>
@@ -283,86 +305,77 @@ export default function RoadmapViewerPage() {
     );
   }
 
-  const progressPercent = roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
+  const progressPercent =
+    roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
   const isEnrolled = Boolean(roadmap?.enrollment);
   const shouldShowMiniMap = nodes.length <= 150;
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] flex-col bg-[#F7F1E8] text-[#18332D]">
-      <main className="relative min-h-0 w-full overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
+      <main
+        className="relative min-h-0 w-full overflow-hidden"
+        style={{ height: "calc(100vh - 64px)" }}
+      >
         <section className="grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)]">
-          <div className="z-10 border-b border-[#B9D8CC] bg-white px-5 py-4 shadow-sm">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => navigate("/roadmaps")}
-                  className="mb-2 text-xs font-extrabold tracking-[0.16em] text-[#1F6F5F] hover:underline"
-                >
-                  ← Roadmap selection
-                </button>
+          <div className="z-10 border-b border-[#B9D8CC] bg-white/95 px-2 py-1 shadow-sm backdrop-blur">
+            <div className="flex min-h-10 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigate("/roadmaps")}
+                className="shrink-0 rounded-lg border border-transparent px-2 py-1 !text-[14px] font-extrabold tracking-[0.12em] text-[#1F6F5F] transition-colors hover:border-[#B9D8CC] hover:bg-[#EAF8F1]"
+              >
+                ← Career Role Selection
+              </button>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-2xl font-black tracking-tight text-[#18332D] sm:text-3xl">
-                    {roadmap.title}
-                  </h1>
-
-                  {roadmap.enrollment?.status && (
-                    <HeaderBadge>{formatReadableLabel(roadmap.enrollment.status)}</HeaderBadge>
-                  )}
-
-                  {roadmap.generationStatus && roadmap.generationStatus !== "none" && (
-                    <HeaderBadge>{formatReadableLabel(roadmap.generationStatus)}</HeaderBadge>
-                  )}
-                </div>
-
-                <p className="mt-1 max-w-3xl truncate text-sm font-semibold text-slate-600">
-                  {roadmap.description}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-[190px] rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-4 py-2 shadow-sm">
-                  <div className="flex items-center justify-between gap-3 text-xs font-extrabold tracking-tight text-slate-500">
-                    <span>Progress</span>
-                    <span>{Math.round(progressPercent)}%</span>
-                  </div>
-
-                  <div className="mt-2 h-2 border border-[#B9D8CC] bg-white">
-                    <div
-                      className="h-full bg-[#2FA084]"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, progressPercent))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {!isEnrolled && (
-                  <button
-                    type="button"
-                    onClick={handleEnroll}
-                    disabled={isEnrolling}
-                    className="rounded-xl border border-[#B9D8CC] bg-[#2FA084] px-5 py-3 text-sm font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
-                  >
-                    {isEnrolling ? "Starting..." : "Start roadmap"}
-                  </button>
-                )}
+              <div className="min-w-0 border-l border-[#B9D8CC] pl-3">
+                <h1 className="truncate text-lg font-black tracking-tight text-[#18332D] sm:text-xl">
+                  {getViewerHeading(roadmap)}
+                </h1>
               </div>
             </div>
 
             {message && (
-              <div className="mt-4 rounded-xl border border-[#B9D8CC] bg-[#FEE2E2] px-4 py-3 text-sm font-black text-[#18332D]">
+              <div className="mt-2 rounded-lg border border-[#B9D8CC] bg-[#FEE2E2] px-3 py-2 text-xs font-black text-[#18332D]">
                 {message}
               </div>
             )}
           </div>
 
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
+            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-row items-stretch gap-2">
+              <div className="pointer-events-auto flex h-12 w-36 flex-col justify-center rounded-lg border border-[#B9D8CC] bg-white/95 px-3 shadow-sm backdrop-blur sm:w-44">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold tracking-tight text-slate-500">
+                  <span>Progress</span>
+                  <span>{Math.round(progressPercent)}%</span>
+                </div>
+
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-md border border-[#B9D8CC] bg-white">
+                  <div
+                    className="h-full rounded-md bg-[#22C55E]"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, progressPercent))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {!isEnrolled && (
+                <button
+                  type="button"
+                  onClick={handleEnroll}
+                  disabled={isEnrolling}
+                  className="pointer-events-auto h-12 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+                >
+                  {isEnrolling ? "Starting..." : "Start roadmap"}
+                </button>
+              )}
+            </div>
             {nodes.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8">
-                <div className="rounded-xl border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
-                  <h2 className="text-xl font-black text-[#18332D]">No roadmap nodes found</h2>
+                <div className="rounded-lg border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
+                  <h2 className="text-xl font-black text-[#18332D]">
+                    No roadmap nodes found
+                  </h2>
                   <p className="mt-2 text-sm font-semibold text-slate-600">
                     The roadmap loaded, but the API did not return any nodes.
                   </p>
@@ -391,22 +404,27 @@ export default function RoadmapViewerPage() {
                   nodesDraggable={false}
                   nodesConnectable={false}
                   elementsSelectable
+                  onlyRenderVisibleElements
+                  minZoom={0.28}
+                  maxZoom={1.25}
                   defaultViewport={{ x: 0, y: 0, zoom: 0.74 }}
                   proOptions={{ hideAttribution: true }}
                 >
-                  <Background color="#2FA084" gap={28} size={1} />
+                  <Background color="#B9D8CC" gap={28} size={1} />
 
                   {shouldShowMiniMap && (
                     <MiniMap
                       pannable
                       zoomable
                       nodeStrokeWidth={2}
-                      nodeColor={(node) => getMiniMapColor(node.data?.status, node.data?.nodeType)}
-                      className="!rounded-xl !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
+                      nodeColor={(node) =>
+                        getMiniMapColor(node.data?.status, node.data?.nodeType)
+                      }
+                      className="!rounded-lg !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
                     />
                   )}
 
-                  <Controls className="!rounded-xl !border-2 !border-[#B9D8CC] !bg-white !shadow-sm" />
+                  <Controls className="!rounded-lg !border !border-[#B9D8CC] !bg-white !shadow-sm" />
 
                   <RoadmapLegend
                     isOpen={isLegendOpen}
@@ -433,10 +451,21 @@ export default function RoadmapViewerPage() {
   );
 }
 
-function HeaderBadge({ children }) {
-  return (
-    <span className="rounded-xl border border-[#B9D8CC] bg-[#EAF8F1] px-2 py-1 text-[10px] font-extrabold tracking-[0.1em] text-[#18332D]">
-      {children}
-    </span>
+function getViewerHeading(roadmap) {
+  const baseTitle = cleanViewerTitle(
+    roadmap?.careerRole?.name || roadmap?.title || "Roadmap",
   );
+
+  if (!baseTitle) return "Roadmap";
+  if (/roadmap$/i.test(baseTitle)) return baseTitle;
+
+  return `${baseTitle} Roadmap`;
+}
+
+function cleanViewerTitle(title) {
+  return String(title)
+    .replace(/\s*Roadmap\s*v\d+(\.\d+)?\s*$/i, "")
+    .replace(/\s*Roadmap\s*$/i, "")
+    .replace(/\s*v\d+(\.\d+)?\s*$/i, "")
+    .trim();
 }

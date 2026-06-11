@@ -1059,16 +1059,31 @@ CREATE TABLE IF NOT EXISTS public.repo_insight
 (
     insight_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     repository_id uuid NOT NULL,
+
     summary text,
-    tech_stack jsonb,
-    detected_skills jsonb,
+    tech_stack jsonb NOT NULL DEFAULT '[]'::jsonb,
+    detected_skills jsonb NOT NULL DEFAULT '[]'::jsonb,
     project_type varchar(100),
+
+    analysis_status varchar(50) NOT NULL DEFAULT 'completed',
+    readme_hash varchar(64),
+    readme_truncated bool NOT NULL DEFAULT false,
+    ai_model varchar(100),
+    error_message text,
+
     analyzed_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_repo_insight_repository_id
         FOREIGN KEY (repository_id)
         REFERENCES public.repository(repository_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_repo_insight_repository_id
+        UNIQUE (repository_id),
+
+    CONSTRAINT chk_repo_insight_analysis_status
+        CHECK (analysis_status IN ('pending', 'completed', 'failed'))
 );
 
 -- =========================

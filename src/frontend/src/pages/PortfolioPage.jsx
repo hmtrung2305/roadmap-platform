@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Loader2, PencilLine } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
-import { FaGithub } from "react-icons/fa";
+import { Loader2 } from "lucide-react";
+import { useParams } from "react-router-dom";
 
 import { getMyPortfolioApi, getPortfolioByUsernameApi } from "../api/portfolioApi";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -18,7 +17,6 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
   const [portfolioError, setPortfolioError] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const isOwnPortfolio = !routeUsername;
 
@@ -60,26 +58,10 @@ export default function PortfolioPage() {
     fetchPortfolio();
   }, [username, isOwnPortfolio]);
 
-  const publicLink = username
-    ? `${window.location.origin}/portfolio/${username}`
-    : "";
-
-  const handleCopy = async () => {
-    if (!publicLink) return;
-
-    try {
-      await navigator.clipboard.writeText(publicLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch (error) {
-      console.error("Copy failed:", error);
-    }
-  };
-
   if (portfolioLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
+        <div className="mx-auto max-w-7xl rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
           <div className="flex items-center gap-3 text-slate-600">
             <Loader2 className="animate-spin" size={18} />
             Loading portfolio...
@@ -91,8 +73,8 @@ export default function PortfolioPage() {
 
   if (portfolioError) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6">
-        <section className="mx-auto max-w-3xl rounded-2xl border border-[#B9D8CC] bg-white p-8 text-center shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
+        <section className="mx-auto max-w-3xl rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
           <p className="text-lg font-extrabold text-[#18332D]">Portfolio unavailable</p>
           <p className="mt-2 text-sm font-bold text-red-600">{portfolioError}</p>
         </section>
@@ -101,51 +83,74 @@ export default function PortfolioPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] px-4 py-7 sm:px-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-        {isOwnPortfolio && (
-          <section className="rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2FA084] text-white shadow-sm">
-                  <FaGithub size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-extrabold text-[#18332D]">Public portfolio editor</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">
-                    Choose repositories and share your public page without requiring visitors to sign in.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#B9D8CC] bg-[#EEEEEE] px-4 py-2 text-sm font-extrabold text-[#18332D] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/35"
-                >
-                  <Copy size={15} />
-                  {copied ? "Copied" : "Copy public link"}
-                </button>
-
-                <Link
-                  to="/portfolio/repositories"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
-                >
-                  <PencilLine size={15} />
-                  Manage repositories
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
-
-        <PortfolioHeader portfolio={portfolio} username={username} />
+    <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <PortfolioHeader portfolio={portfolio} username={username} isOwnPortfolio={isOwnPortfolio} />
         <PortfolioStats portfolio={portfolio} />
         <PortfolioAbout portfolio={portfolio} />
         <PortfolioRepositoryList repositories={portfolio?.repositories || []} />
+        <PortfolioDetectedTechnologies repositories={portfolio?.repositories || []} />
         <PortfolioSkillGroups skillGroups={portfolio?.skillGroups || []} />
       </div>
     </main>
+  );
+}
+
+
+function toPortfolioTagArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value
+      .split(/[;,]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function getRepositoryDetectedTags(repository) {
+  const insight = repository?.insight;
+
+  return [
+    insight?.projectType,
+    ...toPortfolioTagArray(insight?.techStack),
+    ...toPortfolioTagArray(insight?.detectedSkills),
+    ...toPortfolioTagArray(insight?.skills),
+    ...toPortfolioTagArray(repository?.detectedSkills),
+    ...toPortfolioTagArray(repository?.techStack),
+    ...toPortfolioTagArray(repository?.readmeSkills),
+    ...toPortfolioTagArray(repository?.readmeTechnologies),
+    repository?.primaryLanguage || repository?.language,
+  ].filter(Boolean);
+}
+
+function PortfolioDetectedTechnologies({ repositories = [] }) {
+  const tags = useMemo(() => {
+    const collected = repositories.flatMap(getRepositoryDetectedTags);
+    return Array.from(
+      new Set(collected.map((tag) => String(tag).trim()).filter(Boolean))
+    ).slice(0, 14);
+  }, [repositories]);
+
+  if (tags.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
+        Languages & technologies
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="rounded-lg bg-[#F7F1E8] px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-[#B9D8CC]"
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }

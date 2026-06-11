@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
+  generateRepositoryInsightApi,
   getSavedGitHubRepositoriesApi,
   syncGitHubRepositoriesApi,
 } from "../api/githubRepositoryApi";
@@ -28,6 +29,7 @@ export default function ManagePortfolioRepositoriesPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [analyzingRepositoryId, setAnalyzingRepositoryId] = useState(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -111,6 +113,32 @@ export default function ManagePortfolioRepositoriesPage() {
     });
   };
 
+
+  const handleGenerateInsight = async (repositoryId, force = false) => {
+    try {
+      setAnalyzingRepositoryId(repositoryId);
+      setError("");
+      setSuccess("");
+
+      const insight = await generateRepositoryInsightApi(repositoryId, { force });
+
+      setRepositories((current) =>
+        current.map((repo) =>
+          repo.repositoryId === repositoryId
+            ? { ...repo, insight }
+            : repo
+        )
+      );
+
+      setSuccess(force ? "Repository summary regenerated." : "Repository summary generated.");
+    } catch (err) {
+      console.error("Failed to generate repository insight:", err);
+      setError(err.message || "Cannot generate repository summary.");
+    } finally {
+      setAnalyzingRepositoryId(null);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -132,7 +160,7 @@ export default function ManagePortfolioRepositoriesPage() {
   if (loading) {
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-slate-100 px-6 py-8">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="mx-auto max-w-6xl rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
           <p className="text-slate-500">Loading repositories...</p>
         </div>
       </main>
@@ -168,7 +196,9 @@ export default function ManagePortfolioRepositoriesPage() {
           <RepositorySelectList
             repositories={repositories}
             selectedIds={selectedIds}
+            analyzingRepositoryId={analyzingRepositoryId}
             onToggleRepository={handleToggleRepository}
+            onGenerateInsight={handleGenerateInsight}
           />
         )}
       </div>

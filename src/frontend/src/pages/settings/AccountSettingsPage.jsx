@@ -132,7 +132,7 @@ export default function AccountSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Loading settings...</p>
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function AccountSettingsPage() {
       </div>
 
       {actionError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {actionError}
         </div>
       )}
@@ -225,7 +225,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             localProvider?.isLinked
               ? "bg-slate-100 text-slate-700"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           onClick={() => {
             if (localRequiresVerification) {
@@ -256,7 +256,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             googleProvider?.isLinked
               ? "bg-red-50 text-red-600"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           isDelete={googleProvider?.isLinked}
           disabled={googleProvider?.isLinked && !googleProvider?.canUnlink}
@@ -275,7 +275,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             githubProvider?.isLinked
               ? "bg-red-50 text-red-600"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           isDelete={githubProvider?.isLinked}
           disabled={githubProvider?.isLinked && !githubProvider?.canUnlink}

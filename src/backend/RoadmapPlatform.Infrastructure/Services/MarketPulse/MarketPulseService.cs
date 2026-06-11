@@ -30,7 +30,7 @@ public sealed class MarketPulseService(
         CancellationToken cancellationToken)
     {
         var normalizedDays = Math.Clamp(days, 7, 180);
-        var cutoffDate = DateTime.UtcNow.Date.AddDays(-(normalizedDays - 1));
+        var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-(normalizedDays - 1)));
         var selectedSlugs = skillSlugs
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim().ToLowerInvariant())
@@ -59,7 +59,7 @@ public sealed class MarketPulseService(
             .ToList();
 
         var latestDate = snapshots.Count > 0
-            ? snapshots.Max(x => x.SnapshotDate)
+            ? snapshots.Max(x => x.SnapshotDate).ToDateTime(TimeOnly.MinValue)
             : (DateTime?)null;
 
         var skills = snapshots
@@ -118,7 +118,7 @@ public sealed class MarketPulseService(
             Skills = skills,
             TrendPoints = visibleSnapshots.Select(x => new MarketTrendPointDto
             {
-                Date = x.SnapshotDate,
+                Date = x.SnapshotDate.ToDateTime(TimeOnly.MinValue),
                 SkillName = x.SkillName,
                 SkillSlug = x.SkillSlug,
                 MentionCount = x.MentionCount,
@@ -130,7 +130,7 @@ public sealed class MarketPulseService(
     public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        var snapshotDate = now.Date;
+        var snapshotDate = DateOnly.FromDateTime(now);
         var settings = options.Value;
         var rawPostings = await scraper.ScrapeAsync(cancellationToken);
 
@@ -138,7 +138,7 @@ public sealed class MarketPulseService(
         {
             return new MarketPulseRefreshResultDto
             {
-                SnapshotDate = snapshotDate,
+                SnapshotDate = snapshotDate.ToDateTime(TimeOnly.MinValue),
                 SourcesScraped = 0,
                 PostingsScraped = 0,
                 PostingsSaved = 0,
@@ -185,7 +185,7 @@ public sealed class MarketPulseService(
                 var publishedAt = NormalizeUtc(rawPosting.PublishedAt);
                 var expiresAt = NormalizeUtc(rawPosting.ExpiresAt);
                 var contentHash = BuildContentHash(rawPosting, expiresAt);
-                var isExpired = expiresAt.HasValue && expiresAt.Value.Date < snapshotDate;
+                var isExpired = expiresAt.HasValue && DateOnly.FromDateTime(expiresAt.Value) < snapshotDate;
 
                 if (existingPostings.TryGetValue(externalId, out var posting))
                 {
@@ -270,7 +270,7 @@ public sealed class MarketPulseService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var activeCutoff = now.AddDays(-Math.Clamp(settings.ActivePostingLookbackDays, 1, 90));
-        var snapshotStartUtc = DateTime.SpecifyKind(snapshotDate, DateTimeKind.Utc);
+        var snapshotStartUtc = DateTime.SpecifyKind(snapshotDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
         var activePostingTexts = await dbContext.Set<JobPosting>()
             .AsNoTracking()
             .Where(x =>
@@ -293,7 +293,7 @@ public sealed class MarketPulseService(
 
         var result = new MarketPulseRefreshResultDto
         {
-            SnapshotDate = snapshotDate,
+            SnapshotDate = snapshotDate.ToDateTime(TimeOnly.MinValue),
             SourcesScraped = rawPostings.Select(x => x.SourceName).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             PostingsScraped = rawPostings.Count,
             PostingsSaved = savedPostings,
@@ -347,7 +347,7 @@ public sealed class MarketPulseService(
     }
 
     private async Task UpsertDailyObservationsAsync(
-        DateTime snapshotDate,
+        DateOnly snapshotDate,
         string sourceName,
         IReadOnlyCollection<JobPostingObservation> observations,
         DateTime now,
@@ -394,7 +394,7 @@ public sealed class MarketPulseService(
     private async Task MarkMissingPostingsAsync(
         Guid sourceId,
         IReadOnlySet<string> observedExternalIds,
-        DateTime snapshotDate,
+        DateOnly snapshotDate,
         DateTime now,
         int missingThreshold,
         CancellationToken cancellationToken)
@@ -408,14 +408,14 @@ public sealed class MarketPulseService(
 
         foreach (var posting in missingPostings)
         {
-            if (posting.LastCheckedAt.Date < snapshotDate)
+            if (DateOnly.FromDateTime(posting.LastCheckedAt) < snapshotDate)
             {
                 posting.MissingScanCount++;
             }
 
             posting.LastCheckedAt = now;
 
-            if (posting.ExpiresAt.HasValue && posting.ExpiresAt.Value.Date < snapshotDate)
+            if (posting.ExpiresAt.HasValue && DateOnly.FromDateTime(posting.ExpiresAt.Value) < snapshotDate)
             {
                 posting.IsActive = false;
                 posting.LifecycleStatus = LifecycleExpired;
@@ -432,7 +432,7 @@ public sealed class MarketPulseService(
     }
 
     private async Task<int> SaveSnapshotsAsync(
-        DateTime snapshotDate,
+        DateOnly snapshotDate,
         IReadOnlyCollection<KeywordFrequency> frequencies,
         CancellationToken cancellationToken)
     {

@@ -1,20 +1,55 @@
 import { ExternalLink, GitFork, Star } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 
+function toTagArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value
+      .split(/[;,]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function getProjectTags(repository, insight) {
+  const aiTags = [
+    insight?.projectType,
+    ...toTagArray(insight?.techStack),
+    ...toTagArray(insight?.detectedSkills),
+    ...toTagArray(insight?.skills),
+  ].filter(Boolean);
+
+  const readmeTags = [
+    ...toTagArray(repository.detectedSkills),
+    ...toTagArray(repository.techStack),
+    ...toTagArray(repository.readmeSkills),
+    ...toTagArray(repository.readmeTechnologies),
+  ].filter(Boolean);
+
+  const fallbackTags = [repository.primaryLanguage || repository.language].filter(Boolean);
+  const source = aiTags.length > 0 ? aiTags : readmeTags.length > 0 ? readmeTags : fallbackTags;
+
+  return Array.from(new Set(source.map((tag) => String(tag).trim()).filter(Boolean))).slice(0, 5);
+}
+
 export default function PortfolioRepositoryCard({ repository }) {
+  const insight = repository.insight;
+  const hasCompletedInsight = insight?.analysisStatus === "completed" && insight?.summary;
   const name = repository.name || repository.repoName || "Untitled repository";
   const href = repository.htmlUrl || repository.repoUrl;
 
   const description =
-    repository.summary || repository.description || "No description provided.";
+    (hasCompletedInsight ? insight.summary : null) ||
+    repository.summary ||
+    repository.description ||
+    "No description provided.";
 
-  const tags = [
-    repository.primaryLanguage || repository.language,
-    ...(repository.techStack || repository.detectedSkills || []),
-  ].filter(Boolean);
+  const tags = getProjectTags(repository, insight);
 
   return (
-    <article className="flex min-h-[240px] flex-col rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
+    <article className="group/repo relative flex min-h-[250px] flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="line-clamp-1 text-lg font-extrabold text-[#18332D]">
@@ -22,7 +57,7 @@ export default function PortfolioRepositoryCard({ repository }) {
           </h3>
 
           <p className="mt-1 text-xs font-extrabold uppercase tracking-[0.14em] text-[#2FA084]">
-            Repository
+            {hasCompletedInsight ? "AI summarized project" : "Repository"}
           </p>
         </div>
 
@@ -32,7 +67,7 @@ export default function PortfolioRepositoryCard({ repository }) {
             target="_blank"
             rel="noreferrer"
             onClick={(event) => event.stopPropagation()}
-            className="shrink-0 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-2 text-[#1F6F5F] transition hover:bg-[#6FCF97]/30"
+            className="shrink-0 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] p-2 text-[#1F6F5F] transition hover:bg-[#6FCF97]/30"
             aria-label="Open repository"
           >
             <ExternalLink size={15} />
@@ -40,14 +75,24 @@ export default function PortfolioRepositoryCard({ repository }) {
         )}
       </div>
 
-      <p className="mt-4 line-clamp-2 min-h-[3rem] text-sm font-medium leading-6 text-slate-600">
-        {description}
-      </p>
+      <div className="group/summary relative mt-4 min-h-[3rem]">
+        <p
+          className="line-clamp-2 cursor-help text-sm font-medium leading-6 text-slate-600"
+          title={description}
+        >
+          {description}
+        </p>
 
-      <div className="mt-4 min-h-[2rem]">
+        <div className="pointer-events-none absolute left-0 top-full z-[80] mt-2 hidden w-full rounded-lg border border-[#B9D8CC] bg-white px-4 py-3 text-xs font-semibold leading-5 text-[#18332D] shadow-[0_18px_44px_rgba(31,111,95,0.18)] group-hover/summary:block">
+          <div className="mb-2 h-0.5 w-16 rounded-lg bg-[#2FA084]" />
+          {description}
+        </div>
+      </div>
+
+      <div className="mt-4 min-h-[3.1rem] border-b border-[#DCEBE5] pb-4">
         {tags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {tags.slice(0, 4).map((tag) => (
+            {tags.map((tag) => (
               <span
                 key={tag}
                 className="rounded-lg bg-[#F7F1E8] px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-[#B9D8CC]"
@@ -63,7 +108,7 @@ export default function PortfolioRepositoryCard({ repository }) {
         )}
       </div>
 
-      <div className="mt-auto flex items-center gap-2 border-t border-[#DCEBE5] pt-4 text-xs font-extrabold text-slate-600">
+      <div className="mt-auto flex items-center gap-2 pt-4 text-xs font-extrabold text-slate-600">
         <span className="inline-flex items-center gap-1 rounded-lg bg-[#EEEEEE] px-2 py-1">
           <Star size={13} />
           {repository.stars ?? repository.starCount ?? 0}

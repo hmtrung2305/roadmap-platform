@@ -1,3 +1,5 @@
+import { Sparkles } from "lucide-react";
+
 export default function PortfolioSkillGroups({ skillGroups = [] }) {
   const normalizedGroups = skillGroups
     .map((group) => ({
@@ -10,11 +12,16 @@ export default function PortfolioSkillGroups({ skillGroups = [] }) {
 
   return (
     <section>
-      <p className="mb-4 text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
-        Detected Skills
-      </p>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="grid size-10 place-items-center rounded-lg bg-[#6FCF97]/18 text-[#1F6F5F] ring-1 ring-[#B9D8CC]">
+          <Sparkles size={19} aria-hidden="true" />
+        </span>
+        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
+          Detected Skills
+        </p>
+      </div>
 
-      <div className="rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <div className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {normalizedGroups.map((group) => (
             <div key={group.name}>
@@ -29,8 +36,9 @@ export default function PortfolioSkillGroups({ skillGroups = [] }) {
                   return (
                     <span
                       key={label}
-                      className="rounded-full bg-[#EEEEEE] px-3 py-1 text-xs font-bold text-[#18332D] ring-1 ring-[#B9D8CC]"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#EEEEEE] px-3 py-1 text-xs font-bold text-[#18332D] ring-1 ring-[#B9D8CC]"
                     >
+                      <span className="size-1.5 rounded-full bg-[#2FA084]" />
                       {label}
                     </span>
                   );

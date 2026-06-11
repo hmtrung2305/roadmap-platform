@@ -1,0 +1,159 @@
+
+         /\      Grafana   /ΓÇ╛ΓÇ╛/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ΓÇ╛ΓÇ╛\ 
+  /          \   |   (  |  (ΓÇ╛)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: tests/performance/k6/roadmap/roadmap-read.test.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 5 max VUs, 1m0s max duration (incl. graceful stop):
+              * default: 5 looping VUs for 30s (gracefulStop: 30s)
+
+
+running (0m01.0s), 5/5 VUs, 0 complete and 0 interrupted iterations
+default   [   1% ] 5 VUs  00.3s/30s
+
+running (0m02.0s), 5/5 VUs, 0 complete and 0 interrupted iterations
+default   [   4% ] 5 VUs  01.3s/30s
+
+running (0m03.0s), 5/5 VUs, 5 complete and 0 interrupted iterations
+default   [   8% ] 5 VUs  02.3s/30s
+
+running (0m04.0s), 5/5 VUs, 5 complete and 0 interrupted iterations
+default   [  11% ] 5 VUs  03.3s/30s
+
+running (0m05.0s), 5/5 VUs, 10 complete and 0 interrupted iterations
+default   [  14% ] 5 VUs  04.3s/30s
+
+running (0m06.0s), 5/5 VUs, 10 complete and 0 interrupted iterations
+default   [  18% ] 5 VUs  05.3s/30s
+
+running (0m07.0s), 5/5 VUs, 15 complete and 0 interrupted iterations
+default   [  21% ] 5 VUs  06.3s/30s
+
+running (0m08.0s), 5/5 VUs, 16 complete and 0 interrupted iterations
+default   [  24% ] 5 VUs  07.3s/30s
+
+running (0m09.0s), 5/5 VUs, 20 complete and 0 interrupted iterations
+default   [  28% ] 5 VUs  08.3s/30s
+
+running (0m10.0s), 5/5 VUs, 21 complete and 0 interrupted iterations
+default   [  31% ] 5 VUs  09.3s/30s
+
+running (0m11.0s), 5/5 VUs, 25 complete and 0 interrupted iterations
+default   [  34% ] 5 VUs  10.3s/30s
+
+running (0m12.0s), 5/5 VUs, 26 complete and 0 interrupted iterations
+default   [  38% ] 5 VUs  11.3s/30s
+
+running (0m13.0s), 5/5 VUs, 30 complete and 0 interrupted iterations
+default   [  41% ] 5 VUs  12.3s/30s
+
+running (0m14.0s), 5/5 VUs, 31 complete and 0 interrupted iterations
+default   [  44% ] 5 VUs  13.3s/30s
+
+running (0m15.0s), 5/5 VUs, 34 complete and 0 interrupted iterations
+default   [  48% ] 5 VUs  14.3s/30s
+
+running (0m16.0s), 5/5 VUs, 36 complete and 0 interrupted iterations
+default   [  51% ] 5 VUs  15.3s/30s
+
+running (0m17.0s), 5/5 VUs, 39 complete and 0 interrupted iterations
+default   [  54% ] 5 VUs  16.3s/30s
+
+running (0m18.0s), 5/5 VUs, 41 complete and 0 interrupted iterations
+default   [  58% ] 5 VUs  17.3s/30s
+
+running (0m19.0s), 5/5 VUs, 44 complete and 0 interrupted iterations
+default   [  61% ] 5 VUs  18.3s/30s
+
+running (0m20.0s), 5/5 VUs, 46 complete and 0 interrupted iterations
+default   [  64% ] 5 VUs  19.3s/30s
+
+running (0m21.0s), 5/5 VUs, 48 complete and 0 interrupted iterations
+default   [  68% ] 5 VUs  20.3s/30s
+
+running (0m22.0s), 5/5 VUs, 51 complete and 0 interrupted iterations
+default   [  71% ] 5 VUs  21.3s/30s
+
+running (0m23.0s), 5/5 VUs, 52 complete and 0 interrupted iterations
+default   [  74% ] 5 VUs  22.3s/30s
+
+running (0m24.0s), 5/5 VUs, 55 complete and 0 interrupted iterations
+default   [  78% ] 5 VUs  23.3s/30s
+
+running (0m25.0s), 5/5 VUs, 57 complete and 0 interrupted iterations
+default   [  81% ] 5 VUs  24.3s/30s
+
+running (0m26.0s), 5/5 VUs, 60 complete and 0 interrupted iterations
+default   [  84% ] 5 VUs  25.3s/30s
+
+running (0m27.0s), 5/5 VUs, 62 complete and 0 interrupted iterations
+default   [  88% ] 5 VUs  26.3s/30s
+
+running (0m28.0s), 5/5 VUs, 65 complete and 0 interrupted iterations
+default   [  91% ] 5 VUs  27.3s/30s
+
+running (0m29.0s), 5/5 VUs, 67 complete and 0 interrupted iterations
+default   [  94% ] 5 VUs  28.3s/30s
+
+running (0m30.0s), 5/5 VUs, 70 complete and 0 interrupted iterations
+default   [  98% ] 5 VUs  29.3s/30s
+
+running (0m31.0s), 5/5 VUs, 72 complete and 0 interrupted iterations
+default Γåô [ 100% ] 5 VUs  30s
+
+running (0m32.0s), 2/5 VUs, 75 complete and 0 interrupted iterations
+default Γåô [ 100% ] 5 VUs  30s
+
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ù 'p(95)<800' p(95)=1.05s
+
+    http_req_failed
+    Γ£ô 'rate<0.01' rate=0.00%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 540     16.771173/s
+    checks_succeeded...: 100.00% 540 out of 540
+    checks_failed......: 0.00%   0 out of 540
+
+    Γ£ô setup graph status is 200
+    Γ£ô list status is 200
+    Γ£ô list returns body
+    Γ£ô graph status is 200
+    Γ£ô graph has nodes
+    Γ£ô graph has edges field
+    Γ£ô node detail status is 200
+    Γ£ô node detail returns body
+
+    HTTP
+    http_req_duration..............: avg=338.81ms min=5.22ms med=35.85ms max=1.75s p(90)=994.49ms p(95)=1.05s
+      { expected_response:true }...: avg=338.81ms min=5.22ms med=35.85ms max=1.75s p(90)=994.49ms p(95)=1.05s
+    http_req_failed................: 0.00% 0 out of 232
+    http_reqs......................: 232   7.205393/s
+
+    EXECUTION
+    iteration_duration.............: avg=2.01s    min=1.64s  med=2.01s   max=2.8s  p(90)=2.17s    p(95)=2.21s
+    iterations.....................: 77    2.391445/s
+    vus............................: 2     min=2        max=5
+    vus_max........................: 5     min=5        max=5
+
+    NETWORK
+    data_received..................: 16 MB 502 kB/s
+    data_sent......................: 71 kB 2.2 kB/s
+
+
+
+
+running (0m32.2s), 0/5 VUs, 77 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 5 VUs  30s
+time="2026-06-08T20:28:47+07:00" level=error msg="thresholds on metrics 'http_req_duration' have been crossed"

@@ -54,6 +54,18 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Password was not provided");
         }
 
+        var existingPendingRegistration = await _dbContext.PendingLocalRegistrations
+            .FirstOrDefaultAsync(
+                x => x.Email == email &&
+                     x.UsedAt == null,
+                cancellationToken);
+
+        if (existingPendingRegistration != null &&
+            existingPendingRegistration.ExpiresAt > DateTime.UtcNow)
+        {
+            return CreatePendingRegistrationResponse(email);
+        }
+
         var existingLocalProvider = await _dbContext.UserAuthProviders
             .Include(x => x.User)
             .FirstOrDefaultAsync(
@@ -82,59 +94,41 @@ public class AuthService : IAuthService
 
         var now = DateTime.UtcNow;
 
-        var user = new User
+        if (existingPendingRegistration != null)
         {
-            UserId = Guid.NewGuid(),
-            Username = username,
-            UsernameNormalized = normalizedUsername,
-            Status = UserStatuses.PendingVerification,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        var profile = new UserProfile
+            existingPendingRegistration.Username = username;
+            existingPendingRegistration.UsernameNormalized = normalizedUsername;
+            existingPendingRegistration.PasswordHash = _passwordHasher.HashPassword(
+                CreatePasswordHashUser(username, normalizedUsername),
+                request.Password);
+            existingPendingRegistration.ExpiresAt = now.AddDays(7);
+            existingPendingRegistration.UpdatedAt = now;
+        }
+        else
         {
-            User = user,
-            IsPublic = false,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        var localProvider = new UserAuthProvider
-        {
-            UserId = user.UserId,
-            Provider = AuthProviders.Local,
-            ProviderUserId = email,
-            Email = email,
-            PendingEmail = null,
-            PasswordHash = _passwordHasher.HashPassword(user, request.Password),
-            EmailVerifiedAt = null,
-            CreatedAt = now
-        };
-
-        _dbContext.Users.Add(user);
-        _dbContext.UserProfiles.Add(profile);
-        _dbContext.UserAuthProviders.Add(localProvider);
-
-        var learnerRole = await _dbContext.Roles
-            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner, cancellationToken);
-
-        if (learnerRole != null)
-        {
-            _dbContext.UserRoles.Add(new UserRole
+            var pendingRegistration = new PendingLocalRegistration
             {
-                UserId = user.UserId,
-                RoleId = learnerRole.RoleId
-            });
+                PendingLocalRegistrationId = Guid.NewGuid(),
+                Username = username,
+                UsernameNormalized = normalizedUsername,
+                Email = email,
+                PasswordHash = _passwordHasher.HashPassword(
+                    CreatePasswordHashUser(username, normalizedUsername),
+                    request.Password),
+                ExpiresAt = now.AddDays(7),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _dbContext.PendingLocalRegistrations.Add(pendingRegistration);
+            existingPendingRegistration = pendingRegistration;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await _emailVerificationService.SendVerificationCodeAsync(
-            user.UserId,
-            AuthProviders.Local,
+        await _emailVerificationService.SendPendingRegistrationVerificationCodeAsync(
+            existingPendingRegistration.PendingLocalRegistrationId,
             email,
-            EmailVerificationPurposes.Register,
             cancellationToken);
 
         return new RegistrationResponseDto
@@ -256,25 +250,87 @@ public class AuthService : IAuthService
         var verificationResult = await _emailVerificationService
             .VerifyRegistrationEmailAsync(email, request.Otp, cancellationToken);
 
-        var user = await _dbContext.Users
-            .Include(u => u.UserRoles)
-            .ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(x => x.UserId == verificationResult.UserId, cancellationToken);
+        var usernameExists = await _dbContext.Users
+            .AnyAsync(
+                x => x.UsernameNormalized == verificationResult.UsernameNormalized,
+                cancellationToken);
 
-        if (user == null)
+        if (usernameExists)
         {
-            throw new NotFoundException("User was not found");
+            throw new ConflictException("Username is already taken. Please restart registration with another username.");
         }
 
-        ValidateAccountStatus(user.Status);
+        var emailExists = await _dbContext.UserAuthProviders
+            .AnyAsync(
+                x => x.Provider == AuthProviders.Local &&
+                     x.ProviderUserId == verificationResult.Email,
+                cancellationToken);
 
-        if (user.Status == UserStatuses.PendingVerification)
+        if (emailExists)
         {
-            user.Status = UserStatuses.Active;
-            user.UpdatedAt = DateTime.UtcNow;
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            throw new ConflictException("Email is already registered");
         }
+
+        var now = DateTime.UtcNow;
+
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            Username = verificationResult.Username,
+            UsernameNormalized = verificationResult.UsernameNormalized,
+            Status = UserStatuses.Active,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        var profile = new UserProfile
+        {
+            User = user,
+            IsPublic = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        var localProvider = new UserAuthProvider
+        {
+            User = user,
+            Provider = AuthProviders.Local,
+            ProviderUserId = verificationResult.Email,
+            Email = verificationResult.Email,
+            PendingEmail = null,
+            PasswordHash = verificationResult.PasswordHash,
+            EmailVerifiedAt = now,
+            CreatedAt = now
+        };
+
+        _dbContext.Users.Add(user);
+        _dbContext.UserProfiles.Add(profile);
+        _dbContext.UserAuthProviders.Add(localProvider);
+
+        var learnerRole = await _dbContext.Roles
+            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner, cancellationToken);
+
+        if (learnerRole != null)
+        {
+            _dbContext.UserRoles.Add(new UserRole
+            {
+                User = user,
+                RoleId = learnerRole.RoleId
+            });
+        }
+
+        var pendingRegistration = await _dbContext.PendingLocalRegistrations
+            .FirstOrDefaultAsync(
+                x => x.PendingLocalRegistrationId == verificationResult.PendingLocalRegistrationId,
+                cancellationToken);
+
+        if (pendingRegistration != null)
+        {
+            pendingRegistration.UsedAt = now;
+            pendingRegistration.UpdatedAt = now;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         var authenticatedUser = new AuthenticatedUserDto
         {
@@ -371,6 +427,21 @@ public class AuthService : IAuthService
         ValidateAccountStatus(user.Status);
 
         return CreateLoginResponse(user);
+    }
+
+    private static User CreatePasswordHashUser(
+        string username,
+        string usernameNormalized)
+    {
+        return new User
+        {
+            UserId = Guid.NewGuid(),
+            Username = username,
+            UsernameNormalized = usernameNormalized,
+            Status = UserStatuses.Active,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
     }
 
     private static RegistrationResponseDto CreatePendingRegistrationResponse(string email)

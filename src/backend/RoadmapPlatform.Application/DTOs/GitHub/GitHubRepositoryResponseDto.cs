@@ -22,5 +22,7 @@
 
         public DateTime SyncedAt { get; set; }
 
+        public RepoInsightResponseDto? Insight { get; set; }
+
     }
 }

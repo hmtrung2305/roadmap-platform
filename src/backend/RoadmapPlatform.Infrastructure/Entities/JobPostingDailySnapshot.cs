@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
 
@@ -8,7 +9,7 @@ public partial class JobPostingDailySnapshot
 
     public Guid JobPostingId { get; set; }
 
-    public DateTime SnapshotDate { get; set; }
+    public DateOnly SnapshotDate { get; set; }
 
     public string SourceName { get; set; } = null!;
 

@@ -4,6 +4,13 @@ namespace RoadmapPlatform.Application.Interfaces.GitHub
 {
     public interface IGitHubApiClient
     {
-        Task<List<GitHubRepositorySyncDto>> GetPublicRepositoriesAsync(string username);
+        Task<List<GitHubRepositorySyncDto>> GetPublicRepositoriesAsync(
+            string username,
+            CancellationToken cancellationToken = default);
+
+        Task<string?> GetRepositoryReadmeAsync(
+            string owner,
+            string repositoryName,
+            CancellationToken cancellationToken = default);
     }
 }

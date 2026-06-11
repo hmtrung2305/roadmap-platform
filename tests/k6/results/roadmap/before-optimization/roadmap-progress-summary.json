@@ -1,0 +1,197 @@
+{
+    "metrics": {
+        "group_duration": {
+            "p(90)": 11.19956,
+            "p(95)": 11.792264999999997,
+            "avg": 8.999546111111108,
+            "min": 5.8598,
+            "med": 7.75945,
+            "max": 39.8314
+        },
+        "http_reqs": {
+            "count": 182,
+            "rate": 5.818308260889695
+        },
+        "http_req_blocked": {
+            "avg": 0.13555714285714285,
+            "min": 0,
+            "med": 0,
+            "max": 17.1032,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_waiting": {
+            "p(90)": 11.181880000000001,
+            "p(95)": 12.066799999999995,
+            "avg": 12.57852802197802,
+            "min": 5.0889,
+            "med": 7.5803,
+            "max": 649.8429
+        },
+        "data_sent": {
+            "rate": 872.2347395061232,
+            "count": 27284
+        },
+        "iteration_duration": {
+            "min": 1013.4448,
+            "med": 1016.892,
+            "max": 1047.5493,
+            "p(90)": 1019.9565799999999,
+            "p(95)": 1039.024205,
+            "avg": 1018.3591822222223
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 11.292530000000001,
+            "p(95)": 12.066799999999995,
+            "avg": 12.680343406593396,
+            "min": 5.0889,
+            "med": 7.6956,
+            "max": 650.3473
+        },
+        "http_req_connecting": {
+            "max": 0.5266,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.008680219780219779,
+            "min": 0,
+            "med": 0
+        },
+        "checks": {
+            "passes": 183,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_receiving": {
+            "max": 0.745,
+            "p(90)": 0,
+            "p(95)": 0.3397299999999998,
+            "avg": 0.033093406593406594,
+            "min": 0,
+            "med": 0
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 182,
+            "thresholds": {
+                "rate<0.02": false
+            },
+            "value": 0
+        },
+        "http_req_duration": {
+            "med": 7.6956,
+            "max": 650.3473,
+            "p(90)": 11.292530000000001,
+            "p(95)": 12.066799999999995,
+            "avg": 12.680343406593396,
+            "min": 5.0889,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "vus_max": {
+            "value": 3,
+            "min": 3,
+            "max": 3
+        },
+        "data_received": {
+            "rate": 10921.635948950829,
+            "count": 341635
+        },
+        "vus": {
+            "value": 3,
+            "min": 3,
+            "max": 3
+        },
+        "iterations": {
+            "count": 90,
+            "rate": 2.877185403736662
+        },
+        "http_req_tls_handshaking": {
+            "med": 0,
+            "max": 2.3332,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.04389505494505494,
+            "min": 0
+        },
+        "http_req_sending": {
+            "p(90)": 0.5062,
+            "p(95)": 0.513075,
+            "avg": 0.06872197802197799,
+            "min": 0,
+            "med": 0,
+            "max": 0.68
+        }
+    },
+    "setup_data": {
+        "cookieHeader": "access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjU1NTU1NTU1LTU1NTUtNTU1NS01NTU1LTU1NTU1NTU1NTU1NSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJkZW1vLnVzZXIiLCJleHAiOjE3ODA5MjkwNTIsImlzcyI6IlJvYWRtYXBQbGF0Zm9ybSIsImF1ZCI6IlJvYWRtYXBQbGF0Zm9ybVVzZXJzIn0.ODjXWDrTpAPYyAVvroqbiHNtaREe_NVEhKT3e0rDECw",
+        "roadmapNodeId": "fa5ff2b4-090c-4d2e-81ba-7c4087278370"
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "login status is 200": {
+                            "name": "login status is 200",
+                            "path": "::setup::login status is 200",
+                            "id": "bb27b460b057923f4a083e3603c038b9",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "login returned cookies": {
+                            "id": "b5e4f00f96ccd36f5e05aae46022c730",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "login returned cookies",
+                            "path": "::setup::login returned cookies"
+                        },
+                        "setup graph status is 200": {
+                            "name": "setup graph status is 200",
+                            "path": "::setup::setup graph status is 200",
+                            "id": "31cca02d44500bf6c3074454b5200533",
+                            "passes": 1,
+                            "fails": 0
+                        }
+                    },
+                "name": "setup",
+                "path": "::setup"
+            },
+            "update node progress to in_progress": {
+                "name": "update node progress to in_progress",
+                "path": "::update node progress to in_progress",
+                "id": "ad30eb168a3107105eddcf07dd5412a3",
+                "groups": {},
+                "checks": {
+                        "progress in_progress status is 200": {
+                            "path": "::update node progress to in_progress::progress in_progress status is 200",
+                            "id": "59adad76bc323c5380baf533ae839f4f",
+                            "passes": 90,
+                            "fails": 0,
+                            "name": "progress in_progress status is 200"
+                        }
+                    }
+            },
+            "update node progress to completed": {
+                "id": "818bb67c92b1e0321b5af2e76b1f48b2",
+                "groups": {},
+                "checks": {
+                        "progress completed status is 200": {
+                            "name": "progress completed status is 200",
+                            "path": "::update node progress to completed::progress completed status is 200",
+                            "id": "ad7d2c39e8135076c02c256d9028fb3b",
+                            "passes": 90,
+                            "fails": 0
+                        }
+                    },
+                "name": "update node progress to completed",
+                "path": "::update node progress to completed"
+            }
+        },
+        "checks": {}
+    }
+}

@@ -50,7 +50,7 @@ export default function StreakAnimation() {
               duration: 0.65,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl"
+            className="w-full max-w-sm rounded-lg bg-white p-7 text-center shadow-2xl"
           >
             <motion.div
               initial={{
@@ -100,7 +100,7 @@ export default function StreakAnimation() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.82, duration: 0.35 }}
-              className="mt-6 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+              className="mt-6 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
             >
               Nice
             </motion.button>

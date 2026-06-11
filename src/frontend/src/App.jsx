@@ -13,6 +13,7 @@ import { useAuthStore } from "./stores/useAuthStore";
 import ResourceManagementPage from "./pages/ResourceManagementPage";
 import StudyRoomPage from "./pages/StudyRoomPage";
 import ManagePortfolioRepositoriesPage from "./pages/ManagePortfolioRepositoryPage";
+import EditPortfolioPage from "./pages/EditPortfolioPage";
 import { ToastContainer } from "react-toastify";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import SettingsLayout from "./pages/settings/SettingsLayout";
@@ -28,6 +29,12 @@ import MarketPulsePage from "./pages/MarketPulsePage";
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
 function isPublicPortfolioPath(pathname) {
+  const protectedPortfolioPaths = ["/portfolio/edit", "/portfolio/repositories"];
+
+  if (protectedPortfolioPaths.some((path) => pathname.startsWith(path))) {
+    return false;
+  }
+
   return pathname.startsWith("/portfolio/") || pathname.startsWith("/portfolios/");
 }
 
@@ -128,6 +135,7 @@ export default function App() {
             <Route path="/home" element={<Navigate to="/dashboard" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/portfolio/edit" element={<EditPortfolioPage />} />
             <Route
               path="/portfolio/repositories"
               element={<ManagePortfolioRepositoriesPage />}

@@ -11,7 +11,7 @@ export default function DocumentHeader({ resource }) {
           <button
             type="button"
             onClick={() => navigate("/resources")}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
           >
             <ArrowLeft size={18} />
             Back to Resources
@@ -40,7 +40,7 @@ export default function DocumentHeader({ resource }) {
 
         <button
           type="button"
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#2FA084] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#1F6F5F]"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#1F6F5F]"
         >
           <CheckCircle2 size={16} />
           Mark as Completed
