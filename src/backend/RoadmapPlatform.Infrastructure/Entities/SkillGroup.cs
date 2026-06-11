@@ -11,6 +11,10 @@ public partial class SkillGroup
 
     public string Slug { get; set; } = null!;
 
+    public string CompletionRule { get; set; } = null!;
+
+    public int? RequiredSkillCount { get; set; }
+
     public string? Description { get; set; }
 
     public virtual ICollection<CareerRoleSkillGroup> CareerRoleSkillGroups { get; set; } = new List<CareerRoleSkillGroup>();

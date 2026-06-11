@@ -12,6 +12,5 @@ namespace RoadmapPlatform.Application.Interfaces.CareerRoleSkill
         Task<CareerRoleResponseDto> GetCareerRoleBySlugAsync(string slug);
         Task<AssessmentSkillResponseDto> GetAssessmentSkillBySlugAsync(string slug);
         Task<SkillGapResultResponseDto> GetSkillGapResultAsync(AnalyzeSkillGapRequestDto analyzeSkillGapRequest);
-        Task<SkillGapReportResponseDto> GenerateSkillGapReportAsync(AnalyzeSkillGapRequestDto request);
     }
 }

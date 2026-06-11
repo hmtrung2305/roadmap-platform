@@ -12,6 +12,14 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 
         public int Priority { get; set; }
 
+        public string CompletionRule { get; set; }
+            = default!;
+
+        public int? RequiredSkillCount { get; set; }
+
+        public string RequirementDescription { get; set; }
+            = default!;
+
         public List<AssessmentSkillDto> Skills { get; set; }
             = [];
     }

@@ -43,12 +43,5 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
             var result = await _skillGapAnalysisService.GetSkillGapResultAsync(analyzeSkillGapRequest);
             return Ok(result);
         }
-
-        [HttpPost("career-roles/skill-gap/report")]
-        public async Task<IActionResult> SkillGapReport(AnalyzeSkillGapRequestDto request)
-        {
-            var result = await _skillGapAnalysisService.GenerateSkillGapReportAsync(request);
-            return Ok(result);
-        }
     }
 }

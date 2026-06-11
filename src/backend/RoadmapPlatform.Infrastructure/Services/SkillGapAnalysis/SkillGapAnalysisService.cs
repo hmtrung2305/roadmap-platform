@@ -65,6 +65,12 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         Priority =
                             group.Priority,
 
+                        CompletionRule = group.SkillGroup.CompletionRule,
+
+                        RequiredSkillCount = group.SkillGroup.RequiredSkillCount,
+
+                        RequirementDescription = GetRequirementDescription(group.SkillGroup.CompletionRule, group.SkillGroup.RequiredSkillCount),
+
                         Skills =
                             group.SkillGroup.SkillGroupItems
 
@@ -157,8 +163,16 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
 
                             .ToList();
 
+                    var matchedCount = matchedSkills.Count();
+
+                    var totalSkills = group.SkillGroup.SkillGroupItems.Count;
+
+
                     var isCompleted =
-                        matchedSkills.Any();
+                        IsGroupCompleted(group.SkillGroup.CompletionRule,
+                        matchedCount,
+                        totalSkills,
+                        group.SkillGroup.RequiredSkillCount);
 
                     return new GroupAnalysisDto
                     {
@@ -178,6 +192,15 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
 
                         MatchedSkills =
                             matchedSkills,
+
+                        MatchedSkillCount = matchedCount,
+
+                        TotalSkillCount = totalSkills,
+                       
+
+                        CompletionRule = group.SkillGroup.CompletionRule,
+
+                        RequiredSkillCount = group.SkillGroup.RequiredSkillCount,
 
                         SuggestedSkills = group.SkillGroup.SkillGroupItems
                             .Where(x =>
@@ -252,61 +275,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
 
         }
 
-        public async Task<SkillGapReportResponseDto> GenerateSkillGapReportAsync(AnalyzeSkillGapRequestDto request)
-        {
-            var analysis = await GetSkillGapResultAsync(request);
-            //analysis.Groups
-            //analysis.MissingGroupList
-            //analysis.ReadinessPercent
-            var strengths = analysis.Groups
-                .Where(x => x.IsCompleted)
-                .Select(x => x.GroupName)
-                .ToList();
-
-            var skillGaps = analysis.Groups
-                .Where(x => !x.IsCompleted)
-                .Select(x => x.GroupName)
-                .ToList();
-
-            var urgentLearningPriorities =
-                analysis.MissingGroupList
-                    .Where(x =>
-                        x.LearningPriority == LearningPriority.Critical
-                        || x.LearningPriority == LearningPriority.High)
-                    .Select(x => x.GroupName)
-                    .ToList();
-
-            var recommendedLearningPath = analysis.MissingGroupList.
-                OrderBy(x => x.Priority).
-                SelectMany(x => GetLearningRecommendations(x.GroupName)).
-                Distinct().ToList();
-
-            return new SkillGapReportResponseDto
-            {
-                CareerRoleName =
-                    analysis.CareerRoleName,
-
-                ReadinessPercent =
-                    analysis.ReadinessPercent,
-
-                SkillLevel =
-                    GetSkillLevel(
-                        analysis.ReadinessPercent),
-
-                Strengths =
-                    strengths,
-
-                SkillGaps =
-                    skillGaps,
-
-                UrgentLearningPriorities =
-                    urgentLearningPriorities,
-
-                RecommendedLearningPath =
-                    recommendedLearningPath
-            };
-
-        }
+ 
 
         // ENUM (CRITICAL, HIGH, MEDIUM, LOW)
         private static LearningPriority GetLearningPriority(int priority)
@@ -322,67 +291,44 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             };
         }
 
-        // ĐÁNH GIÁ MỨC ĐỘ (BEGINNER, INTERMEIDATE, ADVANCED)
-        private static string GetSkillLevel(decimal readinessPercent)
+        private static bool IsGroupCompleted(
+            string completionRule,
+            int matchedCount,
+            int totalSkills,
+            int? requiredSkillCount)
         {
-            return readinessPercent switch
+            return completionRule switch
             {
-                < 40 => "Beginner",
+                "ANY"
+                    => matchedCount >= 1,
 
-                < 70 => "Intermediate",
+                "COUNT"
+                    => matchedCount >=
+                        (requiredSkillCount ?? 1),
 
-                _ => "Advanced"
+                "ALL"
+                    => matchedCount == totalSkills,
+
+                _ => false
             };
         }
 
-        // AI GIẢ LẬP
-        private static List<string> GetLearningRecommendations(string groupName)
+        private static string GetRequirementDescription(
+            string completionRule,
+            int? requiredSkillCount)
         {
-            return groupName switch
+            return completionRule switch
             {
-                "Programming" => new()
-        {
-            "Practice one backend language deeply",
-            "Learn clean code principles",
-            "Learn object-oriented programming"
-        },
+                "ANY"
+                    => "Choose at least 1 skill",
 
-                "Internet & API" => new()
-        {
-            "Learn HTTP fundamentals",
-            "Learn REST API design",
-            "Learn OpenAPI specification"
-        },
+                "COUNT"
+                    => $"Choose at least {requiredSkillCount} skills",
 
-                "Database" => new()
-        {
-            "Learn SQL",
-            "Learn database design",
-            "Learn transactions and indexes"
-        },
+                "ALL"
+                    => "All skills are required",
 
-                "Security" => new()
-        {
-            "Learn Authentication",
-            "Learn Authorization",
-            "Learn JWT and OAuth"
-        },
-
-                "DevOps & Operations" => new()
-        {
-            "Learn CI/CD",
-            "Learn Logging",
-            "Learn Metrics and Monitoring"
-        },
-
-                "Architecture & Scalability" => new()
-        {
-            "Learn Caching",
-            "Learn RabbitMQ",
-            "Learn Microservices"
-        },
-
-                _ => []
+                _ => "No requirement"
             };
         }
     }

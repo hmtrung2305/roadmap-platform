@@ -21,8 +21,6 @@ public partial class Skill
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<CareerRoleSkill> CareerRoleSkills { get; set; } = new List<CareerRoleSkill>();
-
     public virtual ICollection<LearningResourceSkill> LearningResourceSkills { get; set; } = new List<LearningResourceSkill>();
 
     public virtual ICollection<Resource> Resources { get; set; } = new List<Resource>();

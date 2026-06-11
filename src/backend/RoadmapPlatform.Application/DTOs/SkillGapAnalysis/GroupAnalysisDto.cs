@@ -12,7 +12,17 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
             = default!;
 
         public int Priority { get; set; }
+
         public LearningPriority LearningPriority { get; set; }
+
+        public int MatchedSkillCount { get; set; }
+
+        public int TotalSkillCount { get; set; }
+
+        public string CompletionRule { get; set; }
+            = default!;
+
+        public int? RequiredSkillCount { get; set; }
 
         public bool IsCompleted { get; set; }
 
