@@ -26,6 +26,6 @@ public partial class UserAuthProvider
     public DateTime? EmailVerifiedAt { get; set; }
 
     public string? AccessToken { get; set; }
-    
+
     public virtual User User { get; set; } = null!;
 }
