@@ -35,4 +35,19 @@
 \echo 'Seeding QA Engineer roadmap...'
 \i docs/database/seeds/roadmaps/qa-engineer-roadmap.seed.sql
 
+\echo 'Seeding Full Stack Developer roadmap...'
+\i docs/database/seeds/roadmaps/fullstack-developer-roadmap.seed.sql
+
+\echo 'Seeding Data Analyst roadmap...'
+\i docs/database/seeds/roadmaps/data-analyst-roadmap.seed.sql
+
+\echo 'Seeding DevOps Engineer roadmap...'
+\i docs/database/seeds/roadmaps/devops-engineer-roadmap.seed.sql
+
+\echo 'Seeding Cloud Engineer roadmap...'
+\i docs/database/seeds/roadmaps/cloud-engineer-roadmap.seed.sql
+
+\echo 'Seeding Mobile Developer roadmap...'
+\i docs/database/seeds/roadmaps/mobile-developer-roadmap.seed.sql
+
 \echo 'Roadmap seed completed.'
