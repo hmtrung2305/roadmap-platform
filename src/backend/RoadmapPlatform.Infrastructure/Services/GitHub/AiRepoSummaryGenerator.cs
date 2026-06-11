@@ -77,20 +77,22 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             return $$"""
             Analyze this GitHub repository README and return JSON only.
 
-            Repository metadata:
+            <repository-metadata>
             Name: {{request.Name}}
             Full name: {{request.FullName}}
             Description: {{request.Description ?? "No description provided"}}
             Primary language: {{request.PrimaryLanguage ?? "Unknown"}}
             Stars: {{request.Stars}}
             Forks: {{request.Forks}}
+            </repository-metadata>
 
-            README:
+            <readme>
             {{request.Readme}}
+            </readme>
 
             Return this exact JSON shape:
             {
-              "summary": "2-3 sentence portfolio-friendly project summary",
+              "summary": "2-3 concise portfolio-friendly project summary sentences",
               "techStack": ["technology names only"],
               "detectedSkills": ["skills demonstrated by the project"],
               "projectType": "one concise project category"
@@ -101,7 +103,12 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             - Use the README as the main source of truth.
             - Use the primary language as a weak hint only.
             - If a technology is unclear, do not include it.
-            - Keep techStack and detectedSkills between 2 and 8 items when possible.
+            - techStack must contain 2 to 5 concrete technologies only.
+            - detectedSkills must contain 2 to 5 human-readable skills only.
+            - techStack examples: React, ASP.NET Core, PostgreSQL, Entity Framework Core, Vite, Docker.
+            - detectedSkills examples: Frontend development, REST API design, Database modeling, Authentication implementation, Responsive UI design.
+            - Do not put programming languages, frameworks, libraries, databases, tools, or platforms in detectedSkills.
+            - Do not duplicate any item between techStack and detectedSkills.
             - projectType should be one of: Full Stack Web Application, Frontend Application, Backend API, Machine Learning Project, Data Analysis Project, Library / Package, CLI Tool, Mobile Application, Other.
             """;
         }
@@ -136,24 +143,29 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 throw new InvalidOperationException("AI repository insight response could not be parsed.");
             }
 
+            var techStack = NormalizeList(parsed.TechStack, maxItems: 5);
+            var detectedSkills = NormalizeList(parsed.DetectedSkills, maxItems: 5)
+                .Where(skill => !techStack.Contains(skill, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
             return new GeneratedRepoInsightDto
             {
                 Summary = parsed.Summary.Trim(),
-                TechStack = NormalizeList(parsed.TechStack),
-                DetectedSkills = NormalizeList(parsed.DetectedSkills),
+                TechStack = techStack,
+                DetectedSkills = detectedSkills,
                 ProjectType = string.IsNullOrWhiteSpace(parsed.ProjectType)
                     ? "Other"
                     : parsed.ProjectType.Trim()
             };
         }
 
-        private static List<string> NormalizeList(List<string>? values)
+        private static List<string> NormalizeList(List<string>? values, int maxItems)
         {
             return values?
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .Select(value => value.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(8)
+                .Take(maxItems)
                 .ToList() ?? new List<string>();
         }
 

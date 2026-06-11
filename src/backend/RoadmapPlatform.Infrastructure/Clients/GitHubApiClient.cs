@@ -90,7 +90,7 @@ namespace RoadmapPlatform.Infrastructure.Clients
             AddDefaultGitHubHeaders(request);
             request.Headers.Accept.Clear();
             request.Headers.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/vnd.github.raw+json"));
+                new MediaTypeWithQualityHeaderValue("application/vnd.github.raw"));
 
             var response = await client.SendAsync(request, cancellationToken);
 
