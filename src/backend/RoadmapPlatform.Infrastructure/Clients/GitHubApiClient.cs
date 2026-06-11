@@ -1,4 +1,4 @@
-﻿using RoadmapPlatform.Application.DTOs.GitHub;
+using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using System.Net;
@@ -22,6 +22,7 @@ namespace RoadmapPlatform.Infrastructure.Clients
         // per_page=20 means return up to 20 repos in one request.
         public async Task<List<GitHubRepositorySyncDto>> GetPublicRepositoriesAsync(
             string username,
+            string accessToken,
             CancellationToken cancellationToken = default)
         {
             var client = _httpClientFactory.CreateClient();
@@ -29,7 +30,7 @@ namespace RoadmapPlatform.Infrastructure.Clients
             var request = new HttpRequestMessage(HttpMethod.Get,
                 $"https://api.github.com/users/{username}/repos?sort=updated&per_page=20");
 
-            AddDefaultGitHubHeaders(request);
+            AddDefaultGitHubHeaders(request, accessToken);
 
             var response = await client.SendAsync(request, cancellationToken);
 
@@ -69,6 +70,7 @@ namespace RoadmapPlatform.Infrastructure.Clients
         public async Task<string?> GetRepositoryReadmeAsync(
             string owner,
             string repositoryName,
+            string accessToken,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(owner))
@@ -87,10 +89,10 @@ namespace RoadmapPlatform.Infrastructure.Clients
                 HttpMethod.Get,
                 $"https://api.github.com/repos/{owner}/{repositoryName}/readme");
 
-            AddDefaultGitHubHeaders(request);
+            AddDefaultGitHubHeaders(request, accessToken);
             request.Headers.Accept.Clear();
             request.Headers.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/vnd.github.raw+json"));
+                new MediaTypeWithQualityHeaderValue("application/vnd.github.raw"));
 
             var response = await client.SendAsync(request, cancellationToken);
 
@@ -107,11 +109,19 @@ namespace RoadmapPlatform.Infrastructure.Clients
             return await response.Content.ReadAsStringAsync(cancellationToken);
         }
 
-        private static void AddDefaultGitHubHeaders(HttpRequestMessage request)
+        private static void AddDefaultGitHubHeaders(HttpRequestMessage request, string accessToken)
         {
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                throw new InvalidOperationException("GitHub access token was not provided.");
+            }
+
             request.Headers.UserAgent.ParseAdd("Roadmap-Platform");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", accessToken);
             request.Headers.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
         }
 
         private class GitHubRepoApiResponse

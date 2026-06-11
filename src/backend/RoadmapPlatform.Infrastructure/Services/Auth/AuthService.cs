@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Auth;
@@ -365,6 +365,7 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponseDto> LoginWithGitHubAsync(
         ClaimsPrincipal githubUser,
+        string? githubAccessToken,
         CancellationToken cancellationToken = default)
     {
         var githubUserId = githubUser.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -386,7 +387,8 @@ public class AuthService : IAuthService
             Provider = AuthProviders.GitHub,
             ProviderUserId = githubUserId,
             ProviderUsername = githubUsername,
-            Email = githubEmail
+            Email = githubEmail,
+            AccessToken = githubAccessToken
         };
 
         var user = await _oauthLoginService.LoginOrCreateUserAsync(externalLogin);

@@ -250,6 +250,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
         public async Task LinkGitHubAsync(
             Guid userId,
             ClaimsPrincipal githubUser,
+            string? githubAccessToken,
             CancellationToken cancellationToken = default)
         {
             var githubUserId = githubUser.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -272,6 +273,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 providerUserId: githubUserId,
                 email: githubEmail,
                 providerUsername: githubUsername,
+                accessToken: githubAccessToken,
                 emailVerifiedAt: githubEmail == null ? null : DateTime.UtcNow,
                 cancellationToken: cancellationToken);
         }
@@ -301,6 +303,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 providerUserId: googleUserId,
                 email: googleEmail,
                 providerUsername: googleUsername,
+                accessToken: null,
                 emailVerifiedAt: DateTime.UtcNow,
                 cancellationToken: cancellationToken);
         }
@@ -363,6 +366,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             string providerUserId,
             string? email,
             string? providerUsername,
+            string? accessToken,
             DateTime? emailVerifiedAt,
             CancellationToken cancellationToken = default)
         {
@@ -405,6 +409,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 ProviderUserId = providerUserId,
                 ProviderUsername = NormalizeNullable(providerUsername),
                 Email = NormalizeNullable(email),
+                AccessToken = NormalizeNullable(accessToken),
                 PendingEmail = null,
                 PasswordHash = null,
                 EmailVerifiedAt = emailVerifiedAt,

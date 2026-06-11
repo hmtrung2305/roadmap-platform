@@ -1388,6 +1388,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.AccessToken).HasColumnName("access_token");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");

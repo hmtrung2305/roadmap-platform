@@ -22,6 +22,7 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
         Task LinkGitHubAsync(
             Guid userId,
             ClaimsPrincipal githubUser,
+            string? githubAccessToken,
             CancellationToken cancellationToken = default);
 
         Task LinkGoogleAsync(

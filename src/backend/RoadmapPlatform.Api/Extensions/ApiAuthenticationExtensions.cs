@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -69,6 +69,10 @@ namespace RoadmapPlatform.Api.Extensions
                     options.CallbackPath = "/signin-github";
                     options.SignInScheme = "External";
                     options.Scope.Add("user:email");
+
+                    // Persist the GitHub OAuth access token in the external auth ticket
+                    // so the callback can store it for authenticated GitHub API calls.
+                    options.SaveTokens = true;
                 });
 
             return services;
