@@ -27,5 +27,6 @@ public interface IAuthService
 
     Task<LoginResponseDto> LoginWithGitHubAsync(
         ClaimsPrincipal githubUser,
+        string? githubAccessToken,
         CancellationToken cancellationToken = default);
 }

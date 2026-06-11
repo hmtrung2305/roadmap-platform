@@ -1,4 +1,4 @@
-﻿using RoadmapPlatform.Application.DTOs.GitHub;
+using RoadmapPlatform.Application.DTOs.GitHub;
 
 namespace RoadmapPlatform.Application.Interfaces.GitHub
 {

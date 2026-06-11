@@ -1,4 +1,4 @@
-﻿using RoadmapPlatform.Application.DTOs.GitHub;
+using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using System.Net;
