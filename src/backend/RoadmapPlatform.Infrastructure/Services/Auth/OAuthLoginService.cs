@@ -27,6 +27,7 @@ public class OAuthLoginService : IOAuthLoginService
         var providerUsername = externalLogin.ProviderUsername;
         var displayName = externalLogin.DisplayName;
         var email = externalLogin.Email?.Trim().ToLowerInvariant();
+        var accessToken = NormalizeNullable(externalLogin.AccessToken);
 
         if (string.IsNullOrWhiteSpace(provider))
         {
@@ -49,6 +50,11 @@ public class OAuthLoginService : IOAuthLoginService
         if (existingProvider?.User != null)
         {
             existingProvider.ProviderUsername = providerUsername;
+
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                existingProvider.AccessToken = accessToken;
+            }
 
             if (!string.IsNullOrWhiteSpace(email))
             {
@@ -124,6 +130,7 @@ public class OAuthLoginService : IOAuthLoginService
             Provider = provider,
             ProviderUserId = providerUserId,
             ProviderUsername = providerUsername,
+            AccessToken = accessToken,
             EmailVerifiedAt = isEmailVerifiedByProvider ? DateTime.UtcNow : null,
             CreatedAt = DateTime.UtcNow
         };
@@ -182,6 +189,13 @@ public class OAuthLoginService : IOAuthLoginService
                 return (username, usernameNormalized);
             }
         }
+    }
+
+    private static string? NormalizeNullable(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
     }
 
     private static string RemoveDiacritics(string value)

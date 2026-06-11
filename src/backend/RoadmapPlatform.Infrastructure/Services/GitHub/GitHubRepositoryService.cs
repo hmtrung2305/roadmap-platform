@@ -34,8 +34,15 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 throw new InvalidOperationException("GitHub username was not found");
             }
 
+            if (string.IsNullOrWhiteSpace(githubProvider.AccessToken))
+            {
+                throw new InvalidOperationException("GitHub access token was not found. Please reconnect GitHub.");
+            }
+
             List<GitHubRepositorySyncDto> githubRepos = await _gitHubApiClient
-                .GetPublicRepositoriesAsync(githubProvider.ProviderUsername);
+                .GetPublicRepositoriesAsync(
+                    githubProvider.ProviderUsername,
+                    githubProvider.AccessToken);
 
             var githubRepoIds = githubRepos
                 .Select(x => x.GithubRepoId)

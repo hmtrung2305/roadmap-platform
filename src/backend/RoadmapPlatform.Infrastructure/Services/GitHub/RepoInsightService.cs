@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Application.Exceptions;
@@ -59,7 +60,28 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             var existingInsight = repository.RepoInsight;
             var (owner, repoName) = ParseRepositoryFullName(repository.FullName);
 
-            var readme = await _gitHubApiClient.GetRepositoryReadmeAsync(owner, repoName, cancellationToken);
+            var githubProvider = await _dbContext.UserAuthProviders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Provider == AuthProviders.GitHub,
+                    cancellationToken);
+
+            if (githubProvider == null)
+            {
+                throw new InvalidOperationException("GitHub account is not linked.");
+            }
+
+            if (string.IsNullOrWhiteSpace(githubProvider.AccessToken))
+            {
+                throw new InvalidOperationException("GitHub access token was not found. Please reconnect GitHub.");
+            }
+
+            var readme = await _gitHubApiClient.GetRepositoryReadmeAsync(
+                owner,
+                repoName,
+                githubProvider.AccessToken,
+                cancellationToken);
 
             if (string.IsNullOrWhiteSpace(readme))
             {

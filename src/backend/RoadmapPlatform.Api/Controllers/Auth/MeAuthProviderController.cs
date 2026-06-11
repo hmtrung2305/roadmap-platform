@@ -168,7 +168,12 @@ namespace RoadmapPlatform.Api.Controllers.Auth
                 return Unauthorized("GitHub linking session was invalid or expired");
             }
 
-            await _authProviderService.LinkGitHubAsync(userId, result.Principal);
+            var githubAccessToken = result.Properties?.GetTokenValue("access_token");
+
+            await _authProviderService.LinkGitHubAsync(
+                userId,
+                result.Principal,
+                githubAccessToken);
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
