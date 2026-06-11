@@ -344,7 +344,18 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.JobPostingId).HasName("job_posting_pkey");
 
-            entity.ToTable("job_posting");
+            entity.ToTable("job_posting", tb =>
+            {
+                tb.HasCheckConstraint(
+                    "chk_job_posting_requirements_json_array",
+                    "jsonb_typeof(requirements) = 'array'");
+                tb.HasCheckConstraint(
+                    "chk_job_posting_specialties_json_array",
+                    "jsonb_typeof(specialties) = 'array'");
+                tb.HasCheckConstraint(
+                    "chk_job_posting_benefits_json_array",
+                    "jsonb_typeof(benefits) = 'array'");
+            });
 
             entity.HasIndex(e => new { e.IsActive, e.LastSeenAt }, "ix_job_posting_active_last_seen");
 
@@ -1302,7 +1313,12 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
 
-            entity.ToTable("skill_trend_snapshot");
+            entity.ToTable("skill_trend_snapshot", tb =>
+            {
+                tb.HasCheckConstraint(
+                    "chk_skill_trend_snapshot_counts",
+                    "mention_count >= 0 AND posting_count >= 0");
+            });
 
             entity.HasIndex(e => e.SnapshotDate, "ix_skill_trend_snapshot_date");
 

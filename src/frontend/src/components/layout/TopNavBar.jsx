@@ -34,12 +34,12 @@ export default function TopNavbar() {
     { label: "Dashboard", path: user ? "/dashboard" : "/login" },
     { label: "Roadmaps", path: user ? "/roadmap" : "/login" },
     { label: "Resources", path: user ? "/resources" : "/login" },
+    { label: "Market Pulse", path: user ? "/market-pulse" : "/login" },
     { label: "E-Portfolio", path: portfolioPath },
   ];
 
   useEffect(() => {
     if (!user) {
-      setProfile(null);
       return;
     }
 
@@ -111,7 +111,7 @@ export default function TopNavbar() {
           )}
 
           {user ? (
-            <AvatarDropdown user={user} profile={profile} onLogout={handleLogout} />
+            <AvatarDropdown user={user} profile={user ? profile : null} onLogout={handleLogout} />
           ) : (
             <button
               type="button"
