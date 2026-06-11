@@ -22,12 +22,4 @@
     <ProjectReference Include="..\RoadmapPlatform.Application\RoadmapPlatform.Application.csproj" />
     <ProjectReference Include="..\RoadmapPlatform.Infrastructure\RoadmapPlatform.Infrastructure.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Scrapers\topcv_market_pulse.py">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-
 </Project>

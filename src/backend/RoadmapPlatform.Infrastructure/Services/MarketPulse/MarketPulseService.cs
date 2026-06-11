@@ -1,9 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
+using RoadmapPlatform.Application.Models.MarketPulse;
+using RoadmapPlatform.Application.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
@@ -13,7 +16,9 @@ namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 public sealed class MarketPulseService(
     ApplicationDbContext dbContext,
     IJobPortalScraper scraper,
-    MarketPulseKeywordAnalyzer keywordAnalyzer,
+    IJobMarketSnapshotProvider jobMarketSnapshotProvider,
+    JobMarketOverviewBuilder overviewBuilder,
+    JobMarketKeywordAnalyzer keywordAnalyzer,
     IOptions<MarketPulseSettings> options) : IMarketPulseService
 {
     private const string AggregateSourceName = "all";
@@ -30,6 +35,22 @@ public sealed class MarketPulseService(
         CancellationToken cancellationToken)
     {
         var normalizedDays = Math.Clamp(days, 7, 180);
+
+        if (HasLiveJobsApi(options.Value))
+        {
+            var snapshot = await jobMarketSnapshotProvider.GetCurrentSnapshotAsync(cancellationToken);
+
+            return overviewBuilder.Build(
+                snapshot,
+                new JobMarketOverviewOptions
+                {
+                    Days = normalizedDays,
+                    SelectedSkillSlugs = skillSlugs,
+                    TrackedKeywordSpecs = options.Value.TrackedKeywords,
+                    ReferenceDate = DateOnly.FromDateTime(DateTime.UtcNow)
+                });
+        }
+
         var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-(normalizedDays - 1)));
         var selectedSlugs = skillSlugs
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -127,6 +148,12 @@ public sealed class MarketPulseService(
         };
     }
 
+    private static bool HasLiveJobsApi(MarketPulseSettings settings)
+    {
+        return !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl) &&
+            !string.IsNullOrWhiteSpace(settings.TodayJobsApiUrl);
+    }
+    
     public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
@@ -193,10 +220,19 @@ public sealed class MarketPulseService(
 
                     posting.Title = TrimTo(rawPosting.Title, 250) ?? "Untitled IT job";
                     posting.CompanyName = TrimTo(rawPosting.CompanyName, 160);
+                    posting.SourceJobId = TrimTo(rawPosting.SourceJobId, 120);
+                    posting.Category = TrimTo(rawPosting.Category, 100);
                     posting.Location = TrimTo(rawPosting.Location, 160);
+                    posting.Salary = TrimTo(rawPosting.Salary, 100);
+                    posting.Experience = TrimTo(rawPosting.Experience, 100);
                     posting.Description = rawPosting.Description;
                     posting.PublishedAt = publishedAt;
+                    posting.PostDateText = TrimTo(rawPosting.PostDateText, 80);
+                    posting.SourceUpdatedAt = NormalizeUtc(rawPosting.SourceUpdatedAt);
                     posting.ExpiresAt = expiresAt;
+                    posting.Requirements = SerializeStringList(rawPosting.Requirements);
+                    posting.Specialties = SerializeStringList(rawPosting.Specialties);
+                    posting.Benefits = SerializeStringList(rawPosting.Benefits);
                     posting.ContentHash = contentHash;
                     posting.IsActive = !isExpired;
                     posting.LifecycleStatus = isExpired ? LifecycleExpired : LifecycleActive;
@@ -230,13 +266,22 @@ public sealed class MarketPulseService(
                     JobPostingId = Guid.NewGuid(),
                     JobPortalSourceId = source.JobPortalSourceId,
                     ExternalId = externalId,
+                    SourceJobId = TrimTo(rawPosting.SourceJobId, 120),
                     Title = TrimTo(rawPosting.Title, 250) ?? "Untitled IT job",
                     CompanyName = TrimTo(rawPosting.CompanyName, 160),
+                    Category = TrimTo(rawPosting.Category, 100),
                     Location = TrimTo(rawPosting.Location, 160),
+                    Salary = TrimTo(rawPosting.Salary, 100),
+                    Experience = TrimTo(rawPosting.Experience, 100),
                     Url = rawPosting.Url,
                     Description = rawPosting.Description,
                     PublishedAt = publishedAt,
+                    PostDateText = TrimTo(rawPosting.PostDateText, 80),
+                    SourceUpdatedAt = NormalizeUtc(rawPosting.SourceUpdatedAt),
                     ExpiresAt = expiresAt,
+                    Requirements = SerializeStringList(rawPosting.Requirements),
+                    Specialties = SerializeStringList(rawPosting.Specialties),
+                    Benefits = SerializeStringList(rawPosting.Benefits),
                     ContentHash = contentHash,
                     LifecycleStatus = isExpired ? LifecycleExpired : LifecycleActive,
                     IsActive = !isExpired,
@@ -433,7 +478,7 @@ public sealed class MarketPulseService(
 
     private async Task<int> SaveSnapshotsAsync(
         DateOnly snapshotDate,
-        IReadOnlyCollection<KeywordFrequency> frequencies,
+        IReadOnlyCollection<JobMarketKeywordFrequency> frequencies,
         CancellationToken cancellationToken)
     {
         var existing = await dbContext.Set<SkillTrendSnapshot>()
@@ -503,9 +548,18 @@ public sealed class MarketPulseService(
     {
         var normalized = string.Join('\n',
             NormalizeForHash(posting.Title),
+            NormalizeForHash(posting.SourceJobId),
             NormalizeForHash(posting.CompanyName),
+            NormalizeForHash(posting.Category),
             NormalizeForHash(posting.Location),
+            NormalizeForHash(posting.Salary),
+            NormalizeForHash(posting.Experience),
             NormalizeForHash(posting.Description),
+            NormalizeForHash(posting.PostDateText),
+            NormalizeForHash(posting.SourceUpdatedAt?.ToString("O")),
+            SerializeStringList(posting.Requirements),
+            SerializeStringList(posting.Specialties),
+            SerializeStringList(posting.Benefits),
             expiresAt?.ToString("O") ?? string.Empty);
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
@@ -543,6 +597,17 @@ public sealed class MarketPulseService(
 
         var trimmed = value.Trim();
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static string SerializeStringList(IEnumerable<string>? values)
+    {
+        var cleanValues = values?
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? [];
+
+        return JsonSerializer.Serialize(cleanValues);
     }
 }
 

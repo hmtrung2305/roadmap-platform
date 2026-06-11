@@ -1,10 +1,8 @@
-using System.Diagnostics;
 using System.Net;
-using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RoadmapPlatform.Application.Models.MarketPulse;
 using RoadmapPlatform.Infrastructure.Configurations;
 
 namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
@@ -16,11 +14,12 @@ public interface IJobPortalScraper
 
 public sealed class JobPortalScraper(
     IHttpClientFactory httpClientFactory,
+    JobsApiClient jobsApiClient,
     IOptions<MarketPulseSettings> options,
     ILogger<JobPortalScraper> logger) : IJobPortalScraper
 {
     private const string HtmlSourceKind = "Html";
-    private const string TopCvPythonSourceKind = "TopCvPython";
+    private const string JobsApiSourceKind = "JobsApi";
 
     private static readonly Regex HrefRegex = new(
         "href\\s*=\\s*[\"'](?<href>[^\"'#]+)[\"']",
@@ -29,11 +28,6 @@ public sealed class JobPortalScraper(
     private static readonly Regex TitleRegex = new(
         "<title[^>]*>(?<title>.*?)</title>|<h1[^>]*>(?<title>.*?)</h1>",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     public async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken)
     {
@@ -49,7 +43,7 @@ public sealed class JobPortalScraper(
             {
                 var sourcePostings = source.Kind switch
                 {
-                    TopCvPythonSourceKind => await ScrapeTopCvWithPythonAsync(source, settings, cancellationToken),
+                    JobsApiSourceKind => await ScrapeJobsApiSourceAsync(source, settings, cancellationToken),
                     HtmlSourceKind => await ScrapeHtmlSourceAsync(source, settings, cancellationToken),
                     _ => await ScrapeHtmlSourceAsync(source, settings, cancellationToken)
                 };
@@ -65,83 +59,38 @@ public sealed class JobPortalScraper(
         return postings;
     }
 
-    private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeTopCvWithPythonAsync(
+    private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeJobsApiSourceAsync(
         MarketPulseSourceSettings source,
         MarketPulseSettings settings,
         CancellationToken cancellationToken)
     {
-        var scriptPath = ResolveScriptPath(settings.PythonScriptPath);
+        var result = await jobsApiClient.FetchAsync(source.SearchUrlTemplate, cancellationToken);
+        var maxPostings = Math.Max(1, settings.MaxPostingsPerSource);
 
-        if (scriptPath == null)
-        {
-            logger.LogWarning(
-                "TopCV Python scraper script was not found. Configured path: {PythonScriptPath}",
-                settings.PythonScriptPath);
-            return [];
-        }
-
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(30, settings.RequestTimeoutSeconds * Math.Max(1, settings.MaxPostingsPerSource))));
-
-        foreach (var command in BuildPythonCommands(settings.PythonExecutablePath))
-        {
-            using var process = TryStartTopCvProcess(
-                command,
-                scriptPath,
-                source,
-                settings);
-
-            if (process == null)
-            {
-                continue;
-            }
-
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(timeoutCts.Token);
-            var stderrTask = process.StandardError.ReadToEndAsync(timeoutCts.Token);
-
-            try
-            {
-                await process.WaitForExitAsync(timeoutCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                TryKill(process);
-                throw;
-            }
-
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
-
-            if (!string.IsNullOrWhiteSpace(stderr))
-            {
-                logger.LogInformation("TopCV Python scraper diagnostics: {Diagnostics}", TrimLog(stderr, 4000));
-            }
-
-            if (process.ExitCode != 0)
-            {
-                logger.LogWarning(
-                    "TopCV Python scraper exited with code {ExitCode} using {PythonCommand}.",
-                    process.ExitCode,
-                    command.DisplayName);
-                return [];
-            }
-
-            if (string.IsNullOrWhiteSpace(stdout))
-            {
-                return [];
-            }
-
-            var postings = JsonSerializer.Deserialize<List<ScrapedJobPosting>>(stdout, JsonOptions) ?? [];
-            logger.LogInformation(
-                "TopCV Python scraper returned {PostingCount} normalized postings using {PythonCommand}.",
-                postings.Count,
-                command.DisplayName);
-            return postings;
-        }
-
-        logger.LogWarning(
-            "Could not start a Python process for TopCV. Configure MarketPulse:PythonExecutablePath with an absolute Python executable path.");
-        return [];
+        return result.Jobs
+            .Where(x => x.IsActive && !string.IsNullOrWhiteSpace(x.Url))
+            .Take(maxPostings)
+            .Select(x => new ScrapedJobPosting(
+                source.Name,
+                TrimTo(x.Title?.Trim() ?? string.Empty, 250) is { Length: > 0 } title
+                    ? title
+                    : "Untitled IT job",
+                TrimOptional(x.Company, 160),
+                TrimOptional(x.Location, 160),
+                x.Url!.Trim(),
+                BuildJobsApiDescription(x),
+                x.PostedOn?.ToDateTime(TimeOnly.MinValue),
+                null,
+                x.Id,
+                x.Category,
+                x.Salary,
+                x.Experience,
+                x.PostedOnText,
+                x.UpdatedAt,
+                x.Requirements,
+                x.Specialties,
+                x.Benefits))
+            .ToList();
     }
 
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeHtmlSourceAsync(
@@ -248,111 +197,6 @@ public sealed class JobPortalScraper(
             null);
     }
 
-    private static string? ResolveScriptPath(string configuredPath)
-    {
-        if (Path.IsPathRooted(configuredPath) && File.Exists(configuredPath))
-        {
-            return configuredPath;
-        }
-
-        var candidates = new[]
-        {
-            Path.Combine(AppContext.BaseDirectory, configuredPath),
-            Path.Combine(Directory.GetCurrentDirectory(), configuredPath),
-            Path.Combine(Directory.GetCurrentDirectory(), "RoadmapPlatform.Api", configuredPath)
-        };
-
-        return candidates.FirstOrDefault(File.Exists);
-    }
-
-    private Process? TryStartTopCvProcess(
-        PythonCommand command,
-        string scriptPath,
-        MarketPulseSourceSettings source,
-        MarketPulseSettings settings)
-    {
-        var processStartInfo = new ProcessStartInfo
-        {
-            FileName = command.FileName,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-
-        processStartInfo.Environment["PYTHONIOENCODING"] = "utf-8";
-        processStartInfo.Environment["PYTHONUTF8"] = "1";
-
-        foreach (var argument in command.PrefixArguments)
-        {
-            processStartInfo.ArgumentList.Add(argument);
-        }
-
-        processStartInfo.ArgumentList.Add(scriptPath);
-        processStartInfo.ArgumentList.Add("--source-name");
-        processStartInfo.ArgumentList.Add(source.Name);
-        processStartInfo.ArgumentList.Add("--base-url");
-        processStartInfo.ArgumentList.Add(source.BaseUrl);
-        processStartInfo.ArgumentList.Add("--search-url-template");
-        processStartInfo.ArgumentList.Add(source.SearchUrlTemplate);
-        processStartInfo.ArgumentList.Add("--keyword");
-        processStartInfo.ArgumentList.Add(settings.SearchKeyword);
-        processStartInfo.ArgumentList.Add("--pages");
-        processStartInfo.ArgumentList.Add(Math.Max(1, settings.MaxPagesPerSource).ToString());
-        processStartInfo.ArgumentList.Add("--limit");
-        processStartInfo.ArgumentList.Add(Math.Max(1, settings.MaxPostingsPerSource).ToString());
-        processStartInfo.ArgumentList.Add("--delay");
-        processStartInfo.ArgumentList.Add(Math.Max(0, settings.RequestDelaySeconds).ToString());
-        processStartInfo.ArgumentList.Add("--timeout");
-        processStartInfo.ArgumentList.Add(Math.Max(5, settings.RequestTimeoutSeconds).ToString());
-
-        try
-        {
-            return Process.Start(processStartInfo);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogDebug(ex, "Could not start Python command {PythonCommand}.", command.DisplayName);
-            return null;
-        }
-    }
-
-    private static IReadOnlyList<PythonCommand> BuildPythonCommands(string configuredExecutable)
-    {
-        var commands = new List<PythonCommand>();
-
-        if (!string.IsNullOrWhiteSpace(configuredExecutable))
-        {
-            commands.Add(new PythonCommand(configuredExecutable.Trim(), []));
-        }
-
-        commands.Add(new PythonCommand("python", []));
-        commands.Add(new PythonCommand("py", ["-3"]));
-        commands.Add(new PythonCommand("python3", []));
-
-        return commands
-            .GroupBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(x => x.First())
-            .ToList();
-    }
-
-    private static void TryKill(Process process)
-    {
-        try
-        {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
-        }
-        catch
-        {
-            // Best effort cleanup for a timed-out ingestion process.
-        }
-    }
-
     private static string BuildSearchUrl(string template, string keyword, int page)
     {
         return template
@@ -423,10 +267,32 @@ public sealed class JobPortalScraper(
         return value.Length <= maxLength ? value : value[..maxLength];
     }
 
-    private static string TrimLog(string value, int maxLength)
+    private static string? TrimOptional(string? value, int maxLength)
     {
-        var normalized = NormalizeText(value);
-        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return TrimTo(value.Trim(), maxLength);
+    }
+
+    private static string BuildJobsApiDescription(JobMarketPosting job)
+    {
+        var parts = new[]
+        {
+            job.Title,
+            job.Company,
+            job.Category,
+            job.Salary,
+            job.Experience,
+            job.Location,
+            string.Join(' ', job.Requirements),
+            string.Join(' ', job.Specialties),
+            string.Join(' ', job.Benefits)
+        };
+
+        return NormalizeText(string.Join(' ', parts.Where(x => !string.IsNullOrWhiteSpace(x))));
     }
 }
 
@@ -438,11 +304,13 @@ public sealed record ScrapedJobPosting(
     string Url,
     string Description,
     DateTime? PublishedAt,
-    DateTime? ExpiresAt);
-
-internal sealed record PythonCommand(string FileName, IReadOnlyList<string> PrefixArguments)
-{
-    public string DisplayName => PrefixArguments.Count == 0
-        ? FileName
-        : $"{FileName} {string.Join(' ', PrefixArguments)}";
-}
+    DateTime? ExpiresAt,
+    string? SourceJobId = null,
+    string? Category = null,
+    string? Salary = null,
+    string? Experience = null,
+    string? PostDateText = null,
+    DateTime? SourceUpdatedAt = null,
+    IReadOnlyList<string>? Requirements = null,
+    IReadOnlyList<string>? Specialties = null,
+    IReadOnlyList<string>? Benefits = null);

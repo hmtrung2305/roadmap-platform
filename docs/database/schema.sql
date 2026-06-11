@@ -96,13 +96,22 @@ CREATE TABLE IF NOT EXISTS public.job_posting
     job_posting_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     job_portal_source_id uuid NOT NULL,
     external_id varchar(120) NOT NULL,
+    source_job_id varchar(120),
     title varchar(250) NOT NULL,
     company_name varchar(160),
+    category varchar(100),
     location varchar(160),
+    salary varchar(100),
+    experience varchar(100),
     url text NOT NULL,
     description text NOT NULL,
     published_at timestamptz,
+    post_date_text varchar(80),
+    source_updated_at timestamptz,
     expires_at timestamptz,
+    requirements jsonb NOT NULL DEFAULT '[]'::jsonb,
+    specialties jsonb NOT NULL DEFAULT '[]'::jsonb,
+    benefits jsonb NOT NULL DEFAULT '[]'::jsonb,
     content_hash varchar(64) NOT NULL DEFAULT '',
     lifecycle_status varchar(32) NOT NULL DEFAULT 'active',
     is_active boolean NOT NULL DEFAULT true,
@@ -124,7 +133,16 @@ CREATE TABLE IF NOT EXISTS public.job_posting
         ON DELETE CASCADE,
 
     CONSTRAINT uq_job_posting_source_external
-        UNIQUE (job_portal_source_id, external_id)
+        UNIQUE (job_portal_source_id, external_id),
+
+    CONSTRAINT chk_job_posting_requirements_json_array
+        CHECK (jsonb_typeof(requirements) = 'array'),
+
+    CONSTRAINT chk_job_posting_specialties_json_array
+        CHECK (jsonb_typeof(specialties) = 'array'),
+
+    CONSTRAINT chk_job_posting_benefits_json_array
+        CHECK (jsonb_typeof(benefits) = 'array')
 );
 
 CREATE TABLE IF NOT EXISTS public.job_posting_daily_snapshot
@@ -176,6 +194,15 @@ CREATE INDEX IF NOT EXISTS ix_job_posting_active_last_seen
 
 CREATE INDEX IF NOT EXISTS ix_job_posting_lifecycle_status
     ON public.job_posting(lifecycle_status);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_source_job_id
+    ON public.job_posting(source_job_id);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_category
+    ON public.job_posting(category);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_published_at
+    ON public.job_posting(published_at);
 
 CREATE INDEX IF NOT EXISTS ix_job_posting_daily_snapshot_date
     ON public.job_posting_daily_snapshot(snapshot_date);

@@ -24,9 +24,9 @@ public sealed class MarketPulseSettings
 
     public int RequestTimeoutSeconds { get; set; } = 30;
 
-    public string PythonExecutablePath { get; set; } = "python";
+    public string ActiveJobsApiUrl { get; set; } = "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active";
 
-    public string PythonScriptPath { get; set; } = "Scrapers/topcv_market_pulse.py";
+    public string TodayJobsApiUrl { get; set; } = "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today";
     
     public string[] TrackedKeywords { get; set; } = [];
 
