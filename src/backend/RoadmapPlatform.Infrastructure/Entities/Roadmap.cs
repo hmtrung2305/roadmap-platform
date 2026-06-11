@@ -28,4 +28,6 @@ public partial class Roadmap
     public virtual CareerRole CareerRole { get; set; } = null!;
 
     public virtual User? OwnerUser { get; set; }
+
+    public virtual ICollection<RoadmapVersion> RoadmapVersions { get; set; } = new List<RoadmapVersion>();
 }

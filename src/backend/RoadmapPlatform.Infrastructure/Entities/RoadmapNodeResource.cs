@@ -16,4 +16,6 @@ public partial class RoadmapNodeResource
     public bool IsPrimary { get; set; }
 
     public virtual LearningResource LearningResource { get; set; } = null!;
+
+    public virtual RoadmapNode RoadmapNode { get; set; } = null!;
 }

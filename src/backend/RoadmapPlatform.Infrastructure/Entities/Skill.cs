@@ -9,9 +9,9 @@ public partial class Skill
 
     public string Name { get; set; } = null!;
 
-    public string? Description { get; set; }
-
     public string Slug { get; set; } = null!;
+
+    public string? Description { get; set; }
 
     public string? Category { get; set; }
 
@@ -21,9 +21,13 @@ public partial class Skill
 
     public DateTime UpdatedAt { get; set; }
 
+    public virtual ICollection<CareerRoleSkill> CareerRoleSkills { get; set; } = new List<CareerRoleSkill>();
+
     public virtual ICollection<LearningResourceSkill> LearningResourceSkills { get; set; } = new List<LearningResourceSkill>();
 
     public virtual ICollection<Resource> Resources { get; set; } = new List<Resource>();
 
     public virtual ICollection<RoadmapNodeSkill> RoadmapNodeSkills { get; set; } = new List<RoadmapNodeSkill>();
+
+    public virtual ICollection<SkillGroupItem> SkillGroupItems { get; set; } = new List<SkillGroupItem>();
 }
