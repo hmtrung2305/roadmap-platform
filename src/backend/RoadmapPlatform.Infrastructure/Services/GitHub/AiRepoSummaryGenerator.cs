@@ -98,18 +98,42 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
               "projectType": "one concise project category"
             }
 
-            Rules:
-            - Keep the summary concise and useful for a public e-portfolio.
+            Classification rules:
             - Use the README as the main source of truth.
-            - Use the primary language as a weak hint only.
-            - If a technology is unclear, do not include it.
-            - techStack must contain 2 to 5 concrete technologies only.
-            - detectedSkills must contain 2 to 5 human-readable skills only.
-            - techStack examples: React, ASP.NET Core, PostgreSQL, Entity Framework Core, Vite, Docker.
-            - detectedSkills examples: Frontend development, REST API design, Database modeling, Authentication implementation, Responsive UI design.
-            - Do not put programming languages, frameworks, libraries, databases, tools, or platforms in detectedSkills.
-            - Do not duplicate any item between techStack and detectedSkills.
-            - projectType should be one of: Full Stack Web Application, Frontend Application, Backend API, Machine Learning Project, Data Analysis Project, Library / Package, CLI Tool, Mobile Application, Other.
+            - Use repository metadata as supporting context only.
+            - Do not invent features, technologies, architecture, or skills that are not supported by the README or metadata.
+            - Separate technologies from skills clearly.
+            - techStack should describe what the project was built with.
+            - detectedSkills should describe what the developer demonstrated.
+            - Do not duplicate the same concept across techStack and detectedSkills.
+
+            techStack rules:
+            - Include 2 to 5 concrete technologies.
+            - Use short canonical technology names.
+            - A technology can be a programming language, framework, library, database, runtime, server, platform, cloud service, package, or development tool.
+            - Only include technologies clearly supported by the README or metadata.
+            - Valid examples: React, ASP.NET Core, PostgreSQL, Entity Framework Core, Vite, Docker, JSP, MySQL, Apache Tomcat, Bootstrap.
+            - Invalid examples: Frontend development, Database integration, Authentication, Responsive UI, REST API design.
+
+            detectedSkills rules:
+            - Include 3 to 4 concise skills.
+            - Use reusable developer skill names, not long feature descriptions.
+            - Skills should be human-readable portfolio labels.
+            - Prefer general engineering abilities over overly project-specific wording.
+            - Do not include programming languages, frameworks, libraries, databases, servers, tools, or platforms.
+            - Valid examples: Full-stack development, Frontend development, Backend development, REST API design, Database design, Database integration, Authentication, Authorization, MVC architecture, Responsive UI, Dashboard development.
+            - Invalid examples: React, JSP, MySQL, Apache Tomcat, Bootstrap, Docker, GitHub, JavaScript, C#.
+            - Avoid vague skills such as Programming, Coding, Software engineering, Problem solving, or Web development unless the README does not support anything more specific.
+
+            projectType rules:
+            - Choose exactly one of these values: Full Stack Web Application, Frontend Application, Backend API, Machine Learning Project, Data Analysis Project, 
+              Library / Package, CLI Tool, Mobile Application, Other
+
+            Summary rules:
+            - Write for a public e-portfolio.
+            - Mention what the project does and what engineering value it demonstrates.
+            - Keep the tone professional and factual.
+            - Do not exaggerate the project.
             """;
         }
 
