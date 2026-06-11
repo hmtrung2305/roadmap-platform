@@ -1,8 +1,9 @@
 using System.Text.RegularExpressions;
+using RoadmapPlatform.Application.Models.MarketPulse;
 
-namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
+namespace RoadmapPlatform.Application.Services.MarketPulse;
 
-public sealed class MarketPulseKeywordAnalyzer
+public sealed class JobMarketKeywordAnalyzer
 {
     private static readonly string[] DefaultKeywordSpecs =
     [
@@ -28,7 +29,8 @@ public sealed class MarketPulseKeywordAnalyzer
         "Data Engineering|Spark|Kafka"
     ];
 
-    public IReadOnlyList<KeywordDefinition> BuildDefinitions(IReadOnlyCollection<string> configuredKeywords)
+    public IReadOnlyList<JobMarketKeywordDefinition> BuildDefinitions(
+        IReadOnlyCollection<string> configuredKeywords)
     {
         var specs = configuredKeywords.Count > 0
             ? configuredKeywords
@@ -36,15 +38,16 @@ public sealed class MarketPulseKeywordAnalyzer
 
         return specs
             .Select(ParseSpec)
+            .Where(x => x.Aliases.Count > 0)
             .GroupBy(x => x.Slug)
-            .Select(g => g.First())
+            .Select(x => x.First())
             .OrderBy(x => x.Name)
             .ToList();
     }
 
-    public IReadOnlyList<KeywordFrequency> Analyze(
+    public IReadOnlyList<JobMarketKeywordFrequency> Analyze(
         IReadOnlyCollection<string> documents,
-        IReadOnlyCollection<KeywordDefinition> definitions)
+        IReadOnlyCollection<JobMarketKeywordDefinition> definitions)
     {
         return definitions
             .Select(definition =>
@@ -54,16 +57,18 @@ public sealed class MarketPulseKeywordAnalyzer
 
                 foreach (var document in documents)
                 {
-                    var documentMentions = definition.Aliases.Sum(alias => CountOccurrences(document, alias));
+                    var documentMentions = CountDefinitionMentions(document, definition);
 
-                    if (documentMentions > 0)
+                    if (documentMentions <= 0)
                     {
-                        postingCount++;
-                        mentionCount += documentMentions;
+                        continue;
                     }
+
+                    postingCount++;
+                    mentionCount += documentMentions;
                 }
 
-                return new KeywordFrequency(
+                return new JobMarketKeywordFrequency(
                     definition.Name,
                     definition.Slug,
                     mentionCount,
@@ -75,7 +80,7 @@ public sealed class MarketPulseKeywordAnalyzer
             .ToList();
     }
 
-    private static KeywordDefinition ParseSpec(string spec)
+    private static JobMarketKeywordDefinition ParseSpec(string spec)
     {
         var aliases = spec
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -84,17 +89,43 @@ public sealed class MarketPulseKeywordAnalyzer
             .ToList();
 
         var name = aliases.FirstOrDefault() ?? spec.Trim();
-        return new KeywordDefinition(name, Slugify(name), aliases.Count > 0 ? aliases : [name]);
+        return new JobMarketKeywordDefinition(name, Slugify(name), aliases.Count > 0 ? aliases : [name]);
     }
 
-    private static int CountOccurrences(string input, string keyword)
+    private static int CountDefinitionMentions(
+        string document,
+        JobMarketKeywordDefinition definition)
     {
-        if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(keyword))
+        if (string.IsNullOrWhiteSpace(document))
         {
             return 0;
         }
 
-        var count = 0;
+        var occupiedRanges = new List<(int Start, int End)>();
+
+        foreach (var alias in definition.Aliases.OrderByDescending(x => x.Length))
+        {
+            foreach (var range in FindOccurrences(document, alias))
+            {
+                if (occupiedRanges.Any(existing => RangesOverlap(existing, range)))
+                {
+                    continue;
+                }
+
+                occupiedRanges.Add(range);
+            }
+        }
+
+        return occupiedRanges.Count;
+    }
+
+    private static IEnumerable<(int Start, int End)> FindOccurrences(string input, string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(keyword))
+        {
+            yield break;
+        }
+
         var index = 0;
 
         while (index < input.Length)
@@ -103,22 +134,25 @@ public sealed class MarketPulseKeywordAnalyzer
 
             if (matchIndex < 0)
             {
-                break;
+                yield break;
             }
 
-            var beforeIsBoundary = matchIndex == 0 || IsBoundary(input[matchIndex - 1]);
             var afterIndex = matchIndex + keyword.Length;
+            var beforeIsBoundary = matchIndex == 0 || IsBoundary(input[matchIndex - 1]);
             var afterIsBoundary = afterIndex >= input.Length || IsBoundary(input[afterIndex]);
 
             if (beforeIsBoundary && afterIsBoundary)
             {
-                count++;
+                yield return (matchIndex, afterIndex);
             }
 
-            index = matchIndex + keyword.Length;
+            index = afterIndex;
         }
+    }
 
-        return count;
+    private static bool RangesOverlap((int Start, int End) left, (int Start, int End) right)
+    {
+        return left.Start < right.End && right.Start < left.End;
     }
 
     private static bool IsBoundary(char value)
@@ -132,7 +166,3 @@ public sealed class MarketPulseKeywordAnalyzer
         return slug.Length > 0 ? slug : "skill";
     }
 }
-
-public sealed record KeywordDefinition(string Name, string Slug, IReadOnlyList<string> Aliases);
-
-public sealed record KeywordFrequency(string SkillName, string SkillSlug, int MentionCount, int PostingCount);

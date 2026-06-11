@@ -1,172 +1,150 @@
-# Market Pulse bằng GitHub Actions miễn phí
+# Market Pulse with GitHub Actions
 
-Tài liệu này hướng dẫn chạy Market Pulse crawler bằng GitHub Actions thay vì Render Cron Job.
+This guide runs the scheduled Job Market refresh with GitHub Actions. The workflow uses the .NET `RoadmapPlatform.MarketPulseJob` project and the configured Jobs API source.
 
-## Mục tiêu
+## Goal
 
-Web API trên Render chỉ đọc dữ liệu Market Pulse từ database. Crawler chạy riêng bằng GitHub Actions theo lịch, sau đó ghi dữ liệu vào Supabase/PostgreSQL.
+The Web API can serve live Job Market overview data from Jobs API. A separate scheduled job can also persist a daily snapshot into Supabase/PostgreSQL for lifecycle and historical analysis.
 
-Luồng chạy:
+Flow:
 
 ```text
 GitHub Actions schedule / manual trigger
   -> dotnet run RoadmapPlatform.MarketPulseJob
-  -> Python TopCV scraper
+  -> JobsApi source adapter
   -> Upsert Supabase/PostgreSQL
-  -> Web API đọc dữ liệu đã có sẵn
+  -> Web API reads live Jobs API or DB fallback
 ```
 
-## File chính
+No backend script runtime is required for this workflow.
+
+## Main Files
 
 ```text
 .github/workflows/market-pulse-refresh.yml
 src/backend/RoadmapPlatform.MarketPulseJob/
-src/backend/RoadmapPlatform.Api/Scrapers/topcv_market_pulse.py
+src/backend/RoadmapPlatform.Infrastructure/Services/MarketPulse/JobsApiClient.cs
+src/backend/RoadmapPlatform.Infrastructure/Services/MarketPulse/JobPortalScraper.cs
 ```
 
-## Lịch chạy mặc định
+## Default Schedule
 
-Workflow đang dùng:
+The workflow uses:
 
 ```yaml
 schedule:
-  - cron: "30 19 * * *"
+  - cron: "0 22 * * *"
 ```
 
-GitHub Actions mặc định tính cron theo UTC. `19:30 UTC` tương đương `02:30 sáng Việt Nam`.
+GitHub Actions cron uses UTC. `22:00 UTC` is `05:00` in Vietnam on the next day.
 
-## Bước 1: tắt crawler tự chạy trong Web API
+## Step 1: Keep Web API Scheduler Off
 
-Trong `src/backend/RoadmapPlatform.Api/appsettings.json`, để:
+In `src/backend/RoadmapPlatform.Api/appsettings.json`, keep:
 
 ```json
 "MarketPulse": {
   "Enabled": false,
-  "RunOnStartup": false,
-  "DailyRunTime": "19:30"
+  "RunOnStartup": false
 }
 ```
 
-Lý do: Web API không nên crawl lúc user mở web. Web API chỉ nên trả API đọc dữ liệu.
+Reason: the public Web API should respond to users quickly. The scheduled worker should handle persistence.
 
-## Bước 2: thêm GitHub Secret
+## Step 2: Add GitHub Secret
 
-Vào GitHub repo:
-
-```text
-Settings -> Secrets and variables -> Actions -> New repository secret
-```
-
-Tạo secret:
+Create this repository secret:
 
 ```text
 MARKET_PULSE_DB_CONNECTION_STRING
 ```
 
-Value là connection string Supabase/PostgreSQL, ví dụ:
+Example value:
 
 ```text
 Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true;GSS Encryption Mode=Disable
 ```
 
-Không commit connection string thật vào code.
+Do not commit real connection strings.
 
-## Bước 3: tùy chọn biến cấu hình
+## Step 3: Optional Repository Variables
 
-Bạn có thể tạo Repository Variables ở:
+Create variables under:
 
 ```text
 Settings -> Secrets and variables -> Actions -> Variables
 ```
 
-Các biến tùy chọn:
+Supported variables:
 
 ```text
-MARKET_PULSE_MAX_PAGES=4
-MARKET_PULSE_MAX_POSTINGS=160
-MARKET_PULSE_REQUEST_DELAY_SECONDS=2
-MARKET_PULSE_REQUEST_TIMEOUT_SECONDS=30
+MARKET_PULSE_ACTIVE_JOBS_API_URL
+MARKET_PULSE_TODAY_JOBS_API_URL
+MARKET_PULSE_JOBS_API_BASE_URL
+MARKET_PULSE_MAX_POSTINGS
+MARKET_PULSE_REQUEST_TIMEOUT_SECONDS
 ```
 
-Nếu không tạo variables, workflow sẽ dùng default trong file YAML.
+Defaults are already defined in the workflow and `appsettings.json`.
 
-## Bước 4: chạy thử thủ công
+## Step 4: Manual Test Run
 
-Sau khi push workflow lên branch default, vào:
+After the workflow is on the default branch:
 
 ```text
 GitHub repo -> Actions -> Refresh Market Pulse -> Run workflow
 ```
 
-Manual run mặc định dùng:
+Manual input:
 
 ```text
-max_pages = 2
 max_postings = 80
 ```
 
-Bạn có thể tăng dần khi thấy chạy ổn.
+Increase gradually after the job is stable.
 
-## Bước 5: kiểm tra kết quả
+## Step 5: Check Result
 
-Trong tab Actions, mở run mới nhất. Nếu thành công, log sẽ có dạng:
+Successful logs include:
 
 ```text
 Starting Market Pulse cron refresh...
-Market Pulse result: snapshotDate=..., scraped=..., saved=..., new=..., updated=...
+Market Pulse result: snapshotDate=..., sources=..., scraped=..., saved=..., new=..., updated=...
 Market Pulse cron refresh finished successfully...
 ```
 
-Sau đó mở web Market Pulse hoặc gọi API:
+Then open the app's Market Pulse page or call:
 
 ```http
 GET /api/market-pulse/overview
 ```
 
-## Lưu ý quan trọng
+## Operational Notes
 
-1. Workflow `schedule` chỉ chạy khi file workflow nằm trên default branch, thường là `main`.
-2. GitHub có thể delay scheduled workflow vào lúc tải cao. Không nên đặt đúng phút `00`; file này dùng phút `30`.
-3. Public repo dùng standard GitHub-hosted runners miễn phí. Private repo có quota free minutes theo plan.
-4. Nếu public repo không có activity trong 60 ngày, scheduled workflows có thể bị GitHub tự động disable.
-5. Không dùng workflow này để crawl quá dày, vì có thể tốn GitHub Actions minutes, Supabase quota và làm nguồn dữ liệu chặn crawler.
+- Scheduled workflows only run when the workflow file is on the default branch.
+- GitHub may delay scheduled workflows during high load.
+- Public repositories can use standard GitHub-hosted runners without extra setup.
+- If the ngrok URL changes, update the repository variables instead of editing source code.
+- `MaxPostingsPerSource` caps how many Jobs API postings are persisted by the scheduled refresh.
 
-## Khi nào nên dùng GitHub Actions thay Render Cron?
+## Quick Debug
 
-Nên dùng khi:
-
-- Muốn tiết kiệm chi phí.
-- Job chỉ chạy 1-2 lần/ngày.
-- Không cần worker luôn bật.
-- Crawler có thể hoàn thành trong vài chục phút.
-
-Không nên dùng nếu:
-
-- Cần crawl liên tục theo phút.
-- Job rất lâu hoặc cần queue phức tạp.
-- Cần retry/phân phối worker chuyên nghiệp.
-
-## Debug nhanh
-
-Nếu workflow fail vì thiếu secret:
+Missing secret:
 
 ```text
 Missing MARKET_PULSE_DB_CONNECTION_STRING secret.
 ```
 
-Thêm secret trong GitHub Actions settings.
-
-Nếu fail vì database:
+Database error:
 
 ```text
 NpgsqlException / PostgresException / relation does not exist
 ```
 
-Kiểm tra connection string và đã chạy migration `005-market-pulse.sql` chưa.
+Check the connection string and verify that the Market Pulse migration has been applied.
 
-Nếu scraper trả 0 jobs:
+Jobs API returns zero jobs:
 
-- TopCV có thể chặn request tạm thời.
-- Giảm `MARKET_PULSE_MAX_POSTINGS`.
-- Tăng `MARKET_PULSE_REQUEST_DELAY_SECONDS`.
-- Kiểm tra log Python diagnostics trong workflow.
+- Verify `MARKET_PULSE_ACTIVE_JOBS_API_URL`.
+- Verify the ngrok tunnel is alive.
+- Check workflow logs for HTTP status warnings from `JobsApiClient`.

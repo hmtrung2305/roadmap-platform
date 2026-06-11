@@ -11,11 +11,19 @@ public partial class JobPosting
 
     public string ExternalId { get; set; } = null!;
 
+    public string? SourceJobId { get; set; }
+
     public string Title { get; set; } = null!;
 
     public string? CompanyName { get; set; }
 
+    public string? Category { get; set; }
+
     public string? Location { get; set; }
+
+    public string? Salary { get; set; }
+
+    public string? Experience { get; set; }
 
     public string Url { get; set; } = null!;
 
@@ -23,7 +31,17 @@ public partial class JobPosting
 
     public DateTime? PublishedAt { get; set; }
 
+    public string? PostDateText { get; set; }
+
+    public DateTime? SourceUpdatedAt { get; set; }
+
     public DateTime? ExpiresAt { get; set; }
+
+    public string Requirements { get; set; } = null!;
+
+    public string Specialties { get; set; } = null!;
+
+    public string Benefits { get; set; } = null!;
 
     public string ContentHash { get; set; } = null!;
 

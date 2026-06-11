@@ -350,7 +350,13 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.LifecycleStatus, "ix_job_posting_lifecycle_status");
 
+            entity.HasIndex(e => e.Category, "ix_job_posting_category");
+
+            entity.HasIndex(e => e.PublishedAt, "ix_job_posting_published_at");
+
             entity.HasIndex(e => e.ScrapedAt, "ix_job_posting_scraped_at");
+
+            entity.HasIndex(e => e.SourceJobId, "ix_job_posting_source_job_id");
 
             entity.HasIndex(e => e.Title, "ix_job_posting_title");
 
@@ -363,6 +369,13 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CompanyName)
                 .HasMaxLength(160)
                 .HasColumnName("company_name");
+            entity.Property(e => e.Category)
+                .HasMaxLength(100)
+                .HasColumnName("category");
+            entity.Property(e => e.Benefits)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("benefits");
             entity.Property(e => e.ContentHash)
                 .HasMaxLength(64)
                 .HasDefaultValueSql("''::character varying")
@@ -372,6 +385,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.Experience)
+                .HasMaxLength(100)
+                .HasColumnName("experience");
             entity.Property(e => e.ExternalId)
                 .HasMaxLength(120)
                 .HasColumnName("external_id");
@@ -398,12 +414,30 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("location");
             entity.Property(e => e.MissingScanCount).HasColumnName("missing_scan_count");
             entity.Property(e => e.PublishedAt).HasColumnName("published_at");
+            entity.Property(e => e.PostDateText)
+                .HasMaxLength(80)
+                .HasColumnName("post_date_text");
+            entity.Property(e => e.Requirements)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("requirements");
+            entity.Property(e => e.Salary)
+                .HasMaxLength(100)
+                .HasColumnName("salary");
             entity.Property(e => e.ScrapedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("scraped_at");
             entity.Property(e => e.SeenCount)
                 .HasDefaultValue(1)
                 .HasColumnName("seen_count");
+            entity.Property(e => e.SourceJobId)
+                .HasMaxLength(120)
+                .HasColumnName("source_job_id");
+            entity.Property(e => e.SourceUpdatedAt).HasColumnName("source_updated_at");
+            entity.Property(e => e.Specialties)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("specialties");
             entity.Property(e => e.Title)
                 .HasMaxLength(250)
                 .HasColumnName("title");

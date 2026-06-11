@@ -5,12 +5,8 @@ on:
     - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
-      max_pages:
-        description: "Max TopCV list pages to crawl for this manual run"
-        required: false
-        default: "2"
       max_postings:
-        description: "Max job postings to save for this manual run"
+        description: "Max Jobs API postings to persist for this manual run"
         required: false
         default: "80"
 
@@ -32,10 +28,14 @@ jobs:
       ConnectionStrings__DefaultConnection: ${{ secrets.MARKET_PULSE_DB_CONNECTION_STRING }}
       MarketPulse__Enabled: "true"
       MarketPulse__RunOnStartup: "false"
-      MarketPulse__PythonExecutablePath: python3
-      MarketPulse__MaxPagesPerSource: ${{ github.event.inputs.max_pages || vars.MARKET_PULSE_MAX_PAGES || '4' }}
+      MarketPulse__ActiveJobsApiUrl: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active' }}
+      MarketPulse__TodayJobsApiUrl: ${{ vars.MARKET_PULSE_TODAY_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today' }}
+      MarketPulse__Sources__0__Name: "Jobs API"
+      MarketPulse__Sources__0__Kind: "JobsApi"
+      MarketPulse__Sources__0__BaseUrl: ${{ vars.MARKET_PULSE_JOBS_API_BASE_URL || 'https://nickname-sadness-capitol.ngrok-free.dev' }}
+      MarketPulse__Sources__0__SearchUrlTemplate: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active' }}
+      MarketPulse__Sources__0__Enabled: "true"
       MarketPulse__MaxPostingsPerSource: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_MAX_POSTINGS || '160' }}
-      MarketPulse__RequestDelaySeconds: ${{ vars.MARKET_PULSE_REQUEST_DELAY_SECONDS || '2' }}
       MarketPulse__RequestTimeoutSeconds: ${{ vars.MARKET_PULSE_REQUEST_TIMEOUT_SECONDS || '30' }}
 
     steps:
@@ -46,11 +46,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
 
       - name: Verify required secrets
         shell: bash
