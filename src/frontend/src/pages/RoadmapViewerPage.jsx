@@ -322,9 +322,9 @@ export default function RoadmapViewerPage() {
               <button
                 type="button"
                 onClick={() => navigate("/roadmaps")}
-                className="shrink-0 rounded-lg border border-transparent px-2 py-1 !text-[14px] font-extrabold tracking-[0.12em] text-[#1F6F5F] transition-colors hover:border-[#B9D8CC] hover:bg-[#EAF8F1]"
+                className="shrink-0 border border-transparent !text-[14px] transition transition-color px-2 !font-semibold cursor-pointer tracking-[0.12em] text-[#1F6F5F] hover:text-[#03221c]"
               >
-                ← Career Role Selection
+                ← All Roadmaps
               </button>
 
               <div className="min-w-0 border-l border-[#B9D8CC] pl-3">
