@@ -62,11 +62,27 @@ function getUniqueTags(repository, insight) {
   return Array.from(new Set(source.map((tag) => String(tag).trim()).filter(Boolean)));
 }
 
-function getVisibleTags(tags) {
-  const visible = tags.slice(0, 2);
-  const extraCount = Math.max(tags.length - visible.length, 0);
-  return { visible, extraCount };
+function getVisibleTags(tags, limit = 4) {
+  const visible = tags.slice(0, limit);
+  const hidden = tags.slice(limit);
+
+  return {
+    visible,
+    hidden,
+    extraCount: hidden.length,
+  };
 }
+
+function ExtraTagCount({ count }) {
+  if (!count) return null;
+
+  return (
+    <span className="rounded-full bg-white px-2 py-0.5 !text-[12px] font-bold text-[#667A73] ring-1 ring-[#DCEBE5]">
+      +{count}
+    </span>
+  );
+}
+
 
 export default function EditPortfolioRepositoryCard({
   repository,
@@ -86,10 +102,10 @@ export default function EditPortfolioRepositoryCard({
   const insightStatus = getInsightStatus(insight);
   const insightButtonLabel = hasCompletedInsight ? "Regenerate" : insightStatus.label;
   const tags = getUniqueTags(repository, insight);
-  const { visible: visibleTags, extraCount } = getVisibleTags(tags);
+  const { visible: visibleTags, hidden: hiddenTags, extraCount } = getVisibleTags(tags, 4);
 
   return (
-    <article className={`flex h-full min-h-[158px] flex-col rounded-lg border p-3.5 shadow-[0_10px_24px_rgba(31,111,95,0.06)] transition-colors hover:border-[#2FA084] ${isSelected ? "border-[#2FA084] bg-[#6FCF97]/12" : "border-[#E2D2B8] bg-[#FFF8EF] hover:bg-white"}`}>
+    <article className={`flex min-h-[132px] flex-col rounded-lg border p-3.5 shadow-[0_10px_24px_rgba(31,111,95,0.06)] transition-colors hover:border-[#2FA084] ${isSelected ? "border-[#2FA084] bg-[#6FCF97]/12" : "border-[#E2D2B8] bg-[#FFF8EF] hover:bg-white"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate !text-[17px] font-bold leading-5 text-[#18332D]">{repoName}</p>
@@ -134,15 +150,11 @@ export default function EditPortfolioRepositoryCard({
               {tag}
             </span>
           ))}
-          {extraCount > 0 && (
-            <span className="rounded-full bg-white px-2 py-0.5 !text-[12px] font-bold text-[#667A73] ring-1 ring-[#DCEBE5]" title={tags.slice(2).join(", ")}>
-              +{extraCount}
-            </span>
-          )}
+          {extraCount > 0 && <ExtraTagCount count={extraCount} />}
         </div>
       )}
 
-      <div className="mt-2.5 border-t border-[#E2D2B8] pt-2.5">
+      <div className={["border-t border-[#E2D2B8] pt-2.5", tags.length > 0 ? "mt-2.5" : "mt-3"].join(" ")}>
         <div className="flex flex-wrap items-center gap-2 !text-[13px] font-semibold text-[#667A73]">
           <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5"><Star size={13} /> {stars}</span>
           <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5"><GitFork size={13} /> {forks}</span>

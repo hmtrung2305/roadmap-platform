@@ -97,7 +97,7 @@ export default function EditPortfolioRepositoryManager({
         </div>
       ) : (
         <div className="portfolio-repo-list-scroll mt-3 min-h-0 flex-1 overflow-y-auto pr-2">
-          <div className="grid auto-rows-fr items-stretch gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             {repositories.map((repo) => {
               const repositoryId = getRepositoryId(repo);
               return (
