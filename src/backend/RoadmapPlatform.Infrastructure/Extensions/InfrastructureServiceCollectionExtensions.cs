@@ -127,6 +127,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<ILearningModuleRagIndexingService, LearningModuleRagIndexingService>();
             services.AddScoped<ICounselorLearningModuleService, CounselorLearningModuleService>();
             services.AddScoped<ILearningModuleLessonService, LearningModuleLessonService>();
+            services.AddScoped<ILearningModuleQuizService, LearningModuleQuizService>();
 
             // Cache memory
             services.AddMemoryCache();
