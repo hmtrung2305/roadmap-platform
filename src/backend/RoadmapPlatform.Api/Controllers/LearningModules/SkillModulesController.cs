@@ -105,6 +105,26 @@ public sealed class SkillModulesController(
         return Ok(result);
     }
 
+
+    [HttpGet("{moduleId:guid}/quiz/attempts")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<QuizAttemptSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetQuizAttempts(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+
+        var result = await moduleService.GetQuizAttemptsAsync(
+            userId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPost("{moduleId:guid}/quiz/attempts")]
     [Authorize]
     [ProducesResponseType(typeof(StartQuizAttemptResultDto), StatusCodes.Status200OK)]

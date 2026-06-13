@@ -263,6 +263,52 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         };
     }
 
+
+    public async Task<IReadOnlyList<QuizAttemptSummaryDto>> GetQuizAttemptsAsync(
+        Guid userId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureEnrollmentExistsAsync(
+            userId,
+            skillModuleId,
+            cancellationToken);
+
+        var quiz = await _context.SkillModuleQuizzes
+            .AsNoTracking()
+            .Include(item => item.SkillModule)
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleId == skillModuleId
+                && item.SkillModule.Status == LearningModuleStatusValues.Published,
+                cancellationToken);
+
+        if (quiz == null)
+        {
+            throw new NotFoundException("Quiz was not found.");
+        }
+
+        return await _context.SkillModuleQuizAttempts
+            .AsNoTracking()
+            .Where(item =>
+                item.SkillModuleQuizId == quiz.SkillModuleQuizId
+                && item.UserId == userId)
+            .OrderByDescending(item => item.AttemptNo)
+            .Select(item => new QuizAttemptSummaryDto
+            {
+                SkillModuleQuizAttemptId = item.SkillModuleQuizAttemptId,
+                SkillModuleQuizId = item.SkillModuleQuizId,
+                AttemptNo = item.AttemptNo,
+                Status = item.Status,
+                StartedAt = item.StartedAt,
+                SubmittedAt = item.SubmittedAt,
+                ScorePercent = item.ScorePercent,
+                EarnedPoints = item.EarnedPoints,
+                TotalPoints = item.TotalPoints,
+                Passed = item.Passed
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<StartQuizAttemptResultDto> StartQuizAttemptAsync(
         Guid userId,
         Guid skillModuleId,
@@ -767,19 +813,16 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                     var selectedOption = question.SkillModuleQuizOptions
                         .First(option => option.SkillModuleQuizOptionId == answer.SelectedOptionId);
 
-                    var correctOption = question.SkillModuleQuizOptions
-                        .FirstOrDefault(option => option.IsCorrect);
-
                     return new QuizAnswerReviewDto
                     {
                         SkillModuleQuizAnswerId = answer.SkillModuleQuizAnswerId,
                         SkillModuleQuizQuestionId = question.SkillModuleQuizQuestionId,
                         QuestionText = question.QuestionText,
-                        QuestionExplanation = question.Explanation,
+                        QuestionExplanation = null,
                         SelectedOptionId = selectedOption.SkillModuleQuizOptionId,
                         SelectedOptionText = selectedOption.OptionText,
-                        CorrectOptionId = correctOption?.SkillModuleQuizOptionId,
-                        CorrectOptionText = correctOption?.OptionText,
+                        CorrectOptionId = null,
+                        CorrectOptionText = null,
                         IsCorrect = answer.IsCorrect,
                         EarnedPoints = answer.EarnedPoints,
                         QuestionPoints = question.Points

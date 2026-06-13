@@ -31,6 +31,11 @@ public interface ILearnerLearningModuleService
         UpdateLessonProgressRequestDto request,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<QuizAttemptSummaryDto>> GetQuizAttemptsAsync(
+        Guid userId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken);
+
     Task<StartQuizAttemptResultDto> StartQuizAttemptAsync(
         Guid userId,
         Guid skillModuleId,
