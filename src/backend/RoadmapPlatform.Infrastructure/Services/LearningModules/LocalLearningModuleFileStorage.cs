@@ -39,10 +39,22 @@ public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
             Directory.CreateDirectory(directory);
         }
 
-        await using var output = File.Create(fullPath);
-        await content.CopyToAsync(output, cancellationToken);
+        if (content.CanSeek)
+        {
+            content.Position = 0;
+        }
 
-        output.Position = 0;
+        await using (var output = new FileStream(
+            fullPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.Read,
+            bufferSize: 81920,
+            useAsync: true))
+        {
+            await content.CopyToAsync(output, cancellationToken);
+            await output.FlushAsync(cancellationToken);
+        }
 
         var hash = await CalculateSha256Async(fullPath, cancellationToken);
         var length = new FileInfo(fullPath).Length;
@@ -66,7 +78,14 @@ public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
             throw new FileNotFoundException("Learning module file was not found.", fullPath);
         }
 
-        Stream stream = File.OpenRead(fullPath);
+        Stream stream = new FileStream(
+            fullPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete,
+            bufferSize: 81920,
+            useAsync: true);
+
         return Task.FromResult(stream);
     }
 
@@ -118,7 +137,14 @@ public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
         string fullPath,
         CancellationToken cancellationToken)
     {
-        await using var stream = File.OpenRead(fullPath);
+        await using var stream = new FileStream(
+            fullPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete,
+            bufferSize: 81920,
+            useAsync: true);
+
         var hashBytes = await SHA256.HashDataAsync(stream, cancellationToken);
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
