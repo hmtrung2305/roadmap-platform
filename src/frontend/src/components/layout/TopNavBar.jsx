@@ -89,7 +89,7 @@ export default function TopNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#B9D8CC] bg-white/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-transparent shadow-sm bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex h-15 max-w-7xl items-center justify-between gap-5 px-4 py-1 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-8">
           <button

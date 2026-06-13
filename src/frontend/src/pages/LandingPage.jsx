@@ -252,7 +252,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="landing-page min-h-screen bg-[#F7F1E8] text-[#18332D]">
       <style>{`
         html { scroll-behavior: smooth; }
 
@@ -294,11 +294,11 @@ export default function LandingPage() {
         .landing-dashboard-shell {
           position: relative;
           animation: landingFloat 6.5s ease-in-out infinite;
-          border-color: rgba(147, 197, 253, 0.75) !important;
+          border-color: rgba(185, 216, 204, 0.85) !important;
           box-shadow:
-            0 0 0 1px rgba(147, 197, 253, 0.7),
-            0 0 28px rgba(96, 165, 250, 0.55),
-            0 28px 90px rgba(37, 99, 235, 0.48),
+            0 0 0 1px rgba(185, 216, 204, 0.85),
+            0 0 28px rgba(47, 160, 132, 0.22),
+            0 28px 90px rgba(47, 160, 132, 0.18),
             0 0 90px rgba(47, 160, 132, 0.2);
         }
 
@@ -308,7 +308,7 @@ export default function LandingPage() {
           inset: -2px;
           z-index: 0;
           border-radius: 1.6rem;
-          background: linear-gradient(110deg, rgba(96,165,250,0), rgba(96,165,250,0.85), rgba(47,160,132,0.55), rgba(96,165,250,0));
+          background: linear-gradient(110deg, rgba(47,160,132,0), rgba(47,160,132,0.45), rgba(47,160,132,0.55), rgba(47,160,132,0));
           background-size: 240% 100%;
           animation: landingShine 3.8s linear infinite;
           pointer-events: none;
@@ -318,10 +318,90 @@ export default function LandingPage() {
           position: relative;
           z-index: 1;
         }
+
+
+        .landing-section {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          background:
+            radial-gradient(circle at 14% 4%, rgba(111,207,151,0.13), transparent 34%),
+            radial-gradient(circle at 86% 8%, rgba(185,216,204,0.16), transparent 32%),
+            linear-gradient(180deg, rgba(247,241,232,0.98) 0%, rgba(255,255,255,0.48) 48%, rgba(247,241,232,0.98) 100%);
+        }
+
+        .landing-section::before,
+        .landing-section::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          z-index: -1;
+          pointer-events: none;
+        }
+
+        .landing-section::before {
+          top: 0;
+          height: 220px;
+          background: linear-gradient(180deg, #F7F1E8 0%, rgba(247,241,232,0.88) 36%, rgba(247,241,232,0.42) 68%, rgba(247,241,232,0) 100%);
+        }
+
+        .landing-section::after {
+          bottom: 0;
+          height: 240px;
+          background: linear-gradient(180deg, rgba(247,241,232,0) 0%, rgba(247,241,232,0.42) 28%, rgba(247,241,232,0.86) 70%, #F7F1E8 100%);
+        }
+
+        .landing-card-soft {
+          border-color: rgba(185, 216, 204, 0.88) !important;
+          background: rgba(255, 255, 255, 0.82) !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+          backdrop-filter: blur(18px);
+        }
+
+        .landing-main :where(.landing-card-soft, .landing-hover-soft, article.rounded-3xl.border, div.rounded-3xl.border, div.rounded-2xl.border) {
+          transform: translate3d(0, 0, 0);
+          transition:
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            background-color 260ms cubic-bezier(0.22, 1, 0.36, 1);
+          will-change: transform;
+        }
+
+        .landing-main :where(.landing-card-soft, .landing-hover-soft, article.rounded-3xl.border, div.rounded-3xl.border, div.rounded-2xl.border):hover {
+          transform: translate3d(0, -2px, 0) !important;
+          border-color: rgba(185, 216, 204, 1) !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07) !important;
+        }
+
+        .landing-main :where(.landing-dashboard-shell):hover {
+          transform: translate3d(0, -2px, 0) !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .landing-main :where(.landing-card-soft, .landing-hover-soft, article.rounded-3xl.border, div.rounded-3xl.border, div.rounded-2xl.border),
+          .landing-main :where(.landing-card-soft, .landing-hover-soft, article.rounded-3xl.border, div.rounded-3xl.border, div.rounded-2xl.border):hover {
+            transform: none !important;
+            transition: none !important;
+          }
+        }
+
+        .landing-overlap-glow {
+          position: absolute;
+          inset-inline: 6%;
+          top: -110px;
+          height: 220px;
+          border-radius: 999px;
+          background: radial-gradient(circle, rgba(111,207,151,0.14), rgba(185,216,204,0.08) 42%, rgba(247,241,232,0) 72%);
+          filter: blur(6px);
+          pointer-events: none;
+          z-index: -1;
+        }
       `}</style>
 
       <header
-        className={`fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#05070d]/90 backdrop-blur-xl transition-transform duration-300 ${
+        className={`fixed inset-x-0 top-0 z-50 border-transparent shadow-sm bg-[#F7F1E8]/92 backdrop-blur-xl transition-transform duration-300 ${
           isNavHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
@@ -329,24 +409,24 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => scrollToSection("top")}
-            className="flex items-center gap-3 text-white"
+            className="flex items-center gap-3 text-[#18332D]"
             aria-label="TechMap home"
           >
             <span className="grid size-10 place-items-center rounded-2xl bg-[#2FA084] text-white shadow-lg shadow-emerald-950/30 ring-1 ring-[#6FCF97]/40">
               <CgListTree className="text-xl" aria-hidden="true" />
             </span>
-            <span className="hidden text-lg font-black tracking-tight text-white sm:inline">
+            <span className="hidden text-lg font-black tracking-tight text-[#18332D] sm:inline">
               TechMap
             </span>
           </button>
 
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-300 md:flex">
+          <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 md:flex">
             {navItems.map((item) => (
               <button
                 key={item.target}
                 type="button"
                 onClick={() => scrollToSection(item.target)}
-                className="transition hover:text-white"
+                className="transition hover:text-[#18332D]"
               >
                 {item.label}
               </button>
@@ -357,7 +437,7 @@ export default function LandingPage() {
             {!user && (
               <Link
                 to="/login"
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-200 no-underline transition hover:bg-white/10"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 no-underline transition hover:bg-white/70"
               >
                 Sign in
               </Link>
@@ -374,7 +454,7 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => setIsMenuOpen((current) => !current)}
-            className="grid size-10 place-items-center rounded-xl border border-white/15 bg-white/5 text-white md:hidden"
+            className="grid size-10 place-items-center rounded-xl border border-[#B9D8CC] bg-white/70 text-[#18332D] md:hidden"
             aria-expanded={isMenuOpen}
             aria-label="Toggle navigation"
           >
@@ -383,8 +463,8 @@ export default function LandingPage() {
         </div>
 
         {isMenuOpen && (
-          <div className="border-t border-white/10 bg-[#05070d] px-5 py-4 md:hidden">
-            <div className="flex flex-col gap-3 text-sm font-semibold text-slate-200">
+          <div className="border-t border-[#B9D8CC] bg-[#F7F1E8] px-5 py-4 md:hidden">
+            <div className="flex flex-col gap-3 text-sm font-semibold text-slate-700">
               {navItems.map((item) => (
                 <button
                   key={item.target}
@@ -413,27 +493,27 @@ export default function LandingPage() {
         )}
       </header>
 
-      <main id="top" className="overflow-hidden">
-        <section className="relative isolate overflow-hidden pt-16 text-white">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_15%,rgba(37,99,235,0.48),transparent_32%),radial-gradient(circle_at_78%_18%,rgba(47,160,132,0.28),transparent_28%),linear-gradient(180deg,#05070d_0%,#0f172a_62%,#ffffff_62%,#ffffff_100%)]" />
+      <main id="top" className="landing-main relative overflow-hidden bg-[#F7F1E8]">
+        <section className="relative isolate overflow-hidden pt-16 text-[#18332D]">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_15%,rgba(111,207,151,0.32),transparent_30%),radial-gradient(circle_at_78%_18%,rgba(185,216,204,0.30),transparent_30%),linear-gradient(180deg,#F7F1E8_0%,#F7F1E8_48%,rgba(255,255,255,0.72)_76%,#F7F1E8_100%)]" />
           <img
             src="/7372499.png"
             alt=""
             className="landing-soft-float pointer-events-none absolute right-[-140px] top-28 -z-10 w-[460px] opacity-20 sm:w-[560px] lg:right-[-60px]"
           />
 
-          <div className="mx-auto max-w-7xl px-5 pb-20 pt-20 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
+          <div className="mx-auto max-w-7xl px-5 pb-16 pt-16 sm:px-6 lg:px-8 lg:pb-[5.5rem] lg:pt-20">
             <div className="landing-reveal mx-auto max-w-4xl text-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-white/10 px-4 py-2 text-sm font-semibold text-blue-100 shadow-sm shadow-blue-950/30 backdrop-blur">
-                <Sparkles size={16} className="text-violet-300" aria-hidden="true" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#B9D8CC] bg-white/80 px-4 py-2 text-sm font-semibold text-[#1F6F5F] shadow-sm shadow-blue-950/30 backdrop-blur">
+                <Sparkles size={16} className="text-[#2FA084]" aria-hidden="true" />
                 AI-powered career roadmap platform
               </div>
 
-              <h1 className="mt-7 text-5xl font-black leading-[1.05] text-white sm:text-6xl lg:text-7xl">
+              <h1 className="mt-7 text-5xl font-black leading-[1.05] text-[#18332D] sm:text-6xl lg:text-7xl">
                 Plan smarter careers with AI, market data, and portfolio proof.
               </h1>
 
-              <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-300">
+              <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600">
                 TechMap helps students choose a target role, understand skill gaps, follow a dynamic roadmap, learn with an AI mentor, and publish employer-ready evidence from GitHub.
               </p>
 
@@ -448,25 +528,25 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => scrollToSection("mentor")}
-                  className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white px-5 py-3 text-sm font-bold text-[#05070d] transition hover:-translate-y-0.5 hover:bg-slate-100"
+                  className="inline-flex items-center justify-center rounded-xl border border-[#B9D8CC] bg-white px-5 py-3 text-sm font-bold text-[#18332D] transition hover:-translate-y-0.5 hover:bg-slate-100"
                 >
                   Explore capabilities
                 </button>
               </div>
             </div>
 
-            <div className="relative mx-auto mt-14 max-w-6xl">
-              <div className="landing-soft-float pointer-events-none absolute -left-3 top-7 z-20 hidden rounded-2xl border border-blue-300/40 bg-white/95 px-4 py-3 text-slate-900 shadow-2xl shadow-blue-950/30 backdrop-blur md:block">
+            <div className="relative mx-auto mt-10 max-w-6xl">
+              <div className="landing-soft-float pointer-events-none absolute -left-3 top-7 z-20 hidden rounded-2xl border border-[#B9D8CC] bg-white/95 px-4 py-3 text-slate-900 shadow-2xl shadow-blue-950/30 backdrop-blur md:block">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#1F6F5F]">AI insight</p>
                 <p className="mt-1 text-sm font-bold">Docker should be next</p>
               </div>
 
-              <div className="landing-soft-float pointer-events-none absolute -right-4 top-28 z-20 hidden rounded-2xl border border-blue-300/40 bg-white/95 px-4 py-3 text-slate-900 shadow-2xl shadow-blue-950/30 backdrop-blur lg:block">
+              <div className="landing-soft-float pointer-events-none absolute -right-4 top-28 z-20 hidden rounded-2xl border border-[#B9D8CC] bg-white/95 px-4 py-3 text-slate-900 shadow-2xl shadow-blue-950/30 backdrop-blur lg:block">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Market pulse</p>
                 <p className="mt-1 text-sm font-bold">React demand +18%</p>
               </div>
 
-              <div className="landing-reveal landing-dashboard-shell overflow-hidden rounded-[1.5rem] border border-blue-300/40 bg-[#0b1220]">
+              <div className="landing-reveal landing-dashboard-shell overflow-hidden rounded-[1.5rem] border border-[#B9D8CC] bg-white/40 p-2 backdrop-blur-xl">
                 <div className="flex items-center justify-between border-b border-white/10 bg-[#05070d]/60 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="size-3 rounded-full bg-red-400" />
@@ -594,7 +674,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="mx-auto mt-6 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="mx-auto mt-5 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
                 <StatCard value={5} label="career modules" />
                 <StatCard value={2} suffix="+" label="resources per node" />
                 <StatCard value={24} suffix="h" label="market refresh" />
@@ -603,7 +683,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="mentor" className="scroll-mt-24 bg-white py-24 text-slate-950">
+        <section id="mentor" className="landing-section scroll-mt-24 py-16 text-[#18332D] lg:py-20">
+          <div className="landing-overlap-glow" />
           <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <div className="landing-reveal grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-end">
               <div>
@@ -617,7 +698,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-12 grid gap-6 lg:grid-cols-[340px_1fr]">
+            <div className="mt-9 grid gap-6 lg:grid-cols-[340px_1fr]">
               <div className="landing-reveal space-y-3">
                 {capabilityTabs.map(({ id, label, icon: Icon }) => {
                   const isActive = id === activeCapability.id;
@@ -629,8 +710,8 @@ export default function LandingPage() {
                       onClick={() => setActiveCapabilityId(id)}
                       className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition duration-300 hover:-translate-y-0.5 ${
                         isActive
-                          ? "border-blue-300 bg-[#6FCF97]/15 shadow-lg shadow-blue-100"
-                          : "border-slate-200 bg-white hover:border-[#B9D8CC] hover:shadow-sm"
+                          ? "border-[#B9D8CC] bg-[#6FCF97]/15 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-[#B9D8CC] hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
                       }`}
                     >
                       <span className={`grid size-11 place-items-center rounded-xl ${isActive ? "bg-[#2FA084] text-white" : "bg-slate-100 text-slate-700"}`}>
@@ -642,7 +723,7 @@ export default function LandingPage() {
                 })}
               </div>
 
-              <div key={activeCapability.id} className="landing-reveal rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70">
+              <div key={activeCapability.id} className="landing-reveal landing-card-soft rounded-3xl border p-6">
                 <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
                   <div>
                     <p className="text-sm font-black uppercase text-[#1F6F5F]">{activeCapability.label}</p>
@@ -662,7 +743,7 @@ export default function LandingPage() {
                   <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-inner shadow-blue-950/30">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-blue-200">{activeCapability.previewTitle}</p>
-                      <Sparkles size={18} className="text-violet-300" />
+                      <Sparkles size={18} className="text-[#2FA084]" />
                     </div>
                     <p className="mt-5 text-sm leading-7 text-slate-200">{activeCapability.preview}</p>
                     <div className="mt-6 rounded-xl bg-white/5 p-4 font-mono text-xs leading-6 text-blue-200">
@@ -675,9 +756,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="roadmap" className="scroll-mt-24 bg-slate-100 py-24 text-slate-950">
+        <section id="roadmap" className="landing-section scroll-mt-24 py-16 text-[#18332D] lg:py-20">
+          <div className="landing-overlap-glow" />
           <div className="mx-auto grid max-w-7xl gap-8 px-5 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:px-8">
-            <div className="landing-reveal rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-100/70">
+            <div className="landing-reveal landing-card-soft rounded-3xl border p-6 transition hover:-translate-y-1">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-black uppercase text-[#1F6F5F]">Dynamic Roadmap</p>
@@ -694,7 +776,7 @@ export default function LandingPage() {
                   ["CI/CD Pipeline", "GitHub Actions + Tutorial", "High priority"],
                   ["Cloud Deployment", "AWS guide + project lab", "Next"],
                 ].map(([title, resources, priority]) => (
-                  <div key={title} className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#B9D8CC] hover:shadow-sm">
+                  <div key={title} className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#B9D8CC] hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-semibold text-slate-900">{title}</h3>
                       <span className="rounded-full bg-[#6FCF97]/15 px-2.5 py-1 text-xs font-bold text-[#1F6F5F]">{priority}</span>
@@ -705,7 +787,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div id="portfolio" className="landing-reveal scroll-mt-24 rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-100/70">
+            <div id="portfolio" className="landing-reveal landing-card-soft scroll-mt-24 rounded-3xl border transition hover:-translate-y-1">
               <div className="h-44 rounded-t-3xl bg-[linear-gradient(180deg,#1f7567_0%,#1f7567_33%,#33a388_33%,#33a388_66%,#6fcf97_66%,#6fcf97_100%)]" />
               <div className="px-6 pb-6">
                 <div className="-mt-14 flex items-end justify-between gap-4">
@@ -739,7 +821,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="market" className="scroll-mt-24 bg-white py-24 text-slate-950">
+        <section id="market" className="landing-section scroll-mt-24 py-16 text-[#18332D] lg:py-20">
+          <div className="landing-overlap-glow" />
           <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <div className="landing-reveal mx-auto max-w-3xl text-center">
               <p className="text-sm font-black uppercase text-[#1F6F5F]">Market Pulse</p>
@@ -749,9 +832,9 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-12 grid gap-4 lg:grid-cols-3">
+            <div className="mt-9 grid gap-4 lg:grid-cols-3">
               {workflowCards.map(({ icon: Icon, eyebrow, title, text }) => (
-                <article key={title} className="landing-reveal rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-100/70">
+                <article key={title} className="landing-reveal landing-card-soft rounded-3xl border p-6 transition hover:-translate-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-black uppercase text-slate-500">{eyebrow}</span>
                     <Icon size={24} className="text-[#1F6F5F]" />
@@ -764,12 +847,13 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-[#05070d] py-24 text-white">
+        <section className="landing-section py-16 text-[#18332D] lg:py-20">
+          <div className="landing-overlap-glow" />
           <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-8">
             <div className="landing-reveal">
-              <p className="text-sm font-black uppercase text-blue-300">Secure user workspace</p>
-              <h2 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">Personalized career data stays persistent.</h2>
-              <p className="mt-5 text-base leading-7 text-slate-300">
+              <p className="text-sm font-black uppercase text-[#1F6F5F]">Secure user workspace</p>
+              <h2 className="mt-3 text-4xl font-black leading-tight text-[#18332D] sm:text-5xl">Personalized career data stays persistent.</h2>
+              <p className="mt-5 text-base leading-7 text-slate-600">
                 TechMap supports authenticated accounts and stores the long-running data students care about: chat history, assessments, roadmaps, progress, and portfolio state.
               </p>
               <Link
@@ -781,10 +865,10 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="landing-reveal rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-blue-950/30">
+            <div className="landing-reveal landing-card-soft rounded-3xl border p-5">
               <div className="grid gap-3">
                 {trustItems.map((item) => (
-                  <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-semibold leading-6 text-slate-200">
+                  <div key={item} className="flex items-start gap-3 rounded-2xl border border-[#B9D8CC] bg-white p-4 text-sm font-semibold leading-6 text-slate-700">
                     <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-blue-300" />
                     {item}
                   </div>
@@ -794,7 +878,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-white px-5 py-20 text-center text-slate-950 sm:px-6 lg:px-8">
+        <section className="landing-section px-5 py-14 text-center lg:py-16 text-[#18332D] sm:px-6 lg:px-8">
+          <div className="landing-overlap-glow" />
           <div className="landing-reveal mx-auto max-w-3xl">
             <Boxes size={36} className="mx-auto text-[#1F6F5F]" />
             <h2 className="mt-5 text-4xl font-black leading-tight">Build a career platform students can actually use.</h2>
