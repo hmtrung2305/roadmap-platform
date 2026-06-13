@@ -13,6 +13,7 @@ using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Security;
+using RoadmapPlatform.Application.Interfaces.Skills;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using RoadmapPlatform.Application.Interfaces.Users;
 using RoadmapPlatform.Infrastructure.Clients;
@@ -31,6 +32,7 @@ using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 using RoadmapPlatform.Infrastructure.Services.Security;
+using RoadmapPlatform.Infrastructure.Services.Skills;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
 using RoadmapPlatform.Infrastructure.Services.Users;
 
@@ -113,6 +115,9 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                 client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("RoadmapPlatform-MarketPulse/1.0");
             });
+
+            // Skill Services
+            services.AddScoped<ISkillLookupService, SkillLookupService>();
 
             // Roadmap Services
             services.AddScoped<RoadmapDetailBuilder>();
