@@ -61,6 +61,21 @@ export const learningModuleApi = {
 };
 
 export const counselorLearningModuleApi = {
+  searchSkills: async (search) => {
+    const response = await axiosClient.get("/skills", {
+      params: {
+        search,
+        limit: 20,
+      },
+    });
+
+    if (Array.isArray(response.data)) return response.data;
+    if (Array.isArray(response.data?.items)) return response.data.items;
+    if (Array.isArray(response.data?.Items)) return response.data.Items;
+
+    return [];
+  },
+
   getModules: async (status) => {
     const response = await axiosClient.get("/counselor/learning-modules", {
       params: status && status !== "all" ? { status } : undefined,

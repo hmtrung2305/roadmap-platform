@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { learningModuleApi } from "../../api/learningModuleApi";
 import {
   getEnrollmentStatus,
@@ -17,7 +17,6 @@ export default function LearningModulesPage() {
   const navigate = useNavigate();
   const [modules, setModules] = useState([]);
   const [status, setStatus] = useState("in_progress");
-  const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,17 +44,8 @@ export default function LearningModulesPage() {
   }, []);
 
   const visibleModules = useMemo(() => {
-    const term = search.trim().toLowerCase();
-
-    return modules
-      .filter((module) => getEnrollmentStatus(module) === status)
-      .filter((module) => {
-        if (!term) return true;
-        return `${module.title} ${module.skillName} ${module.description || ""}`
-          .toLowerCase()
-          .includes(term);
-      });
-  }, [modules, status, search]);
+    return modules.filter((module) => getEnrollmentStatus(module) === status);
+  }, [modules, status]);
 
   return (
     <ModulePageShell>
@@ -75,33 +65,21 @@ export default function LearningModulesPage() {
         </div>
 
         <ModuleCard className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {["in_progress", "completed"].map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setStatus(key)}
-                  className={`rounded-lg border px-3.5 py-1.5 text-xs font-bold transition ${
-                    status === key
-                      ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
-                      : "border-[#B9D8CC] bg-white text-slate-700 hover:bg-[#F7F1E8]"
-                  }`}
-                >
-                  {prettyEnrollmentStatus[key]}
-                </button>
-              ))}
-            </div>
-
-            <label className="relative w-full md:w-96">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search your modules"
-                className="w-full rounded-lg border border-[#B9D8CC] bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none transition focus:border-[#2FA084] focus:ring-2 focus:ring-[#6FCF97]/25"
-              />
-            </label>
+          <div className="flex flex-wrap gap-2">
+            {["in_progress", "completed"].map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatus(key)}
+                className={`rounded-lg border px-3.5 py-1.5 text-xs font-bold transition ${
+                  status === key
+                    ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
+                    : "border-[#B9D8CC] bg-white text-slate-700 hover:bg-[#F7F1E8]"
+                }`}
+              >
+                {prettyEnrollmentStatus[key]}
+              </button>
+            ))}
           </div>
         </ModuleCard>
 
@@ -137,9 +115,6 @@ export default function LearningModulesPage() {
 function LearningModuleListRow({ module }) {
   const navigate = useNavigate();
   const progress = getProgress(module);
-  const completedLessons = Object.values(module.enrollment?.lessonProgress || {}).filter(
-    (value) => value === "completed",
-  ).length;
   const actionLabel = getEnrollmentStatus(module) === "completed" ? "Review" : "Continue";
   const targetPath = `/learning-modules/${module.slug}/study`;
 
@@ -162,7 +137,7 @@ function LearningModuleListRow({ module }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="truncate text-base font-extrabold text-[#18332D]">{module.title}</h2>
-          {module.difficultyLevel && <ModuleBadge tone="slate">{module.difficultyLevel}</ModuleBadge>}
+          {module.difficultyLevel && <ModuleBadge tone="purple" className="capitalize">{module.difficultyLevel}</ModuleBadge>}
         </div>
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}
@@ -171,11 +146,13 @@ function LearningModuleListRow({ module }) {
 
       <div>
         <div className="mb-1 flex justify-between text-xs font-bold text-slate-700">
-          <span>{Math.round(progress)}%</span>
-          <span>{completedLessons}/{module.lessonCount} lessons</span>
+          <span>{Math.round(progress)}% complete</span>
         </div>
-        <div className="h-2 rounded-full bg-slate-100">
-          <div className="h-2 rounded-full bg-[#2FA084]" style={{ width: `${progress}%` }} />
+        <div className="h-3 overflow-hidden rounded-full bg-[#E4ECE8]">
+          <div
+            className="h-3 rounded-full bg-[#2FA084] transition-all"
+            style={{ width: `${Math.max(progress, progress > 0 ? 8 : 0)}%` }}
+          />
         </div>
       </div>
 

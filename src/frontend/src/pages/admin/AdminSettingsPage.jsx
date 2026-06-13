@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
           Admin Settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-          Manage the sign-in details for this counselor account.
+          Keep your admin login details up to date.
         </p>
       </div>
 
@@ -83,7 +83,7 @@ export default function AdminSettingsPage() {
 
       <SettingsSection
         title="Login details"
-        description="Only account security settings are shown in the admin area."
+        description="Update the email and password used to sign in to this admin account."
       >
         <SettingsRow
           icon={Mail}

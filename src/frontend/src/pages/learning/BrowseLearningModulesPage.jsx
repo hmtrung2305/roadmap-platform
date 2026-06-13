@@ -147,7 +147,7 @@ function BrowseModuleRow({ module }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="truncate text-base font-extrabold text-[#18332D]">{module.title}</h2>
-          {module.difficultyLevel && <ModuleBadge tone="slate">{module.difficultyLevel}</ModuleBadge>}
+          {module.difficultyLevel && <ModuleBadge tone="purple" className="capitalize">{module.difficultyLevel}</ModuleBadge>}
         </div>
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}

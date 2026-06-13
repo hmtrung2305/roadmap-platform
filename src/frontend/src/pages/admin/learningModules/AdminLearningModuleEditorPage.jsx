@@ -4,8 +4,11 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Circle,
   GripVertical,
+  Minus,
   Plus,
   Save,
   Settings,
@@ -18,6 +21,7 @@ import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learnin
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
 import {
   inputClass,
+  numberInputClass,
   ModuleBadge,
   ModuleButton,
   ModuleCard,
@@ -27,7 +31,46 @@ import {
   selectClass,
 } from "../../../components/learningModules/learningModuleUi";
 
-const tabs = ["overview", "lessons", "quiz", "preview", "publish"];
+const editorTabs = [
+  { key: "overview", label: "Overview" },
+  { key: "lessons", label: "Lessons" },
+  { key: "quiz", label: "Quiz" },
+  { key: "preview", label: "Preview" },
+  { key: "publish", label: "Publish" },
+];
+
+function isEditorTabComplete(tab, detail) {
+  const module = detail?.module;
+  const lessonCount = detail?.lessons?.length || 0;
+  const questionCount = detail?.quiz?.questions?.length || 0;
+
+  if (tab === "overview") {
+    return Boolean(module?.title && module?.skillId && module?.description);
+  }
+
+  if (tab === "lessons") {
+    return lessonCount >= 3;
+  }
+
+  if (tab === "quiz") {
+    return Boolean(detail?.quiz) && questionCount >= 10;
+  }
+
+  if (tab === "preview") {
+    return Boolean(module?.title && lessonCount > 0);
+  }
+
+  if (tab === "publish") {
+    return (
+      Boolean(module?.title && module?.skillId && module?.description)
+      && lessonCount >= 3
+      && Boolean(detail?.quiz)
+      && questionCount >= 10
+    );
+  }
+
+  return false;
+}
 
 export default function AdminLearningModuleEditorPage() {
   const { moduleId } = useParams();
@@ -109,27 +152,45 @@ export default function AdminLearningModuleEditorPage() {
           <button
             type="button"
             onClick={() => navigate("/admin/learning-modules")}
-            className="inline-flex items-center gap-2 text-sm font-bold text-[#1F6F5F]"
+            className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-[#1F6F5F]"
           >
             <ArrowLeft size={16} /> Back to management
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`rounded-lg border px-3.5 py-1.5 text-xs font-bold capitalize transition ${
-                activeTab === tab
-                  ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
-                  : "border-[#B9D8CC] bg-white text-slate-700 hover:bg-[#F7F1E8]"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="rounded-xl border border-[#B9D8CC] bg-white p-2 shadow-sm">
+          <div className="grid gap-2 md:grid-cols-5">
+            {editorTabs.map((tab, index) => {
+              const isActive = activeTab === tab.key;
+              const isComplete = isEditorTabComplete(tab.key, detail);
+
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-extrabold transition ${
+                    isActive
+                      ? "border-[#1F6F5F] bg-[#2FA084] text-white shadow-sm"
+                      : isComplete
+                        ? "border-[#B9D8CC] bg-white text-[#1F6F5F]"
+                        : "border-transparent bg-white text-slate-600 hover:bg-[#F7F1E8]"
+                  }`}
+                >
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : isComplete
+                        ? "border border-[#6FCF97] bg-[#6FCF97]/14 text-[#1F6F5F]"
+                        : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {isComplete && !isActive ? <CheckCircle2 size={14} /> : index + 1}
+                  </span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {activeTab === "overview" && <OverviewEditor module={module} onSaved={reload} />}
@@ -145,6 +206,70 @@ export default function AdminLearningModuleEditorPage() {
         )}
       </div>
     </ModulePageShell>
+  );
+}
+
+
+
+function CustomSelect({ value, onChange, options, placeholder = "Select an option" }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find((option) => String(option.value) === String(value));
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-[#B9D8CC] bg-white px-3 text-left text-sm font-semibold text-[#18332D] outline-none transition hover:border-[#2FA084] focus:border-[#2FA084] focus:ring-2 focus:ring-[#6FCF97]/25"
+      >
+        <span className={selectedOption ? "truncate" : "truncate text-slate-400"}>
+          {selectedOption?.label || placeholder}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`shrink-0 text-[#1F6F5F] transition ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-lg">
+          {options.map((option) => {
+            const isSelected = String(option.value) === String(value);
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={`flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm font-bold transition ${
+                  isSelected
+                    ? "bg-[#6FCF97]/18 text-[#1F6F5F]"
+                    : "text-slate-700 hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+                }`}
+              >
+                <span>{option.label}</span>
+                {isSelected && <CheckCircle2 size={15} className="text-[#1F6F5F]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SelectShell({ children }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown
+        size={16}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#1F6F5F]"
+      />
+    </div>
   );
 }
 
@@ -166,6 +291,14 @@ function OverviewEditor({ module, onSaved }) {
   const [isSaving, setIsSaving] = useState(false);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+  const adjustEstimatedHours = (delta) => {
+    setForm((current) => {
+      const currentValue = Number(current.estimatedHours || 0);
+      const nextValue = Math.max(0, currentValue + delta);
+      return { ...current, estimatedHours: nextValue };
+    });
+  };
 
   const updateSkill = (skillId, skill) => {
     setSelectedSkill(skill);
@@ -205,6 +338,17 @@ function OverviewEditor({ module, onSaved }) {
 
   return (
     <ModuleCard className="flex h-full min-h-0 flex-col overflow-hidden p-5">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#B9D8CC]/70 pb-4">
+        <div>
+          <h2 className="text-lg font-extrabold text-[#18332D]">Overview</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-600">Set the basic module information learners will see.</p>
+        </div>
+
+        <ModuleButton onClick={save} disabled={isSaving}>
+          <Save size={14} /> {isSaving ? "Saving..." : "Save overview"}
+        </ModuleButton>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="lg:col-span-2">
           <ModuleField label="Skill">
@@ -226,25 +370,44 @@ function OverviewEditor({ module, onSaved }) {
         </ModuleField>
 
         <ModuleField label="Difficulty">
-          <select
+          <CustomSelect
             value={form.difficultyLevel}
-            onChange={(event) => update("difficultyLevel", event.target.value)}
-            className={selectClass}
-          >
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-          </select>
+            onChange={(value) => update("difficultyLevel", value)}
+            options={[
+              { value: "beginner", label: "Beginner" },
+              { value: "intermediate", label: "Intermediate" },
+              { value: "advanced", label: "Advanced" },
+            ]}
+          />
         </ModuleField>
 
         <ModuleField label="Estimated hours">
-          <input
-            type="number"
-            step="0.5"
-            value={form.estimatedHours}
-            onChange={(event) => update("estimatedHours", event.target.value)}
-            className={inputClass}
-          />
+          <div className="flex h-10 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white">
+            <button
+              type="button"
+              onClick={() => adjustEstimatedHours(-0.5)}
+              className="grid w-10 place-items-center border-r border-[#B9D8CC] text-slate-600 transition hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+              aria-label="Decrease estimated hours"
+            >
+              <Minus size={14} />
+            </button>
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              value={form.estimatedHours}
+              onChange={(event) => update("estimatedHours", event.target.value)}
+              className="min-w-0 flex-1 border-0 bg-white px-3 text-center text-sm font-semibold text-[#18332D] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <button
+              type="button"
+              onClick={() => adjustEstimatedHours(0.5)}
+              className="grid w-10 place-items-center border-l border-[#B9D8CC] text-slate-600 transition hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+              aria-label="Increase estimated hours"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </ModuleField>
 
         <div className="lg:col-span-2">
@@ -258,11 +421,7 @@ function OverviewEditor({ module, onSaved }) {
         </div>
       </div>
 
-      <div className="mt-4 flex justify-end">
-        <ModuleButton onClick={save} disabled={isSaving}>
-          <Save size={14} /> {isSaving ? "Saving..." : "Save overview"}
-        </ModuleButton>
-      </div>
+
     </ModuleCard>
   );
 }
@@ -718,27 +877,11 @@ function QuizEditor({ module, quiz, onChanged }) {
     maxAttempts: quiz?.maxAttempts ?? 3,
   });
   const [questions, setQuestions] = useState(quiz?.questions || []);
-  const quizViewStorageKey = `learning-module-quiz-view:${module.skillModuleId}`;
-  const setStoredQuizView = (view) => {
-    try {
-      window.sessionStorage.setItem(quizViewStorageKey, view);
-    } catch {
-      // Ignore storage failures.
-    }
-
-    setActiveQuizView(view);
-  };
-
-  const [activeQuizView, setActiveQuizView] = useState(() => {
-    try {
-      return window.sessionStorage.getItem(`learning-module-quiz-view:${module.skillModuleId}`) || "settings";
-    } catch {
-      return "settings";
-    }
-  });
   const [activeQuestionId, setActiveQuestionId] = useState(quiz?.questions?.[0]?.skillModuleQuizQuestionId || null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSavingQuiz, setIsSavingQuiz] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [isQuestionOrderDirty, setIsQuestionOrderDirty] = useState(false);
   const [draggedQuestionId, setDraggedQuestionId] = useState(null);
 
   useEffect(() => {
@@ -755,6 +898,7 @@ function QuizEditor({ module, quiz, onChanged }) {
         ? current
         : nextQuestions[0]?.skillModuleQuizQuestionId || null,
     );
+    setIsQuestionOrderDirty(false);
   }, [quiz]);
 
   const orderedQuestions = questions.slice().sort((a, b) => a.orderIndex - b.orderIndex);
@@ -769,8 +913,15 @@ function QuizEditor({ module, quiz, onChanged }) {
   const hasUnsavedQuestions = orderedQuestions.some((question) =>
     String(question.skillModuleQuizQuestionId).startsWith("new-"),
   );
-  const canSaveQuestionOrder = orderedQuestions.length > 1 && !hasUnsavedQuestions;
+  const canSaveQuestionOrder = orderedQuestions.length > 1 && !hasUnsavedQuestions && isQuestionOrderDirty;
   const updateQuiz = (key, value) => setQuizForm((current) => ({ ...current, [key]: value }));
+
+  const adjustMaxAttempts = (delta) => {
+    setQuizForm((current) => {
+      const currentValue = Number(current.maxAttempts || 1);
+      return { ...current, maxAttempts: Math.max(1, currentValue + delta) };
+    });
+  };
 
   const saveQuiz = async () => {
     if (!quizForm.title.trim()) {
@@ -788,10 +939,6 @@ function QuizEditor({ module, quiz, onChanged }) {
       });
       toast.success(hasQuiz ? "Quiz settings saved." : "Quiz created.");
       onChanged();
-
-      if (!hasQuiz) {
-        setStoredQuizView("settings");
-      }
     } catch (err) {
       toast.error(err?.message || "Unable to save quiz.");
     } finally {
@@ -804,7 +951,6 @@ function QuizEditor({ module, quiz, onChanged }) {
 
     setQuestions((current) => [...current, nextQuestion]);
     setActiveQuestionId(nextQuestion.skillModuleQuizQuestionId);
-    setStoredQuizView("questions");
   };
 
   const saveQuestion = async (question) => {
@@ -819,7 +965,6 @@ function QuizEditor({ module, quiz, onChanged }) {
         toast.success("Question saved.");
       }
 
-      setStoredQuizView("questions");
       setActiveQuestionId(question.skillModuleQuizQuestionId);
       onChanged();
     } catch (err) {
@@ -835,7 +980,6 @@ function QuizEditor({ module, quiz, onChanged }) {
       setQuestions((current) =>
         current.filter((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId),
       );
-      setStoredQuizView("questions");
       setActiveQuestionId(nextActiveQuestion?.skillModuleQuizQuestionId || null);
       return;
     }
@@ -845,7 +989,6 @@ function QuizEditor({ module, quiz, onChanged }) {
     try {
       await counselorLearningModuleApi.deleteQuestion(module.skillModuleId, question.skillModuleQuizQuestionId);
       toast.success("Question deleted.");
-      setStoredQuizView("questions");
       setActiveQuestionId(nextActiveQuestion?.skillModuleQuizQuestionId || null);
       onChanged();
     } catch (err) {
@@ -866,18 +1009,7 @@ function QuizEditor({ module, quiz, onChanged }) {
     next.splice(targetIndex, 0, moved);
 
     setQuestions(next.map((question, index) => ({ ...question, orderIndex: index + 1 })));
-  };
-
-  const moveQuestion = (questionId, direction) => {
-    const index = orderedQuestions.findIndex((question) => question.skillModuleQuizQuestionId === questionId);
-    const targetIndex = index + direction;
-
-    if (index < 0 || targetIndex < 0 || targetIndex >= orderedQuestions.length) return;
-
-    const next = orderedQuestions.slice();
-    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-
-    setQuestions(next.map((question, nextIndex) => ({ ...question, orderIndex: nextIndex + 1 })));
+    setIsQuestionOrderDirty(true);
   };
 
   const updateQuestion = (nextQuestion) => {
@@ -899,7 +1031,7 @@ function QuizEditor({ module, quiz, onChanged }) {
         })),
       );
       toast.success("Question order saved.");
-      setStoredQuizView("questions");
+      setIsQuestionOrderDirty(false);
       onChanged();
     } catch (err) {
       toast.error(err?.message || "Unable to save question order.");
@@ -908,8 +1040,8 @@ function QuizEditor({ module, quiz, onChanged }) {
     }
   };
 
-  const quizCreateFields = (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_150px_150px]">
+  const quizFields = (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
       <ModuleField label="Quiz title">
         <input
           value={quizForm.title}
@@ -920,60 +1052,47 @@ function QuizEditor({ module, quiz, onChanged }) {
       </ModuleField>
 
       <ModuleField label="Passing score">
-        <input
-          type="number"
-          min="1"
-          max="100"
-          value={quizForm.passingScorePercent}
-          onChange={(event) => updateQuiz("passingScorePercent", event.target.value)}
-          className={inputClass}
-        />
-      </ModuleField>
-
-      <ModuleField label="Max attempts">
-        <input
-          type="number"
-          min="1"
-          value={quizForm.maxAttempts}
-          onChange={(event) => updateQuiz("maxAttempts", event.target.value)}
-          className={inputClass}
-        />
-      </ModuleField>
-    </div>
-  );
-
-  const quizSettingsFields = (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <div className="lg:col-span-2">
-        <ModuleField label="Quiz title">
+        <div className="relative">
           <input
-            value={quizForm.title}
-            onChange={(event) => updateQuiz("title", event.target.value)}
-            className={inputClass}
-            placeholder="Enter quiz title..."
+            type="number"
+            min="1"
+            max="100"
+            value={quizForm.passingScorePercent}
+            onChange={(event) => updateQuiz("passingScorePercent", event.target.value)}
+            className={`${numberInputClass} pr-9`}
           />
-        </ModuleField>
-      </div>
-
-      <ModuleField label="Passing score">
-        <input
-          type="number"
-          min="1"
-          max="100"
-          value={quizForm.passingScorePercent}
-          onChange={(event) => updateQuiz("passingScorePercent", event.target.value)}
-          className={inputClass}
-        />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-extrabold text-slate-500">
+            %
+          </span>
+        </div>
       </ModuleField>
 
       <ModuleField label="Max attempts">
-        <input
-          type="number"
-          min="1"
-          value={quizForm.maxAttempts}
-          onChange={(event) => updateQuiz("maxAttempts", event.target.value)}
-          className={inputClass}
-        />
+        <div className="flex h-10 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white">
+          <button
+            type="button"
+            onClick={() => adjustMaxAttempts(-1)}
+            className="grid w-10 place-items-center border-r border-[#B9D8CC] text-slate-600 transition hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+            aria-label="Decrease max attempts"
+          >
+            <Minus size={14} />
+          </button>
+          <input
+            type="number"
+            min="1"
+            value={quizForm.maxAttempts}
+            onChange={(event) => updateQuiz("maxAttempts", event.target.value)}
+            className="min-w-0 flex-1 border-0 bg-white px-2 text-center text-sm font-semibold text-[#18332D] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <button
+            type="button"
+            onClick={() => adjustMaxAttempts(1)}
+            className="grid w-10 place-items-center border-l border-[#B9D8CC] text-slate-600 transition hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+            aria-label="Increase max attempts"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
       </ModuleField>
     </div>
   );
@@ -984,10 +1103,9 @@ function QuizEditor({ module, quiz, onChanged }) {
         <ModuleCard className="p-5">
           <div className="mb-4">
             <h2 className="text-lg font-extrabold text-[#18332D]">Create quiz</h2>
-
           </div>
 
-          {quizCreateFields}
+          {quizFields}
 
           <div className="mt-4 flex justify-end">
             <ModuleButton onClick={saveQuiz} disabled={isSavingQuiz}>
@@ -1001,144 +1119,128 @@ function QuizEditor({ module, quiz, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <div className="mx-auto flex w-fit rounded-xl border border-[#B9D8CC] bg-white p-1 shadow-sm">
+      <ModuleCard className="overflow-hidden">
         <button
           type="button"
-          onClick={() => setStoredQuizView("settings")}
-          className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-extrabold transition ${
-            activeQuizView === "settings"
-              ? "bg-[#6FCF97]/24 text-[#1F6F5F] shadow-sm"
-              : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
-          }`}
+          onClick={() => setIsSettingsOpen((current) => !current)}
+          className="flex w-full items-center justify-between gap-4 border-b border-[#B9D8CC]/70 px-5 py-4 text-left"
         >
-          <Settings size={15} />
-          Settings
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setStoredQuizView("questions")}
-          className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-extrabold transition ${
-            activeQuizView === "questions"
-              ? "bg-[#6FCF97]/24 text-[#1F6F5F] shadow-sm"
-              : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
-          }`}
-        >
-          <Circle size={15} />
-          Questions
-        </button>
-      </div>
-
-      {activeQuizView === "settings" ? (
-        <ModuleCard className="min-h-[680px] p-5">
-          <div className="mb-5">
-            <div className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-extrabold text-[#18332D]">
+              <Settings size={16} />
               Quiz settings
             </div>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#18332D]">
-              {quiz.title}
-            </h2>
+            <div className="mt-1 text-xs font-semibold text-slate-500">
+              {quiz.title} · {quiz.passingScorePercent}% passing · {quiz.maxAttempts} attempts
+            </div>
           </div>
 
-          {quizSettingsFields}
+          {isSettingsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
 
-          <div className="mt-5 flex justify-end">
-            <ModuleButton onClick={saveQuiz} disabled={isSavingQuiz}>
-              {isSavingQuiz ? "Saving..." : "Save settings"}
-            </ModuleButton>
+        {isSettingsOpen && (
+          <div className="p-5">
+            {quizFields}
+
+            <div className="mt-5 flex justify-end">
+              <ModuleButton onClick={saveQuiz} disabled={isSavingQuiz}>
+                {isSavingQuiz ? "Saving..." : "Save settings"}
+              </ModuleButton>
+            </div>
           </div>
-        </ModuleCard>
-      ) : (
-        <div className="grid h-[680px] min-h-0 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <ModuleCard className="flex min-h-0 flex-col overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-[#B9D8CC] px-4 py-3">
-              <div>
-                <div className="text-sm font-extrabold text-[#18332D]">Questions</div>
-                <div className="text-xs font-semibold text-slate-500">
-                  {orderedQuestions.length} question{orderedQuestions.length === 1 ? "" : "s"}
-                </div>
+        )}
+      </ModuleCard>
+
+      <div className="grid h-[680px] min-h-0 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <ModuleCard className="flex min-h-0 flex-col overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-[#B9D8CC] px-4 py-3">
+            <div>
+              <div className="text-sm font-extrabold text-[#18332D]">Questions</div>
+              <div className="text-xs font-semibold text-slate-500">
+                {orderedQuestions.length} question{orderedQuestions.length === 1 ? "" : "s"}
               </div>
             </div>
+          </div>
 
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC] hover:scrollbar-thumb-[#2FA084] [scrollbar-color:#B9D8CC_#F7F1E8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F7F1E8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#B9D8CC] [&::-webkit-scrollbar-thumb:hover]:bg-[#2FA084]">
-              {orderedQuestions.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/40 p-4 text-center text-sm font-semibold text-slate-600">
-                  No questions yet.
-                </div>
-              ) : (
-                orderedQuestions.map((question, index) => {
-                  const isActive = activeQuestion?.skillModuleQuizQuestionId === question.skillModuleQuizQuestionId;
-                  const questionTitle = question.questionText?.trim() || `Question ${index + 1}`;
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC] hover:scrollbar-thumb-[#2FA084] [scrollbar-color:#B9D8CC_#F7F1E8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F7F1E8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#B9D8CC] [&::-webkit-scrollbar-thumb:hover]:bg-[#2FA084]">
+            {orderedQuestions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/40 p-4 text-center text-sm font-semibold text-slate-600">
+                No questions yet.
+              </div>
+            ) : (
+              orderedQuestions.map((question, index) => {
+                const isActive = activeQuestion?.skillModuleQuizQuestionId === question.skillModuleQuizQuestionId;
+                const questionTitle = question.questionText?.trim() || `Question ${index + 1}`;
 
-                  return (
-                    <button
-                      key={question.skillModuleQuizQuestionId}
-                      type="button"
-                      draggable
-                      onDragStart={() => setDraggedQuestionId(question.skillModuleQuizQuestionId)}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => {
-                        reorderQuestions(draggedQuestionId, question.skillModuleQuizQuestionId);
-                        setDraggedQuestionId(null);
-                      }}
-                      onClick={() => setActiveQuestionId(question.skillModuleQuizQuestionId)}
-                      className={`w-full rounded-lg border px-3 py-3 text-left transition ${
-                        isActive
-                          ? "border-[#6FCF97] bg-[#6FCF97]/14 shadow-sm"
-                          : "border-[#B9D8CC]/70 bg-white hover:border-[#6FCF97] hover:bg-[#F7F1E8]/55"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <GripVertical size={15} className="shrink-0 cursor-grab text-slate-400" />
-                        <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
-                          isActive ? "bg-[#6FCF97]/24 text-[#1F6F5F]" : "bg-[#F7F1E8] text-slate-600"
-                        }`}>
-                          {index + 1}
+                return (
+                  <button
+                    key={question.skillModuleQuizQuestionId}
+                    type="button"
+                    draggable
+                    title={questionTitle}
+                    onDragStart={() => setDraggedQuestionId(question.skillModuleQuizQuestionId)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      reorderQuestions(draggedQuestionId, question.skillModuleQuizQuestionId);
+                      setDraggedQuestionId(null);
+                    }}
+                    onClick={() => setActiveQuestionId(question.skillModuleQuizQuestionId)}
+                    className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+                      isActive
+                        ? "border-[#6FCF97] bg-[#6FCF97]/14 shadow-sm"
+                        : "border-[#B9D8CC]/70 bg-white hover:border-[#6FCF97] hover:bg-[#F7F1E8]/55"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <GripVertical size={15} className="mt-1 shrink-0 cursor-grab text-slate-400" />
+                      <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
+                        isActive ? "bg-[#6FCF97]/24 text-[#1F6F5F]" : "bg-[#F7F1E8] text-slate-600"
+                      }`}>
+                        {index + 1}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="line-clamp-2 text-sm font-extrabold leading-5 text-[#18332D]">
+                          {questionTitle}
                         </div>
-
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-extrabold text-[#18332D]">
-                            {questionTitle}
-                          </div>
-                          <div className="text-xs font-semibold text-slate-500">
-                            Multiple choice
-                          </div>
+                        <div className="mt-1 text-xs font-semibold text-slate-500">
+                          Multiple choice
                         </div>
                       </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
 
-            <div className="space-y-2 border-t border-[#B9D8CC] p-3">
-              <ModuleButton variant="secondary" className="w-full" onClick={addQuestion}>
-                <Plus size={14} /> Add question
+          <div className="space-y-2 border-t border-[#B9D8CC] p-3">
+            <ModuleButton variant="secondary" className="w-full" onClick={addQuestion}>
+              <Plus size={14} /> Add question
+            </ModuleButton>
+
+            {canSaveQuestionOrder && (
+              <ModuleButton variant="secondary" className="w-full" onClick={saveQuestionOrder} disabled={isSavingOrder}>
+                <Save size={14} /> {isSavingOrder ? "Saving..." : "Save order"}
               </ModuleButton>
+            )}
+          </div>
+        </ModuleCard>
 
-              {canSaveQuestionOrder && (
-                <ModuleButton variant="secondary" className="w-full" onClick={saveQuestionOrder} disabled={isSavingOrder}>
-                  <Save size={14} /> {isSavingOrder ? "Saving..." : "Save order"}
-                </ModuleButton>
-              )}
-            </div>
-          </ModuleCard>
-
-          {activeQuestion ? (
-            <QuestionEditorCard
-              question={activeQuestion}
-              index={activeQuestionIndex}
-              onChange={updateQuestion}
-              onSave={() => saveQuestion(activeQuestion)}
-              onDelete={() => deleteQuestion(activeQuestion)}
-            />
-          ) : (
-            <ModuleEmptyState title="No question selected">
-              Add a question from the left panel to start building the quiz.
-            </ModuleEmptyState>
-          )}
-        </div>
-      )}
+        {activeQuestion ? (
+          <QuestionEditorCard
+            question={activeQuestion}
+            index={activeQuestionIndex}
+            onChange={updateQuestion}
+            onSave={() => saveQuestion(activeQuestion)}
+            onDelete={() => deleteQuestion(activeQuestion)}
+          />
+        ) : (
+          <ModuleEmptyState title="No question selected">
+            Add a question from the left panel to start building the quiz.
+          </ModuleEmptyState>
+        )}
+      </div>
     </div>
   );
 }

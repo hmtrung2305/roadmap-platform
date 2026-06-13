@@ -13,7 +13,11 @@ export const prettyEnrollmentStatus = {
 export const inputClass =
   "w-full rounded-lg border border-[#B9D8CC] bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-500 focus:border-[#2FA084] focus:ring-2 focus:ring-[#6FCF97]/25";
 
-export const selectClass = `${inputClass} cursor-pointer`;
+export const numberInputClass =
+  `${inputClass} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`;
+
+export const selectClass =
+  `${inputClass} cursor-pointer appearance-none pr-10`;
 
 export function ModuleButton({
   children,
@@ -65,11 +69,11 @@ export function ModuleCard({ children, className = "" }) {
 export function ModuleBadge({ children, tone = "green", className = "" }) {
   const tones = {
     green: "border-[#B9D8CC] bg-[#6FCF97]/20 text-[#1F6F5F]",
-    slate: "border-slate-200 bg-slate-50 text-slate-700",
+    slate: "border-slate-300 bg-slate-100 text-slate-800",
     amber: "border-amber-200 bg-amber-50 text-amber-700",
-    blue: "border-sky-200 bg-sky-50 text-sky-700",
+    blue: "border-sky-300 bg-sky-100 text-sky-800",
     rose: "border-rose-200 bg-rose-50 text-rose-700",
-    purple: "border-violet-200 bg-violet-50 text-violet-700",
+    purple: "border-violet-300 bg-violet-100 text-violet-800",
   };
 
   return (
