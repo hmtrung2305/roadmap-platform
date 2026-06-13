@@ -1,0 +1,194 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-react";
+import { toast } from "react-toastify";
+import { learningModuleApi } from "../../api/learningModuleApi";
+import {
+  formatHours,
+  getEnrollmentStatus,
+  ModuleBadge,
+  ModuleButton,
+  ModuleCard,
+  ModuleEmptyState,
+  ModulePageShell,
+} from "../../components/learningModules/learningModuleUi";
+
+export default function LearningModuleOverviewPage() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const [module, setModule] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadModule() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await learningModuleApi.getPublishedModuleBySlug(slug);
+        if (!ignore) setModule(data);
+      } catch (err) {
+        if (!ignore) setError(err?.message || "Unable to load this module.");
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    }
+
+    loadModule();
+
+    return () => {
+      ignore = true;
+    };
+  }, [slug]);
+
+  const totalEstimatedHours = useMemo(() => {
+    if (!module?.lessons?.length) return module?.estimatedHours;
+    const sum = module.lessons.reduce((total, lesson) => total + Number(lesson.estimatedHours || 0), 0);
+    return sum > 0 ? sum : module.estimatedHours;
+  }, [module]);
+
+  const handleStart = async () => {
+    if (!module) return;
+
+    if (getEnrollmentStatus(module) !== "not_started") {
+      navigate(`/learning-modules/${module.slug}/study`);
+      return;
+    }
+
+    try {
+      setIsStarting(true);
+      await learningModuleApi.enroll(module.skillModuleId);
+      toast.success("Module started.");
+      navigate(`/learning-modules/${module.slug}/study`);
+    } catch (err) {
+      toast.error(err?.message || "Unable to start module.");
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <ModulePageShell>
+        <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">
+          Loading module...
+        </ModuleCard>
+      </ModulePageShell>
+    );
+  }
+
+  if (error || !module) {
+    return (
+      <ModulePageShell>
+        <ModuleEmptyState title="Module not found">{error || "This module could not be loaded."}</ModuleEmptyState>
+      </ModulePageShell>
+    );
+  }
+
+  const actionLabel = getEnrollmentStatus(module) === "not_started" ? "Start module" : "Continue module";
+
+  return (
+    <ModulePageShell>
+      <div className="space-y-5">
+        <button
+          type="button"
+          onClick={() => navigate("/learning-modules/browse")}
+          className="inline-flex items-center gap-2 text-sm font-bold text-[#1F6F5F]"
+        >
+          <ArrowLeft size={16} /> Back to browse
+        </button>
+
+        <ModuleCard className="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <ModuleBadge tone="green">{module.skillName}</ModuleBadge>
+                {module.difficultyLevel && <ModuleBadge tone="slate">{module.difficultyLevel}</ModuleBadge>}
+              </div>
+
+              <h1 className="mt-3 text-3xl font-extrabold text-[#18332D]">{module.title}</h1>
+              <p className="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-700">
+                {module.description || "No description provided."}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold text-slate-700">
+                <span className="inline-flex items-center gap-2 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8]/70 px-3 py-2">
+                  <FileText size={14} /> {module.lessons.length} lessons
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8]/70 px-3 py-2">
+                  <Clock size={14} /> {formatHours(totalEstimatedHours)} estimated
+                </span>
+              </div>
+            </div>
+
+            <ModuleButton size="md" onClick={handleStart} disabled={isStarting}>
+              {isStarting ? "Starting..." : actionLabel}
+            </ModuleButton>
+          </div>
+        </ModuleCard>
+
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
+          <ModuleCard className="p-5">
+            <h2 className="text-lg font-extrabold text-[#18332D]">What's inside</h2>
+            <div className="mt-4 space-y-3">
+              {module.lessons.map((lesson) => (
+                <div key={lesson.skillModuleLessonId} className="rounded-lg border border-[#B9D8CC] bg-[#F7F1E8]/45 p-4">
+                  <div className="text-sm font-extrabold text-[#18332D]">
+                    {lesson.orderIndex}. {lesson.title}
+                  </div>
+                  <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+                    {lesson.summary || "Lesson content available after starting the module."}
+                  </p>
+                  {lesson.estimatedHours && (
+                    <div className="mt-2 text-xs font-bold text-[#1F6F5F]">
+                      {formatHours(lesson.estimatedHours)}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {module.quiz && (
+                <div className="rounded-lg border border-[#B9D8CC] bg-white p-4">
+                  <div className="text-sm font-extrabold text-[#18332D]">{module.quiz.title || "Final quiz"}</div>
+                  <p className="mt-1 text-sm font-medium text-slate-700">
+                    {module.quiz.questionCount} questions · passing score {module.quiz.passingScorePercent}%
+                  </p>
+                </div>
+              )}
+            </div>
+          </ModuleCard>
+
+          <ModuleCard className="p-5">
+            <h2 className="text-lg font-extrabold text-[#18332D]">What you will learn</h2>
+            <ul className="mt-4 space-y-3">
+              {deriveOutcomes(module).map((item) => (
+                <li key={item} className="flex gap-3 text-sm font-medium leading-6 text-slate-700">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#6FCF97]/25 text-xs font-bold text-[#1F6F5F]">
+                    <CheckCircle2 size={13} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </ModuleCard>
+        </div>
+      </div>
+    </ModulePageShell>
+  );
+}
+
+function deriveOutcomes(module) {
+  const skill = module.skillName || "this skill";
+  const lessons = module.lessons?.slice(0, 4).map((lesson) => `Understand ${lesson.title.toLowerCase()}.`) || [];
+
+  if (lessons.length > 0) return lessons;
+
+  return [
+    `Understand the core ideas behind ${skill}.`,
+    "Practice the topic through structured lessons.",
+    "Check your understanding with the module quiz.",
+  ];
+}

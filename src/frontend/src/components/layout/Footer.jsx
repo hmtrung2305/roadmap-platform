@@ -17,11 +17,11 @@ export default function Footer() {
         </div>
 
         <FooterGroup
-          title="Resources"
+          title="Learning"
           items={[
-            ["Roadmaps", "/roadmap"],
-            ["Learning resources", "/resources"],
-            ["AI Mentor", "/resources"],
+            ["Roadmaps", "/roadmaps"],
+            ["Learning modules", "/learning-modules"],
+            ["Browse modules", "/learning-modules/browse"],
           ]}
           navigate={navigate}
         />
