@@ -22,4 +22,9 @@
     <ProjectReference Include="..\RoadmapPlatform.Application\RoadmapPlatform.Application.csproj" />
     <ProjectReference Include="..\RoadmapPlatform.Infrastructure\RoadmapPlatform.Infrastructure.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\Chat\" />
+    <Folder Include="Controllers\Resources\" />
+  </ItemGroup>
 </Project>

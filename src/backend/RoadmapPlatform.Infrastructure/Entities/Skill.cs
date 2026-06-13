@@ -23,7 +23,7 @@ public partial class Skill
 
     public virtual ICollection<LearningResourceSkill> LearningResourceSkills { get; set; } = new List<LearningResourceSkill>();
 
-    public virtual ICollection<Resource> Resources { get; set; } = new List<Resource>();
-
     public virtual ICollection<RoadmapNodeSkill> RoadmapNodeSkills { get; set; } = new List<RoadmapNodeSkill>();
+
+    public virtual ICollection<SkillModule> SkillModules { get; set; } = new List<SkillModule>();
 }

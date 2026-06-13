@@ -6,13 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
-using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
-using RoadmapPlatform.Application.Interfaces.Rag;
-using RoadmapPlatform.Application.Interfaces.Resources;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Security;
 using RoadmapPlatform.Application.Interfaces.Streaks;
@@ -25,14 +22,11 @@ using RoadmapPlatform.Infrastructure.Security;
 using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.Auth;
-using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
 using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
-using RoadmapPlatform.Infrastructure.Services.Rag;
-using RoadmapPlatform.Infrastructure.Services.Resources;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 using RoadmapPlatform.Infrastructure.Services.Security;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
@@ -95,23 +89,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRepoSummaryGenerator, AiRepoSummaryGenerator>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
 
-            // Chatbot, RAG Services
-            services.AddScoped<IResourceService, ResourceService>();
-
-            var fileStorageProvider = configuration["FileStorage:Provider"];
-
-            if (string.Equals(fileStorageProvider, "Supabase", StringComparison.OrdinalIgnoreCase))
-            {
-                services.AddHttpClient<IResourceFileStorage, SupabaseResourceFileStorage>();
-            }
-            else
-            {
-                services.AddScoped<IResourceFileStorage, LocalResourceFileStorage>();
-            }
-
-            services.AddScoped<IChatService, ChatService>();
             services.AddScoped<IAiCreditService, AiCreditService>();
-            services.AddSingleton<IRagService, RagService>();
 
             // Streak Service
             services.AddScoped<IStreakService, StreakService>();

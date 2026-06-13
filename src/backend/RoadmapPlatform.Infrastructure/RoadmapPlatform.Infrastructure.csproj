@@ -23,6 +23,9 @@
 
   <ItemGroup>
     <Folder Include="Entities\" />
+    <Folder Include="Services\Chat\" />
+    <Folder Include="Services\Rag\" />
+    <Folder Include="Services\Resources\" />
   </ItemGroup>
 
   <PropertyGroup>
