@@ -82,7 +82,7 @@ export default function PortfolioLinks({ portfolio }) {
 
 function SummaryItem({ icon, label, children }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-4">
+    <div className="rounded-lg bg-[#F7F1E8] p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
         <span className="text-[#1F6F5F]">{icon}</span>
         {label}

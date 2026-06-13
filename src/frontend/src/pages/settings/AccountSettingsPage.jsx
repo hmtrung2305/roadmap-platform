@@ -132,7 +132,7 @@ export default function AccountSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="tm-surface p-6">
           <p className="text-sm text-slate-500">Loading settings...</p>
         </div>
       </div>

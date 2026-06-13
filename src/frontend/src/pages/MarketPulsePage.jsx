@@ -100,7 +100,7 @@ export default function MarketPulsePage() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <section className="tm-page tm-soft-enter mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-bold uppercase text-cyan-800">
@@ -154,7 +154,7 @@ export default function MarketPulsePage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-950">Demand movement</h2>
@@ -171,7 +171,7 @@ export default function MarketPulsePage() {
           />
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-slate-950">Trending skills</h2>
@@ -206,7 +206,7 @@ export default function MarketPulsePage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <SegmentPanel title="Category mix" segments={categorySummaries} />
         <SegmentPanel title="Location mix" segments={locationSummaries} icon={<MapPin size={18} />} />
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-slate-950">Today skills</h2>
           <SkillTable skills={todaySkills.slice(0, 6)} compact />
         </section>
@@ -228,7 +228,7 @@ export default function MarketPulsePage() {
 
 function MetricCard({ icon, label, value }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3 text-slate-500">
         <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
           {icon}
@@ -279,7 +279,7 @@ function SkillTable({ skills, compact = false }) {
 
 function SegmentPanel({ title, segments, icon = null }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
         {icon && <span className="text-slate-400">{icon}</span>}
         <h2 className="text-lg font-bold text-slate-950">{title}</h2>
@@ -313,7 +313,7 @@ function SegmentPanel({ title, segments, icon = null }) {
 
 function JobList({ title, jobs }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold text-slate-950">{title}</h2>
 
       {jobs.length === 0 ? (

@@ -100,7 +100,7 @@ export default function ProfileSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="tm-surface p-6">
           <p className="text-sm text-slate-500">Loading profile...</p>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function ProfileSettingsPage() {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <section className="tm-surface overflow-hidden">
         <div className="relative h-40 bg-[#5A9CB5]/10">
           {form.coverImageUrl ? (
             <img
@@ -206,7 +206,7 @@ export default function ProfileSettingsPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <section className="tm-surface overflow-hidden">
         <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="text-base font-bold text-slate-900">Basic info</h2>
         </div>
@@ -277,7 +277,7 @@ export default function ProfileSettingsPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <section className="tm-surface overflow-hidden">
         <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="text-base font-bold text-slate-900">Links & media</h2>
         </div>
@@ -325,7 +325,7 @@ export default function ProfileSettingsPage() {
         </div>
       </section>
 
-      <div className="flex justify-end gap-3 rounded-lg border border-slate-200 bg-white px-6 py-5 shadow-sm">
+      <div className="tm-surface flex justify-end gap-3 px-6 py-5">
         <button
           type="button"
           onClick={handleCancel}

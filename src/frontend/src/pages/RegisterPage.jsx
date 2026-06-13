@@ -173,7 +173,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-dvh overflow-hidden bg-slate-50 text-slate-900">
+    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
       <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <AuthRoadmapPanel />
 

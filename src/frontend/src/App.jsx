@@ -44,11 +44,11 @@ function isPublicPath(pathname) {
 
 function AuthBootstrap({ children }) {
   const location = useLocation();
-  const lastValidatedPathRef = useRef("");
+  const bootstrappedRef = useRef(false);
 
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
-  const revalidateCurrentUser = useAuthStore((state) => state.revalidateCurrentUser);
   const user = useAuthStore((state) => state.user);
+  const authInitialized = useAuthStore((state) => state.authInitialized);
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -58,19 +58,18 @@ function AuthBootstrap({ children }) {
       return;
     }
 
-    if (lastValidatedPathRef.current === pathname) {
+    if (user && authInitialized) {
+      bootstrappedRef.current = true;
       return;
     }
 
-    lastValidatedPathRef.current = pathname;
-
-    if (user) {
-      revalidateCurrentUser();
+    if (bootstrappedRef.current) {
       return;
     }
 
+    bootstrappedRef.current = true;
     loadCurrentUser();
-  }, [loadCurrentUser, revalidateCurrentUser, user, location.pathname]);
+  }, [authInitialized, loadCurrentUser, location.pathname, user]);
 
   return children;
 }

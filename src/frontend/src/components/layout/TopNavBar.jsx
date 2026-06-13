@@ -8,6 +8,10 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { getMyProfileApi } from "../../api/profileApi";
 import AvatarDropdown from "./AvatarDropdown";
 
+let cachedProfile = null;
+let cachedProfileUserId = null;
+let cachedProfilePromise = null;
+
 export default function TopNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,20 +44,44 @@ export default function TopNavbar() {
 
   useEffect(() => {
     if (!user) {
+      setProfile(null);
       return;
     }
 
+    const userKey = user.userId || user.id || user.email || user.username;
+
+    if (cachedProfile && cachedProfileUserId === userKey) {
+      setProfile(cachedProfile);
+      return;
+    }
+
+    let isMounted = true;
+
     async function fetchProfile() {
       try {
-        const data = await getMyProfileApi();
-        setProfile(data);
+        if (!cachedProfilePromise || cachedProfileUserId !== userKey) {
+          cachedProfileUserId = userKey;
+          cachedProfilePromise = getMyProfileApi();
+        }
+
+        const data = await cachedProfilePromise;
+        cachedProfile = data;
+
+        if (isMounted) {
+          setProfile(data);
+        }
       } catch (error) {
+        cachedProfilePromise = null;
         console.error("Failed to load profile:", error);
       }
     }
 
     fetchProfile();
-  }, [user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.userId, user?.id, user?.email, user?.username]);
 
   const handleLogout = async () => {
     await logout();

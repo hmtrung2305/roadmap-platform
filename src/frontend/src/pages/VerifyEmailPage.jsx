@@ -219,7 +219,7 @@ export default function VerifyEmailPage() {
       : "Verify email";
 
   return (
-    <div className="min-h-dvh bg-slate-50 px-6 py-10 text-slate-900">
+    <div className="min-h-dvh bg-[#F7F1E8] px-6 py-10 text-slate-900">
       <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-md items-center justify-center">
         <div
           className={`w-full rounded-lg border border-slate-200 bg-white px-6 py-7 shadow-xl shadow-slate-200/60 transition duration-200 ${
@@ -272,7 +272,7 @@ export default function VerifyEmailPage() {
             )}
 
             {!isRegisterVerification && email && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <div className="rounded-xl border border-slate-200 bg-[#F7F1E8] px-4 py-3 text-sm text-slate-600">
                 Code sent to{" "}
                 <span className="font-semibold text-slate-800">{email}</span>
               </div>

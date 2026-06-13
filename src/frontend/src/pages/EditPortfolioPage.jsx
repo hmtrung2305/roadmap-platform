@@ -244,7 +244,7 @@ export default function EditPortfolioPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8]/70 px-6 py-12 text-[#18332D]">
+    <main className="tm-page min-h-[calc(100vh-4rem)] px-6 py-12 text-[#18332D]">
       <style>{`
         .portfolio-editor-nowrap {
           overflow: hidden;
@@ -278,7 +278,7 @@ export default function EditPortfolioPage() {
         }
       `}</style>
 
-      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="tm-soft-enter mx-auto max-w-7xl space-y-5">
         <EditPortfolioHero
           portfolio={portfolio}
           displayName={displayName}
@@ -296,7 +296,7 @@ export default function EditPortfolioPage() {
           totalStars={totalStars}
         />
 
-        <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+        <section className="tm-animate-item grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
           <aside ref={leftColumnRef} className="flex flex-col gap-5 pr-1">
             <EditPortfolioProfileDetails portfolio={portfolio} displayName={displayName} headline={headline} />
             <EditPortfolioGitHubSource

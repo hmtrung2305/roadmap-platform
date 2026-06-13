@@ -159,8 +159,8 @@ export default function ManagePortfolioRepositoriesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-slate-100 px-6 py-8">
-        <div className="mx-auto max-w-6xl rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+      <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-12">
+        <div className="tm-surface mx-auto max-w-7xl p-8">
           <p className="text-slate-500">Loading repositories...</p>
         </div>
       </main>
@@ -178,8 +178,8 @@ export default function ManagePortfolioRepositoriesPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-slate-100 px-6 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-12">
+      <div className="mx-auto max-w-7xl space-y-6">
         <RepositoryPageHeader
           selectedCount={selectedCount}
           syncing={syncing}

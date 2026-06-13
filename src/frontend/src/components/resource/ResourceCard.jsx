@@ -4,7 +4,7 @@ export default function ResourceCard({ resource, onOpen, onDelete }) {
   return (
     <article
       onClick={() => onOpen(resource)}
-      className="group cursor-pointer rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#6FCF97] hover:shadow-[0_18px_44px_rgba(31,111,95,0.12)]"
+      className="tm-surface tm-surface-hover group cursor-pointer p-5"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#6FCF97]/20 text-[#1F6F5F]">
