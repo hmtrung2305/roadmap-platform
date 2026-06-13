@@ -28,15 +28,63 @@ function getProjectTags(repository, insight) {
     ...toTagArray(repository.readmeTechnologies),
   ].filter(Boolean);
 
-  const fallbackTags = [repository.primaryLanguage || repository.language].filter(Boolean);
-  const source = aiTags.length > 0 ? aiTags : readmeTags.length > 0 ? readmeTags : fallbackTags;
+  const fallbackTags = [
+    repository.primaryLanguage || repository.language,
+  ].filter(Boolean);
+  const source =
+    aiTags.length > 0
+      ? aiTags
+      : readmeTags.length > 0
+        ? readmeTags
+        : fallbackTags;
 
-  return Array.from(new Set(source.map((tag) => String(tag).trim()).filter(Boolean))).slice(0, 5);
+  return Array.from(
+    new Set(source.map((tag) => String(tag).trim()).filter(Boolean)),
+  );
+}
+
+function getVisibleTags(tags, limit = 4) {
+  const visible = tags.slice(0, limit);
+  const hidden = tags.slice(limit);
+
+  return {
+    visible,
+    hidden,
+    extraCount: hidden.length,
+  };
+}
+
+function ExtraTagPopover({ hiddenTags }) {
+  if (!hiddenTags?.length) return null;
+
+  return (
+    <span className="group/extra relative inline-flex overflow-visible">
+      <span className="cursor-help rounded-lg bg-[#EAF8F1] px-2 py-1 text-xs font-bold text-[#1F6F5F] ring-1 ring-[#B9D8CC] transition-colors hover:bg-[#DDF3EA]">
+        +{hiddenTags.length}
+      </span>
+
+      <span className="pointer-events-none absolute top-full left-0 !z-[999] mb-2 hidden w-[400px] max-w-[calc(100vw-48px)] rounded-md border border-[#B9D8CC] bg-white px-4 py-3 text-xs font-bold leading-5 text-[#18332D] shadow-[0_18px_44px_rgba(31,111,95,0.18)] group-hover/extra:block">
+        <span className="mb-2 block h-0.5 w-14 rounded-md bg-[#2FA084]" />
+
+        <span className="flex flex-wrap gap-1.5">
+          {hiddenTags.map((tag) => (
+            <span
+              key={tag}
+              className="whitespace-normal break-words rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2.5 py-1 text-xs font-semibold leading-5 text-slate-700"
+            >
+              {tag}
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
+  );
 }
 
 export default function PortfolioRepositoryCard({ repository }) {
   const insight = repository.insight;
-  const hasCompletedInsight = insight?.analysisStatus === "completed" && insight?.summary;
+  const hasCompletedInsight =
+    insight?.analysisStatus === "completed" && insight?.summary;
   const name = repository.name || repository.repoName || "Untitled repository";
   const href = repository.htmlUrl || repository.repoUrl;
 
@@ -47,9 +95,14 @@ export default function PortfolioRepositoryCard({ repository }) {
     "No description provided.";
 
   const tags = getProjectTags(repository, insight);
+  const {
+    visible: visibleTags,
+    hidden: hiddenTags,
+    extraCount,
+  } = getVisibleTags(tags, 4);
 
   return (
-    <article className="group/repo relative flex min-h-[250px] flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
+    <article className="group relative z-1 hover:z-2 flex min-h-[250px] flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="line-clamp-1 text-lg font-extrabold text-[#18332D]">
@@ -76,14 +129,11 @@ export default function PortfolioRepositoryCard({ repository }) {
       </div>
 
       <div className="group/summary relative mt-4 min-h-[3rem]">
-        <p
-          className="line-clamp-2 cursor-help text-sm font-medium leading-6 text-slate-600"
-          title={description}
-        >
+        <p className="line-clamp-2 cursor-help text-sm font-medium leading-6 text-slate-600">
           {description}
         </p>
 
-        <div className="pointer-events-none absolute left-0 top-full z-[80] mt-2 hidden w-full rounded-lg border border-[#B9D8CC] bg-white px-4 py-3 text-xs font-semibold leading-5 text-[#18332D] shadow-[0_18px_44px_rgba(31,111,95,0.18)] group-hover/summary:block">
+        <div className="pointer-events-none absolute left-0 top-full z-100 mt-2 hidden w-full rounded-lg border border-[#B9D8CC] bg-white px-4 py-3 text-xs font-semibold leading-5 text-[#18332D] shadow-[0_18px_44px_rgba(31,111,95,0.18)] group-hover/summary:block">
           <div className="mb-2 h-0.5 w-16 rounded-lg bg-[#2FA084]" />
           {description}
         </div>
@@ -92,7 +142,7 @@ export default function PortfolioRepositoryCard({ repository }) {
       <div className="mt-4 min-h-[3.1rem] border-b border-[#DCEBE5] pb-4">
         {tags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
+            {visibleTags.map((tag) => (
               <span
                 key={tag}
                 className="rounded-lg bg-[#F7F1E8] px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-[#B9D8CC]"
@@ -100,6 +150,7 @@ export default function PortfolioRepositoryCard({ repository }) {
                 {tag}
               </span>
             ))}
+            {extraCount > 0 && <ExtraTagPopover hiddenTags={hiddenTags} />}
           </div>
         ) : (
           <span className="text-xs font-medium text-slate-400">

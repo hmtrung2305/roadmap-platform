@@ -109,25 +109,20 @@ function toPortfolioTagArray(value) {
   return [];
 }
 
-function getRepositoryDetectedTags(repository) {
+function getRepositoryTechStackTags(repository) {
   const insight = repository?.insight;
 
   return [
-    insight?.projectType,
     ...toPortfolioTagArray(insight?.techStack),
-    ...toPortfolioTagArray(insight?.detectedSkills),
-    ...toPortfolioTagArray(insight?.skills),
-    ...toPortfolioTagArray(repository?.detectedSkills),
+    ...toPortfolioTagArray(insight?.techStacks),
     ...toPortfolioTagArray(repository?.techStack),
-    ...toPortfolioTagArray(repository?.readmeSkills),
-    ...toPortfolioTagArray(repository?.readmeTechnologies),
-    repository?.primaryLanguage || repository?.language,
+    ...toPortfolioTagArray(repository?.techStacks),
   ].filter(Boolean);
 }
 
 function PortfolioDetectedTechnologies({ repositories = [] }) {
   const tags = useMemo(() => {
-    const collected = repositories.flatMap(getRepositoryDetectedTags);
+    const collected = repositories.flatMap(getRepositoryTechStackTags);
     return Array.from(
       new Set(collected.map((tag) => String(tag).trim()).filter(Boolean))
     ).slice(0, 14);

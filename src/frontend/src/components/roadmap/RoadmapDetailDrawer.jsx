@@ -135,10 +135,10 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
       />
 
       <aside
-        className="pointer-events-auto relative ml-auto mr-2 mt-2 flex max-h-[calc(100vh-80px)] w-[min(620px,calc(100vw-32px))] flex-col overflow-hidden rounded-md border border-[#A8D3C4] bg-white shadow-[-10px_0_22px_rgba(0,0,0,0.14)]"
+        className="pointer-events-auto relative ml-auto mr-2 mt-2 flex h-[calc(100vh-80px)] w-[min(620px,calc(100vw-32px))] flex-col overflow-hidden rounded-md border border-[#A8D3C4] bg-white shadow-[-10px_0_22px_rgba(0,0,0,0.14)]"
         style={{ animation: "roadmapPaneIn 180ms ease-out both" }}
       >
-        <header className="shrink-0 border-b border-[#A8D3C4] bg-[#EAF8F1] px-3 py-2">
+        <header className="shrink-0 border-b border-[#A8D3C4] bg-[#EAF8F1] px-3 py-1.5">
           <div className="flex items-center justify-between gap-2">
             <RequirementTag isOptional={isOptional} />
 
@@ -161,18 +161,18 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
             </div>
           </div>
 
-          <h2 className="mt-2 min-w-0 text-[22px] font-black leading-tight text-[#18332D]">
+          <h2 className="mt-1.5 min-w-0 text-[22px] font-black leading-tight text-[#18332D]">
             {node.title}
           </h2>
 
           {description && (
-            <p className="mt-1.5 w-full pr-0 text-sm font-semibold leading-6 text-slate-700">
+            <p className="mt-1 w-full pr-0 text-sm font-semibold leading-6 text-slate-700">
               {description}
             </p>
           )}
         </header>
 
-        <div className="roadmap-drawer-scrollbar-hide min-h-0 flex-1 overflow-y-auto px-3.5 py-3">
+        <div className="roadmap-drawer-scrollbar-hide min-h-0 flex-1 overflow-y-auto px-3.5 pb-2 pt-2.5">
           {isLoadingDetail && (
             <CompactNotice>Loading full node details…</CompactNotice>
           )}
@@ -338,18 +338,18 @@ function buildDescription(node, metadata) {
 
 function Section({ title, children }) {
   return (
-    <section className="mt-2.5 rounded-md border border-[#A8D3C4] bg-white px-3 py-2.5 shadow-sm">
+    <section className="mt-2 rounded-md border border-[#A8D3C4] bg-white px-3 py-2 shadow-sm">
       <h3 className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
         {title}
       </h3>
-      <div className="mt-2">{children}</div>
+      <div className="mt-1.5">{children}</div>
     </section>
   );
 }
 
 function CompactNotice({ children }) {
   return (
-    <div className="mb-2.5 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-3 py-2 text-sm font-black text-[#18332D] shadow-sm">
+    <div className="mb-2 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-3 py-2 text-sm font-black text-[#18332D] shadow-sm">
       {children}
     </div>
   );
