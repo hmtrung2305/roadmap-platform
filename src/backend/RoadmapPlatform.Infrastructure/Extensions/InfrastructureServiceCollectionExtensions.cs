@@ -57,9 +57,6 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // AI, RAG Settings
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
-            services.Configure<RagSettings>(configuration.GetSection("Rag"));
-            services.Configure<FileStorageSettings>(configuration.GetSection("FileStorage"));
-            services.Configure<SupabaseStorageSettings>(configuration.GetSection("SupabaseStorage"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
 
