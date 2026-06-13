@@ -113,7 +113,7 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ModuleAssistantSourceDto>> SearchRelevantChunksAsync(
+    public async Task<IReadOnlyList<LearningModuleRagSourceDto>> SearchRelevantChunksAsync(
         Guid skillModuleId,
         Guid? preferredLessonId,
         string query,
@@ -159,7 +159,7 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
             .OrderByDescending(item => item.LessonPriority)
             .ThenByDescending(item => item.Score)
             .Take(maxResults)
-            .Select(item => new ModuleAssistantSourceDto
+            .Select(item => new LearningModuleRagSourceDto
             {
                 SkillModuleChunkId = item.Chunk.SkillModuleChunkId,
                 SkillModuleLessonId = item.Chunk.SkillModuleLessonId,

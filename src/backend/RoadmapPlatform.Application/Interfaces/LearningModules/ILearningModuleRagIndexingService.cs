@@ -14,7 +14,7 @@ public interface ILearningModuleRagIndexingService
         Guid skillModuleLessonId,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<ModuleAssistantSourceDto>> SearchRelevantChunksAsync(
+    Task<IReadOnlyList<LearningModuleRagSourceDto>> SearchRelevantChunksAsync(
         Guid skillModuleId,
         Guid? preferredLessonId,
         string query,

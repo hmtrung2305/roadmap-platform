@@ -1,0 +1,34 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.DTOs.LearningModules;
+using RoadmapPlatform.Application.Interfaces.LearningModules;
+
+namespace RoadmapPlatform.Api.Controllers.LearningModules;
+
+[ApiController]
+[Authorize]
+[Route("api/skill-modules/{moduleId:guid}/assistant/chat")]
+public sealed class LearningModuleChatController(
+    ILearningModuleChatService chatService) : ControllerBase
+{
+    [HttpPost]
+    [ProducesResponseType(typeof(LearningModuleChatResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Ask(
+        Guid moduleId,
+        [FromBody] LearningModuleChatRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+
+        var result = await chatService.AskAsync(
+            userId,
+            moduleId,
+            request,
+            cancellationToken);
+
+        return Ok(result);
+    }
+}

@@ -2,11 +2,11 @@ using RoadmapPlatform.Application.DTOs.LearningModules;
 
 namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 
-public interface ILearningModuleAssistantService
+public interface ILearningModuleChatService
 {
-    Task<ModuleAssistantResponseDto> AskAsync(
+    Task<LearningModuleChatResponseDto> AskAsync(
         Guid userId,
         Guid skillModuleId,
-        ModuleAssistantRequestDto request,
+        LearningModuleChatRequestDto request,
         CancellationToken cancellationToken);
 }
