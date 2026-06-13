@@ -9,9 +9,13 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useAuthStore } from "../stores/useAuthStore";
 import MotionWrapper from "../components/auth/MotionWrapper";
+
+
+
 import {
   goToVerificationPage,
   isEmailVerificationRequired,
+  isValidEmailFormat,
   VERIFICATION_PURPOSES,
 } from "../utils/authVerificationFlow";
 
@@ -33,6 +37,8 @@ export default function LoginPage() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaError, setCaptchaError] = useState("");
@@ -40,6 +46,7 @@ export default function LoginPage() {
   const handleCaptchaVerify = useCallback((token) => {
     setCaptchaToken(token);
     setCaptchaError("");
+    setError("");
   }, []);
 
   const handleChange = (e) => {
@@ -47,6 +54,10 @@ export default function LoginPage() {
 
     if (authError) {
       clearAuthError();
+    }
+
+    if (error) {
+      setError("");
     }
 
     if (captchaError) {
@@ -59,17 +70,51 @@ export default function LoginPage() {
     }));
   };
 
+
+  const validateForm = () => {
+    const emailOrUsername = form.emailOrUsername.trim();
+
+    if (!emailOrUsername) {
+      return "Please enter an email address or username.";
+    }
+
+    if (emailOrUsername.includes("@") && !isValidEmailFormat(emailOrUsername)) {
+      return "Please enter a valid email address.";
+    }
+
+    if (!form.password) {
+      return "Please enter a password.";
+    }
+
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      return "Please complete the CAPTCHA challenge.";
+    }
+
+    return "";
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (CAPTCHA_ENABLED && !captchaToken) {
-      setCaptchaError("Please complete the CAPTCHA challenge.");
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
+
+      if (CAPTCHA_ENABLED && !captchaToken) {
+        setCaptchaError(validationError);
+      }
+
       return;
     }
 
     try {
+      setError("");
+      clearAuthError();
+
       await login({
         ...form,
+        emailOrUsername: form.emailOrUsername.trim(),
         captchaToken,
       });
 
@@ -109,13 +154,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh overflow-hidden bg-slate-50 text-slate-900">
+    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
       <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <AuthRoadmapPanel />
 
-        <section className="flex min-h-dvh items-center justify-center bg-[#FAF8F1] px-6 py-6">
+        <section className="flex min-h-dvh items-center justify-center bg-[#F7F1E8] px-6 py-6">
           <div
-            className={`w-full max-w-[390px] rounded-lg border border-slate-100 bg-white px-6 py-7 shadow-xl shadow-slate-200/60 transition duration-200 ${
+            className={`w-full max-w-[390px] rounded-lg border border-[#B9D8CC] bg-white/90 px-6 py-7 shadow-[0_18px_44px_rgba(31,111,95,0.08)] backdrop-blur transition duration-200 ${
               authLoading ? "scale-[0.99] opacity-70" : ""
             }`}
           >
@@ -137,9 +182,9 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {(authError || oauthError || captchaError) && (
+            {(error || authError || oauthError || captchaError) && (
               <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {authError || oauthError || captchaError}
+                {error || authError || oauthError || captchaError}
               </div>
             )}
 
@@ -151,7 +196,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Email or username
                 </label>
 
@@ -160,8 +205,8 @@ export default function LoginPage() {
                   type="text"
                   value={form.emailOrUsername}
                   onChange={handleChange}
-                  placeholder="Email or Username"
-                  className="h-11 w-full rounded-lg border border-slate-300 px-4 text-slate-900 outline-none transition focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  placeholder="name@example.com"
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
@@ -174,7 +219,7 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    className="text-xs font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
+                    className="!text-[14px] font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
                   >
                     Forgot password?
                   </button>
@@ -186,6 +231,8 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={handleChange}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                     placeholder="••••••••"
                     className="h-10 w-full rounded-lg border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
@@ -198,6 +245,12 @@ export default function LoginPage() {
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
+
+                  {passwordFocused && (
+                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
+                      {PASSWORD_REQUIREMENT_MESSAGE}
+                    </div>
+                  )}
                 </div>
               </div>
 

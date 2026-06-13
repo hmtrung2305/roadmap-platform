@@ -65,7 +65,7 @@ export default function PointsSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="tm-surface p-6">
           <p className="text-sm text-slate-500">Loading points and streak...</p>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function PointsSettingsPage() {
         />
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <section className="tm-surface overflow-hidden">
         <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="text-base font-bold text-slate-900">
             Daily check-in
@@ -159,7 +159,7 @@ export default function PointsSettingsPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <section className="tm-surface overflow-hidden">
         <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="text-base font-bold text-slate-900">
             Latest activity

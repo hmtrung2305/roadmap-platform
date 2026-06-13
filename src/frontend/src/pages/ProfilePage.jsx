@@ -44,7 +44,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-slate-50 px-6 py-8">
+      <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-12">
         <div className="mx-auto max-w-5xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Loading profile...</p>
         </div>
@@ -54,7 +54,7 @@ export default function ProfilePage() {
 
   if (error) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-slate-50 px-6 py-8">
+      <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-12">
         <div className="mx-auto max-w-5xl rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-600">
           {error}
         </div>
@@ -70,9 +70,9 @@ export default function ProfilePage() {
     profile?.careerGoal;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-slate-50 px-6 py-8 text-slate-900">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-12 text-slate-900">
       <div className="mx-auto max-w-5xl space-y-6">
-        <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <section className="tm-surface">
           <div className="overflow-hidden rounded-t-lg">
             <div className="relative h-50 bg-indigo-50">
               {profile?.coverImageUrl ? (
@@ -178,7 +178,7 @@ export default function ProfilePage() {
         </section>
 
         <section className="grid gap-6 md:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="tm-surface p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900">About</h2>
 
@@ -201,7 +201,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="tm-surface p-6">
             <h2 className="text-base font-bold text-slate-900">Links</h2>
 
             <div className="mt-5 space-y-3">

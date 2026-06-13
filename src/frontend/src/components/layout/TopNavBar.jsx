@@ -8,6 +8,10 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { getMyProfileApi } from "../../api/profileApi";
 import AvatarDropdown from "./AvatarDropdown";
 
+let cachedProfile = null;
+let cachedProfileUserId = null;
+let cachedProfilePromise = null;
+
 export default function TopNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,20 +44,44 @@ export default function TopNavbar() {
 
   useEffect(() => {
     if (!user) {
+      setProfile(null);
       return;
     }
 
+    const userKey = user.userId || user.id || user.email || user.username;
+
+    if (cachedProfile && cachedProfileUserId === userKey) {
+      setProfile(cachedProfile);
+      return;
+    }
+
+    let isMounted = true;
+
     async function fetchProfile() {
       try {
-        const data = await getMyProfileApi();
-        setProfile(data);
+        if (!cachedProfilePromise || cachedProfileUserId !== userKey) {
+          cachedProfileUserId = userKey;
+          cachedProfilePromise = getMyProfileApi();
+        }
+
+        const data = await cachedProfilePromise;
+        cachedProfile = data;
+
+        if (isMounted) {
+          setProfile(data);
+        }
       } catch (error) {
+        cachedProfilePromise = null;
         console.error("Failed to load profile:", error);
       }
     }
 
     fetchProfile();
-  }, [user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.userId, user?.id, user?.email, user?.username]);
 
   const handleLogout = async () => {
     await logout();
@@ -61,7 +89,7 @@ export default function TopNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#B9D8CC] bg-white/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-transparent shadow-sm bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex h-15 max-w-7xl items-center justify-between gap-5 px-4 py-1 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-8">
           <button

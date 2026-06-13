@@ -5,11 +5,11 @@ import SettingsSidebar from "../../components/settings/SettingsSidebar";
 
 export default function SettingsLayout() {
   return (
-    <div className="min-h-screen bg-[#F7F1E8] text-[#18332D]">
+    <div className="tm-page min-h-screen text-[#18332D]">
       <TopNavbar />
 
-      <main className="min-h-[calc(100vh-4rem)]">
-        <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
+      <main className="tm-page-animate min-h-[calc(100vh-4rem)]">
+        <div className="tm-soft-enter mx-auto flex max-w-7xl gap-6 px-6 py-8">
           <SettingsSidebar />
 
           <section className="min-w-0 flex-1">

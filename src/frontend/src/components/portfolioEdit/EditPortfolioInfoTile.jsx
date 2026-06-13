@@ -1,6 +1,6 @@
 export default function EditPortfolioInfoTile({ icon, label, value, helper }) {
   return (
-    <article className="rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[0_12px_30px_rgba(31,111,95,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(31,111,95,0.10)]">
+    <article className="tm-surface tm-surface-hover p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#667A73]">{label}</p>

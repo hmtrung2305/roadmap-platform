@@ -13,10 +13,10 @@ export default function MainLayout() {
   const hideFooter = isStudyRoom || isRoadmapCanvas;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="tm-page min-h-screen text-[#18332D]">
       {!hideChrome && <TopNavbar />}
 
-      <main>
+      <main className={isRoadmapCanvas ? "" : "tm-page-animate"}>
         <Outlet />
       </main>
 
