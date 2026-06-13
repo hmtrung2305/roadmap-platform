@@ -8,7 +8,7 @@ namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
 [Authorize]
-[Route("api/skill-modules/{moduleId:guid}/assistant/chat")]
+[Route("api/learning-modules/{moduleId:guid}/assistant/chat")]
 public sealed class LearningModuleChatController(
     ILearningModuleChatService chatService) : ControllerBase
 {

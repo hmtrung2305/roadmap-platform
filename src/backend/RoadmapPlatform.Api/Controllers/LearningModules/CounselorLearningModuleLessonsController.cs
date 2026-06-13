@@ -10,7 +10,7 @@ namespace RoadmapPlatform.Api.Controllers.LearningModules;
 [ApiController]
 [Authorize]
 [Route("api/counselor/skill-modules/{moduleId:guid}/lessons")]
-public sealed class CounselorSkillModuleLessonsController(
+public sealed class CounselorLearningModuleLessonsController(
     ILearningModuleLessonService lessonService) : ControllerBase
 {
     [HttpPost("bulk")]

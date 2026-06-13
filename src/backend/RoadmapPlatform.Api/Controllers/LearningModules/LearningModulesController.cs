@@ -7,8 +7,8 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Route("api/skill-modules")]
-public sealed class SkillModulesController(
+[Route("api/learning-modules")]
+public sealed class LearningModulesController(
     ILearnerLearningModuleService moduleService) : ControllerBase
 {
     [HttpGet]
