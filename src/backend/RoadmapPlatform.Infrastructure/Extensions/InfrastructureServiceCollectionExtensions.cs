@@ -8,6 +8,7 @@ using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
+using RoadmapPlatform.Application.Interfaces.LearningModules;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
@@ -25,6 +26,7 @@ using RoadmapPlatform.Infrastructure.Services.Auth;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
+using RoadmapPlatform.Infrastructure.Services.LearningModules;
 using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
@@ -56,9 +58,13 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                 configuration.GetSection("Jwt"));
 
             // AI, RAG Settings
+            services.Configure<LearningModuleRagSettings>(configuration.GetSection("LearningModuleRag"));
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
+
+            // File Storage Settings
+            services.Configure<LearningModuleFileStorageSettings>(configuration.GetSection("LearningModuleFileStorage"));
 
             // Register external service implementations below.
 
@@ -114,6 +120,12 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRoadmapEnrollmentService, RoadmapEnrollmentService>();
             services.AddScoped<IRoadmapProgressService, RoadmapProgressService>();
             services.AddScoped<IRoadmapLayoutService, RoadmapLayoutService>();
+
+            // Learning Module Services
+            services.AddScoped<LearningModuleMarkdownChunker>();
+            services.AddScoped<ILearningModuleFileStorage, LocalLearningModuleFileStorage>();
+            services.AddScoped<ILearningModuleRagIndexingService, LearningModuleRagIndexingService>();
+            services.AddScoped<ICounselorLearningModuleService, CounselorLearningModuleService>();
 
             // Cache memory
             services.AddMemoryCache();
