@@ -90,9 +90,9 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
         ValidateQuestionRequest(request);
 
         var now = DateTime.UtcNow;
-        var orderIndex = request.OrderIndex > 0
-            ? request.OrderIndex
-            : await GetNextQuestionOrderIndexAsync(quiz.SkillModuleQuizId, cancellationToken);
+        var orderIndex = await GetNextQuestionOrderIndexAsync(
+            quiz.SkillModuleQuizId,
+            cancellationToken);
 
         var question = new SkillModuleQuizQuestion
         {
@@ -171,7 +171,6 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
         question.QuestionText = request.QuestionText.Trim();
         question.QuestionType = NormalizeQuestionType(request.QuestionType);
         question.Explanation = NormalizeOptionalText(request.Explanation);
-        question.OrderIndex = request.OrderIndex > 0 ? request.OrderIndex : question.OrderIndex;
         question.Points = request.Points <= 0 ? 1 : request.Points;
         question.UpdatedAt = now;
 
@@ -226,11 +225,21 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
         ValidateReorderRequest(request, quiz.SkillModuleQuizQuestions);
 
         var now = DateTime.UtcNow;
+        var questions = quiz.SkillModuleQuizQuestions.ToList();
+
+        for (var index = 0; index < questions.Count; index++)
+        {
+            questions[index].OrderIndex = -(index + 1);
+            questions[index].UpdatedAt = now;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
         var orderMap = request.Questions.ToDictionary(
             item => item.SkillModuleQuizQuestionId,
             item => item.OrderIndex);
 
-        foreach (var question in quiz.SkillModuleQuizQuestions)
+        foreach (var question in questions)
         {
             question.OrderIndex = orderMap[question.SkillModuleQuizQuestionId];
             question.UpdatedAt = now;
@@ -241,7 +250,7 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return quiz.SkillModuleQuizQuestions
+        return questions
             .OrderBy(question => question.OrderIndex)
             .Select(MapQuestion)
             .ToList();

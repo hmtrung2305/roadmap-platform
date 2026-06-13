@@ -44,11 +44,23 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             file => file.FileName,
             StringComparer.OrdinalIgnoreCase);
 
+        var maxExistingOrderIndex = await _context.SkillModuleLessons
+            .Where(lesson => lesson.SkillModuleId == skillModuleId)
+            .Select(lesson => (int?)lesson.OrderIndex)
+            .MaxAsync(cancellationToken) ?? 0;
+
+        var orderedLessonItems = request.Lessons
+            .Select((lesson, index) => new { Lesson = lesson, OriginalIndex = index })
+            .OrderBy(item => item.Lesson.OrderIndex > 0 ? item.Lesson.OrderIndex : int.MaxValue)
+            .ThenBy(item => item.OriginalIndex)
+            .ToList();
+
         var now = DateTime.UtcNow;
         var createdLessons = new List<BulkUploadedLessonDto>();
 
-        foreach (var item in request.Lessons)
+        foreach (var itemWrapper in orderedLessonItems)
         {
+            var item = itemWrapper.Lesson;
             var file = filesByName[item.FileName];
 
             var markdown = await ReadMarkdownAsync(file.Content, cancellationToken);
@@ -63,6 +75,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
             var safeFileName = CreateSafeFileName(file.FileName);
             var objectPath = $"learning-modules/{skillModuleId}/lessons/{lessonId}-{safeFileName}";
+            var appendedOrderIndex = maxExistingOrderIndex + createdLessons.Count + 1;
 
             await using var saveStream = new MemoryStream(Encoding.UTF8.GetBytes(markdown));
             var storedFile = await _fileStorage.SaveAsync(
@@ -78,7 +91,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 Title = item.Title.Trim(),
                 Slug = slug,
                 Summary = NormalizeOptionalText(item.Summary),
-                OrderIndex = item.OrderIndex,
+                OrderIndex = appendedOrderIndex,
                 EstimatedHours = item.EstimatedHours,
                 MarkdownFileKey = storedFile.ObjectPath,
                 MarkdownFileName = file.FileName,
@@ -141,11 +154,19 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         ValidateReorderRequest(request, lessons);
 
+        var now = DateTime.UtcNow;
+
+        for (var index = 0; index < lessons.Count; index++)
+        {
+            lessons[index].OrderIndex = -(index + 1);
+            lessons[index].UpdatedAt = now;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
         var orderMap = request.Lessons.ToDictionary(
             item => item.SkillModuleLessonId,
             item => item.OrderIndex);
-
-        var now = DateTime.UtcNow;
 
         foreach (var lesson in lessons)
         {
@@ -452,14 +473,13 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             throw new ConflictException("Lesson client IDs must be unique.");
         }
 
-        var duplicateOrderValues = request.Lessons
-            .Where(item => item.OrderIndex > 0)
-            .GroupBy(item => item.OrderIndex)
+        var duplicateFileNames = files
+            .GroupBy(file => file.FileName, StringComparer.OrdinalIgnoreCase)
             .Any(group => group.Count() > 1);
 
-        if (duplicateOrderValues)
+        if (duplicateFileNames)
         {
-            throw new ConflictException("Lesson order values must be unique.");
+            throw new ConflictException("Uploaded file names must be unique.");
         }
 
         var fileNames = files
@@ -476,11 +496,6 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             if (string.IsNullOrWhiteSpace(lesson.Title))
             {
                 throw new ConflictException("Each lesson must have a title.");
-            }
-
-            if (lesson.OrderIndex <= 0)
-            {
-                throw new ConflictException("Lesson order values must be positive.");
             }
 
             if (string.IsNullOrWhiteSpace(lesson.FileName)
