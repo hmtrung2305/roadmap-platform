@@ -92,7 +92,7 @@ export default function AdminLearningModulesPage() {
               <BookOpenText size={22} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">Admin workspace</p>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">Workspace</p>
               <h1 className="text-2xl font-extrabold text-[#18332D]">Learning module management</h1>
             </div>
           </div>
@@ -149,9 +149,6 @@ export default function AdminLearningModulesPage() {
               >
                 <div className="min-w-0">
                   <div className="truncate font-extrabold text-[#18332D]">{module.title}</div>
-                  {module.description && (
-                    <div className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">{module.description}</div>
-                  )}
                 </div>
 
                 <div className="text-sm font-bold text-slate-700">{module.skillName}</div>
@@ -165,33 +162,33 @@ export default function AdminLearningModulesPage() {
                   <ModuleBadge tone={getStatusTone(module.status)}>{prettyModuleStatus[module.status] || module.status}</ModuleBadge>
                 </div>
 
-                <div className="flex flex-nowrap justify-start gap-2 overflow-x-auto pb-1 xl:justify-end xl:overflow-visible xl:pb-0">
+                <div className="flex flex-nowrap justify-start gap-1.5 overflow-x-auto pb-1 xl:justify-end xl:overflow-visible xl:pb-0">
                   {module.status === "draft" && (
-                    <ModuleButton variant="secondary" size="xs" onClick={() => navigate(`/admin/learning-modules/${module.skillModuleId}/edit`)}>
-                      <Edit3 size={13} /> Edit
-                    </ModuleButton>
+                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${module.skillModuleId}/edit`)}>
+                      <Edit3 size={14} strokeWidth={2.25} /> Edit
+                    </ModuleActionButton>
                   )}
 
-                  <ModuleButton variant="secondary" size="xs" onClick={() => navigate(`/admin/learning-modules/${module.skillModuleId}/preview`)}>
-                    <Eye size={13} /> Preview
-                  </ModuleButton>
+                  <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${module.skillModuleId}/preview`)}>
+                    <Eye size={14} strokeWidth={2.25} /> Preview
+                  </ModuleActionButton>
 
                   {module.status === "draft" && (
-                    <ModuleButton variant="danger" size="xs" onClick={() => handleDelete(module)}>
-                      <Trash2 size={13} /> Delete
-                    </ModuleButton>
+                    <ModuleActionButton tone="danger" onClick={() => handleDelete(module)}>
+                      <Trash2 size={14} strokeWidth={2.25} /> Delete
+                    </ModuleActionButton>
                   )}
 
                   {module.status === "published" && (
-                    <ModuleButton variant="danger" size="xs" onClick={() => handleArchive(module)}>
-                      <Archive size={13} /> Archive
-                    </ModuleButton>
+                    <ModuleActionButton tone="danger" onClick={() => handleArchive(module)}>
+                      <Archive size={14} strokeWidth={2.25} /> Archive
+                    </ModuleActionButton>
                   )}
 
                   {module.status === "archived" && (
-                    <ModuleButton variant="secondary" size="xs" onClick={() => handleRestore(module)}>
-                      <RotateCcw size={13} /> Restore
-                    </ModuleButton>
+                    <ModuleActionButton onClick={() => handleRestore(module)}>
+                      <RotateCcw size={14} strokeWidth={2.25} /> Restore
+                    </ModuleActionButton>
                   )}
                 </div>
               </div>
@@ -200,5 +197,22 @@ export default function AdminLearningModulesPage() {
         )}
       </div>
     </ModulePageShell>
+  );
+}
+
+function ModuleActionButton({ children, tone = "default", onClick }) {
+  const styles =
+    tone === "danger"
+      ? "border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:bg-rose-50"
+      : "border-[#B9D8CC] bg-white text-[#1F6F5F] hover:border-[#2FA084] hover:bg-[#F7F1E8]";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-extrabold leading-none transition ${styles}`}
+    >
+      {children}
+    </button>
   );
 }

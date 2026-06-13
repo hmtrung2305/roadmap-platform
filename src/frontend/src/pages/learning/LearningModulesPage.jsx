@@ -60,10 +60,17 @@ export default function LearningModulesPage() {
   return (
     <ModulePageShell>
       <div className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-black tracking-[-0.035em] text-[#18332D]">Learning modules</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">Quick modules</p>
+            <h1 className="mt-1 text-4xl font-black tracking-[-0.045em] text-[#18332D]">Learning Modules</h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+              Practice focused skills through short lessons, quizzes, and guided study.
+            </p>
+          </div>
+
           <ModuleButton size="md" onClick={() => navigate("/learning-modules/browse")}>
-            Browse modules <ArrowRight size={15} />
+            Browse all modules <ArrowRight size={15} />
           </ModuleButton>
         </div>
 
@@ -111,7 +118,7 @@ export default function LearningModulesPage() {
         ) : visibleModules.length === 0 ? (
           <ModuleEmptyState
             title={status === "completed" ? "No completed modules yet" : "No modules in progress"}
-            action={<ModuleButton onClick={() => navigate("/learning-modules/browse")}>Browse modules</ModuleButton>}
+            action={<ModuleButton onClick={() => navigate("/learning-modules/browse")}>Browse all modules</ModuleButton>}
           >
             Start a module to see it here.
           </ModuleEmptyState>
@@ -134,9 +141,24 @@ function LearningModuleListRow({ module }) {
     (value) => value === "completed",
   ).length;
   const actionLabel = getEnrollmentStatus(module) === "completed" ? "Review" : "Continue";
+  const targetPath = `/learning-modules/${module.slug}/study`;
+
+  const openModule = () => navigate(targetPath);
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openModule();
+    }
+  };
 
   return (
-    <div className="grid gap-4 rounded-xl border border-[#B9D8CC]/80 bg-white/95 px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:grid-cols-[minmax(280px,1.6fr)_160px_260px_120px] md:items-center">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={openModule}
+      onKeyDown={handleKeyDown}
+      className="grid cursor-pointer gap-4 rounded-xl border border-[#B9D8CC]/80 bg-white/95 px-5 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#6FCF97]/30 md:grid-cols-[minmax(280px,1.6fr)_260px_140px] md:items-center"
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="truncate text-base font-extrabold text-[#18332D]">{module.title}</h2>
@@ -146,8 +168,6 @@ function LearningModuleListRow({ module }) {
           {module.description || "No description provided."}
         </p>
       </div>
-
-      <div className="text-sm font-bold text-slate-700">{module.skillName}</div>
 
       <div>
         <div className="mb-1 flex justify-between text-xs font-bold text-slate-700">
@@ -160,8 +180,11 @@ function LearningModuleListRow({ module }) {
       </div>
 
       <div className="md:text-right">
-        <ModuleButton onClick={() => navigate(`/learning-modules/${module.slug}/study`)}>
-          {actionLabel}
+        <ModuleButton onClick={(event) => {
+          event.stopPropagation();
+          openModule();
+        }}>
+          {actionLabel} <ArrowRight size={15} />
         </ModuleButton>
       </div>
     </div>

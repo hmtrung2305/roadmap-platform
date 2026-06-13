@@ -41,6 +41,10 @@ function getAdminPageTitle(pathname) {
     return "Learning Modules";
   }
 
+  if (pathname === "/admin/settings") {
+    return "Settings";
+  }
+
   return "Admin";
 }
 
@@ -135,7 +139,15 @@ export default function AdminLayout() {
         </nav>
 
         <div className="border-t border-[#B9D8CC] p-3">
-          <div className="flex min-w-0 items-center gap-3 rounded-lg px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/settings")}
+            className={`flex w-full min-w-0 items-center gap-3 rounded-lg border px-2 py-1.5 text-left transition ${
+              location.pathname === "/admin/settings"
+                ? "border-[#6FCF97] bg-[#6FCF97]/18"
+                : "border-transparent hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
+            }`}
+          >
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#2FA084] text-white">
               <Shield size={18} />
             </div>
@@ -148,7 +160,7 @@ export default function AdminLayout() {
                 {email}
               </div>
             </div>
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -167,7 +179,7 @@ export default function AdminLayout() {
 
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
-                    Admin
+                    Management
                   </p>
                   <h1 className="truncate text-sm font-extrabold text-[#18332D]">
                     {pageTitle}
@@ -177,7 +189,7 @@ export default function AdminLayout() {
 
               <div className="hidden lg:block">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
-                  Admin
+                  Management
                 </p>
                 <h1 className="truncate text-lg font-extrabold text-[#18332D]">
                   {pageTitle}
@@ -208,14 +220,18 @@ export default function AdminLayout() {
               })}
             </div>
 
-            <div className="hidden min-w-0 text-right sm:block lg:hidden">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/settings")}
+              className="hidden min-w-0 rounded-lg border border-transparent px-2 py-1 text-right transition hover:border-[#B9D8CC] hover:bg-[#F7F1E8] sm:block lg:hidden"
+            >
               <div className="truncate text-xs font-extrabold text-[#18332D]">
                 {displayName}
               </div>
               <div className="truncate text-[11px] font-semibold text-slate-500">
                 {email}
               </div>
-            </div>
+            </button>
           </div>
 
           <div className="flex gap-2 overflow-x-auto border-t border-[#B9D8CC]/70 px-4 py-2 md:hidden">

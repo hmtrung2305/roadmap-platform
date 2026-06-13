@@ -984,9 +984,7 @@ function QuizEditor({ module, quiz, onChanged }) {
         <ModuleCard className="p-5">
           <div className="mb-4">
             <h2 className="text-lg font-extrabold text-[#18332D]">Create quiz</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">
-              Set up the quiz first. The question builder will appear after the quiz is created.
-            </p>
+
           </div>
 
           {quizCreateFields}
@@ -1383,10 +1381,13 @@ function PreviewShell({ moduleId, detail }) {
   );
 }
 
+
 function PublishPanel({ detail, isPublishing, onPublish }) {
   const module = detail.module;
   const lessonCount = detail.lessons.length;
   const questionCount = detail.quiz?.questions?.length || 0;
+  const requiredLessons = 3;
+  const requiredQuestions = 10;
 
   const checks = useMemo(
     () => [
@@ -1397,24 +1398,28 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
       },
       {
         label: "Lessons",
-        description: `${lessonCount} lesson${lessonCount === 1 ? "" : "s"} added.`,
-        complete: lessonCount > 0,
+        description:
+          lessonCount >= requiredLessons
+            ? `${lessonCount} lessons ready.`
+            : `${lessonCount}/${requiredLessons} lessons added.`,
+        complete: lessonCount >= requiredLessons,
       },
       {
         label: "Quiz",
-        description: detail.quiz ? "Quiz settings are saved." : "Create a quiz for this module.",
-        complete: Boolean(detail.quiz),
-      },
-      {
-        label: "Quiz questions",
-        description: `${questionCount} question${questionCount === 1 ? "" : "s"} added.`,
-        complete: questionCount > 0,
+        description: !detail.quiz
+          ? "Create a quiz for this module."
+          : questionCount >= requiredQuestions
+            ? `${questionCount} questions ready.`
+            : `${questionCount}/${requiredQuestions} questions added.`,
+        complete: Boolean(detail.quiz) && questionCount >= requiredQuestions,
       },
     ],
     [detail.quiz, lessonCount, module.description, module.skillId, module.title, questionCount],
   );
 
-  const canPublish = detail.publishReadiness?.canPublish ?? checks.every((check) => check.complete);
+  const frontendReady = checks.every((check) => check.complete);
+  const backendReady = detail.publishReadiness?.canPublish ?? true;
+  const canPublish = frontendReady && backendReady;
   const backendErrors = detail.publishReadiness?.errors || [];
 
   if (module.status !== "draft") {
@@ -1436,12 +1441,9 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-extrabold text-[#18332D]">Publish module</h2>
-          <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
-            Review the module setup before making it available to learners.
-          </p>
         </div>
 
-        <ModuleBadge tone={canPublish ? "green" : "amber"}>
+        <ModuleBadge tone={canPublish ? "green" : "rose"}>
           {canPublish ? "Ready" : "Not ready"}
         </ModuleBadge>
       </div>
@@ -1453,13 +1455,13 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
             className={`flex items-start gap-3 rounded-xl border p-4 ${
               check.complete
                 ? "border-[#B9D8CC] bg-[#6FCF97]/10"
-                : "border-amber-200 bg-amber-50"
+                : "border-rose-200 bg-rose-50"
             }`}
           >
             {check.complete ? (
               <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-[#1F6F5F]" />
             ) : (
-              <Circle size={20} className="mt-0.5 shrink-0 text-amber-600" />
+              <Circle size={20} className="mt-0.5 shrink-0 text-rose-600" />
             )}
             <div>
               <div className="text-sm font-extrabold text-[#18332D]">{check.label}</div>
@@ -1470,11 +1472,11 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
       </div>
 
       {backendErrors.length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-extrabold text-amber-800">
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <div className="flex items-center gap-2 text-sm font-extrabold text-rose-700">
             <AlertCircle size={16} /> Needs attention
           </div>
-          <ul className="mt-2 space-y-1 text-sm font-semibold text-amber-800">
+          <ul className="mt-2 space-y-1 text-sm font-semibold text-rose-700">
             {backendErrors.map((error) => (
               <li key={error}>• {error}</li>
             ))}

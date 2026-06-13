@@ -32,6 +32,7 @@ import AdminLearningModulesPage from "./pages/admin/learningModules/AdminLearnin
 import AdminLearningModuleCreatePage from "./pages/admin/learningModules/AdminLearningModuleCreatePage";
 import AdminLearningModuleEditorPage from "./pages/admin/learningModules/AdminLearningModuleEditorPage";
 import AdminLearningModulePreviewPage from "./pages/admin/learningModules/AdminLearningModulePreviewPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -173,6 +174,7 @@ export default function App() {
             <Route path="/admin/learning-modules/create" element={<AdminLearningModuleCreatePage />} />
             <Route path="/admin/learning-modules/:moduleId/edit" element={<AdminLearningModuleEditorPage />} />
             <Route path="/admin/learning-modules/:moduleId/preview" element={<AdminLearningModulePreviewPage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 
           <Route

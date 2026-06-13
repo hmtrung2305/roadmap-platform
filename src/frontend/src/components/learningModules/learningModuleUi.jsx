@@ -135,7 +135,8 @@ export function getProgress(module) {
 
 export function getStatusTone(status) {
   if (status === "published" || status === "completed") return "green";
-  if (status === "draft" || status === "in_progress") return "amber";
+  if (status === "draft") return "blue";
+  if (status === "in_progress") return "blue";
   if (status === "archived") return "slate";
   return "slate";
 }
