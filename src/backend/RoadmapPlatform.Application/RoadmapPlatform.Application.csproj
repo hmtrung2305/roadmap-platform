@@ -8,13 +8,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="DTOs\Chat\" />
-    <Folder Include="DTOs\Rag\" />
-    <Folder Include="DTOs\Resources\" />
+    <Compile Remove="DTOs\Chat\**" />
+    <Compile Remove="DTOs\Rag\**" />
+    <Compile Remove="DTOs\Resources\**" />
+    <Compile Remove="Interfaces\Rag\**" />
+    <Compile Remove="Interfaces\Resources\**" />
+    <EmbeddedResource Remove="DTOs\Chat\**" />
+    <EmbeddedResource Remove="DTOs\Rag\**" />
+    <EmbeddedResource Remove="DTOs\Resources\**" />
+    <EmbeddedResource Remove="Interfaces\Rag\**" />
+    <EmbeddedResource Remove="Interfaces\Resources\**" />
+    <None Remove="DTOs\Chat\**" />
+    <None Remove="DTOs\Rag\**" />
+    <None Remove="DTOs\Resources\**" />
+    <None Remove="Interfaces\Rag\**" />
+    <None Remove="Interfaces\Resources\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Exceptions\" />
     <Folder Include="Interfaces\Chat\" />
-    <Folder Include="Interfaces\Rag\" />
-    <Folder Include="Interfaces\Resources\" />
   </ItemGroup>
 
   <ItemGroup>

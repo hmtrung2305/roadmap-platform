@@ -98,33 +98,54 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown),
                 ContentSizeBytes = storedFile.SizeBytes,
                 ContentVersion = 1,
+                IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing,
+                IndexedAt = null,
+                IndexingError = null,
                 CreatedAt = now,
                 UpdatedAt = now
             };
 
             _context.SkillModuleLessons.Add(lesson);
-            await _context.SaveChangesAsync(cancellationToken);
 
-            var chunks = await _ragIndexingService.IndexLessonAsync(
-                skillModuleId,
-                lessonId,
-                markdown,
-                cancellationToken);
-
-            createdLessons.Add(new BulkUploadedLessonDto
+            try
             {
-                ClientId = item.ClientId,
-                SkillModuleLessonId = lesson.SkillModuleLessonId,
-                Title = lesson.Title,
-                Slug = lesson.Slug,
-                OrderIndex = lesson.OrderIndex,
-                MarkdownFileName = lesson.MarkdownFileName ?? file.FileName,
-                MarkdownFileKey = lesson.MarkdownFileKey,
-                ContentHash = lesson.ContentHash,
-                ContentSizeBytes = lesson.ContentSizeBytes ?? file.Length,
-                ContentVersion = lesson.ContentVersion,
-                ChunksGenerated = chunks.Count
-            });
+                await _context.SaveChangesAsync(cancellationToken);
+
+                var chunks = await _ragIndexingService.IndexLessonAsync(
+                    skillModuleId,
+                    lessonId,
+                    markdown,
+                    cancellationToken);
+
+                MarkLessonIndexed(lesson, DateTime.UtcNow);
+                module.UpdatedAt = lesson.UpdatedAt;
+                await _context.SaveChangesAsync(cancellationToken);
+
+                createdLessons.Add(new BulkUploadedLessonDto
+                {
+                    ClientId = item.ClientId,
+                    SkillModuleLessonId = lesson.SkillModuleLessonId,
+                    Title = lesson.Title,
+                    Slug = lesson.Slug,
+                    OrderIndex = lesson.OrderIndex,
+                    MarkdownFileName = lesson.MarkdownFileName ?? file.FileName,
+                    MarkdownFileKey = lesson.MarkdownFileKey,
+                    ContentHash = lesson.ContentHash,
+                    ContentSizeBytes = lesson.ContentSizeBytes ?? file.Length,
+                    ContentVersion = lesson.ContentVersion,
+                    IndexingStatus = lesson.IndexingStatus,
+                    IndexedAt = lesson.IndexedAt,
+                    IndexingError = lesson.IndexingError,
+                    ChunksGenerated = chunks.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                MarkLessonIndexingFailed(lesson, ex, DateTime.UtcNow);
+                module.UpdatedAt = lesson.UpdatedAt;
+                await SaveIndexingFailureAsync(cancellationToken);
+                throw;
+            }
         }
 
         module.UpdatedAt = DateTime.UtcNow;
@@ -288,44 +309,60 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             file.ContentType,
             cancellationToken);
 
-        var chunks = await _ragIndexingService.IndexLessonAsync(
-            skillModuleId,
-            lessonId,
-            markdown,
-            cancellationToken);
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        lesson.MarkdownFileKey = storedFile.ObjectPath;
-        lesson.MarkdownFileName = file.FileName;
-        lesson.ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown);
-        lesson.ContentSizeBytes = storedFile.SizeBytes;
-        lesson.ContentVersion += 1;
-        lesson.UpdatedAt = DateTime.UtcNow;
-
-        module.UpdatedAt = lesson.UpdatedAt;
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(oldFileKey)
-            && !string.Equals(oldFileKey, lesson.MarkdownFileKey, StringComparison.Ordinal))
+        try
         {
-            await _fileStorage.DeleteAsync(oldFileKey, cancellationToken);
-        }
+            var now = DateTime.UtcNow;
 
-        lesson.SkillModuleChunks = chunks
-            .Select(chunk => new SkillModuleChunk
+            lesson.MarkdownFileKey = storedFile.ObjectPath;
+            lesson.MarkdownFileName = file.FileName;
+            lesson.ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown);
+            lesson.ContentSizeBytes = storedFile.SizeBytes;
+            lesson.ContentVersion += 1;
+            MarkLessonIndexing(lesson, now);
+            module.UpdatedAt = lesson.UpdatedAt;
+
+            var chunks = await _ragIndexingService.IndexLessonAsync(
+                skillModuleId,
+                lessonId,
+                markdown,
+                cancellationToken);
+
+            MarkLessonIndexed(lesson, DateTime.UtcNow);
+            module.UpdatedAt = lesson.UpdatedAt;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(oldFileKey)
+                && !string.Equals(oldFileKey, lesson.MarkdownFileKey, StringComparison.Ordinal))
             {
-                SkillModuleChunkId = chunk.SkillModuleChunkId,
-                SkillModuleId = chunk.SkillModuleId,
-                SkillModuleLessonId = chunk.SkillModuleLessonId,
-                ChunkIndex = chunk.ChunkIndex,
-                Heading = chunk.Heading,
-                Content = chunk.Content,
-                TokenCount = chunk.TokenCount,
-                ContentHash = chunk.ContentHash
-            })
-            .ToList();
+                await TryDeleteStoredFileAsync(oldFileKey);
+            }
 
-        return MapLesson(lesson);
+            lesson.SkillModuleChunks = chunks
+                .Select(chunk => new SkillModuleChunk
+                {
+                    SkillModuleChunkId = chunk.SkillModuleChunkId,
+                    SkillModuleId = chunk.SkillModuleId,
+                    SkillModuleLessonId = chunk.SkillModuleLessonId,
+                    ChunkIndex = chunk.ChunkIndex,
+                    Heading = chunk.Heading,
+                    Content = chunk.Content,
+                    TokenCount = chunk.TokenCount,
+                    ContentHash = chunk.ContentHash
+                })
+                .ToList();
+
+            return MapLesson(lesson);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            await TryDeleteStoredFileAsync(storedFile.ObjectPath);
+            throw;
+        }
     }
 
     public async Task<LearningModuleLessonContentDto> GetLessonPreviewAsync(
@@ -400,10 +437,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(fileKey))
-        {
-            await _fileStorage.DeleteAsync(fileKey, cancellationToken);
-        }
+        await TryDeleteStoredFileAsync(fileKey);
     }
 
     private async Task<SkillModule> GetOwnedDraftModuleAsync(
@@ -446,6 +480,77 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         {
             throw new NotFoundException("Learning module was not found.");
         }
+    }
+
+    private async Task TryDeleteStoredFileAsync(string? fileKey)
+    {
+        if (string.IsNullOrWhiteSpace(fileKey))
+        {
+            return;
+        }
+
+        try
+        {
+            await _fileStorage.DeleteAsync(fileKey, CancellationToken.None);
+        }
+        catch
+        {
+            // File cleanup is best-effort after the database operation has already succeeded.
+        }
+    }
+
+    private async Task SaveIndexingFailureAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            // Preserve the original indexing exception for the caller.
+        }
+    }
+
+    private static void MarkLessonIndexing(SkillModuleLesson lesson, DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = now;
+    }
+
+    private static void MarkLessonIndexed(SkillModuleLesson lesson, DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexed;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = now;
+        lesson.UpdatedAt = now;
+    }
+
+    private static void MarkLessonIndexingFailed(
+        SkillModuleLesson lesson,
+        Exception exception,
+        DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Failed;
+        lesson.IndexingError = CreateIndexingError(exception);
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = now;
+    }
+
+    private static string CreateIndexingError(Exception exception)
+    {
+        const int maxLength = 1000;
+        var message = exception.Message.Trim();
+
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            message = "Lesson indexing failed.";
+        }
+
+        return message.Length <= maxLength
+            ? message
+            : message[..maxLength];
     }
 
     private static void ValidateBulkUploadRequest(
@@ -660,6 +765,9 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             ContentHash = lesson.ContentHash,
             ContentSizeBytes = lesson.ContentSizeBytes,
             ContentVersion = lesson.ContentVersion,
+            IndexingStatus = lesson.IndexingStatus,
+            IndexedAt = lesson.IndexedAt,
+            IndexingError = lesson.IndexingError,
             ChunkCount = lesson.SkillModuleChunks.Count,
             CreatedAt = lesson.CreatedAt,
             UpdatedAt = lesson.UpdatedAt

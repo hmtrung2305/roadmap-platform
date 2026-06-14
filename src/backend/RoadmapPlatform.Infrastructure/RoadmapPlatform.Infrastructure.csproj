@@ -1,6 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Compile Remove="Services\Rag\**" />
+    <Compile Remove="Services\Resources\**" />
+    <EmbeddedResource Remove="Services\Rag\**" />
+    <EmbeddedResource Remove="Services\Resources\**" />
+    <None Remove="Services\Rag\**" />
+    <None Remove="Services\Resources\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RoadmapPlatform.Application\RoadmapPlatform.Application.csproj" />
   </ItemGroup>
 
@@ -24,8 +33,6 @@
   <ItemGroup>
     <Folder Include="Entities\" />
     <Folder Include="Services\Chat\" />
-    <Folder Include="Services\Rag\" />
-    <Folder Include="Services\Resources\" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -14,10 +14,14 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ApplicationDbContext _context;
+    private readonly ILearningModuleFileStorage _fileStorage;
 
-    public CounselorLearningModuleService(ApplicationDbContext context)
+    public CounselorLearningModuleService(
+        ApplicationDbContext context,
+        ILearningModuleFileStorage fileStorage)
     {
         _context = context;
+        _fileStorage = fileStorage;
     }
 
     public async Task<IReadOnlyList<CounselorLearningModuleSummaryDto>> GetModulesAsync(
@@ -213,6 +217,7 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedModuleQuery(counselorUserId)
+            .Include(item => item.SkillModuleLessons)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
         if (module == null)
@@ -225,8 +230,19 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             throw new ConflictException("Only draft modules can be deleted. Archive published modules instead.");
         }
 
+        var lessonFileKeys = module.SkillModuleLessons
+            .Select(lesson => lesson.MarkdownFileKey)
+            .Where(fileKey => !string.IsNullOrWhiteSpace(fileKey))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
         _context.SkillModules.Remove(module);
         await _context.SaveChangesAsync(cancellationToken);
+
+        foreach (var fileKey in lessonFileKeys)
+        {
+            await TryDeleteStoredFileAsync(fileKey);
+        }
     }
 
     public async Task<PublishLearningModuleReadinessDto> GetPublishReadinessAsync(
@@ -435,9 +451,15 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             errors.Add("Every lesson must have a Markdown file.");
         }
 
-        if (lessons.Any(lesson => lesson.SkillModuleChunks.Count == 0))
+        if (lessons.Any(lesson => lesson.IndexingStatus != LearningModuleLessonIndexingStatusValues.Indexed))
         {
-            errors.Add("Every lesson must have generated chunks.");
+            errors.Add("Every lesson must finish indexing before publishing.");
+        }
+
+        if (lessons.Any(lesson => lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexed
+            && lesson.SkillModuleChunks.Count == 0))
+        {
+            errors.Add("Every indexed lesson must have generated chunks.");
         }
 
         var quiz = module.SkillModuleQuiz;
@@ -477,6 +499,23 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             CanPublish = errors.Count == 0,
             Errors = errors
         };
+    }
+
+    private async Task TryDeleteStoredFileAsync(string? fileKey)
+    {
+        if (string.IsNullOrWhiteSpace(fileKey))
+        {
+            return;
+        }
+
+        try
+        {
+            await _fileStorage.DeleteAsync(fileKey, CancellationToken.None);
+        }
+        catch
+        {
+            // File cleanup is best-effort after the database operation has already succeeded.
+        }
     }
 
     private async Task<string> CreateUniqueSlugAsync(
@@ -607,6 +646,9 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             ContentHash = lesson.ContentHash,
             ContentSizeBytes = lesson.ContentSizeBytes,
             ContentVersion = lesson.ContentVersion,
+            IndexingStatus = lesson.IndexingStatus,
+            IndexedAt = lesson.IndexedAt,
+            IndexingError = lesson.IndexingError,
             ChunkCount = lesson.SkillModuleChunks.Count,
             CreatedAt = lesson.CreatedAt,
             UpdatedAt = lesson.UpdatedAt

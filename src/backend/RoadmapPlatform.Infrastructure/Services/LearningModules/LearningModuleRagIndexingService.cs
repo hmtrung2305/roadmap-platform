@@ -63,8 +63,6 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
             throw new KeyNotFoundException("Learning module lesson was not found.");
         }
 
-        await DeleteLessonChunksAsync(skillModuleLessonId, cancellationToken);
-
         var markdownChunks = _chunker.Chunk(markdown);
         var entities = new List<SkillModuleChunk>();
 
@@ -86,6 +84,15 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
                 ContentHash = contentHash,
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        var existingChunks = await _context.SkillModuleChunks
+            .Where(chunk => chunk.SkillModuleLessonId == skillModuleLessonId)
+            .ToListAsync(cancellationToken);
+
+        if (existingChunks.Count > 0)
+        {
+            _context.SkillModuleChunks.RemoveRange(existingChunks);
         }
 
         _context.SkillModuleChunks.AddRange(entities);

@@ -17,5 +17,8 @@ public sealed class BulkUploadedLessonDto
     public string? ContentHash { get; set; }
     public long ContentSizeBytes { get; set; }
     public int ContentVersion { get; set; }
+    public string IndexingStatus { get; set; } = LearningModuleLessonIndexingStatusValues.Pending;
+    public DateTimeOffset? IndexedAt { get; set; }
+    public string? IndexingError { get; set; }
     public int ChunksGenerated { get; set; }
 }
