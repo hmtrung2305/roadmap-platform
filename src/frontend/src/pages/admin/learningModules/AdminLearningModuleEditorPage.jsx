@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
+  Eye,
+  FileUp,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -10,6 +12,7 @@ import {
   GripVertical,
   Loader2,
   Minus,
+  MoreVertical,
   Plus,
   Save,
   Settings,
@@ -801,13 +804,17 @@ function LessonsEditor({ module, lessons, onChanged }) {
   const [activeLessonId, setActiveLessonId] = useState(() =>
     readSessionValue(activeLessonStorageKey) || lessons[0]?.skillModuleLessonId || null,
   );
-  const [preview, setPreview] = useState(null);
-  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [draggedLessonId, setDraggedLessonId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [openLessonMenuId, setOpenLessonMenuId] = useState(null);
+  const [previewLesson, setPreviewLesson] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [lessonToReplace, setLessonToReplace] = useState(null);
   const [lessonToDelete, setLessonToDelete] = useState(null);
+  const [isReplacingContent, setIsReplacingContent] = useState(false);
   const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
   useEffect(() => {
@@ -834,34 +841,8 @@ function LessonsEditor({ module, lessons, onChanged }) {
     }
   }, [activeLessonId, activeLessonStorageKey]);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadPreview() {
-      if (!activeLessonId) {
-        setPreview(null);
-        return;
-      }
-
-      try {
-        const data = await counselorLearningModuleApi.getLessonPreview(module.skillModuleId, activeLessonId);
-        if (!ignore) setPreview(data);
-      } catch {
-        if (!ignore) setPreview(null);
-      }
-    }
-
-    loadPreview();
-
-    return () => {
-      ignore = true;
-    };
-  }, [module.skillModuleId, activeLessonId, previewRefreshKey]);
-
   const orderedLessons = localLessons.slice().sort((a, b) => a.orderIndex - b.orderIndex);
   const activeLesson = orderedLessons.find((lesson) => lesson.skillModuleLessonId === activeLessonId) || null;
-
-  const refreshPreview = () => setPreviewRefreshKey((key) => key + 1);
 
   const upload = async () => {
     if (selectedFiles.length === 0) {
@@ -957,7 +938,63 @@ function LessonsEditor({ module, lessons, onChanged }) {
     }
   };
 
+  const handleLessonSaved = (updatedLesson) => {
+    setLocalLessons((current) =>
+      current.map((lesson) =>
+        lesson.skillModuleLessonId === updatedLesson.skillModuleLessonId
+          ? { ...lesson, ...updatedLesson }
+          : lesson,
+      ),
+    );
+
+    onChanged();
+  };
+
+  const openPreview = async (lesson) => {
+    setOpenLessonMenuId(null);
+    setPreviewLesson(lesson);
+    setPreviewData(null);
+
+    try {
+      setIsPreviewLoading(true);
+      const data = await counselorLearningModuleApi.getLessonPreview(module.skillModuleId, lesson.skillModuleLessonId);
+      setPreviewData(data);
+    } catch (err) {
+      toast.error(err?.message || "Unable to load lesson preview.");
+      setPreviewData(null);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const requestReplaceLesson = (lesson) => {
+    setOpenLessonMenuId(null);
+    setLessonToReplace(lesson);
+  };
+
+  const replaceLessonContent = async (file) => {
+    if (!lessonToReplace || !file) return;
+
+    try {
+      setIsReplacingContent(true);
+      const updated = await counselorLearningModuleApi.replaceLessonContent(
+        module.skillModuleId,
+        lessonToReplace.skillModuleLessonId,
+        file,
+      );
+
+      toast.success("Lesson content replaced.");
+      setLessonToReplace(null);
+      handleLessonSaved(updated);
+    } catch (err) {
+      toast.error(err?.message || "Unable to replace lesson content.");
+    } finally {
+      setIsReplacingContent(false);
+    }
+  };
+
   const requestDeleteLesson = (lesson) => {
+    setOpenLessonMenuId(null);
     setLessonToDelete(lesson);
   };
 
@@ -977,161 +1014,195 @@ function LessonsEditor({ module, lessons, onChanged }) {
     }
   };
 
-  const handleLessonSaved = (updatedLesson) => {
-    setLocalLessons((current) =>
-      current.map((lesson) =>
-        lesson.skillModuleLessonId === updatedLesson.skillModuleLessonId
-          ? { ...lesson, ...updatedLesson }
-          : lesson,
-      ),
-    );
-
-    refreshPreview();
-    onChanged();
-  };
-
   return (
     <div className="space-y-4">
       <div className="grid h-[710px] min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4">
-        <ModuleCard className="shrink-0 p-5">
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/50 px-4 py-6 text-center hover:bg-[#F7F1E8]">
-            <Upload size={22} className="mb-2 text-[#1F6F5F]" />
-            <span className="text-sm font-extrabold text-[#18332D]">Choose Markdown files</span>
-            <span className="mt-1 text-xs font-semibold text-slate-600">.md or .markdown</span>
-            <input
-              type="file"
-              multiple
-              accept=".md,.markdown,text/markdown,text/plain"
-              className="hidden"
-              onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
-            />
-          </label>
+          <ModuleCard className="shrink-0 p-5">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/50 px-4 py-6 text-center hover:bg-[#F7F1E8]">
+              <Upload size={22} className="mb-2 text-[#1F6F5F]" />
+              <span className="text-sm font-extrabold text-[#18332D]">Choose Markdown files</span>
+              <span className="mt-1 text-xs font-semibold text-slate-600">.md or .markdown</span>
+              <input
+                type="file"
+                multiple
+                accept=".md,.markdown,text/markdown,text/plain"
+                className="hidden"
+                onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+              />
+            </label>
 
-          {selectedFiles.length > 0 && (
-            <div className="mt-3 space-y-1">
-              {selectedFiles.map((file) => (
-                <div key={file.name} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700">
-                  {file.name}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {isUploading && (
-            <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-              <Loader2 size={14} className="shrink-0 animate-spin" />
-              Uploading and indexing lessons...
-            </div>
-          )}
-
-          <ModuleButton className="mt-4 w-full" onClick={upload} disabled={isUploading}>
-            {isUploading ? "Preparing lessons..." : "Upload lessons"}
-          </ModuleButton>
-        </ModuleCard>
-
-        {orderedLessons.length === 0 ? (
-          <ModuleEmptyState title="No lessons yet">Upload Markdown files to start building this module.</ModuleEmptyState>
-        ) : (
-          <ModuleCard className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
-            <div className="min-h-0 overflow-y-auto">
-              {orderedLessons.map((lesson, index) => {
-                const isDragging = draggedLessonId === lesson.skillModuleLessonId;
-                const isDropTarget = dropTarget?.lessonId === lesson.skillModuleLessonId;
-                const showDropBefore = isDropTarget && dropTarget.position === "before";
-                const showDropAfter = isDropTarget && dropTarget.position === "after";
-
-                return (
-                  <div
-                    key={lesson.skillModuleLessonId}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.effectAllowed = "move";
-                      setDraggedLessonId(lesson.skillModuleLessonId);
-                    }}
-                    onDragEnd={clearDragState}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = "move";
-                      updateDropTarget(event, lesson.skillModuleLessonId);
-                    }}
-                    onDragLeave={(event) => {
-                      if (!event.currentTarget.contains(event.relatedTarget)) {
-                        setDropTarget((current) =>
-                          current?.lessonId === lesson.skillModuleLessonId ? null : current,
-                        );
-                      }
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      reorderLessons(draggedLessonId, lesson.skillModuleLessonId, dropTarget?.position || "before");
-                      clearDragState();
-                    }}
-                    className={`relative border-b border-[#B9D8CC]/60 p-3 transition-all duration-150 last:border-b-0 ${
-                      activeLessonId === lesson.skillModuleLessonId ? "bg-[#6FCF97]/10" : "bg-white"
-                    } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${
-                      isDropTarget ? "bg-[#F7F1E8]/70" : ""
-                    }`}
-                  >
-                    {showDropBefore && (
-                      <div className="absolute left-3 right-3 top-0 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
-                    )}
-
-                    <div className="flex items-center gap-3">
-                      <GripVertical size={16} className="shrink-0 cursor-grab text-slate-500 active:cursor-grabbing" />
-                      <button
-                        type="button"
-                        onClick={() => setActiveLessonId(lesson.skillModuleLessonId)}
-                        className="min-w-0 flex-1 text-left"
-                      >
-                        <div className="truncate text-sm font-extrabold text-[#18332D]">
-                          {index + 1}. {lesson.title}
-                        </div>
-                      </button>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <LessonIndexingBadge lesson={lesson} />
-                        <ModuleButton variant="danger" size="icon" onClick={() => requestDeleteLesson(lesson)} aria-label="Delete lesson">
-                          <Trash2 size={14} />
-                        </ModuleButton>
-                      </div>
-                    </div>
-
-                    {showDropAfter && (
-                      <div className="absolute bottom-0 left-3 right-3 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
-                    )}
+            {selectedFiles.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {selectedFiles.map((file) => (
+                  <div key={file.name} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700">
+                    {file.name}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <div className="border-t border-[#B9D8CC]/60 p-3">
-              <ModuleButton className="w-full" onClick={saveOrder} disabled={isSavingOrder}>
-                <Save size={14} /> {isSavingOrder ? "Saving..." : "Save order"}
-              </ModuleButton>
-            </div>
+            {isUploading && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+                <Loader2 size={14} className="shrink-0 animate-spin" />
+                Uploading and indexing lessons...
+              </div>
+            )}
+
+            <ModuleButton className="mt-4 w-full" onClick={upload} disabled={isUploading}>
+              {isUploading ? "Preparing lessons..." : "Upload lessons"}
+            </ModuleButton>
           </ModuleCard>
-        )}
-      </div>
 
-      <LessonMetadataEditor
+          {orderedLessons.length === 0 ? (
+            <ModuleEmptyState title="No lessons yet">Upload Markdown files to start building this module.</ModuleEmptyState>
+          ) : (
+            <ModuleCard className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-visible">
+              <div className="min-h-0 overflow-y-auto">
+                {orderedLessons.map((lesson, index) => {
+                  const isDragging = draggedLessonId === lesson.skillModuleLessonId;
+                  const isDropTarget = dropTarget?.lessonId === lesson.skillModuleLessonId;
+                  const showDropBefore = isDropTarget && dropTarget.position === "before";
+                  const showDropAfter = isDropTarget && dropTarget.position === "after";
+                  const isMenuOpen = openLessonMenuId === lesson.skillModuleLessonId;
+
+                  return (
+                    <div
+                      key={lesson.skillModuleLessonId}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        setDraggedLessonId(lesson.skillModuleLessonId);
+                      }}
+                      onDragEnd={clearDragState}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        updateDropTarget(event, lesson.skillModuleLessonId);
+                      }}
+                      onDragLeave={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                          setDropTarget((current) =>
+                            current?.lessonId === lesson.skillModuleLessonId ? null : current,
+                          );
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        reorderLessons(draggedLessonId, lesson.skillModuleLessonId, dropTarget?.position || "before");
+                        clearDragState();
+                      }}
+                      className={`relative border-b border-[#B9D8CC]/60 p-3 transition-all duration-150 last:border-b-0 ${
+                        activeLessonId === lesson.skillModuleLessonId ? "bg-[#6FCF97]/10" : "bg-white"
+                      } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${
+                        isDropTarget ? "bg-[#F7F1E8]/70" : ""
+                      }`}
+                    >
+                      {showDropBefore && (
+                        <div className="absolute left-3 right-3 top-0 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
+                      )}
+
+                      <div className="flex items-center gap-3">
+                        <GripVertical size={16} className="shrink-0 cursor-grab text-slate-500 active:cursor-grabbing" />
+                        <button
+                          type="button"
+                          onClick={() => setActiveLessonId(lesson.skillModuleLessonId)}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="truncate text-sm font-extrabold text-[#18332D]">
+                            {index + 1}. {lesson.title}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs font-semibold text-slate-500">
+                            {lesson.markdownFileName || lesson.fileName || "Markdown file"}
+                          </div>
+                        </button>
+
+                        <div className="relative flex shrink-0 items-center gap-2">
+                          <LessonIndexingBadge lesson={lesson} />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenLessonMenuId((current) =>
+                                current === lesson.skillModuleLessonId ? null : lesson.skillModuleLessonId,
+                              )
+                            }
+                            className="grid h-8 w-8 place-items-center rounded-md border border-[#B9D8CC] bg-white text-slate-600 transition hover:border-[#6FCF97] hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+                            aria-label="Lesson actions"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+
+                          {isMenuOpen && (
+                            <div className="absolute right-0 top-9 z-30 w-44 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-xl">
+                              <button
+                                type="button"
+                                onClick={() => openPreview(lesson)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-extrabold text-[#18332D] hover:bg-[#F7F1E8]"
+                              >
+                                <Eye size={14} /> Preview lesson
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => requestReplaceLesson(lesson)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-extrabold text-[#18332D] hover:bg-[#F7F1E8]"
+                              >
+                                <FileUp size={14} /> Replace file
+                              </button>
+                              <div className="my-1 border-t border-[#B9D8CC]/70" />
+                              <button
+                                type="button"
+                                onClick={() => requestDeleteLesson(lesson)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-extrabold text-rose-700 hover:bg-rose-50"
+                              >
+                                <Trash2 size={14} /> Delete lesson
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {showDropAfter && (
+                        <div className="absolute bottom-0 left-3 right-3 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="border-t border-[#B9D8CC]/60 p-3">
+                <ModuleButton className="w-full" onClick={saveOrder} disabled={isSavingOrder}>
+                  <Save size={14} /> {isSavingOrder ? "Saving..." : "Save order"}
+                </ModuleButton>
+              </div>
+            </ModuleCard>
+          )}
+        </div>
+
+        <LessonMetadataEditor
           module={module}
           lesson={activeLesson}
           onSaved={handleLessonSaved}
-          onContentReplaced={(updatedLesson) => {
-            handleLessonSaved(updatedLesson);
-            refreshPreview();
-          }}
         />
       </div>
 
-      <ModuleCard className="min-h-[560px] overflow-hidden">
-        <div className="border-b border-[#B9D8CC] px-5 py-4">
-          <h2 className="text-sm font-extrabold text-[#18332D]">{preview?.title || "Lesson preview"}</h2>
-        </div>
-        <div className="max-h-[720px] overflow-auto p-6">
-          <MarkdownRenderer markdown={preview?.markdown || `# Lesson preview\n\nSelect a lesson to preview its content.`} />
-        </div>
-      </ModuleCard>
+      <LessonPreviewDialog
+        isOpen={Boolean(previewLesson)}
+        lesson={previewLesson}
+        preview={previewData}
+        isLoading={isPreviewLoading}
+        onClose={() => {
+          setPreviewLesson(null);
+          setPreviewData(null);
+        }}
+      />
+
+      <ReplaceLessonContentDialog
+        isOpen={Boolean(lessonToReplace)}
+        lesson={lessonToReplace}
+        isReplacing={isReplacingContent}
+        onClose={() => setLessonToReplace(null)}
+        onReplace={replaceLessonContent}
+      />
 
       <ConfirmActionDialog
         isOpen={Boolean(lessonToDelete)}
@@ -1159,15 +1230,13 @@ function LessonIndexingBadge({ lesson }) {
   );
 }
 
-function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
+function LessonMetadataEditor({ module, lesson, onSaved }) {
   const [form, setForm] = useState({
     title: "",
     summary: "",
     estimatedHours: "",
   });
-  const [replacementFile, setReplacementFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isReplacingContent, setIsReplacingContent] = useState(false);
   const isDirty = hasLessonDraftChanges(form, lesson);
 
   useEffect(() => {
@@ -1176,7 +1245,6 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
       summary: lesson?.summary || "",
       estimatedHours: lesson?.estimatedHours ?? "",
     });
-    setReplacementFile(null);
   }, [lesson?.skillModuleLessonId, lesson?.title, lesson?.summary, lesson?.estimatedHours]);
 
   const update = (key, value) => {
@@ -1210,27 +1278,6 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
       toast.error(err?.message || "Unable to save lesson details.");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const replaceContent = async () => {
-    if (!lesson || !replacementFile) return;
-
-    try {
-      setIsReplacingContent(true);
-      const updated = await counselorLearningModuleApi.replaceLessonContent(
-        module.skillModuleId,
-        lesson.skillModuleLessonId,
-        replacementFile,
-      );
-
-      toast.success("Lesson content replaced.");
-      setReplacementFile(null);
-      onContentReplaced(updated);
-    } catch (err) {
-      toast.error(err?.message || "Unable to replace lesson content.");
-    } finally {
-      setIsReplacingContent(false);
     }
   };
 
@@ -1304,18 +1351,85 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
           <Save size={14} /> {isSaving ? "Saving..." : isDirty ? "Save lesson details" : "Saved"}
         </ModuleButton>
       </div>
+    </ModuleCard>
+  );
+}
 
-      <div className="my-5 border-t border-[#B9D8CC]" />
 
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-sm font-extrabold text-[#18332D]">Replace Markdown file</h3>
-          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-            Replacing the file will update the preview and rebuild the lesson chunks for module chat.
-          </p>
+function LessonPreviewDialog({ isOpen, lesson, preview, isLoading, onClose }) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-[#18332D]/35 px-4 backdrop-blur-sm"
+      onMouseDown={onClose}
+    >
+      <div
+        className="flex h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[#B9D8CC] bg-white shadow-2xl"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#B9D8CC] px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold text-[#18332D]">Lesson preview</h2>
+            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+              {lesson?.markdownFileName || lesson?.fileName || lesson?.title || "Markdown file"}
+            </p>
+          </div>
+
+          <ModuleButton variant="secondary" size="xs" onClick={onClose}>
+            Close
+          </ModuleButton>
         </div>
 
-        <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/50 px-4 py-5 text-center hover:bg-[#F7F1E8]">
+        <div className="min-h-0 flex-1 overflow-auto p-6">
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center gap-2 text-sm font-bold text-slate-600">
+              <Loader2 size={16} className="animate-spin text-[#1F6F5F]" />
+              Loading preview...
+            </div>
+          ) : (
+            <MarkdownRenderer markdown={preview?.markdown || "# Empty preview\n\nNo lesson content was returned."} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReplaceLessonContentDialog({ isOpen, lesson, isReplacing, onClose, onReplace }) {
+  const [replacementFile, setReplacementFile] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setReplacementFile(null);
+    }
+  }, [isOpen, lesson?.skillModuleLessonId]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-[#18332D]/35 px-4 backdrop-blur-sm"
+      onMouseDown={isReplacing ? undefined : onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl border border-[#B9D8CC] bg-white p-5 shadow-2xl"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#6FCF97]/20 text-[#1F6F5F]">
+            <FileUp size={20} />
+          </div>
+
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold text-[#18332D]">Replace lesson file</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
+              Upload a new Markdown file for {lesson?.title || "this lesson"}. This will rebuild the lesson chunks for module chat.
+            </p>
+          </div>
+        </div>
+
+        <label className="mt-5 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/50 px-4 py-6 text-center hover:bg-[#F7F1E8]">
           <Upload size={20} className="mb-2 text-[#1F6F5F]" />
           <span className="text-sm font-extrabold text-[#18332D]">
             {replacementFile ? replacementFile.name : "Choose replacement file"}
@@ -1329,23 +1443,23 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
           />
         </label>
 
-        {isReplacingContent && (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+        {isReplacing && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
             <Loader2 size={14} className="shrink-0 animate-spin" />
             Replacing and indexing content...
           </div>
         )}
 
-        <ModuleButton
-          className="w-full"
-          variant="secondary"
-          onClick={replaceContent}
-          disabled={!replacementFile || isReplacingContent}
-        >
-          {isReplacingContent ? "Replacing..." : "Replace content"}
-        </ModuleButton>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <ModuleButton variant="secondary" onClick={onClose} disabled={isReplacing}>
+            Cancel
+          </ModuleButton>
+          <ModuleButton onClick={() => onReplace(replacementFile)} disabled={!replacementFile || isReplacing}>
+            {isReplacing ? "Replacing..." : "Replace file"}
+          </ModuleButton>
+        </div>
       </div>
-    </ModuleCard>
+    </div>
   );
 }
 

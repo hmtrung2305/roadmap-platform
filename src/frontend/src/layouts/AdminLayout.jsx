@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  ChevronUp,
   LibraryBig,
+  LogOut,
+  Settings,
   Shield,
 } from "lucide-react";
 
@@ -74,8 +77,12 @@ export default function AdminLayout() {
   const location = useLocation();
 
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
+  const userMenuRef = useRef(null);
 
   const [profile, setProfile] = useState(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -94,6 +101,20 @@ export default function AdminLayout() {
     fetchProfile();
   }, [user]);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const pageTitle = useMemo(
     () => getAdminPageTitle(location.pathname),
     [location.pathname],
@@ -101,6 +122,17 @@ export default function AdminLayout() {
 
   const displayName = getDisplayName(user, profile);
   const email = getEmail(user, profile);
+
+  const goToSettings = () => {
+    setIsUserMenuOpen(false);
+    navigate("/admin/settings");
+  };
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F1E8] text-[#18332D]">
@@ -138,12 +170,36 @@ export default function AdminLayout() {
           })}
         </nav>
 
-        <div className="border-t border-[#B9D8CC] p-3">
+        <div ref={userMenuRef} className="relative border-t border-[#B9D8CC] p-3">
+          {isUserMenuOpen && (
+            <div className="absolute bottom-[72px] left-3 right-3 z-50 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-xl">
+              <button
+                type="button"
+                onClick={goToSettings}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-extrabold text-[#18332D] transition hover:bg-[#F7F1E8]"
+              >
+                <Settings size={15} />
+                Settings
+              </button>
+
+              <div className="my-1 border-t border-[#B9D8CC]/70" />
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-extrabold text-rose-700 transition hover:bg-rose-50"
+              >
+                <LogOut size={15} />
+                Sign out
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
-            onClick={() => navigate("/admin/settings")}
+            onClick={() => setIsUserMenuOpen((current) => !current)}
             className={`flex w-full min-w-0 items-center gap-3 rounded-lg border px-2 py-1.5 text-left transition ${
-              location.pathname === "/admin/settings"
+              location.pathname === "/admin/settings" || isUserMenuOpen
                 ? "border-[#6FCF97] bg-[#6FCF97]/18"
                 : "border-transparent hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
             }`}
@@ -152,7 +208,7 @@ export default function AdminLayout() {
               <Shield size={18} />
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-extrabold text-[#18332D]">
                 {displayName}
               </div>
@@ -160,6 +216,11 @@ export default function AdminLayout() {
                 {email}
               </div>
             </div>
+
+            <ChevronUp
+              size={15}
+              className={`shrink-0 text-slate-500 transition ${isUserMenuOpen ? "rotate-180" : ""}`}
+            />
           </button>
         </div>
       </aside>
@@ -220,18 +281,42 @@ export default function AdminLayout() {
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => navigate("/admin/settings")}
-              className="hidden min-w-0 rounded-lg border border-transparent px-2 py-1 text-right transition hover:border-[#B9D8CC] hover:bg-[#F7F1E8] sm:block lg:hidden"
-            >
-              <div className="truncate text-xs font-extrabold text-[#18332D]">
-                {displayName}
-              </div>
-              <div className="truncate text-[11px] font-semibold text-slate-500">
-                {email}
-              </div>
-            </button>
+            <div className="relative hidden sm:block lg:hidden">
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen((current) => !current)}
+                className="min-w-0 rounded-lg border border-transparent px-2 py-1 text-right transition hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
+              >
+                <div className="truncate text-xs font-extrabold text-[#18332D]">
+                  {displayName}
+                </div>
+                <div className="truncate text-[11px] font-semibold text-slate-500">
+                  {email}
+                </div>
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 text-left shadow-xl">
+                  <button
+                    type="button"
+                    onClick={goToSettings}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-extrabold text-[#18332D] hover:bg-[#F7F1E8]"
+                  >
+                    <Settings size={15} />
+                    Settings
+                  </button>
+                  <div className="my-1 border-t border-[#B9D8CC]/70" />
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-extrabold text-rose-700 hover:bg-rose-50"
+                  >
+                    <LogOut size={15} />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-2 overflow-x-auto border-t border-[#B9D8CC]/70 px-4 py-2 md:hidden">
