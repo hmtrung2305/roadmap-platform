@@ -10,7 +10,8 @@ export default function MainLayout() {
   const isRoadmapCanvas = /^\/roadmaps\/[^/]+/.test(location.pathname);
 
   const hideChrome = isStudyRoom;
-  const hideFooter = isStudyRoom || isRoadmapCanvas;
+  const isRoadmapSelection = location.pathname === "/roadmaps" || location.pathname === "/roadmap";
+  const hideFooter = isStudyRoom || isRoadmapCanvas || isRoadmapSelection;
 
   return (
     <div className="tm-page min-h-screen text-[#18332D]">
