@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi, rememberLearningModuleRoute } from "../../../api/learningModuleApi";
 import MarkdownRenderer from "../../../components/learningModules/MarkdownRenderer";
 import {
   inputClass,
@@ -41,10 +41,13 @@ function LessonIndexingBadge({ lesson }) {
 export default function AdminLearningModulePreviewPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeStateModuleId = location.state?.moduleId || null;
+  const resolvedModuleIdRef = useRef(routeStateModuleId);
   const [detail, setDetail] = useState(null);
   const [activeLessonId, setActiveLessonId] = useState(null);
   const [lessonPreview, setLessonPreview] = useState(null);
-  const [resolvedModuleId, setResolvedModuleId] = useState(null);
+  const [resolvedModuleId, setResolvedModuleId] = useState(routeStateModuleId);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -53,13 +56,16 @@ export default function AdminLearningModulePreviewPage() {
     async function loadDetail() {
       try {
         setIsLoading(true);
-        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug);
+        const knownModuleId = routeStateModuleId || resolvedModuleIdRef.current;
+        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
         const data = await counselorLearningModuleApi.getModule(moduleId);
 
         if (ignore) return;
 
+        resolvedModuleIdRef.current = moduleId;
         setResolvedModuleId(moduleId);
         setDetail(data);
+        rememberLearningModuleRoute(data?.module);
         setActiveLessonId(data.lessons?.[0]?.skillModuleLessonId || null);
       } catch (err) {
         if (!ignore) {
@@ -76,7 +82,7 @@ export default function AdminLearningModulePreviewPage() {
     return () => {
       ignore = true;
     };
-  }, [moduleSlug]);
+  }, [moduleSlug, routeStateModuleId]);
 
   useEffect(() => {
     let ignore = false;

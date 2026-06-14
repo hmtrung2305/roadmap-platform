@@ -4,6 +4,71 @@ const encode = (value) => encodeURIComponent(value);
 
 const adminModuleStatuses = ["draft", "published", "archived"];
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const moduleRouteCacheKey = "admin-learning-module-route-cache";
+const moduleRouteIdCache = new Map();
+
+function readModuleRouteCache() {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(moduleRouteCacheKey) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeModuleRouteCache(cache) {
+  try {
+    window.sessionStorage.setItem(moduleRouteCacheKey, JSON.stringify(cache));
+  } catch {
+    // Route caching is a UX optimization only.
+  }
+}
+
+export function rememberLearningModuleRoute(module) {
+  const id = module?.skillModuleId || module?.SkillModuleId;
+  const slug = module?.slug || module?.Slug;
+
+  if (!id || !slug) {
+    return;
+  }
+
+  const normalizedSlug = normalizeRouteSegment(slug);
+  const normalizedId = String(id);
+
+  moduleRouteIdCache.set(normalizedSlug, normalizedId);
+
+  const cache = readModuleRouteCache();
+  cache[normalizedSlug] = normalizedId;
+  writeModuleRouteCache(cache);
+}
+
+function rememberLearningModuleRoutes(modules = []) {
+  modules.forEach(rememberLearningModuleRoute);
+}
+
+function getCachedLearningModuleId(slug) {
+  const normalizedSlug = normalizeRouteSegment(slug);
+  if (!normalizedSlug) return null;
+
+  if (moduleRouteIdCache.has(normalizedSlug)) {
+    return moduleRouteIdCache.get(normalizedSlug);
+  }
+
+  const cachedId = readModuleRouteCache()[normalizedSlug];
+
+  if (cachedId) {
+    moduleRouteIdCache.set(normalizedSlug, cachedId);
+    return cachedId;
+  }
+
+  return null;
+}
+
+export function getLearningModuleNavigationState(module) {
+  const moduleId = module?.skillModuleId || module?.SkillModuleId || null;
+  rememberLearningModuleRoute(module);
+
+  return moduleId ? { state: { moduleId } } : undefined;
+}
 
 export function getLearningModuleRouteSegment(module) {
   return encode(module?.slug || module?.Slug || module?.skillModuleId || module?.SkillModuleId || "");
@@ -91,11 +156,18 @@ export const counselorLearningModuleApi = {
     const response = await axiosClient.get("/counselor/learning-modules", {
       params: status && status !== "all" ? { status } : undefined,
     });
-    return Array.isArray(response.data) ? response.data : [];
+
+    const modules = Array.isArray(response.data) ? response.data : [];
+    rememberLearningModuleRoutes(modules);
+    return modules;
   },
 
-  resolveModuleIdFromRoute: async (moduleSlugOrId) => {
+  resolveModuleIdFromRoute: async (moduleSlugOrId, knownModuleId = null) => {
     const routeValue = String(moduleSlugOrId || "").trim();
+
+    if (knownModuleId) {
+      return knownModuleId;
+    }
 
     if (guidPattern.test(routeValue)) {
       return routeValue;
@@ -105,6 +177,12 @@ export const counselorLearningModuleApi = {
 
     if (!normalizedSlug) {
       throw new Error("Learning module route is missing.");
+    }
+
+    const cachedModuleId = getCachedLearningModuleId(normalizedSlug);
+
+    if (cachedModuleId) {
+      return cachedModuleId;
     }
 
     const moduleLists = await Promise.all(
@@ -119,6 +197,7 @@ export const counselorLearningModuleApi = {
       throw new Error("Learning module was not found.");
     }
 
+    rememberLearningModuleRoute(module);
     return module.skillModuleId || module.SkillModuleId;
   },
 

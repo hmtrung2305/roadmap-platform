@@ -13,7 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi, getLearningModuleNavigationState, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 import {
   getStatusTone,
@@ -248,11 +248,17 @@ export default function AdminLearningModulesPage() {
 
                 <div className="relative flex justify-start gap-2 xl:justify-end">
                   {module.status === "draft" ? (
-                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(module)}/edit`)}>
+                    <ModuleActionButton onClick={() => navigate(
+                      `/admin/learning-modules/${getLearningModuleRouteSegment(module)}/edit`,
+                      getLearningModuleNavigationState(module),
+                    )}>
                       <Edit3 size={14} strokeWidth={2.25} /> Edit
                     </ModuleActionButton>
                   ) : (
-                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`)}>
+                    <ModuleActionButton onClick={() => navigate(
+                      `/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
+                      getLearningModuleNavigationState(module),
+                    )}>
                       <Eye size={14} strokeWidth={2.25} /> Preview
                     </ModuleActionButton>
                   )}
@@ -272,7 +278,10 @@ export default function AdminLearningModulesPage() {
                         <>
                           <OverflowAction onClick={() => {
                             setOpenMenuId(null);
-                            navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`);
+                            navigate(
+                              `/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
+                              getLearningModuleNavigationState(module),
+                            );
                           }}>
                             <Eye size={14} /> Preview
                           </OverflowAction>

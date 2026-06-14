@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
@@ -20,7 +20,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi, getLearningModuleRouteSegment, rememberLearningModuleRoute } from "../../../api/learningModuleApi";
 import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learningModules/MarkdownRenderer";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
@@ -248,6 +248,10 @@ function DirtyStateBadge({ isDirty, label = "Unsaved changes" }) {
   );
 }
 
+function getModuleFromMutationResult(result) {
+  return result?.module || result?.Module || result || null;
+}
+
 function showBulkUploadResultToast(result) {
   const uploadedLessons = getUploadedLessons(result);
   const failedLessons = getFailedLessonUploads(result);
@@ -316,7 +320,10 @@ function isEditorTabComplete(tab, detail) {
 export default function AdminLearningModuleEditorPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const routeStateModuleId = location.state?.moduleId || null;
+  const resolvedModuleIdRef = useRef(routeStateModuleId);
   const [detail, setDetail] = useState(null);
   const [activeTab, setActiveTab] = useState(() => getValidEditorTab(searchParams.get("tab")) || "overview");
   const [isLoading, setIsLoading] = useState(true);
@@ -324,7 +331,7 @@ export default function AdminLearningModuleEditorPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [resolvedModuleId, setResolvedModuleId] = useState(null);
+  const [resolvedModuleId, setResolvedModuleId] = useState(routeStateModuleId);
   const [hasUnsavedQuizDrafts, setHasUnsavedQuizDrafts] = useState(false);
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
 
@@ -365,17 +372,27 @@ export default function AdminLearningModuleEditorPage() {
   };
 
   useEffect(() => {
+    if (!routeStateModuleId) return;
+
+    resolvedModuleIdRef.current = routeStateModuleId;
+    setResolvedModuleId(routeStateModuleId);
+  }, [routeStateModuleId]);
+
+  useEffect(() => {
     let ignore = false;
 
     async function loadDetail() {
       try {
         setIsLoading(true);
-        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug);
+        const knownModuleId = routeStateModuleId || resolvedModuleIdRef.current;
+        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
         const data = await counselorLearningModuleApi.getModule(moduleId);
 
         if (!ignore) {
+          resolvedModuleIdRef.current = moduleId;
           setResolvedModuleId(moduleId);
           setDetail(data);
+          rememberLearningModuleRoute(data?.module);
         }
       } catch (err) {
         if (!ignore) {
@@ -392,7 +409,7 @@ export default function AdminLearningModuleEditorPage() {
     return () => {
       ignore = true;
     };
-  }, [moduleSlug, refreshKey]);
+  }, [moduleSlug, refreshKey, routeStateModuleId]);
 
   useEffect(() => {
     const nextTab = getValidEditorTab(searchParams.get("tab")) || "overview";
@@ -423,6 +440,45 @@ export default function AdminLearningModuleEditorPage() {
 
   const module = detail?.module;
   const activeModuleId = module?.skillModuleId || resolvedModuleId;
+
+  const handleOverviewSaved = (result) => {
+    const updatedModule = getModuleFromMutationResult(result);
+
+    if (!updatedModule?.skillModuleId) {
+      reload();
+      return;
+    }
+
+    resolvedModuleIdRef.current = updatedModule.skillModuleId;
+    setResolvedModuleId(updatedModule.skillModuleId);
+    rememberLearningModuleRoute(updatedModule);
+
+    setDetail((current) =>
+      current
+        ? {
+            ...current,
+            module: {
+              ...current.module,
+              ...updatedModule,
+            },
+          }
+        : current,
+    );
+
+    const nextRouteSegment = getLearningModuleRouteSegment(updatedModule);
+
+    if (nextRouteSegment && nextRouteSegment !== moduleSlug) {
+      const queryString = searchParams.toString();
+
+      navigate(
+        `/admin/learning-modules/${nextRouteSegment}/edit${queryString ? `?${queryString}` : ""}`,
+        {
+          replace: true,
+          state: { moduleId: updatedModule.skillModuleId },
+        },
+      );
+    }
+  };
 
   const handlePublish = async () => {
     try {
@@ -535,7 +591,7 @@ export default function AdminLearningModuleEditorPage() {
           </div>
         </div>
 
-        {activeTab === "overview" && <OverviewEditor module={module} onSaved={reload} />}
+        {activeTab === "overview" && <OverviewEditor module={module} onSaved={handleOverviewSaved} />}
         {activeTab === "lessons" && <LessonsEditor module={module} lessons={detail.lessons} onChanged={reload} />}
         {activeTab === "quiz" && <QuizEditor module={module} quiz={detail.quiz} onChanged={reload} onDraftStateChange={setHasUnsavedQuizDrafts} />}
         {activeTab === "preview" && <InlinePreview moduleId={activeModuleId} detail={detail} />}
@@ -657,6 +713,32 @@ function OverviewEditor({ module, onSaved }) {
   const [isSaving, setIsSaving] = useState(false);
   const isDirty = hasOverviewDraftChanges(form, module);
 
+  useEffect(() => {
+    setSelectedSkill({
+      skillId: module.skillId,
+      name: module.skillName,
+      slug: module.skillSlug || "",
+      category: null,
+      description: null,
+    });
+    setForm({
+      skillId: module.skillId || "",
+      title: module.title || "",
+      description: module.description || "",
+      difficultyLevel: module.difficultyLevel || "beginner",
+      estimatedHours: module.estimatedHours ?? "",
+    });
+  }, [
+    module.skillModuleId,
+    module.skillId,
+    module.skillName,
+    module.skillSlug,
+    module.title,
+    module.description,
+    module.difficultyLevel,
+    module.estimatedHours,
+  ]);
+
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const adjustEstimatedHours = (delta) => {
@@ -685,7 +767,7 @@ function OverviewEditor({ module, onSaved }) {
 
     try {
       setIsSaving(true);
-      await counselorLearningModuleApi.updateModule(module.skillModuleId, {
+      const updatedModule = await counselorLearningModuleApi.updateModule(module.skillModuleId, {
         skillId: form.skillId,
         title: form.title.trim(),
         slug: null,
@@ -695,7 +777,7 @@ function OverviewEditor({ module, onSaved }) {
       });
 
       toast.success("Overview saved.");
-      onSaved();
+      onSaved(updatedModule);
     } catch (err) {
       toast.error(err?.message || "Unable to save overview.");
     } finally {
@@ -1307,7 +1389,9 @@ function LessonMetadataEditor({ module, lesson, onSaved }) {
             {lesson.markdownFileName || lesson.fileName || "Markdown file"}
           </p>
         </div>
-        <ModuleBadge tone="slate" className="shrink-0">Lesson {lesson.orderIndex}</ModuleBadge>
+        <span className="inline-flex shrink-0 items-center rounded-md border border-[#6FCF97] bg-[#6FCF97]/18 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.08em] text-[#1F6F5F] shadow-sm">
+          Lesson {lesson.orderIndex}
+        </span>
       </div>
 
       {lesson.indexingError && (
