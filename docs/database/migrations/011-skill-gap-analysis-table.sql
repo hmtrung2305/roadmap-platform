@@ -1,5 +1,7 @@
 
-BEGIN;
+
+
+
 ---==============================================
 --- Drop tables
 ---==============================================
@@ -10,7 +12,7 @@ DROP TABLE IF EXISTS public.skill_group CASCADE;
 
 
 ---============================================
----2. skill_group
+---1. skill_group
 ---============================================
 CREATE TABLE IF NOT EXISTS public.skill_group (
     skill_group_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.skill_group (
 );
 
 ---==============================================
----3. skill_group_item
+---2. skill_group_item
 ---==============================================
 CREATE TABLE IF NOT EXISTS public.skill_group_item (
     skill_group_item_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.skill_group_item (
 );
 
 ---==============================================
----4. career_role_skill_group
+---3. career_role_skill_group
 ---==============================================
 CREATE TABLE IF NOT EXISTS public.career_role_skill_group (
     career_role_skill_group_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -74,6 +76,3 @@ CREATE TABLE IF NOT EXISTS public.career_role_skill_group (
         CHECK (priority BETWEEN 1 AND 4)
 );
 
-
-
-COMMIT;
