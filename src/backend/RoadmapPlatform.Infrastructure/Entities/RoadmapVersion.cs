@@ -41,6 +41,8 @@ public partial class RoadmapVersion
 
     public virtual User? GeneratedByUser { get; set; }
 
+    public virtual Roadmap Roadmap { get; set; } = null!;
+
     public virtual ICollection<RoadmapEdge> RoadmapEdges { get; set; } = new List<RoadmapEdge>();
 
     public virtual ICollection<RoadmapEnrollment> RoadmapEnrollments { get; set; } = new List<RoadmapEnrollment>();

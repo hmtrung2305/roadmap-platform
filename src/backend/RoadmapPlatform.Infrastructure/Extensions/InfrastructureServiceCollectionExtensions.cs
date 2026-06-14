@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
+using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
 using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
@@ -25,6 +26,7 @@ using RoadmapPlatform.Infrastructure.Security;
 using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.Auth;
+using RoadmapPlatform.Infrastructure.Services.CareerRoleSkill;
 using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
@@ -146,6 +148,9 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Authorize Handler
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+
+            // Skill gap, Career role skill
+            services.AddScoped<ISkillGapAnalysisService, SkillGapAnalysisService>();
 
             return services;
         }

@@ -18,6 +18,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<CareerRole> CareerRoles { get; set; }
 
+    public virtual DbSet<CareerRoleSkillGroup> CareerRoleSkillGroups { get; set; }
+
     public virtual DbSet<ChatbotMessage> ChatbotMessages { get; set; }
 
     public virtual DbSet<Conversation> Conversations { get; set; }
@@ -75,6 +77,10 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<Skill> Skills { get; set; }
+
+    public virtual DbSet<SkillGroup> SkillGroups { get; set; }
+
+    public virtual DbSet<SkillGroupItem> SkillGroupItems { get; set; }
 
     public virtual DbSet<SkillTrendSnapshot> SkillTrendSnapshots { get; set; }
 
@@ -186,6 +192,30 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<CareerRoleSkillGroup>(entity =>
+        {
+            entity.HasKey(e => e.CareerRoleSkillGroupId).HasName("career_role_skill_group_pkey");
+
+            entity.ToTable("career_role_skill_group");
+
+            entity.HasIndex(e => new { e.CareerRoleId, e.SkillGroupId }, "uq_career_role_skill_group").IsUnique();
+
+            entity.Property(e => e.CareerRoleSkillGroupId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("career_role_skill_group_id");
+            entity.Property(e => e.CareerRoleId).HasColumnName("career_role_id");
+            entity.Property(e => e.Priority).HasColumnName("priority");
+            entity.Property(e => e.SkillGroupId).HasColumnName("skill_group_id");
+
+            entity.HasOne(d => d.CareerRole).WithMany(p => p.CareerRoleSkillGroups)
+                .HasForeignKey(d => d.CareerRoleId)
+                .HasConstraintName("fk_career_role_skill_group_role");
+
+            entity.HasOne(d => d.SkillGroup).WithMany(p => p.CareerRoleSkillGroups)
+                .HasForeignKey(d => d.SkillGroupId)
+                .HasConstraintName("fk_career_role_skill_group_group");
         });
 
         modelBuilder.Entity<ChatbotMessage>(entity =>
@@ -750,6 +780,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.RoadmapEnrollmentId)
                 .HasConstraintName("fk_progress_event_enrollment");
 
+            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.ProgressEvents)
+                .HasForeignKey(d => d.RoadmapNodeId)
+                .HasConstraintName("fk_progress_event_node");
+
             entity.HasOne(d => d.User).WithMany(p => p.ProgressEvents)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_progress_event_user");
@@ -1166,6 +1200,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.LearningResourceId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_roadmap_node_resource_resource");
+
+            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.RoadmapNodeResources)
+                .HasForeignKey(d => d.RoadmapNodeId)
+                .HasConstraintName("fk_roadmap_node_resource_node");
         });
 
         modelBuilder.Entity<RoadmapNodeSkill>(entity =>
@@ -1185,6 +1223,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("roadmap_node_skill_id");
             entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
             entity.Property(e => e.SkillId).HasColumnName("skill_id");
+
+            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.RoadmapNodeSkills)
+                .HasForeignKey(d => d.RoadmapNodeId)
+                .HasConstraintName("fk_roadmap_node_skill_node");
 
             entity.HasOne(d => d.Skill).WithMany(p => p.RoadmapNodeSkills)
                 .HasForeignKey(d => d.SkillId)
@@ -1251,6 +1293,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.GeneratedByUserId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_roadmap_version_generated_by_user");
+
+            entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapVersions)
+                .HasForeignKey(d => d.RoadmapId)
+                .HasConstraintName("fk_roadmap_version_roadmap");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -1278,8 +1324,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Category, "ix_skill_category");
 
             entity.HasIndex(e => e.Slug, "ix_skill_slug");
-
-            entity.HasIndex(e => e.Name, "skill_skill_name_key").IsUnique();
 
             entity.HasIndex(e => e.Name, "uq_skill_name").IsUnique();
 
@@ -1309,6 +1353,52 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<SkillGroup>(entity =>
+        {
+            entity.HasKey(e => e.SkillGroupId).HasName("skill_group_pkey");
+
+            entity.ToTable("skill_group");
+
+            entity.HasIndex(e => e.Slug, "skill_group_slug_key").IsUnique();
+
+            entity.Property(e => e.SkillGroupId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_group_id");
+            entity.Property(e => e.CompletionRule)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'ANY'::character varying")
+                .HasColumnName("completion_rule");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+            entity.Property(e => e.RequiredSkillCount).HasColumnName("required_skill_count");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(100)
+                .HasColumnName("slug");
+        });
+
+        modelBuilder.Entity<SkillGroupItem>(entity =>
+        {
+            entity.HasKey(e => e.SkillGroupItemId).HasName("skill_group_item_pkey");
+
+            entity.ToTable("skill_group_item");
+
+            entity.HasIndex(e => new { e.SkillGroupId, e.SkillId }, "uq_skill_group_item").IsUnique();
+
+            entity.Property(e => e.SkillGroupItemId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_group_item_id");
+            entity.Property(e => e.SkillGroupId).HasColumnName("skill_group_id");
+            entity.Property(e => e.SkillId).HasColumnName("skill_id");
+
+            entity.HasOne(d => d.SkillGroup).WithMany(p => p.SkillGroupItems)
+                .HasForeignKey(d => d.SkillGroupId)
+                .HasConstraintName("fk_skill_group_item_group");
+
+            entity.HasOne(d => d.Skill).WithMany(p => p.SkillGroupItems)
+                .HasForeignKey(d => d.SkillId)
+                .HasConstraintName("fk_skill_group_item_skill");
         modelBuilder.Entity<SkillTrendSnapshot>(entity =>
         {
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
@@ -1518,6 +1608,10 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.RoadmapEnrollment).WithMany(p => p.UserNodeProgresses)
                 .HasForeignKey(d => d.RoadmapEnrollmentId)
                 .HasConstraintName("fk_user_node_progress_enrollment");
+
+            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.UserNodeProgresses)
+                .HasForeignKey(d => d.RoadmapNodeId)
+                .HasConstraintName("fk_user_node_progress_node");
         });
 
         modelBuilder.Entity<UserProfile>(entity =>

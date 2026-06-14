@@ -63,9 +63,17 @@ public partial class RoadmapNode
 
     public virtual RoadmapNode? ParentNode { get; set; }
 
+    public virtual ICollection<ProgressEvent> ProgressEvents { get; set; } = new List<ProgressEvent>();
+
     public virtual ICollection<RoadmapEdge> RoadmapEdgeRoadmapNodeNavigations { get; set; } = new List<RoadmapEdge>();
 
     public virtual ICollection<RoadmapEdge> RoadmapEdgeRoadmapNodes { get; set; } = new List<RoadmapEdge>();
 
+    public virtual ICollection<RoadmapNodeResource> RoadmapNodeResources { get; set; } = new List<RoadmapNodeResource>();
+
+    public virtual ICollection<RoadmapNodeSkill> RoadmapNodeSkills { get; set; } = new List<RoadmapNodeSkill>();
+
     public virtual RoadmapVersion RoadmapVersion { get; set; } = null!;
+
+    public virtual ICollection<UserNodeProgress> UserNodeProgresses { get; set; } = new List<UserNodeProgress>();
 }
