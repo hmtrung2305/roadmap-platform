@@ -1011,6 +1011,9 @@ CREATE TABLE IF NOT EXISTS public.skill_module_lesson
     content_hash text,
     content_size_bytes bigint,
     content_version int NOT NULL DEFAULT 1,
+    indexing_status varchar(30) NOT NULL DEFAULT 'pending',
+    indexed_at timestamptz,
+    indexing_error text,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
 
@@ -1035,7 +1038,10 @@ CREATE TABLE IF NOT EXISTS public.skill_module_lesson
         CHECK (content_version > 0),
 
     CONSTRAINT chk_skill_module_lesson_content_size
-        CHECK (content_size_bytes IS NULL OR content_size_bytes >= 0)
+        CHECK (content_size_bytes IS NULL OR content_size_bytes >= 0),
+
+    CONSTRAINT chk_skill_module_lesson_indexing_status
+        CHECK (indexing_status IN ('pending', 'indexing', 'indexed', 'failed', 'needs_reindex'))
 );
 
 CREATE TABLE IF NOT EXISTS public.skill_module_quiz
@@ -1291,6 +1297,9 @@ CREATE INDEX IF NOT EXISTS ix_skill_module_published_at
 
 CREATE INDEX IF NOT EXISTS ix_skill_module_lesson_module_order
     ON public.skill_module_lesson(skill_module_id, order_index);
+
+CREATE INDEX IF NOT EXISTS ix_skill_module_lesson_indexing_status
+    ON public.skill_module_lesson(skill_module_id, indexing_status);
 
 CREATE INDEX IF NOT EXISTS ix_skill_module_quiz_status
     ON public.skill_module_quiz(status);

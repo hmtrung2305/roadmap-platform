@@ -33,6 +33,12 @@ public partial class SkillModuleLesson
 
     public DateTime UpdatedAt { get; set; }
 
+    public string IndexingStatus { get; set; } = null!;
+
+    public DateTime? IndexedAt { get; set; }
+
+    public string? IndexingError { get; set; }
+
     public virtual SkillModule SkillModule { get; set; } = null!;
 
     public virtual ICollection<SkillModuleChunk> SkillModuleChunks { get; set; } = new List<SkillModuleChunk>();

@@ -1328,6 +1328,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("skill_module_lesson");
 
+            entity.HasIndex(e => new { e.SkillModuleId, e.IndexingStatus }, "ix_skill_module_lesson_indexing_status");
+
             entity.HasIndex(e => new { e.SkillModuleId, e.OrderIndex }, "ix_skill_module_lesson_module_order");
 
             entity.HasIndex(e => new { e.SkillModuleId, e.OrderIndex }, "uq_skill_module_lesson_order").IsUnique();
@@ -1348,6 +1350,12 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.EstimatedHours)
                 .HasPrecision(5, 2)
                 .HasColumnName("estimated_hours");
+            entity.Property(e => e.IndexedAt).HasColumnName("indexed_at");
+            entity.Property(e => e.IndexingError).HasColumnName("indexing_error");
+            entity.Property(e => e.IndexingStatus)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'pending'::character varying")
+                .HasColumnName("indexing_status");
             entity.Property(e => e.MarkdownFileKey).HasColumnName("markdown_file_key");
             entity.Property(e => e.MarkdownFileName)
                 .HasMaxLength(255)
