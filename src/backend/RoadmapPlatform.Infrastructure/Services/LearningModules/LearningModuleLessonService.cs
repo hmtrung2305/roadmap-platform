@@ -57,63 +57,94 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         var now = DateTime.UtcNow;
         var createdLessons = new List<BulkUploadedLessonDto>();
+        var failedLessons = new List<BulkUploadLessonFailureDto>();
 
         foreach (var itemWrapper in orderedLessonItems)
         {
             var item = itemWrapper.Lesson;
-            var file = filesByName[item.FileName];
 
-            var markdown = await ReadMarkdownAsync(file.Content, cancellationToken);
-            ValidateMarkdownFile(file, markdown);
-
-            var lessonId = Guid.NewGuid();
-            var slug = await CreateUniqueLessonSlugAsync(
-                skillModuleId,
-                string.IsNullOrWhiteSpace(item.Slug) ? item.Title : item.Slug,
-                excludeLessonId: null,
-                cancellationToken);
-
-            var safeFileName = CreateSafeFileName(file.FileName);
-            var objectPath = $"learning-modules/{skillModuleId}/lessons/{lessonId}-{safeFileName}";
-            var appendedOrderIndex = maxExistingOrderIndex + createdLessons.Count + 1;
-
-            await using var saveStream = new MemoryStream(Encoding.UTF8.GetBytes(markdown));
-            var storedFile = await _fileStorage.SaveAsync(
-                objectPath,
-                saveStream,
-                file.ContentType,
-                cancellationToken);
-
-            var lesson = new SkillModuleLesson
+            if (!TryValidateBulkUploadLessonItem(item, filesByName, out var file, out var failureReason))
             {
-                SkillModuleLessonId = lessonId,
-                SkillModuleId = skillModuleId,
-                Title = item.Title.Trim(),
-                Slug = slug,
-                Summary = NormalizeOptionalText(item.Summary),
-                OrderIndex = appendedOrderIndex,
-                EstimatedHours = item.EstimatedHours,
-                MarkdownFileKey = storedFile.ObjectPath,
-                MarkdownFileName = file.FileName,
-                ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown),
-                ContentSizeBytes = storedFile.SizeBytes,
-                ContentVersion = 1,
-                IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing,
-                IndexedAt = null,
-                IndexingError = null,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
+                failedLessons.Add(CreateBulkUploadLessonFailure(item, failureReason));
+                continue;
+            }
 
-            _context.SkillModuleLessons.Add(lesson);
+            string markdown;
 
             try
             {
-                await _context.SaveChangesAsync(cancellationToken);
+                markdown = await ReadMarkdownAsync(file.Content, cancellationToken);
+                ValidateMarkdownFile(file, markdown);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failedLessons.Add(CreateBulkUploadLessonFailure(item, CreateUploadFailureReason(ex)));
+                continue;
+            }
 
+            var lessonId = Guid.NewGuid();
+            var appendedOrderIndex = maxExistingOrderIndex + createdLessons.Count + 1;
+
+            SkillModuleLesson? lesson = null;
+
+            try
+            {
+                var slug = await CreateUniqueLessonSlugAsync(
+                    skillModuleId,
+                    string.IsNullOrWhiteSpace(item.Slug) ? item.Title : item.Slug,
+                    excludeLessonId: null,
+                    cancellationToken);
+
+                var safeFileName = CreateSafeFileName(file.FileName);
+                var objectPath = $"learning-modules/{skillModuleId}/lessons/{lessonId}-{safeFileName}";
+
+                await using var saveStream = new MemoryStream(Encoding.UTF8.GetBytes(markdown));
+                var storedFile = await _fileStorage.SaveAsync(
+                    objectPath,
+                    saveStream,
+                    file.ContentType,
+                    cancellationToken);
+
+                lesson = new SkillModuleLesson
+                {
+                    SkillModuleLessonId = lessonId,
+                    SkillModuleId = skillModuleId,
+                    Title = item.Title.Trim(),
+                    Slug = slug,
+                    Summary = NormalizeOptionalText(item.Summary),
+                    OrderIndex = appendedOrderIndex,
+                    EstimatedHours = item.EstimatedHours,
+                    MarkdownFileKey = storedFile.ObjectPath,
+                    MarkdownFileName = file.FileName,
+                    ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown),
+                    ContentSizeBytes = storedFile.SizeBytes,
+                    ContentVersion = 1,
+                    IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing,
+                    IndexedAt = null,
+                    IndexingError = null,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                _context.SkillModuleLessons.Add(lesson);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                if (lesson != null)
+                {
+                    _context.Entry(lesson).State = EntityState.Detached;
+                }
+
+                failedLessons.Add(CreateBulkUploadLessonFailure(item, CreateUploadFailureReason(ex)));
+                continue;
+            }
+
+            try
+            {
                 var chunks = await _ragIndexingService.IndexLessonAsync(
                     skillModuleId,
-                    lessonId,
+                    lesson.SkillModuleLessonId,
                     markdown,
                     cancellationToken);
 
@@ -121,39 +152,28 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 module.UpdatedAt = lesson.UpdatedAt;
                 await _context.SaveChangesAsync(cancellationToken);
 
-                createdLessons.Add(new BulkUploadedLessonDto
-                {
-                    ClientId = item.ClientId,
-                    SkillModuleLessonId = lesson.SkillModuleLessonId,
-                    Title = lesson.Title,
-                    Slug = lesson.Slug,
-                    OrderIndex = lesson.OrderIndex,
-                    MarkdownFileName = lesson.MarkdownFileName ?? file.FileName,
-                    MarkdownFileKey = lesson.MarkdownFileKey,
-                    ContentHash = lesson.ContentHash,
-                    ContentSizeBytes = lesson.ContentSizeBytes ?? file.Length,
-                    ContentVersion = lesson.ContentVersion,
-                    IndexingStatus = lesson.IndexingStatus,
-                    IndexedAt = lesson.IndexedAt,
-                    IndexingError = lesson.IndexingError,
-                    ChunksGenerated = chunks.Count
-                });
+                createdLessons.Add(MapBulkUploadedLesson(item, lesson, file, chunks.Count));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 MarkLessonIndexingFailed(lesson, ex, DateTime.UtcNow);
                 module.UpdatedAt = lesson.UpdatedAt;
                 await SaveIndexingFailureAsync(cancellationToken);
-                throw;
+
+                createdLessons.Add(MapBulkUploadedLesson(item, lesson, file, chunksGenerated: 0));
             }
         }
 
-        module.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(cancellationToken);
+        if (createdLessons.Count > 0)
+        {
+            module.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         return new BulkUploadLessonsResultDto
         {
-            Lessons = createdLessons
+            Lessons = createdLessons,
+            FailedLessons = failedLessons
         };
     }
 
@@ -562,6 +582,49 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             : message[..maxLength];
     }
 
+    private static BulkUploadedLessonDto MapBulkUploadedLesson(
+        BulkUploadLessonItemDto item,
+        SkillModuleLesson lesson,
+        LearningModuleUploadedFileDto file,
+        int chunksGenerated)
+    {
+        return new BulkUploadedLessonDto
+        {
+            ClientId = item.ClientId,
+            SkillModuleLessonId = lesson.SkillModuleLessonId,
+            Title = lesson.Title,
+            Slug = lesson.Slug,
+            OrderIndex = lesson.OrderIndex,
+            MarkdownFileName = lesson.MarkdownFileName ?? file.FileName,
+            MarkdownFileKey = lesson.MarkdownFileKey,
+            ContentHash = lesson.ContentHash,
+            ContentSizeBytes = lesson.ContentSizeBytes ?? file.Length,
+            ContentVersion = lesson.ContentVersion,
+            IndexingStatus = lesson.IndexingStatus,
+            IndexedAt = lesson.IndexedAt,
+            IndexingError = lesson.IndexingError,
+            ChunksGenerated = chunksGenerated
+        };
+    }
+
+    private static BulkUploadLessonFailureDto CreateBulkUploadLessonFailure(
+        BulkUploadLessonItemDto item,
+        string reason)
+    {
+        return new BulkUploadLessonFailureDto
+        {
+            ClientId = item.ClientId,
+            FileName = item.FileName,
+            Title = item.Title,
+            Reason = reason
+        };
+    }
+
+    private static string CreateUploadFailureReason(Exception exception)
+    {
+        return CreateIndexingError(exception);
+    }
+
     private static void ValidateBulkUploadRequest(
         BulkUploadLessonsRequestDto request,
         IReadOnlyList<LearningModuleUploadedFileDto> files)
@@ -577,6 +640,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         }
 
         var duplicateClientIds = request.Lessons
+            .Where(item => !string.IsNullOrWhiteSpace(item.ClientId))
             .GroupBy(item => item.ClientId)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
@@ -595,29 +659,43 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         {
             throw new ConflictException("Uploaded file names must be unique.");
         }
+    }
 
-        var fileNames = files
-            .Select(file => file.FileName)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    private static bool TryValidateBulkUploadLessonItem(
+        BulkUploadLessonItemDto item,
+        IReadOnlyDictionary<string, LearningModuleUploadedFileDto> filesByName,
+        out LearningModuleUploadedFileDto file,
+        out string failureReason)
+    {
+        file = null!;
+        failureReason = string.Empty;
 
-        foreach (var lesson in request.Lessons)
+        if (string.IsNullOrWhiteSpace(item.ClientId))
         {
-            if (string.IsNullOrWhiteSpace(lesson.ClientId))
-            {
-                throw new ConflictException("Each lesson must have a client ID.");
-            }
-
-            if (string.IsNullOrWhiteSpace(lesson.Title))
-            {
-                throw new ConflictException("Each lesson must have a title.");
-            }
-
-            if (string.IsNullOrWhiteSpace(lesson.FileName)
-                || !fileNames.Contains(lesson.FileName))
-            {
-                throw new ConflictException($"Missing uploaded file for lesson: {lesson.Title}");
-            }
+            failureReason = "Lesson client ID is required.";
+            return false;
         }
+
+        if (string.IsNullOrWhiteSpace(item.Title))
+        {
+            failureReason = "Lesson title is required.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.FileName))
+        {
+            failureReason = "Lesson file name is required.";
+            return false;
+        }
+
+        if (!filesByName.TryGetValue(item.FileName, out var matchedFile))
+        {
+            failureReason = "Uploaded file was not found.";
+            return false;
+        }
+
+        file = matchedFile;
+        return true;
     }
 
     private static void ValidateReorderRequest(
