@@ -176,10 +176,19 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         ValidateReorderRequest(request, lessons);
 
         var now = DateTime.UtcNow;
+        var highestCurrentOrderIndex = lessons.Count == 0
+            ? 0
+            : lessons.Max(lesson => lesson.OrderIndex);
+        var highestRequestedOrderIndex = request.Lessons.Count == 0
+            ? 0
+            : request.Lessons.Max(lesson => lesson.OrderIndex);
+        var temporaryOrderIndexStart = Math.Max(highestCurrentOrderIndex, highestRequestedOrderIndex)
+            + lessons.Count
+            + 1;
 
         for (var index = 0; index < lessons.Count; index++)
         {
-            lessons[index].OrderIndex = -(index + 1);
+            lessons[index].OrderIndex = temporaryOrderIndexStart + index;
             lessons[index].UpdatedAt = now;
         }
 

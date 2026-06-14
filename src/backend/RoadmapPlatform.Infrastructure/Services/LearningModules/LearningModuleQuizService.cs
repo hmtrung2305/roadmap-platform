@@ -148,7 +148,6 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
 
         var quiz = await _context.SkillModuleQuizzes
             .Include(item => item.SkillModuleQuizQuestions)
-                .ThenInclude(question => question.SkillModuleQuizOptions)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
         if (quiz == null)
@@ -166,39 +165,61 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
 
         ValidateQuestionRequest(request);
 
-        var now = DateTime.UtcNow;
+        try
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        question.QuestionText = request.QuestionText.Trim();
-        question.QuestionType = NormalizeQuestionType(request.QuestionType);
-        question.Explanation = NormalizeOptionalText(request.Explanation);
-        question.Points = request.Points <= 0 ? 1 : request.Points;
-        question.UpdatedAt = now;
+            var now = DateTime.UtcNow;
 
-        _context.SkillModuleQuizOptions.RemoveRange(question.SkillModuleQuizOptions);
+            question.QuestionText = request.QuestionText.Trim();
+            question.QuestionType = NormalizeQuestionType(request.QuestionType);
+            question.Explanation = NormalizeOptionalText(request.Explanation);
+            question.Points = request.Points <= 0 ? 1 : request.Points;
+            question.UpdatedAt = now;
 
-        question.SkillModuleQuizOptions = request.Options
-            .OrderBy(option => option.OrderIndex <= 0 ? int.MaxValue : option.OrderIndex)
-            .Select((option, index) => new SkillModuleQuizOption
-            {
-                SkillModuleQuizOptionId = Guid.NewGuid(),
-                SkillModuleQuizQuestionId = question.SkillModuleQuizQuestionId,
-                OptionText = option.OptionText.Trim(),
-                IsCorrect = option.IsCorrect,
-                Explanation = NormalizeOptionalText(option.Explanation),
-                OrderIndex = option.OrderIndex > 0 ? option.OrderIndex : index + 1,
-                CreatedAt = now,
-                UpdatedAt = now
-            })
-            .ToList();
+            await _context.SkillModuleQuizOptions
+                .Where(option => option.SkillModuleQuizQuestionId == question.SkillModuleQuizQuestionId)
+                .ExecuteDeleteAsync(cancellationToken);
 
-        NormalizeOptionOrder(question.SkillModuleQuizOptions);
+            var orderedOptionRequests = request.Options
+                .OrderBy(option => option.OrderIndex <= 0 ? int.MaxValue : option.OrderIndex)
+                .ToList();
 
-        quiz.UpdatedAt = now;
-        module.UpdatedAt = now;
+            var newOptions = orderedOptionRequests
+                .Select((optionRequest, index) => new SkillModuleQuizOption
+                {
+                    SkillModuleQuizOptionId = Guid.NewGuid(),
+                    SkillModuleQuizQuestionId = question.SkillModuleQuizQuestionId,
+                    OptionText = optionRequest.OptionText.Trim(),
+                    IsCorrect = optionRequest.IsCorrect,
+                    Explanation = NormalizeOptionalText(optionRequest.Explanation),
+                    OrderIndex = index + 1,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                })
+                .ToList();
 
-        await _context.SaveChangesAsync(cancellationToken);
+            NormalizeOptionOrder(newOptions);
 
-        return MapQuestion(question);
+            _context.SkillModuleQuizOptions.AddRange(newOptions);
+
+            quiz.UpdatedAt = now;
+            module.UpdatedAt = now;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var savedQuestion = await _context.SkillModuleQuizQuestions
+                .AsNoTracking()
+                .Include(item => item.SkillModuleQuizOptions)
+                .FirstAsync(item => item.SkillModuleQuizQuestionId == question.SkillModuleQuizQuestionId, cancellationToken);
+
+            return MapQuestion(savedQuestion);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Quiz question changed while saving. Refresh and try again.");
+        }
     }
 
     public async Task<IReadOnlyList<LearningModuleQuizQuestionDto>> ReorderQuestionsAsync(
@@ -226,10 +247,19 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
 
         var now = DateTime.UtcNow;
         var questions = quiz.SkillModuleQuizQuestions.ToList();
+        var highestCurrentOrderIndex = questions.Count == 0
+            ? 0
+            : questions.Max(question => question.OrderIndex);
+        var highestRequestedOrderIndex = request.Questions.Count == 0
+            ? 0
+            : request.Questions.Max(question => question.OrderIndex);
+        var temporaryOrderIndexStart = Math.Max(highestCurrentOrderIndex, highestRequestedOrderIndex)
+            + questions.Count
+            + 1;
 
         for (var index = 0; index < questions.Count; index++)
         {
-            questions[index].OrderIndex = -(index + 1);
+            questions[index].OrderIndex = temporaryOrderIndexStart + index;
             questions[index].UpdatedAt = now;
         }
 
