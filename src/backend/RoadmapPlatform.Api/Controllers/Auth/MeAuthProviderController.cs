@@ -1,4 +1,4 @@
-﻿using AspNet.Security.OAuth.GitHub;
+using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
@@ -48,12 +48,9 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         {
             var userId = GetCurrentUserId();
 
-            await _authProviderService.LinkLocalLoginAsync(userId, request);
+            var response = await _authProviderService.LinkLocalLoginAsync(userId, request);
 
-            return Ok(new
-            {
-                message = "Password login added. Verification code sent to email."
-            });
+            return Ok(response);
         }
 
         [HttpPost("local/resend-verification")]
@@ -90,7 +87,21 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         {
             var userId = GetCurrentUserId();
 
-            await _emailVerificationService.RequestLocalEmailChangeAsync(userId, request.NewEmail!);
+            var response = await _emailVerificationService.RequestLocalEmailChangeAsync(
+                userId,
+                request.NewEmail!);
+
+            return Ok(response);
+        }
+
+
+        [HttpPost("local/email/resend-verification")]
+        [Authorize]
+        public async Task<IActionResult> ResendLocalEmailChangeVerification(CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+
+            await _emailVerificationService.ResendLocalEmailChangeVerificationAsync(userId, cancellationToken);
 
             return Ok(new
             {
@@ -157,7 +168,12 @@ namespace RoadmapPlatform.Api.Controllers.Auth
                 return Unauthorized("GitHub linking session was invalid or expired");
             }
 
-            await _authProviderService.LinkGitHubAsync(userId, result.Principal);
+            var githubAccessToken = result.Properties?.GetTokenValue("access_token");
+
+            await _authProviderService.LinkGitHubAsync(
+                userId,
+                result.Principal,
+                githubAccessToken);
 
             await HttpContext.SignOutAsync(ExternalScheme);
 

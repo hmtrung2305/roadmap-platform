@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +10,7 @@ using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
 using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
+using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Rag;
 using RoadmapPlatform.Application.Interfaces.Resources;
@@ -30,6 +31,7 @@ using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
+using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Rag;
 using RoadmapPlatform.Infrastructure.Services.Resources;
@@ -40,17 +42,14 @@ using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
 {
-    // Class này dùng để đăng ký các service thuộc tầng Infrastructure.
-    // Những phần nên đặt ở đây gồm: DbContext, database provider,
-    // email sender, GitHub API client, RAG service, Python service client,
-    // file storage, external API clients, và các implementation phụ thuộc hệ thống bên ngoài.
+    // Registers infrastructure implementations: DbContext, external clients,
+    // storage, email, RAG, security, and hosted background services.
     public static class InfrastructureServiceCollectionExtensions
     {
         public static IServiceCollection AddInfrastructureServices(
             this IServiceCollection services,
             IConfiguration configuration)
         {
-
             // Database connection
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(
@@ -70,8 +69,9 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<FileStorageSettings>(configuration.GetSection("FileStorage"));
             services.Configure<SupabaseStorageSettings>(configuration.GetSection("SupabaseStorage"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
+            services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
 
-            // Đăng ký implementation cho external services ở đây sau.
+            // Register external service implementations below.
 
             // Authentication Services
             services.AddScoped<IAuthService, AuthService>();
@@ -83,7 +83,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // User Services
             services.AddScoped<IUserService, UserService>();
-          
+
             // RBAC Services
             services.AddScoped<IPermissionService, PermissionService>();
             services.AddScoped<IRoleService, RoleService>();
@@ -93,6 +93,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // GitHub Services
             services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
+            services.AddScoped<IRepoInsightService, RepoInsightService>();
+            services.AddScoped<IRepoSummaryGenerator, AiRepoSummaryGenerator>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
 
             // Chatbot, RAG Services
@@ -116,6 +118,23 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             // Streak Service
             services.AddScoped<IStreakService, StreakService>();
 
+            // Job market / Market Pulse Services
+            services.AddScoped<JobsApiClient>();
+            services.AddScoped<IJobMarketSnapshotProvider, JobsApiJobMarketSnapshotProvider>();
+            services.AddScoped<IJobPortalScraper, JobPortalScraper>();
+            services.AddScoped<IMarketPulseService, MarketPulseService>();
+            services.AddHostedService<MarketPulseHostedService>();
+            services.AddHttpClient("market-pulse", client =>
+            {
+                var timeoutSeconds = Math.Clamp(
+                    configuration.GetValue<int?>("MarketPulse:RequestTimeoutSeconds") ?? 30,
+                    5,
+                    120);
+
+                client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("RoadmapPlatform-MarketPulse/1.0");
+            });
+
             // Roadmap Services
             services.AddScoped<RoadmapDetailBuilder>();
             services.AddScoped<IRoadmapQueryService, RoadmapQueryService>();
@@ -125,7 +144,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Cache memory
             services.AddMemoryCache();
-            services.AddScoped<IPermissionCache,PermissionCache>();
+            services.AddScoped<IPermissionCache, PermissionCache>();
 
             // Authorize Handler
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();

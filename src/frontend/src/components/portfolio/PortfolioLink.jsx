@@ -17,7 +17,7 @@ export default function PortfolioLinks({ portfolio }) {
 
   return (
     <aside className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold text-slate-900">Profile Summary</h2>
 
         <div className="mt-5 space-y-3">
@@ -35,7 +35,7 @@ export default function PortfolioLinks({ portfolio }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold text-slate-900">Contact & Links</h2>
 
         <div className="mt-5 space-y-3">
@@ -82,7 +82,7 @@ export default function PortfolioLinks({ portfolio }) {
 
 function SummaryItem({ icon, label, children }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-4">
+    <div className="rounded-lg bg-[#F7F1E8] p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
         <span className="text-[#1F6F5F]">{icon}</span>
         {label}
@@ -99,7 +99,7 @@ function LinkItem({ icon, label, href }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:border-[#B9D8CC] hover:bg-[#6FCF97]/15 hover:text-[#1F6F5F]"
+      className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:border-[#B9D8CC] hover:bg-[#6FCF97]/15 hover:text-[#1F6F5F]"
     >
       <span className="flex min-w-0 items-center gap-2">
         <span className="text-[#1F6F5F]">{icon}</span>

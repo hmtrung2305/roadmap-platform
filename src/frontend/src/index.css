@@ -3,6 +3,15 @@
 
 @theme {
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif, "Segoe UI", "Roboto";
+
+  /* Global radius system: soft education dashboard style */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.125rem;
 }
 
 @plugin "@tailwindcss/typography";
@@ -32,10 +41,7 @@ html {
 
 body {
   color: var(--tm-ink);
-  background:
-    radial-gradient(circle at 12% 4%, rgba(47, 160, 132, 0.11), transparent 28%),
-    radial-gradient(circle at 90% 12%, rgba(111, 207, 151, 0.16), transparent 26%),
-    linear-gradient(180deg, #fbf7ef 0%, #f7f1e8 55%, #eef7f1 100%);
+  background: var(--tm-paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -51,6 +57,47 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+/*
+  TechMap global radius polish
+  - Keeps the whole app soft and consistent
+  - Does not touch rounded-full avatars/badges
+  - Works with existing Tailwind rounded-* classes through the theme above
+*/
+:root {
+  --tm-radius-card: 0.875rem;
+  --tm-radius-panel: 1rem;
+  --tm-radius-control: 0.75rem;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  border-radius: var(--tm-radius-control);
+}
+
+/* Common app surfaces that may not explicitly use Tailwind rounded utilities */
+.card,
+.panel,
+.surface,
+.modal,
+.dropdown,
+.toast,
+.dialog,
+[role="dialog"],
+[role="menu"],
+[data-radix-popper-content-wrapper] > * {
+  border-radius: var(--tm-radius-panel);
+}
+
+/* Keep circular UI elements circular */
+.rounded-full,
+[aria-label*="avatar" i],
+[aria-label*="profile" i] {
+  border-radius: 9999px;
 }
 
 @keyframes streak-pop {
@@ -94,4 +141,127 @@ textarea {
 
 .animate-fire-bounce {
   animation: fire-bounce 0.8s ease-in-out infinite;
+}
+
+/* Shared TechMap page/surface motion system
+   - Landing page keeps its own visual system.
+   - Roadmap canvas should stay lightweight, so do not apply this inside ReactFlow. */
+@keyframes tm-soft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tm-page {
+  background: var(--tm-paper);
+  color: var(--tm-ink);
+}
+
+.tm-surface {
+  border: 1px solid var(--tm-border);
+  background: #ffffff;
+  border-radius: var(--tm-radius-card);
+  box-shadow: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.tm-surface-hover:hover {
+  transform: translateY(-1px);
+  border-color: #B9D8CC;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.tm-soft-enter {
+  animation: tm-soft-enter 360ms ease-out both;
+}
+
+.tm-stagger-1 { animation-delay: 45ms; }
+.tm-stagger-2 { animation-delay: 90ms; }
+.tm-stagger-3 { animation-delay: 135ms; }
+.tm-stagger-4 { animation-delay: 180ms; }
+
+
+/* App-wide lightweight entrance animation
+   Applied through MainLayout/SettingsLayout only. Landing page and roadmap canvas are excluded. */
+.tm-page-animate > :where(section, main, div) {
+  animation: tm-soft-enter 340ms ease-out both;
+}
+
+.tm-page-animate :where(.tm-surface, .tm-animate-item) {
+  animation: tm-soft-enter 340ms ease-out both;
+}
+
+/* Existing pages such as Market Pulse still use plain Tailwind surfaces.
+   This selector gives those cards the same lightweight enter motion without editing every card manually. */
+.tm-page-animate :where(section, article, div).rounded-lg.border.bg-white,
+.tm-page-animate :where(section, article, div).rounded-xl.border.bg-white {
+  animation: tm-soft-enter 340ms ease-out both;
+}
+
+.tm-page-animate :where(section, article, div).rounded-lg.border.bg-white:nth-of-type(2),
+.tm-page-animate :where(section, article, div).rounded-xl.border.bg-white:nth-of-type(2),
+.tm-page-animate .tm-stagger-auto-1 {
+  animation-delay: 45ms;
+}
+
+.tm-page-animate :where(section, article, div).rounded-lg.border.bg-white:nth-of-type(3),
+.tm-page-animate :where(section, article, div).rounded-xl.border.bg-white:nth-of-type(3),
+.tm-page-animate .tm-stagger-auto-2 {
+  animation-delay: 90ms;
+}
+
+.tm-page-animate :where(section, article, div).rounded-lg.border.bg-white:nth-of-type(4),
+.tm-page-animate :where(section, article, div).rounded-xl.border.bg-white:nth-of-type(4),
+.tm-page-animate .tm-stagger-auto-3 {
+  animation-delay: 135ms;
+}
+
+
+/* Unified lightweight hover polish for normal app surfaces.
+   Scope stays under .tm-page-animate, so the landing page and ReactFlow canvas are not affected.
+   This does not change card colors, spacing, radius, or layout: only shadow, hover border, and tiny lift. */
+.tm-page-animate :where(.tm-surface, .tm-animate-item),
+.tm-page-animate :where(section, article, div).rounded-lg.border.bg-white,
+.tm-page-animate :where(section, article, div).rounded-xl.border.bg-white,
+.tm-page-animate :where(section, article, div).rounded-md.border.bg-white {
+  box-shadow: none !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.tm-page-animate :where(.tm-surface, .tm-animate-item):hover,
+.tm-page-animate :where(section, article, div).rounded-lg.border.bg-white:hover,
+.tm-page-animate :where(section, article, div).rounded-xl.border.bg-white:hover,
+.tm-page-animate :where(section, article, div).rounded-md.border.bg-white:hover {
+  transform: translateY(-1px);
+  border-color: #B9D8CC;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-soft-enter,
+  .tm-page-animate > :where(section, main, div),
+  .tm-page-animate :where(.tm-surface, .tm-animate-item),
+  .tm-page-animate :where(section, article, div).rounded-lg.border.bg-white,
+  .tm-page-animate :where(section, article, div).rounded-xl.border.bg-white {
+    animation: none;
+  }
+
+  .tm-surface,
+  .tm-surface-hover {
+    transition: none;
+  }
+
+  .tm-surface-hover:hover,
+  .tm-page-animate :where(.tm-surface, .tm-animate-item):hover,
+  .tm-page-animate :where(section, article, div).rounded-lg.border.bg-white:hover,
+  .tm-page-animate :where(section, article, div).rounded-xl.border.bg-white:hover,
+  .tm-page-animate :where(section, article, div).rounded-md.border.bg-white:hover {
+    transform: none;
+  }
 }

@@ -13,6 +13,7 @@ import { useAuthStore } from "./stores/useAuthStore";
 import ResourceManagementPage from "./pages/ResourceManagementPage";
 import StudyRoomPage from "./pages/StudyRoomPage";
 import ManagePortfolioRepositoriesPage from "./pages/ManagePortfolioRepositoryPage";
+import EditPortfolioPage from "./pages/EditPortfolioPage";
 import { ToastContainer } from "react-toastify";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import SettingsLayout from "./pages/settings/SettingsLayout";
@@ -23,10 +24,17 @@ import PointsSettingsPage from "./pages/settings/PointSettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import RoadmapSelectionPage from "./pages/RoadmapSelectionPage";
 import RoadmapViewerPage from "./pages/RoadmapViewerPage";
+import MarketPulsePage from "./pages/MarketPulsePage";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
 function isPublicPortfolioPath(pathname) {
+  const protectedPortfolioPaths = ["/portfolio/edit", "/portfolio/repositories"];
+
+  if (protectedPortfolioPaths.some((path) => pathname.startsWith(path))) {
+    return false;
+  }
+
   return pathname.startsWith("/portfolio/") || pathname.startsWith("/portfolios/");
 }
 
@@ -36,11 +44,11 @@ function isPublicPath(pathname) {
 
 function AuthBootstrap({ children }) {
   const location = useLocation();
-  const lastValidatedPathRef = useRef("");
+  const bootstrappedRef = useRef(false);
 
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
-  const revalidateCurrentUser = useAuthStore((state) => state.revalidateCurrentUser);
   const user = useAuthStore((state) => state.user);
+  const authInitialized = useAuthStore((state) => state.authInitialized);
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -50,19 +58,18 @@ function AuthBootstrap({ children }) {
       return;
     }
 
-    if (lastValidatedPathRef.current === pathname) {
+    if (user && authInitialized) {
+      bootstrappedRef.current = true;
       return;
     }
 
-    lastValidatedPathRef.current = pathname;
-
-    if (user) {
-      revalidateCurrentUser();
+    if (bootstrappedRef.current) {
       return;
     }
 
+    bootstrappedRef.current = true;
     loadCurrentUser();
-  }, [loadCurrentUser, revalidateCurrentUser, user, location.pathname]);
+  }, [authInitialized, loadCurrentUser, location.pathname, user]);
 
   return children;
 }
@@ -127,6 +134,7 @@ export default function App() {
             <Route path="/home" element={<Navigate to="/dashboard" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/portfolio/edit" element={<EditPortfolioPage />} />
             <Route
               path="/portfolio/repositories"
               element={<ManagePortfolioRepositoriesPage />}
@@ -137,6 +145,7 @@ export default function App() {
             <Route path="/roadmaps" element={<RoadmapSelectionPage />} />
             <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
             <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
+            <Route path="/market-pulse" element={<MarketPulsePage />} />
           </Route>
 
           <Route

@@ -10,10 +10,14 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
     public class GitHubIntegrationController : ControllerBase
     {
         private readonly IGitHubRepositoryService _gitHubRepositoryService;
+        private readonly IRepoInsightService _repoInsightService;
 
-        public GitHubIntegrationController(IGitHubRepositoryService gitHubRepositoryService)
+        public GitHubIntegrationController(
+            IGitHubRepositoryService gitHubRepositoryService,
+            IRepoInsightService repoInsightService)
         {
             _gitHubRepositoryService = gitHubRepositoryService;
+            _repoInsightService = repoInsightService;
         }
 
         [HttpGet("repositories")]
@@ -38,6 +42,24 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
                 .SyncPublicRepositoriesAsync(userId);
 
             return Ok(repositories);
+        }
+
+        [HttpPost("repositories/{repositoryId:guid}/insight")]
+        [Authorize]
+        public async Task<IActionResult> GenerateRepositoryInsight(
+            Guid repositoryId,
+            [FromQuery] bool force = false,
+            CancellationToken cancellationToken = default)
+        {
+            var userId = GetCurrentUserId();
+
+            var insight = await _repoInsightService.GenerateInsightAsync(
+                userId,
+                repositoryId,
+                force,
+                cancellationToken);
+
+            return Ok(insight);
         }
 
         private Guid GetCurrentUserId()

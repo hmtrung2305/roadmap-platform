@@ -1,0 +1,227 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "setup graph status is 200": {
+                            "name": "setup graph status is 200",
+                            "path": "::setup::setup graph status is 200",
+                            "id": "31cca02d44500bf6c3074454b5200533",
+                            "passes": 1,
+                            "fails": 0
+                        }
+                    },
+                "name": "setup"
+            },
+            "roadmap list": {
+                "name": "roadmap list",
+                "path": "::roadmap list",
+                "id": "fb8d05a8acc4506c3691a91567c02d2f",
+                "groups": {},
+                "checks": {
+                        "list status is 200": {
+                            "name": "list status is 200",
+                            "path": "::roadmap list::list status is 200",
+                            "id": "f042627af6fb27245b22da6418f4f6ef",
+                            "passes": 77,
+                            "fails": 0
+                        },
+                        "list returns body": {
+                            "id": "8976c94bebcfd32505d5d95b3818019b",
+                            "passes": 77,
+                            "fails": 0,
+                            "name": "list returns body",
+                            "path": "::roadmap list::list returns body"
+                        }
+                    }
+            },
+            "roadmap graph by slug": {
+                "groups": {},
+                "checks": {
+                        "graph status is 200": {
+                            "name": "graph status is 200",
+                            "path": "::roadmap graph by slug::graph status is 200",
+                            "id": "9edfa1c328bc3f63c5006b423788330b",
+                            "passes": 77,
+                            "fails": 0
+                        },
+                        "graph has nodes": {
+                            "fails": 0,
+                            "name": "graph has nodes",
+                            "path": "::roadmap graph by slug::graph has nodes",
+                            "id": "66ea1610d30c34a708486a96a2ae380a",
+                            "passes": 77
+                        },
+                        "graph has edges field": {
+                            "path": "::roadmap graph by slug::graph has edges field",
+                            "id": "efa5c4854be4dc38440b0e72c10131bb",
+                            "passes": 77,
+                            "fails": 0,
+                            "name": "graph has edges field"
+                        }
+                    },
+                "name": "roadmap graph by slug",
+                "path": "::roadmap graph by slug",
+                "id": "bf42a7e2b526c09d9e35884ea21cb6e5"
+            },
+            "roadmap node detail": {
+                "name": "roadmap node detail",
+                "path": "::roadmap node detail",
+                "id": "149cc7524d8b959bd50b087e72d113e5",
+                "groups": {},
+                "checks": {
+                        "node detail status is 200": {
+                            "path": "::roadmap node detail::node detail status is 200",
+                            "id": "2572442764c11369ae026f50dde2b7e8",
+                            "passes": 77,
+                            "fails": 0,
+                            "name": "node detail status is 200"
+                        },
+                        "node detail returns body": {
+                            "passes": 77,
+                            "fails": 0,
+                            "name": "node detail returns body",
+                            "path": "::roadmap node detail::node detail returns body",
+                            "id": "00f33cb57674c04f2bfe5a2ab6f9774a"
+                        }
+                    }
+            }
+        },
+        "checks": {}
+    },
+    "metrics": {
+        "http_req_sending": {
+            "avg": 0.10647672413793104,
+            "min": 0,
+            "med": 0,
+            "max": 1.1833,
+            "p(90)": 0.5064799999999999,
+            "p(95)": 0.52378
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0.06715344827586206,
+            "min": 0,
+            "med": 0,
+            "max": 2.9355,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "vus_max": {
+            "value": 5,
+            "min": 5,
+            "max": 5
+        },
+        "http_req_duration": {
+            "avg": 338.81754310344843,
+            "min": 5.2289,
+            "med": 35.8526,
+            "max": 1755.3378,
+            "p(90)": 994.49383,
+            "p(95)": 1052.6634599999998,
+            "thresholds": {
+                "p(95)<800": true
+            }
+        },
+        "iteration_duration": {
+            "p(95)": 2213.89678,
+            "avg": 2016.3640545454543,
+            "min": 1648.6986,
+            "med": 2010.4138,
+            "max": 2803.6227,
+            "p(90)": 2175.53788
+        },
+        "checks": {
+            "passes": 540,
+            "fails": 0,
+            "value": 1
+        },
+        "data_sent": {
+            "count": 71091,
+            "rate": 2207.9248597804194
+        },
+        "data_received": {
+            "count": 16176213,
+            "rate": 502396.4048867395
+        },
+        "http_req_blocked": {
+            "med": 0,
+            "max": 19.0645,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.154760775862069,
+            "min": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 338.81754310344843,
+            "min": 5.2289,
+            "med": 35.8526,
+            "max": 1755.3378,
+            "p(90)": 994.49383,
+            "p(95)": 1052.6634599999998
+        },
+        "http_req_connecting": {
+            "max": 0.532,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.01146551724137931,
+            "min": 0,
+            "med": 0
+        },
+        "http_req_receiving": {
+            "min": 0,
+            "med": 0,
+            "max": 25.1092,
+            "p(90)": 1.1815200000000001,
+            "p(95)": 1.7123549999999979,
+            "avg": 0.8587086206896548
+        },
+        "iterations": {
+            "count": 77,
+            "rate": 2.3914449677609304
+        },
+        "http_reqs": {
+            "count": 232,
+            "rate": 7.205392630136829
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 232,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_waiting": {
+            "avg": 337.85235775862077,
+            "min": 5.2289,
+            "med": 35.8526,
+            "max": 1754.8343,
+            "p(90)": 993.36126,
+            "p(95)": 1051.8886799999998
+        },
+        "group_duration": {
+            "min": 5.4258,
+            "med": 35.9197,
+            "max": 1760.2296,
+            "p(90)": 999.6719,
+            "p(95)": 1057.5697,
+            "avg": 338.6748346320348
+        },
+        "vus": {
+            "value": 2,
+            "min": 2,
+            "max": 5
+        }
+    },
+    "setup_data": {
+        "roadmapNodeId": "fa5ff2b4-090c-4d2e-81ba-7c4087278370",
+        "roadmapVersionId": "04900148-b972-4765-9c12-c63abe4c4277",
+        "cookieHeader": ""
+    }
+}

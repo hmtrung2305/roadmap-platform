@@ -42,6 +42,10 @@ export default function AccountSettingsPage() {
     return providers.find((item) => item.provider?.toLowerCase() === "github");
   }, [providers]);
 
+  const localRequiresVerification = Boolean(
+    localProvider?.requiresVerification || localProvider?.RequiresVerification,
+  );
+
   const getProviderDisplayName = (provider) => {
     if (provider === "google") return "Google";
     if (provider === "github") return "GitHub";
@@ -128,7 +132,7 @@ export default function AccountSettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="tm-surface p-6">
           <p className="text-sm text-slate-500">Loading settings...</p>
         </div>
       </div>
@@ -149,7 +153,7 @@ export default function AccountSettingsPage() {
       </div>
 
       {actionError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {actionError}
         </div>
       )}
@@ -171,9 +175,27 @@ export default function AccountSettingsPage() {
         <SettingsRow
           icon={MdEmail}
           title="Email"
-          value={me?.email ? me.email : "Not connected"}
-          actionLabel={localProvider?.isLinked ? "Change" : "Add"}
+          value={
+            localRequiresVerification
+              ? "Pending verification"
+              : me?.email
+                ? me.email
+                : "Not connected"
+          }
+          actionLabel={
+            localRequiresVerification
+              ? "Verify"
+              : localProvider?.isLinked
+                ? "Change"
+                : "Add"
+          }
           onClick={() => {
+            if (localRequiresVerification) {
+              setPendingLocalEmail(localProvider?.email || me?.email || "");
+              setActiveModal("verify-local-email");
+              return;
+            }
+
             if (localProvider?.isLinked) {
               setActiveModal("change-email");
               return;
@@ -186,14 +208,32 @@ export default function AccountSettingsPage() {
         <SettingsRow
           icon={FaKey}
           title="Password"
-          value={localProvider?.isLinked ? "Set" : "Not set"}
-          actionLabel={localProvider?.isLinked ? "Change" : "Add"}
+          value={
+            localRequiresVerification
+              ? "Pending verification"
+              : localProvider?.isLinked
+                ? "Set"
+                : "Not set"
+          }
+          actionLabel={
+            localRequiresVerification
+              ? "Verify"
+              : localProvider?.isLinked
+                ? "Change"
+                : "Add"
+          }
           actionClassName={
             localProvider?.isLinked
               ? "bg-slate-100 text-slate-700"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           onClick={() => {
+            if (localRequiresVerification) {
+              setPendingLocalEmail(localProvider?.email || me?.email || "");
+              setActiveModal("verify-local-email");
+              return;
+            }
+
             if (localProvider?.isLinked) {
               setActiveModal("change-password");
               return;
@@ -216,7 +256,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             googleProvider?.isLinked
               ? "bg-red-50 text-red-600"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           isDelete={googleProvider?.isLinked}
           disabled={googleProvider?.isLinked && !googleProvider?.canUnlink}
@@ -235,7 +275,7 @@ export default function AccountSettingsPage() {
           actionClassName={
             githubProvider?.isLinked
               ? "bg-red-50 text-red-600"
-              : "bg-indigo-50 text-indigo-700"
+              : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           isDelete={githubProvider?.isLinked}
           disabled={githubProvider?.isLinked && !githubProvider?.canUnlink}

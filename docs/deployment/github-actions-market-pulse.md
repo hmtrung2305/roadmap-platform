@@ -1,0 +1,150 @@
+# Market Pulse with GitHub Actions
+
+This guide runs the scheduled Job Market refresh with GitHub Actions. The workflow uses the .NET `RoadmapPlatform.MarketPulseJob` project and the configured Jobs API source.
+
+## Goal
+
+The Web API can serve live Job Market overview data from Jobs API. A separate scheduled job can also persist a daily snapshot into Supabase/PostgreSQL for lifecycle and historical analysis.
+
+Flow:
+
+```text
+GitHub Actions schedule / manual trigger
+  -> dotnet run RoadmapPlatform.MarketPulseJob
+  -> JobsApi source adapter
+  -> Upsert Supabase/PostgreSQL
+  -> Web API reads live Jobs API or DB fallback
+```
+
+No backend script runtime is required for this workflow.
+
+## Main Files
+
+```text
+.github/workflows/market-pulse-refresh.yml
+src/backend/RoadmapPlatform.MarketPulseJob/
+src/backend/RoadmapPlatform.Infrastructure/Services/MarketPulse/JobsApiClient.cs
+src/backend/RoadmapPlatform.Infrastructure/Services/MarketPulse/JobPortalScraper.cs
+```
+
+## Default Schedule
+
+The workflow uses:
+
+```yaml
+schedule:
+  - cron: "0 22 * * *"
+```
+
+GitHub Actions cron uses UTC. `22:00 UTC` is `05:00` in Vietnam on the next day.
+
+## Step 1: Keep Web API Scheduler Off
+
+In `src/backend/RoadmapPlatform.Api/appsettings.json`, keep:
+
+```json
+"MarketPulse": {
+  "Enabled": false,
+  "RunOnStartup": false
+}
+```
+
+Reason: the public Web API should respond to users quickly. The scheduled worker should handle persistence.
+
+## Step 2: Add GitHub Secret
+
+Create this repository secret:
+
+```text
+MARKET_PULSE_DB_CONNECTION_STRING
+```
+
+Example value:
+
+```text
+Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true;GSS Encryption Mode=Disable
+```
+
+Do not commit real connection strings.
+
+## Step 3: Optional Repository Variables
+
+Create variables under:
+
+```text
+Settings -> Secrets and variables -> Actions -> Variables
+```
+
+Supported variables:
+
+```text
+MARKET_PULSE_ACTIVE_JOBS_API_URL
+MARKET_PULSE_TODAY_JOBS_API_URL
+MARKET_PULSE_JOBS_API_BASE_URL
+MARKET_PULSE_MAX_POSTINGS
+MARKET_PULSE_REQUEST_TIMEOUT_SECONDS
+```
+
+Defaults are already defined in the workflow and `appsettings.json`.
+
+## Step 4: Manual Test Run
+
+After the workflow is on the default branch:
+
+```text
+GitHub repo -> Actions -> Refresh Market Pulse -> Run workflow
+```
+
+Manual input:
+
+```text
+max_postings = 80
+```
+
+Increase gradually after the job is stable.
+
+## Step 5: Check Result
+
+Successful logs include:
+
+```text
+Starting Market Pulse cron refresh...
+Market Pulse result: snapshotDate=..., sources=..., scraped=..., saved=..., new=..., updated=...
+Market Pulse cron refresh finished successfully...
+```
+
+Then open the app's Market Pulse page or call:
+
+```http
+GET /api/market-pulse/overview
+```
+
+## Operational Notes
+
+- Scheduled workflows only run when the workflow file is on the default branch.
+- GitHub may delay scheduled workflows during high load.
+- Public repositories can use standard GitHub-hosted runners without extra setup.
+- If the ngrok URL changes, update the repository variables instead of editing source code.
+- `MaxPostingsPerSource` caps how many Jobs API postings are persisted by the scheduled refresh.
+
+## Quick Debug
+
+Missing secret:
+
+```text
+Missing MARKET_PULSE_DB_CONNECTION_STRING secret.
+```
+
+Database error:
+
+```text
+NpgsqlException / PostgresException / relation does not exist
+```
+
+Check the connection string and verify that the Market Pulse migration has been applied.
+
+Jobs API returns zero jobs:
+
+- Verify `MARKET_PULSE_ACTIVE_JOBS_API_URL`.
+- Verify the ngrok tunnel is alive.
+- Check workflow logs for HTTP status warnings from `JobsApiClient`.

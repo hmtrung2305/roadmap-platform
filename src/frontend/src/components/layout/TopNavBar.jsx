@@ -8,6 +8,10 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { getMyProfileApi } from "../../api/profileApi";
 import AvatarDropdown from "./AvatarDropdown";
 
+let cachedProfile = null;
+let cachedProfileUserId = null;
+let cachedProfilePromise = null;
+
 export default function TopNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +38,8 @@ export default function TopNavbar() {
     { label: "Dashboard", path: user ? "/dashboard" : "/login" },
     { label: "Roadmaps", path: user ? "/roadmap" : "/login" },
     { label: "Resources", path: user ? "/resources" : "/login" },
-    { label: "Public Page", path: portfolioPath },
+    { label: "Market Pulse", path: user ? "/market-pulse" : "/login" },
+    { label: "E-Portfolio", path: portfolioPath },
   ];
 
   useEffect(() => {
@@ -43,17 +48,40 @@ export default function TopNavbar() {
       return;
     }
 
+    const userKey = user.userId || user.id || user.email || user.username;
+
+    if (cachedProfile && cachedProfileUserId === userKey) {
+      setProfile(cachedProfile);
+      return;
+    }
+
+    let isMounted = true;
+
     async function fetchProfile() {
       try {
-        const data = await getMyProfileApi();
-        setProfile(data);
+        if (!cachedProfilePromise || cachedProfileUserId !== userKey) {
+          cachedProfileUserId = userKey;
+          cachedProfilePromise = getMyProfileApi();
+        }
+
+        const data = await cachedProfilePromise;
+        cachedProfile = data;
+
+        if (isMounted) {
+          setProfile(data);
+        }
       } catch (error) {
+        cachedProfilePromise = null;
         console.error("Failed to load profile:", error);
       }
     }
 
     fetchProfile();
-  }, [user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.userId, user?.id, user?.email, user?.username]);
 
   const handleLogout = async () => {
     await logout();
@@ -61,8 +89,8 @@ export default function TopNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#B9D8CC] bg-white/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-transparent shadow-sm bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-15 max-w-7xl items-center justify-between gap-5 px-4 py-1 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-8">
           <button
             type="button"
@@ -72,7 +100,7 @@ export default function TopNavbar() {
             <AuthLogo compact showTagline={false} />
           </button>
 
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="hidden items-center gap-3 md:flex">
             {navItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
@@ -83,7 +111,7 @@ export default function TopNavbar() {
                   key={item.label}
                   type="button"
                   onClick={() => navigate(item.path)}
-                  className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${
+                  className={`rounded-lg border px-4 py-2 !text-[14px] font-bold transition ${
                     isActive
                       ? "border-[#6FCF97] bg-[#6FCF97]/24 text-[#1F6F5F]"
                       : "border-transparent text-slate-600 hover:border-[#B9D8CC] hover:bg-white hover:text-[#1F6F5F]"
@@ -99,7 +127,7 @@ export default function TopNavbar() {
         <div className="flex items-center gap-3">
           {user && (
             <div
-              className={`hidden h-10 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold shadow-sm sm:inline-flex ${
+              className={`hidden h-10 items-center gap-2 rounded-lg border px-3 text-xs font-extrabold shadow-sm sm:inline-flex ${
                 isCompletedStreakToday
                   ? "border-[#6FCF97] bg-[#6FCF97]/30 text-[#1F6F5F]"
                   : "border-[#B9D8CC] bg-white text-[#18332D]"
@@ -111,12 +139,12 @@ export default function TopNavbar() {
           )}
 
           {user ? (
-            <AvatarDropdown user={user} profile={profile} onLogout={handleLogout} />
+            <AvatarDropdown user={user} profile={user ? profile : null} onLogout={handleLogout} />
           ) : (
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="rounded-xl bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
+              className="rounded-lg bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
             >
               Open dashboard
             </button>

@@ -261,7 +261,7 @@ Database provider
 Email sender
 GitHub API client
 RAG service
-Python service client
+Job market external API client
 Job market analysis client
 File storage
 External API clients

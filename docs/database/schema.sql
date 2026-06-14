@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.user
     deleted_at timestamptz,
 
     CONSTRAINT chk_user_status
-        CHECK (status in ('active', 'suspended', 'deleted'))
+        CHECK (status in ('active', 'pending_verification', 'suspended', 'deleted'))
 );
 
 CREATE TABLE IF NOT EXISTS public.user_profile
@@ -75,6 +75,140 @@ CREATE TABLE IF NOT EXISTS public.user_activity_stats
         REFERENCES public.user(user_id)
         ON DELETE CASCADE
 );
+
+-- =========================
+-- Market Pulse
+-- =========================
+CREATE TABLE IF NOT EXISTS public.job_portal_source
+(
+    job_portal_source_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name varchar(80) NOT NULL UNIQUE,
+    base_url text NOT NULL,
+    search_url_template text NOT NULL,
+    is_enabled boolean NOT NULL DEFAULT true,
+    last_scraped_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.job_posting
+(
+    job_posting_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_portal_source_id uuid NOT NULL,
+    external_id varchar(120) NOT NULL,
+    source_job_id varchar(120),
+    title varchar(250) NOT NULL,
+    company_name varchar(160),
+    category varchar(100),
+    location varchar(160),
+    salary varchar(100),
+    experience varchar(100),
+    url text NOT NULL,
+    description text NOT NULL,
+    published_at timestamptz,
+    post_date_text varchar(80),
+    source_updated_at timestamptz,
+    expires_at timestamptz,
+    requirements jsonb NOT NULL DEFAULT '[]'::jsonb,
+    specialties jsonb NOT NULL DEFAULT '[]'::jsonb,
+    benefits jsonb NOT NULL DEFAULT '[]'::jsonb,
+    content_hash varchar(64) NOT NULL DEFAULT '',
+    lifecycle_status varchar(32) NOT NULL DEFAULT 'active',
+    is_active boolean NOT NULL DEFAULT true,
+    missing_scan_count int NOT NULL DEFAULT 0,
+    seen_count int NOT NULL DEFAULT 1,
+    updated_scan_count int NOT NULL DEFAULT 0,
+    first_seen_at timestamptz NOT NULL DEFAULT now(),
+    last_seen_at timestamptz NOT NULL DEFAULT now(),
+    last_checked_at timestamptz NOT NULL DEFAULT now(),
+    last_changed_at timestamptz,
+    closed_detected_at timestamptz,
+    scraped_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_job_posting_source
+        FOREIGN KEY (job_portal_source_id)
+        REFERENCES public.job_portal_source(job_portal_source_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_job_posting_source_external
+        UNIQUE (job_portal_source_id, external_id),
+
+    CONSTRAINT chk_job_posting_requirements_json_array
+        CHECK (jsonb_typeof(requirements) = 'array'),
+
+    CONSTRAINT chk_job_posting_specialties_json_array
+        CHECK (jsonb_typeof(specialties) = 'array'),
+
+    CONSTRAINT chk_job_posting_benefits_json_array
+        CHECK (jsonb_typeof(benefits) = 'array')
+);
+
+CREATE TABLE IF NOT EXISTS public.job_posting_daily_snapshot
+(
+    job_posting_daily_snapshot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_posting_id uuid NOT NULL,
+    snapshot_date date NOT NULL,
+    source_name varchar(80) NOT NULL,
+    observation_status varchar(32) NOT NULL,
+    content_hash varchar(64) NOT NULL,
+    observed_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_job_posting_daily_snapshot_posting
+        FOREIGN KEY (job_posting_id)
+        REFERENCES public.job_posting(job_posting_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_job_posting_daily_snapshot
+        UNIQUE (job_posting_id, snapshot_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.skill_trend_snapshot
+(
+    skill_trend_snapshot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    snapshot_date date NOT NULL,
+    skill_name varchar(100) NOT NULL,
+    skill_slug varchar(120) NOT NULL,
+    source_name varchar(80) NOT NULL DEFAULT 'all',
+    mention_count int NOT NULL DEFAULT 0,
+    posting_count int NOT NULL DEFAULT 0,
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_skill_trend_snapshot
+        UNIQUE (skill_slug, snapshot_date, source_name),
+
+    CONSTRAINT chk_skill_trend_snapshot_counts
+        CHECK (mention_count >= 0 AND posting_count >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_scraped_at
+    ON public.job_posting(scraped_at);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_title
+    ON public.job_posting(title);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_active_last_seen
+    ON public.job_posting(is_active, last_seen_at);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_lifecycle_status
+    ON public.job_posting(lifecycle_status);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_source_job_id
+    ON public.job_posting(source_job_id);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_category
+    ON public.job_posting(category);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_published_at
+    ON public.job_posting(published_at);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_daily_snapshot_date
+    ON public.job_posting_daily_snapshot(snapshot_date);
+    
+CREATE INDEX IF NOT EXISTS ix_skill_trend_snapshot_date
+    ON public.skill_trend_snapshot(snapshot_date);
 
 CREATE TABLE IF NOT EXISTS public.ai_credit_plan
 (
@@ -198,6 +332,7 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
     created_at timestamptz NOT NULL DEFAULT now(),
     pending_email varchar(254),
     email_verified_at timestamptz,
+    access_token text,
 
     CONSTRAINT fk_user_auth_provider_user_id
         FOREIGN KEY (user_id)
@@ -952,16 +1087,31 @@ CREATE TABLE IF NOT EXISTS public.repo_insight
 (
     insight_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     repository_id uuid NOT NULL,
+
     summary text,
-    tech_stack jsonb,
-    detected_skills jsonb,
+    tech_stack jsonb NOT NULL DEFAULT '[]'::jsonb,
+    detected_skills jsonb NOT NULL DEFAULT '[]'::jsonb,
     project_type varchar(100),
+
+    analysis_status varchar(50) NOT NULL DEFAULT 'completed',
+    readme_hash varchar(64),
+    readme_truncated bool NOT NULL DEFAULT false,
+    ai_model varchar(100),
+    error_message text,
+
     analyzed_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_repo_insight_repository_id
         FOREIGN KEY (repository_id)
         REFERENCES public.repository(repository_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_repo_insight_repository_id
+        UNIQUE (repository_id),
+
+    CONSTRAINT chk_repo_insight_analysis_status
+        CHECK (analysis_status IN ('pending', 'completed', 'failed'))
 );
 
 -- =========================

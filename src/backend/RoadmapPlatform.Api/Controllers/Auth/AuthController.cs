@@ -1,4 +1,4 @@
-﻿using AspNet.Security.OAuth.GitHub;
+using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +31,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         {
             var response = await _authService.RegisterAsync(request);
 
-            return Ok(response);
+            return StatusCode(StatusCodes.Status202Accepted, response);
         }
 
         [HttpPost("login")]
@@ -139,7 +139,11 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             try
             {
-                var loginResponse = await _authService.LoginWithGitHubAsync(result.Principal);
+                var githubAccessToken = result.Properties?.GetTokenValue("access_token");
+
+                var loginResponse = await _authService.LoginWithGitHubAsync(
+                    result.Principal,
+                    githubAccessToken);
 
                 await HttpContext.SignOutAsync(ExternalScheme);
 

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using RoadmapPlatform.Application.Services.MarketPulse;
 
 namespace RoadmapPlatform.Application.Extensions
 {
@@ -17,7 +18,9 @@ namespace RoadmapPlatform.Application.Extensions
             // services.AddScoped<IRoadmapService, RoadmapService>();
             // services.AddScoped<IRoleService, RoleService>();
             // services.AddScoped<IPermissionService, PermissionService>();
-
+            services.AddSingleton<JobMarketKeywordAnalyzer>();
+            services.AddSingleton<JobMarketOverviewBuilder>();
+            
             return services;
         }
     }

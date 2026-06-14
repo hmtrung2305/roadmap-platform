@@ -9,7 +9,7 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
             Guid userId,
             CancellationToken cancellationToken = default);
 
-        Task LinkLocalLoginAsync(
+        Task<LinkLocalLoginResponseDto> LinkLocalLoginAsync(
             Guid userId,
             LinkLocalLoginRequestDto request,
             CancellationToken cancellationToken = default);
@@ -22,6 +22,7 @@ namespace RoadmapPlatform.Application.Interfaces.Auth
         Task LinkGitHubAsync(
             Guid userId,
             ClaimsPrincipal githubUser,
+            string? githubAccessToken,
             CancellationToken cancellationToken = default);
 
         Task LinkGoogleAsync(

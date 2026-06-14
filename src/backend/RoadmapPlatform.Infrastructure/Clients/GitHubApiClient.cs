@@ -1,4 +1,4 @@
-﻿using RoadmapPlatform.Application.DTOs.GitHub;
+using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using System.Net;
@@ -17,26 +17,22 @@ namespace RoadmapPlatform.Infrastructure.Clients
             _httpClientFactory = httpClientFactory;
         }
 
-        // Create a GET request to GitHub's public repository endpoint
-        // sort=updated means GitHub returns recently updated repos first
-        // per_page=20 means return up to 20 repos in one request
-        public async Task<List<GitHubRepositorySyncDto>> GetPublicRepositoriesAsync(string username)
+        // Create a GET request to GitHub's public repository endpoint.
+        // sort=updated means GitHub returns recently updated repos first.
+        // per_page=20 means return up to 20 repos in one request.
+        public async Task<List<GitHubRepositorySyncDto>> GetPublicRepositoriesAsync(
+            string username,
+            string accessToken,
+            CancellationToken cancellationToken = default)
         {
-            // Create an HttpClient instance
             var client = _httpClientFactory.CreateClient();
 
             var request = new HttpRequestMessage(HttpMethod.Get,
                 $"https://api.github.com/users/{username}/repos?sort=updated&per_page=20");
 
-            // GitHub expects a User-Agent header
-            // Without this, GitHub may reject the request
-            request.Headers.UserAgent.ParseAdd("Roadmap Platform");
+            AddDefaultGitHubHeaders(request, accessToken);
 
-            // Tell GitHub we want the official GitHub JSON response format
-            request.Headers.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-
-            var response = await client.SendAsync(request);
+            var response = await client.SendAsync(request, cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
@@ -48,17 +44,13 @@ namespace RoadmapPlatform.Infrastructure.Clients
                 throw new InvalidOperationException("Failed to fetch GitHub repositories");
             }
 
-            // Read GitHub's JSON response as a string
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            // Convert the JSON string into C# objects
-            // GitHubRepoApiResponse matches GitHub's raw JSON structure
             var repos = JsonSerializer.Deserialize<List<GitHubRepoApiResponse>>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
 
-            // Convert GitHub's API raw response model into GitHubRepositoryDto
             return repos?.Where(x => !x.IsPrivate).Select(x => new GitHubRepositorySyncDto
             {
                 GithubRepoId = x.Id,
@@ -75,7 +67,63 @@ namespace RoadmapPlatform.Infrastructure.Clients
             }).ToList() ?? new List<GitHubRepositorySyncDto>();
         }
 
-        // Represents the raw JSON shape returned by GitHub's API
+        public async Task<string?> GetRepositoryReadmeAsync(
+            string owner,
+            string repositoryName,
+            string accessToken,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(owner))
+            {
+                throw new ArgumentException("GitHub repository owner is required.", nameof(owner));
+            }
+
+            if (string.IsNullOrWhiteSpace(repositoryName))
+            {
+                throw new ArgumentException("GitHub repository name is required.", nameof(repositoryName));
+            }
+
+            var client = _httpClientFactory.CreateClient();
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"https://api.github.com/repos/{owner}/{repositoryName}/readme");
+
+            AddDefaultGitHubHeaders(request, accessToken);
+            request.Headers.Accept.Clear();
+            request.Headers.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/vnd.github.raw"));
+
+            var response = await client.SendAsync(request, cancellationToken);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException("Failed to fetch repository README");
+            }
+
+            return await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+
+        private static void AddDefaultGitHubHeaders(HttpRequestMessage request, string accessToken)
+        {
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                throw new InvalidOperationException("GitHub access token was not provided.");
+            }
+
+            request.Headers.UserAgent.ParseAdd("Roadmap-Platform");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", accessToken);
+            request.Headers.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
+        }
+
         private class GitHubRepoApiResponse
         {
             [JsonPropertyName("id")]

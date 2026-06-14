@@ -9,6 +9,32 @@ import { FaGithub } from "react-icons/fa";
 import MotionWrapper from "../components/auth/MotionWrapper";
 import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
+import {
+  getErrorMessage,
+  goToVerificationPage,
+  isEmailVerificationRequired,
+  isValidEmailFormat,
+  VERIFICATION_PURPOSES,
+} from "../utils/authVerificationFlow";
+
+const PASSWORD_REQUIREMENT_MESSAGE =
+  "Password must contain at least 8 characters with uppercase, lowercase, number, and special character.";
+
+const PASSWORD_REQUIREMENT_PATTERN =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+
+function isValidPasswordFormat(password) {
+  return PASSWORD_REQUIREMENT_PATTERN.test(password);
+}
+
+const USERNAME_REQUIREMENT_MESSAGE =
+  "Username must be 3-20 characters and can only contain letters, numbers, underscores, or dots.";
+
+const USERNAME_REQUIREMENT_PATTERN = /^[a-zA-Z0-9._]{3,20}$/;
+
+function isValidUsernameFormat(username) {
+  return USERNAME_REQUIREMENT_PATTERN.test(username);
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -27,6 +53,8 @@ export default function RegisterPage() {
   });
 
   const [error, setError] = useState("");
+  const [usernameFocused, setUsernameFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
@@ -56,23 +84,39 @@ export default function RegisterPage() {
 
   const validateForm = () => {
     if (!form.username.trim()) {
-      return "Vui lòng nhập username.";
+      return "Please enter a username.";
+    }
+
+    if (!isValidUsernameFormat(form.username.trim())) {
+      return USERNAME_REQUIREMENT_MESSAGE;
     }
 
     if (!form.email.trim()) {
-      return "Vui lòng nhập email.";
+      return "Please enter an email address.";
     }
 
-    if (form.password.length < 8) {
-      return "Mật khẩu nên có ít nhất 8 ký tự.";
+    if (!isValidEmailFormat(form.email)) {
+      return "Please enter a valid email address.";
+    }
+
+    if (!form.password) {
+      return "Please enter a password.";
+    }
+
+    if (!isValidPasswordFormat(form.password)) {
+      return PASSWORD_REQUIREMENT_MESSAGE;
+    }
+
+    if (!form.confirmPassword) {
+      return "Please confirm your password.";
     }
 
     if (form.password !== form.confirmPassword) {
-      return "Confirm password không khớp.";
+      return "Passwords do not match.";
     }
 
     if (!form.agreeTerms) {
-      return "Bạn cần đồng ý với Terms of Service và Privacy Policy.";
+      return "Please agree to the Terms of Service and Privacy Policy.";
     }
 
     if (CAPTCHA_ENABLED && !captchaToken) {
@@ -96,18 +140,38 @@ export default function RegisterPage() {
       setError("");
       clearAuthError();
 
-      await register({
+      const data = await register({
         Username: form.username.trim(),
         Email: form.email.trim(),
         Password: form.password,
         CaptchaToken: captchaToken,
       });
 
-      navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}`);
+      if (isEmailVerificationRequired(data)) {
+        goToVerificationPage(
+          navigate,
+          data,
+          form.email.trim(),
+          VERIFICATION_PURPOSES.REGISTER,
+        );
+        return;
+      }
+
+      navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}&purpose=register`);
     } catch (error) {
       console.error("Register failed:", error);
 
-      setError(error.message || "Register failed. Please try again.");
+      if (isEmailVerificationRequired(error)) {
+        goToVerificationPage(
+          navigate,
+          error,
+          form.email.trim(),
+          VERIFICATION_PURPOSES.REGISTER,
+        );
+        return;
+      }
+
+      setError(getErrorMessage(error, "Registration failed. Please try again."));
     } finally {
       setCaptchaToken("");
       setCaptchaResetKey((prev) => prev + 1);
@@ -123,13 +187,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-dvh overflow-hidden bg-slate-50 text-slate-900">
+    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
       <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <AuthRoadmapPanel />
 
-        <section className="flex min-h-dvh items-center justify-center bg-white px-6 py-5">
+        <section className="flex min-h-dvh items-center justify-center bg-[#F7F1E8] px-6 py-5">
           <div
-            className={`w-full max-w-[420px] rounded-3xl border border-slate-100 bg-white px-6 py-6 shadow-xl shadow-slate-200/60 transition duration-200 ${
+            className={`w-full max-w-[420px] rounded-lg border border-[#B9D8CC] bg-white/90 px-6 py-6 shadow-[0_18px_44px_rgba(31,111,95,0.08)] backdrop-blur transition duration-200 ${
               authLoading ? "scale-[0.99] opacity-70" : ""
             }`}
           >
@@ -152,13 +216,13 @@ export default function RegisterPage() {
             </div>
 
             {displayError && (
-              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {displayError}
               </div>
             )}
 
             <form onSubmit={handleRegister} className="mt-5 space-y-3.5">
-              <div>
+              <div className="relative">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                   Username
                 </label>
@@ -167,10 +231,18 @@ export default function RegisterPage() {
                   name="username"
                   value={form.username}
                   onChange={handleChange}
-                  placeholder="John Doe"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  onFocus={() => setUsernameFocused(true)}
+                  onBlur={() => setUsernameFocused(false)}
+                  placeholder="john_doe"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
+
+                {usernameFocused && (
+                  <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
+                    {USERNAME_REQUIREMENT_MESSAGE}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -184,13 +256,13 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
+                <div className="relative">
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                     Password
                   </label>
@@ -200,15 +272,23 @@ export default function RegisterPage() {
                     type="password"
                     value={form.password}
                     onChange={handleChange}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
+
+                  {passwordFocused && (
+                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
+                      {PASSWORD_REQUIREMENT_MESSAGE}
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                    Confirm
+                    Confirm password
                   </label>
 
                   <input
@@ -217,7 +297,7 @@ export default function RegisterPage() {
                     value={form.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
                 </div>
@@ -261,7 +341,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={authLoading || (CAPTCHA_ENABLED && !captchaToken)}
-                className="h-11 w-full rounded-xl bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-lg bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Creating account..." : "Create account"}
               </button>

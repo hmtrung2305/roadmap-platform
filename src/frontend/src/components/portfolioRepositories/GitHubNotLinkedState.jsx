@@ -4,8 +4,8 @@ export default function GitHubNotLinkedState({
   onBack,
 }) {
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-slate-100 px-6 py-8">
-      <section className="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-6 py-12">
+      <section className="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">
           Connect GitHub first
         </h1>

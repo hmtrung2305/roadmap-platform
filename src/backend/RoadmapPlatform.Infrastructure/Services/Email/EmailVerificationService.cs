@@ -1,7 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Auth;
+using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.Auth;
@@ -11,6 +13,7 @@ using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services.Email.Templates;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Email
 {
@@ -38,7 +41,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             CancellationToken cancellationToken = default)
         {
             provider = NormalizeOrThrow(provider, "Provider was not provided");
-            email = NormalizeOrThrow(email, "Email was not provided");
+            email = NormalizeEmailOrThrow(email);
             purpose = NormalizeOrThrow(purpose, "Purpose was not provided");
 
             var userExists = await _dbContext.Users
@@ -104,7 +107,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             CancellationToken cancellationToken = default)
         {
             provider = NormalizeOrThrow(provider, "Provider was not provided");
-            email = NormalizeOrThrow(email, "Email was not provided");
+            email = NormalizeEmailOrThrow(email);
             purpose = NormalizeOrThrow(purpose, "Purpose was not provided");
             otp = NormalizeOrThrow(otp, "OTP was not provided");
 
@@ -141,45 +144,105 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<EmailVerificationResultDto> VerifyRegistrationEmailAsync(
+        public async Task SendPendingRegistrationVerificationCodeAsync(
+            Guid pendingLocalRegistrationId,
+            string email,
+            CancellationToken cancellationToken = default)
+        {
+            email = NormalizeEmailOrThrow(email);
+
+            var pendingRegistrationExists = await _dbContext.PendingLocalRegistrations
+                .AnyAsync(
+                    x => x.PendingLocalRegistrationId == pendingLocalRegistrationId &&
+                         x.Email == email &&
+                         x.UsedAt == null,
+                    cancellationToken);
+
+            if (!pendingRegistrationExists)
+            {
+                throw new NotFoundException("Pending registration was not found");
+            }
+
+            await EnsurePendingRegistrationResendCooldownHasPassedAsync(
+                pendingLocalRegistrationId,
+                email,
+                cancellationToken);
+
+            await InvalidateExistingPendingRegistrationTokensAsync(
+                pendingLocalRegistrationId,
+                email,
+                cancellationToken);
+
+            var otp = GenerateOtp(_settings.OtpLength);
+            var otpHash = HashOtp(otp);
+            var now = DateTime.UtcNow;
+
+            var token = new EmailVerificationToken
+            {
+                UserId = null,
+                PendingLocalRegistrationId = pendingLocalRegistrationId,
+                Provider = AuthProviders.Local,
+                Email = email,
+                Purpose = EmailVerificationPurposes.Register,
+                OtpHash = otpHash,
+                ExpiresAt = now.AddMinutes(_settings.ExpirationMinutes),
+                AttemptCount = 0,
+                MaxAttempts = _settings.MaxAttempts,
+                CreatedAt = now
+            };
+
+            _dbContext.EmailVerificationTokens.Add(token);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            var htmlBody = EmailVerificationTemplate.Build(
+                otp,
+                _settings.ExpirationMinutes);
+
+            await _emailSender.SendEmailAsync(
+                email,
+                "Verify your Roadmap Platform email",
+                htmlBody,
+                cancellationToken);
+        }
+
+        public async Task<PendingRegistrationVerificationResultDto> VerifyRegistrationEmailAsync(
             string email,
             string otp,
             CancellationToken cancellationToken = default)
         {
-            email = NormalizeOrThrow(email, "Email was not provided");
+            email = NormalizeEmailOrThrow(email);
+            otp = NormalizeOrThrow(otp, "OTP was not provided");
 
-            var localProvider = await _dbContext.UserAuthProviders
-                .FirstOrDefaultAsync(x =>
-                    x.Provider == AuthProviders.Local &&
-                    x.ProviderUserId == email,
+            var pendingRegistration = await _dbContext.PendingLocalRegistrations
+                .FirstOrDefaultAsync(
+                    x => x.Email == email &&
+                         x.UsedAt == null,
                     cancellationToken);
 
-            if (localProvider == null)
+            if (pendingRegistration == null)
             {
-                throw new NotFoundException("Local login method was not found");
+                throw new NotFoundException("Pending registration was not found");
             }
 
-            if (localProvider.EmailVerifiedAt != null)
+            if (pendingRegistration.ExpiresAt <= DateTime.UtcNow)
             {
-                throw new InvalidOperationException("Email is already verified");
+                throw new InvalidOperationException("Pending registration has expired. Please register again.");
             }
 
-            await VerifyVerificationCodeAsync(
-                localProvider.UserId,
-                AuthProviders.Local,
+            await VerifyPendingRegistrationCodeAsync(
+                pendingRegistration.PendingLocalRegistrationId,
                 email,
-                EmailVerificationPurposes.Register,
                 otp,
                 cancellationToken);
 
-            localProvider.EmailVerifiedAt = DateTime.UtcNow;
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return new EmailVerificationResultDto
+            return new PendingRegistrationVerificationResultDto
             {
-                UserId = localProvider.UserId,
-                Email = email
+                PendingLocalRegistrationId = pendingRegistration.PendingLocalRegistrationId,
+                Username = pendingRegistration.Username,
+                UsernameNormalized = pendingRegistration.UsernameNormalized,
+                Email = pendingRegistration.Email,
+                PasswordHash = pendingRegistration.PasswordHash
             };
         }
 
@@ -187,29 +250,27 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             string email,
             CancellationToken cancellationToken = default)
         {
-            email = NormalizeOrThrow(email, "Email was not provided");
+            email = NormalizeEmailOrThrow(email);
 
-            var localProvider = await _dbContext.UserAuthProviders
-                .FirstOrDefaultAsync(x =>
-                    x.Provider == AuthProviders.Local &&
-                    x.ProviderUserId == email,
+            var pendingRegistration = await _dbContext.PendingLocalRegistrations
+                .FirstOrDefaultAsync(
+                    x => x.Email == email &&
+                         x.UsedAt == null,
                     cancellationToken);
 
-            if (localProvider == null)
+            if (pendingRegistration == null)
             {
-                throw new NotFoundException("Local login method was not found");
+                throw new NotFoundException("Pending registration was not found");
             }
 
-            if (localProvider.EmailVerifiedAt != null)
+            if (pendingRegistration.ExpiresAt <= DateTime.UtcNow)
             {
-                throw new InvalidOperationException("Email is already verified");
+                throw new InvalidOperationException("Pending registration has expired. Please register again.");
             }
 
-            await SendVerificationCodeAsync(
-                localProvider.UserId,
-                AuthProviders.Local,
+            await SendPendingRegistrationVerificationCodeAsync(
+                pendingRegistration.PendingLocalRegistrationId,
                 email,
-                EmailVerificationPurposes.Register,
                 cancellationToken);
         }
 
@@ -287,12 +348,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task RequestLocalEmailChangeAsync(
+        public async Task<UpdateLocalEmailResponseDto> RequestLocalEmailChangeAsync(
             Guid userId,
             string newEmail,
             CancellationToken cancellationToken = default)
         {
-            newEmail = NormalizeOrThrow(newEmail, "New email was not provided");
+            newEmail = NormalizeEmailOrThrow(newEmail, "New email was not provided");
 
             var localProvider = await _dbContext.UserAuthProviders
                 .FirstOrDefaultAsync(x =>
@@ -327,6 +388,15 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 throw new ConflictException("Email is already registered");
             }
 
+            var pendingEmail = localProvider.PendingEmail?.Trim().ToLowerInvariant();
+
+            if (pendingEmail == newEmail)
+            {
+                return CreateChangeEmailVerificationResponse(
+                    newEmail,
+                    "Email change is already pending. Please verify your new email to continue.");
+            }
+
             localProvider.PendingEmail = newEmail;
 
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -335,6 +405,58 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 userId,
                 AuthProviders.Local,
                 newEmail,
+                EmailVerificationPurposes.ChangeEmail,
+                cancellationToken);
+
+            return CreateChangeEmailVerificationResponse(
+                newEmail,
+                "Verification code sent");
+        }
+
+
+        public async Task ResendLocalEmailChangeVerificationAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            var localProvider = await _dbContext.UserAuthProviders
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Provider == AuthProviders.Local,
+                    cancellationToken);
+
+            if (localProvider == null)
+            {
+                throw new NotFoundException("Local login method was not found");
+            }
+
+            if (string.IsNullOrWhiteSpace(localProvider.PasswordHash))
+            {
+                throw new InvalidOperationException("This account does not have a local password login");
+            }
+
+            var pendingEmail = localProvider.PendingEmail?.Trim().ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(pendingEmail))
+            {
+                throw new InvalidOperationException("No pending email change was found");
+            }
+
+            var emailExists = await _dbContext.UserAuthProviders
+                .AnyAsync(x =>
+                    x.Provider == AuthProviders.Local &&
+                    x.ProviderUserId == pendingEmail &&
+                    x.UserId != userId,
+                    cancellationToken);
+
+            if (emailExists)
+            {
+                throw new ConflictException("Email is already registered");
+            }
+
+            await SendVerificationCodeAsync(
+                userId,
+                AuthProviders.Local,
+                pendingEmail,
                 EmailVerificationPurposes.ChangeEmail,
                 cancellationToken);
         }
@@ -392,6 +514,20 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        private static UpdateLocalEmailResponseDto CreateChangeEmailVerificationResponse(
+            string email,
+            string message)
+        {
+            return new UpdateLocalEmailResponseDto
+            {
+                Message = message,
+                Email = email,
+                RequiresEmailVerification = true,
+                VerificationPurpose = EmailVerificationPurposes.ChangeEmail,
+                CanResendVerification = true
+            };
+        }
+
         private static string GenerateOtp(int length)
         {
             if (length <= 0)
@@ -418,6 +554,106 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             var hashBytes = hmac.ComputeHash(bytes);
 
             return Convert.ToHexString(hashBytes);
+        }
+
+        private async Task EnsurePendingRegistrationResendCooldownHasPassedAsync(
+            Guid pendingLocalRegistrationId,
+            string email,
+            CancellationToken cancellationToken = default)
+        {
+            var latestToken = await _dbContext.EmailVerificationTokens
+                .Where(x =>
+                    x.PendingLocalRegistrationId == pendingLocalRegistrationId &&
+                    x.Provider == AuthProviders.Local &&
+                    x.Email == email &&
+                    x.Purpose == EmailVerificationPurposes.Register)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestToken == null)
+            {
+                return;
+            }
+
+            var nextAllowedAt = latestToken.CreatedAt.AddSeconds(_settings.ResendCooldownSeconds);
+
+            if (DateTime.UtcNow < nextAllowedAt)
+            {
+                var remainingSeconds = (int)Math.Ceiling(
+                    (nextAllowedAt - DateTime.UtcNow).TotalSeconds);
+
+                throw new InvalidOperationException(
+                    $"Please wait {remainingSeconds} seconds before requesting another code");
+            }
+        }
+
+        private async Task InvalidateExistingPendingRegistrationTokensAsync(
+            Guid pendingLocalRegistrationId,
+            string email,
+            CancellationToken cancellationToken = default)
+        {
+            var existingTokens = await _dbContext.EmailVerificationTokens
+                .Where(x =>
+                    x.PendingLocalRegistrationId == pendingLocalRegistrationId &&
+                    x.Provider == AuthProviders.Local &&
+                    x.Email == email &&
+                    x.Purpose == EmailVerificationPurposes.Register &&
+                    x.UsedAt == null)
+                .ToListAsync(cancellationToken);
+
+            foreach (var token in existingTokens)
+            {
+                token.UsedAt = DateTime.UtcNow;
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task VerifyPendingRegistrationCodeAsync(
+            Guid pendingLocalRegistrationId,
+            string email,
+            string otp,
+            CancellationToken cancellationToken = default)
+        {
+            var token = await _dbContext.EmailVerificationTokens
+                .Where(x =>
+                    x.PendingLocalRegistrationId == pendingLocalRegistrationId &&
+                    x.Provider == AuthProviders.Local &&
+                    x.Email == email &&
+                    x.Purpose == EmailVerificationPurposes.Register &&
+                    x.UsedAt == null)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (token == null)
+            {
+                throw new NotFoundException("Verification code was not found");
+            }
+
+            if (token.ExpiresAt <= DateTime.UtcNow)
+            {
+                throw new InvalidOperationException("Verification code has expired");
+            }
+
+            if (token.AttemptCount >= token.MaxAttempts)
+            {
+                throw new InvalidOperationException("Too many invalid attempts");
+            }
+
+            var providedOtpHash = HashOtp(otp);
+
+            if (!FixedTimeEquals(token.OtpHash, providedOtpHash))
+            {
+                token.AttemptCount++;
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                throw new InvalidOperationException("Invalid verification code");
+            }
+
+            token.UsedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         private async Task<EmailVerificationToken> GetLatestUsableTokenAsync(
@@ -508,6 +744,32 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             var bytesB = Encoding.UTF8.GetBytes(valueB);
 
             return CryptographicOperations.FixedTimeEquals(bytesA, bytesB);
+        }
+
+
+        private static string NormalizeEmailOrThrow(
+            string? email,
+            string errorMessage = "Email was not provided")
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            if (!IsValidEmailFormat(normalizedEmail))
+            {
+                throw new InvalidOperationException("Invalid email format");
+            }
+
+            return normalizedEmail;
+        }
+
+        private static bool IsValidEmailFormat(string email)
+        {
+            return new EmailAddressAttribute().IsValid(email) &&
+                   Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
 
         private static string NormalizeOrThrow(string? value, string errorMessage)

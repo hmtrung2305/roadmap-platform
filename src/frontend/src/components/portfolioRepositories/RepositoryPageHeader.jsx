@@ -8,7 +8,7 @@ export default function RepositoryPageHeader({
   onSave,
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+    <section className="rounded-lg border border-slate-200 bg-white p-7 shadow-sm">
       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -43,7 +43,7 @@ export default function RepositoryPageHeader({
         </div>
       </div>
 
-      <div className="mt-6 rounded-xl bg-[#6FCF97]/15 px-4 py-3 text-sm font-medium text-[#1F6F5F]">
+      <div className="mt-6 rounded-lg bg-[#6FCF97]/15 px-4 py-3 text-sm font-medium text-[#1F6F5F]">
         {selectedCount} repositories selected for your portfolio.
       </div>
     </section>

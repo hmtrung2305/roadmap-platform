@@ -6,14 +6,16 @@ export const NODE_HEIGHT = 102;
 export const ROADMAP_LAYOUT = {
   trunkX: 1000,
   checkpointGapX: 80,
-  centerToGroupGapX: 96,
-  groupToOptionGapX: 78,
+  centerToGroupGapX: 56,
+  groupToOptionGapX: 52,
+  rightCenterToGroupGapX: 56,
+  rightGroupToOptionGapX: 52,
   hiddenColumnGapX: 430,
   minPhaseBlockHeight: 620,
-  phaseBlockGapY: 240,
-  groupRowGapY: 176,
-  optionGapY: 196,
-  checkpointGapY: 212,
+  phaseBlockGapY: 210,
+  groupRowGapY: 148,
+  optionGapY: 164,
+  checkpointGapY: 182,
   checkpointBelowPhaseOffsetY: 164,
   nodeVerticalGapY: 62,
   sideColumnOffsetY: 0,
@@ -23,8 +25,8 @@ export const TRUNK_X = ROADMAP_LAYOUT.trunkX;
 export const CHECKPOINT_X = TRUNK_X - NODE_WIDTH - ROADMAP_LAYOUT.checkpointGapX;
 export const LEFT_GROUP_X = CHECKPOINT_X - NODE_WIDTH - ROADMAP_LAYOUT.centerToGroupGapX;
 export const LEFT_OPTION_X = LEFT_GROUP_X - NODE_WIDTH - ROADMAP_LAYOUT.groupToOptionGapX;
-export const RIGHT_GROUP_X = TRUNK_X + NODE_WIDTH + ROADMAP_LAYOUT.centerToGroupGapX;
-export const RIGHT_OPTION_X = RIGHT_GROUP_X + NODE_WIDTH + ROADMAP_LAYOUT.groupToOptionGapX;
+export const RIGHT_GROUP_X = TRUNK_X + NODE_WIDTH + ROADMAP_LAYOUT.rightCenterToGroupGapX;
+export const RIGHT_OPTION_X = RIGHT_GROUP_X + NODE_WIDTH + ROADMAP_LAYOUT.rightGroupToOptionGapX;
 export const HIDDEN_X = RIGHT_OPTION_X + NODE_WIDTH + ROADMAP_LAYOUT.hiddenColumnGapX;
 
 export const MIN_PHASE_BLOCK_HEIGHT = ROADMAP_LAYOUT.minPhaseBlockHeight;
@@ -222,7 +224,8 @@ export function formatResourceDuration(value) {
 }
 
 export function formatStatusLabel(status) {
-  return formatReadableLabel(status || "pending");
+  if (!status || status === "pending" || status === "available") return "Available";
+  return formatReadableLabel(status);
 }
 
 export function formatNodeTypeLabel(nodeType) {
@@ -966,6 +969,10 @@ export function getEdgeStyle(edgeType, dependencyType) {
     return { stroke: "#16A34A", strokeWidth: 2.5, strokeDasharray: "8 6" };
   }
 
+  if (edgeType === "dependency" || dependencyType === "required") {
+    return { stroke: "#475569", strokeWidth: 2.35, strokeDasharray: "6 6" };
+  }
+
   if (edgeType === "recommendation" || dependencyType === "recommended") {
     return { stroke: "#64748B", strokeWidth: 2, strokeDasharray: "6 6" };
   }
@@ -1018,55 +1025,73 @@ export function getDisplayKey(value, index) {
   return value.skillId || value.resourceId || value.id || value.slug || value.name || value.title || index;
 }
 
+function getCompletedTypeColor(nodeType) {
+  if (nodeType === "phase") return "#028C7C";
+  if (nodeType === "choice_group") return "#82CFAE";
+  if (nodeType === "choice_option" || nodeType === "topic" || nodeType === "option" || nodeType === "skill") return "#D8C98F";
+  if (nodeType === "checkpoint" || nodeType === "project") return "#D7A16E";
+  if (nodeType === "resource_group") return "#C9D99A";
+  return "#D1D5DB";
+}
+
 export function getStatusColor(status, nodeType) {
   switch (status) {
     case "completed":
-      return "#22C55E";
+      return getCompletedTypeColor(nodeType);
     case "in_progress":
-      return "#3B82F6";
+      if (nodeType === "choice_group") return "#24B1B1";
+      return "#03A791";
     case "locked":
-      return "#9CA3AF";
+      return "#64748B";
     case "skipped":
-      return "#2FA084";
+      return "#4F6F73";
     default:
-      return "#FACC15";
+      if (nodeType === "phase") return "#03A791";
+      if (nodeType === "choice_group") return "#A8EFCB";
+      return "#FBBF24";
   }
 }
 
 export function getMiniMapColor(status, nodeType) {
-  if (nodeType === "phase") return "#2FA084";
-  if (nodeType === "choice_group") return "#A7F3D0";
-
-  switch (status) {
-    case "completed":
-      return "#BBF7D0";
-    case "in_progress":
-      return "#BFDBFE";
-    case "locked":
-      return "#E5E7EB";
-    case "skipped":
-      return "#FED7AA";
-    default:
-      return "#FFE08A";
+  if (status === "completed") {
+    return getCompletedTypeColor(nodeType);
   }
+  if (status === "skipped") return "#4F6F73";
+  if (status === "locked") {
+    if (nodeType === "phase" || nodeType === "choice_group") return "#E5E7EB";
+    if (nodeType === "choice_option" || nodeType === "topic") return "#FFE08A";
+    if (nodeType === "project") return "#F1BA88";
+    if (nodeType === "resource_group") return "#E9F5BE";
+    return "#FFE08A";
+  }
+  if (status === "in_progress") return nodeType === "choice_group" ? "#24B1B1" : getMiniMapColor(null, nodeType);
+
+  if (nodeType === "phase") return "#03A791";
+  if (nodeType === "choice_group") return "#A8EFCB";
+  if (nodeType === "choice_option" || nodeType === "topic") return "#FFE08A";
+  if (nodeType === "project") return "#F1BA88";
+  if (nodeType === "resource_group") return "#E9F5BE";
+
+  return "#FFE08A";
 }
 
 export function getNodeTypeClass(nodeType, checkpointType) {
-  if (nodeType === "phase") return "bg-[#2FA084] text-white";
-  if (nodeType === "choice_group") return "bg-[#A7F3D0] text-[#18332D]";
-  if (nodeType === "choice_option") return "bg-[#DCFCE7] text-[#18332D]";
-  if (nodeType === "project") return "bg-[#C4B5FD] text-[#18332D]";
-  if (nodeType === "resource_group") return "bg-[#E5E7EB] text-[#18332D]";
+  if (nodeType === "phase") return "border-[#028C7C] bg-[#03A791] text-white";
+  if (nodeType === "choice_group") return "border-[#7FDDB6] bg-[#A8EFCB] text-[#18332D] hover:bg-[#A8EFCB]";
+  if (nodeType === "choice_option") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
+  if (nodeType === "topic") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
+  if (nodeType === "project") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
+  if (nodeType === "resource_group") return "border-[#CFE79B] bg-[#E9F5BE] text-[#18332D] hover:bg-[#E0F0AA]";
 
   if (nodeType === "checkpoint") {
-    if (checkpointType === "gate") return "bg-[#BFDBFE] text-[#18332D]";
-    if (checkpointType === "assessment") return "bg-[#FDE68A] text-[#18332D]";
-    if (checkpointType === "review") return "bg-[#FED7AA] text-[#18332D]";
-    if (checkpointType === "project") return "bg-[#DDD6FE] text-[#18332D]";
-    return "bg-[#FBCFE8] text-[#18332D]";
+    if (checkpointType === "gate") return "border-[#55C98E] bg-[#81E7AF] text-[#18332D] hover:bg-[#74DEA4]";
+    if (checkpointType === "assessment") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
+    if (checkpointType === "review") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
+    if (checkpointType === "project") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
+    return "border-[#B9D8CC] bg-[#F8FAFC] text-[#18332D] hover:bg-[#F1F5F9]";
   }
 
-  return "bg-[#FFE08A] text-[#18332D]";
+  return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
 }
 
 export function parseMetadata(metadata) {

@@ -32,6 +32,15 @@ export const verifyLocalEmailChangeApi = async (payload) => {
   return response.data;
 };
 
+export const resendLocalEmailChangeVerificationApi = async () => {
+  const response = await axiosClient.post(
+    "/me/auth-providers/local/email/resend-verification"
+  );
+
+  return response.data;
+};
+
+
 export const changeLocalPasswordApi = async (payload) => {
   const response = await axiosClient.put(
     "/me/auth-providers/local/password",
