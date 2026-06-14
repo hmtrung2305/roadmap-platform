@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   ChevronUp,
   Circle,
   GripVertical,
+  Loader2,
   Minus,
   Plus,
   Save,
@@ -38,6 +39,88 @@ const editorTabs = [
   { key: "preview", label: "Preview" },
   { key: "publish", label: "Publish" },
 ];
+
+function getValidEditorTab(value) {
+  return editorTabs.some((tab) => tab.key === value) ? value : null;
+}
+
+function getEditorStorageKey(moduleId, key) {
+  return moduleId ? `learning-module-editor:${moduleId}:${key}` : "";
+}
+
+function readSessionValue(key) {
+  if (!key) return null;
+
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionValue(key, value) {
+  if (!key || value === null || value === undefined || value === "") return;
+
+  try {
+    window.sessionStorage.setItem(key, String(value));
+  } catch {
+    // Session persistence is a UX helper only.
+  }
+}
+
+function removeSessionValue(key) {
+  if (!key) return;
+
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Session persistence is a UX helper only.
+  }
+}
+
+function readSessionJson(key) {
+  const value = readSessionValue(key);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionJson(key, value) {
+  if (!key) return;
+
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Session persistence is a UX helper only.
+  }
+}
+
+function getQuestionId(question) {
+  return question?.skillModuleQuizQuestionId;
+}
+
+function isUnsavedQuestion(question) {
+  return String(getQuestionId(question) || "").startsWith("new-");
+}
+
+function getUnsavedQuizQuestions(questions = []) {
+  return questions.filter(isUnsavedQuestion);
+}
+
+function mergeQuizQuestions(serverQuestions = [], draftQuestions = []) {
+  const serverIds = new Set(serverQuestions.map((question) => String(getQuestionId(question))));
+  const unsavedDraftQuestions = draftQuestions.filter((question) =>
+    isUnsavedQuestion(question) && !serverIds.has(String(getQuestionId(question))),
+  );
+
+  return [...serverQuestions, ...unsavedDraftQuestions]
+    .slice()
+    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+}
 
 const lessonIndexingMeta = {
   pending: {
@@ -128,14 +211,42 @@ function isEditorTabComplete(tab, detail) {
 export default function AdminLearningModuleEditorPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [detail, setDetail] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => getValidEditorTab(searchParams.get("tab")) || "overview");
   const [isLoading, setIsLoading] = useState(true);
+  const [showLoadingState, setShowLoadingState] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [resolvedModuleId, setResolvedModuleId] = useState(null);
+  const [hasUnsavedQuizDrafts, setHasUnsavedQuizDrafts] = useState(false);
 
   const reload = () => setRefreshKey((key) => key + 1);
+
+  const selectTab = (tabKey) => {
+    const nextTab = getValidEditorTab(tabKey) || "overview";
+
+    setActiveTab(nextTab);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+
+      if (nextTab === "overview") {
+        next.delete("tab");
+      } else {
+        next.set("tab", nextTab);
+      }
+
+      return next;
+    }, { replace: true });
+  };
+
+  const leaveEditor = () => {
+    if (hasUnsavedQuizDrafts && !window.confirm("You have unsaved quiz questions. Save them before leaving this editor.")) {
+      return;
+    }
+
+    navigate("/admin/learning-modules");
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -167,6 +278,33 @@ export default function AdminLearningModuleEditorPage() {
     };
   }, [moduleSlug, refreshKey]);
 
+  useEffect(() => {
+    const nextTab = getValidEditorTab(searchParams.get("tab")) || "overview";
+    setActiveTab((current) => current === nextTab ? current : nextTab);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!isLoading || detail) {
+      setShowLoadingState(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setShowLoadingState(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [isLoading, detail]);
+
+  useEffect(() => {
+    if (!hasUnsavedQuizDrafts) return undefined;
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedQuizDrafts]);
+
   const module = detail?.module;
   const activeModuleId = module?.skillModuleId || resolvedModuleId;
 
@@ -197,10 +335,19 @@ export default function AdminLearningModuleEditorPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !detail) {
+    if (!showLoadingState) {
+      return (
+        <ModulePageShell>
+          <div className="min-h-[240px]" />
+        </ModulePageShell>
+      );
+    }
+
     return (
       <ModulePageShell>
-        <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">
+        <ModuleCard className="flex items-center justify-center gap-2 p-10 text-center text-sm font-bold text-slate-600">
+          <Loader2 size={16} className="animate-spin text-[#1F6F5F]" />
           Loading module editor...
         </ModuleCard>
       </ModulePageShell>
@@ -218,14 +365,21 @@ export default function AdminLearningModuleEditorPage() {
   return (
     <ModulePageShell>
       <div className="space-y-5">
-        <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => navigate("/admin/learning-modules")}
+            onClick={leaveEditor}
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-[#1F6F5F]"
           >
             <ArrowLeft size={16} /> Back to management
           </button>
+
+          {isLoading && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#B9D8CC] bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm">
+              <Loader2 size={13} className="animate-spin text-[#1F6F5F]" />
+              Updating...
+            </span>
+          )}
         </div>
 
         <div className="rounded-xl border border-[#B9D8CC] bg-white p-2 shadow-sm">
@@ -238,7 +392,7 @@ export default function AdminLearningModuleEditorPage() {
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => selectTab(tab.key)}
                   className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-extrabold transition ${
                     isActive
                       ? "border-[#1F6F5F] bg-[#2FA084] text-white shadow-sm"
@@ -265,7 +419,7 @@ export default function AdminLearningModuleEditorPage() {
 
         {activeTab === "overview" && <OverviewEditor module={module} onSaved={reload} />}
         {activeTab === "lessons" && <LessonsEditor module={module} lessons={detail.lessons} onChanged={reload} />}
-        {activeTab === "quiz" && <QuizEditor module={module} quiz={detail.quiz} onChanged={reload} />}
+        {activeTab === "quiz" && <QuizEditor module={module} quiz={detail.quiz} onChanged={reload} onDraftStateChange={setHasUnsavedQuizDrafts} />}
         {activeTab === "preview" && <InlinePreview moduleId={activeModuleId} detail={detail} />}
         {activeTab === "publish" && (
           <PublishPanel
@@ -498,9 +652,12 @@ function OverviewEditor({ module, onSaved }) {
 
 
 function LessonsEditor({ module, lessons, onChanged }) {
+  const activeLessonStorageKey = getEditorStorageKey(module.skillModuleId, "activeLessonId");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [localLessons, setLocalLessons] = useState(lessons);
-  const [activeLessonId, setActiveLessonId] = useState(lessons[0]?.skillModuleLessonId || null);
+  const [activeLessonId, setActiveLessonId] = useState(() =>
+    readSessionValue(activeLessonStorageKey) || lessons[0]?.skillModuleLessonId || null,
+  );
   const [preview, setPreview] = useState(null);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -514,9 +671,22 @@ function LessonsEditor({ module, lessons, onChanged }) {
         return current;
       }
 
+      const storedLessonId = readSessionValue(activeLessonStorageKey);
+      if (storedLessonId && lessons.some((lesson) => lesson.skillModuleLessonId === storedLessonId)) {
+        return storedLessonId;
+      }
+
       return lessons[0]?.skillModuleLessonId || null;
     });
-  }, [lessons]);
+  }, [lessons, activeLessonStorageKey]);
+
+  useEffect(() => {
+    if (activeLessonId) {
+      writeSessionValue(activeLessonStorageKey, activeLessonId);
+    } else {
+      removeSessionValue(activeLessonStorageKey);
+    }
+  }, [activeLessonId, activeLessonStorageKey]);
 
   useEffect(() => {
     let ignore = false;
@@ -566,7 +736,12 @@ function LessonsEditor({ module, lessons, onChanged }) {
         fileName: file.name,
       }));
 
-      await counselorLearningModuleApi.bulkUploadLessons(module.skillModuleId, lessonPayload, selectedFiles);
+      const result = await counselorLearningModuleApi.bulkUploadLessons(module.skillModuleId, lessonPayload, selectedFiles);
+      const firstUploadedLessonId = result?.lessons?.[0]?.skillModuleLessonId;
+
+      if (firstUploadedLessonId) {
+        setActiveLessonId(firstUploadedLessonId);
+      }
 
       toast.success("Lessons uploaded.");
       setSelectedFiles([]);
@@ -681,8 +856,9 @@ function LessonsEditor({ module, lessons, onChanged }) {
           )}
 
           {isUploading && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-              Uploading and preparing lesson content. This can take a moment because the lessons are being indexed for module chat.
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+              <Loader2 size={14} className="shrink-0 animate-spin" />
+              Uploading and indexing lessons...
             </div>
           )}
 
@@ -942,8 +1118,9 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
         </label>
 
         {isReplacingContent && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-            Replacing and re-indexing lesson content. Please wait for this to finish.
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+            <Loader2 size={14} className="shrink-0 animate-spin" />
+            Replacing and indexing content...
           </div>
         )}
 
@@ -961,15 +1138,24 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
 }
 
 
-function QuizEditor({ module, quiz, onChanged }) {
+function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   const hasQuiz = Boolean(quiz);
+  const draftStorageKey = getEditorStorageKey(module.skillModuleId, "quizDraftQuestions");
+  const activeQuestionStorageKey = getEditorStorageKey(module.skillModuleId, "activeQuizQuestionId");
+  const initialQuestions = mergeQuizQuestions(
+    quiz?.questions || [],
+    readSessionJson(draftStorageKey)?.questions || [],
+  );
+
   const [quizForm, setQuizForm] = useState({
     title: quiz?.title || "",
     passingScorePercent: quiz?.passingScorePercent ?? 70,
     maxAttempts: quiz?.maxAttempts ?? 3,
   });
-  const [questions, setQuestions] = useState(quiz?.questions || []);
-  const [activeQuestionId, setActiveQuestionId] = useState(quiz?.questions?.[0]?.skillModuleQuizQuestionId || null);
+  const [questions, setQuestions] = useState(initialQuestions);
+  const [activeQuestionId, setActiveQuestionId] = useState(() =>
+    readSessionValue(activeQuestionStorageKey) || initialQuestions[0]?.skillModuleQuizQuestionId || null,
+  );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSavingQuiz, setIsSavingQuiz] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
@@ -977,7 +1163,9 @@ function QuizEditor({ module, quiz, onChanged }) {
   const [draggedQuestionId, setDraggedQuestionId] = useState(null);
 
   useEffect(() => {
-    const nextQuestions = quiz?.questions || [];
+    const serverQuestions = quiz?.questions || [];
+    const draftQuestions = readSessionJson(draftStorageKey)?.questions || [];
+    const nextQuestions = mergeQuizQuestions(serverQuestions, draftQuestions);
 
     setQuizForm({
       title: quiz?.title || "",
@@ -985,13 +1173,20 @@ function QuizEditor({ module, quiz, onChanged }) {
       maxAttempts: quiz?.maxAttempts ?? 3,
     });
     setQuestions(nextQuestions);
-    setActiveQuestionId((current) =>
-      nextQuestions.some((question) => question.skillModuleQuizQuestionId === current)
-        ? current
-        : nextQuestions[0]?.skillModuleQuizQuestionId || null,
-    );
+    setActiveQuestionId((current) => {
+      if (nextQuestions.some((question) => question.skillModuleQuizQuestionId === current)) {
+        return current;
+      }
+
+      const storedQuestionId = readSessionValue(activeQuestionStorageKey);
+      if (storedQuestionId && nextQuestions.some((question) => question.skillModuleQuizQuestionId === storedQuestionId)) {
+        return storedQuestionId;
+      }
+
+      return nextQuestions[0]?.skillModuleQuizQuestionId || null;
+    });
     setIsQuestionOrderDirty(false);
-  }, [quiz]);
+  }, [quiz, draftStorageKey, activeQuestionStorageKey]);
 
   const orderedQuestions = questions.slice().sort((a, b) => a.orderIndex - b.orderIndex);
   const activeQuestion =
@@ -1002,11 +1197,32 @@ function QuizEditor({ module, quiz, onChanged }) {
     ? orderedQuestions.findIndex((question) => question.skillModuleQuizQuestionId === activeQuestion.skillModuleQuizQuestionId)
     : -1;
 
-  const hasUnsavedQuestions = orderedQuestions.some((question) =>
-    String(question.skillModuleQuizQuestionId).startsWith("new-"),
-  );
+  const hasUnsavedQuestions = orderedQuestions.some(isUnsavedQuestion);
   const canSaveQuestionOrder = orderedQuestions.length > 1 && !hasUnsavedQuestions && isQuestionOrderDirty;
   const updateQuiz = (key, value) => setQuizForm((current) => ({ ...current, [key]: value }));
+
+  useEffect(() => {
+    const unsavedQuestions = getUnsavedQuizQuestions(questions);
+
+    if (unsavedQuestions.length > 0) {
+      writeSessionJson(draftStorageKey, {
+        questions: unsavedQuestions,
+        updatedAt: Date.now(),
+      });
+    } else {
+      removeSessionValue(draftStorageKey);
+    }
+
+    onDraftStateChange?.(unsavedQuestions.length > 0);
+  }, [questions, draftStorageKey, onDraftStateChange]);
+
+  useEffect(() => {
+    if (activeQuestionId) {
+      writeSessionValue(activeQuestionStorageKey, activeQuestionId);
+    } else {
+      removeSessionValue(activeQuestionStorageKey);
+    }
+  }, [activeQuestionId, activeQuestionStorageKey]);
 
   const adjustMaxAttempts = (delta) => {
     setQuizForm((current) => {
@@ -1046,18 +1262,41 @@ function QuizEditor({ module, quiz, onChanged }) {
   };
 
   const saveQuestion = async (question) => {
-    const isNewQuestion = String(question.skillModuleQuizQuestionId).startsWith("new-");
+    const isNewQuestion = isUnsavedQuestion(question);
 
     try {
       if (isNewQuestion) {
-        await counselorLearningModuleApi.addQuestion(module.skillModuleId, toQuestionPayload(question));
+        const savedQuestion = await counselorLearningModuleApi.addQuestion(module.skillModuleId, toQuestionPayload(question));
+
+        setQuestions((current) =>
+          savedQuestion?.skillModuleQuizQuestionId
+            ? current.map((item) =>
+                item.skillModuleQuizQuestionId === question.skillModuleQuizQuestionId ? savedQuestion : item,
+              )
+            : current.filter((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId),
+        );
+
+        setActiveQuestionId(savedQuestion?.skillModuleQuizQuestionId || null);
         toast.success("Question added.");
       } else {
-        await counselorLearningModuleApi.updateQuestion(module.skillModuleId, question.skillModuleQuizQuestionId, toQuestionPayload(question));
+        const savedQuestion = await counselorLearningModuleApi.updateQuestion(
+          module.skillModuleId,
+          question.skillModuleQuizQuestionId,
+          toQuestionPayload(question),
+        );
+
+        if (savedQuestion?.skillModuleQuizQuestionId) {
+          setQuestions((current) =>
+            current.map((item) =>
+              item.skillModuleQuizQuestionId === savedQuestion.skillModuleQuizQuestionId ? savedQuestion : item,
+            ),
+          );
+        }
+
+        setActiveQuestionId(savedQuestion?.skillModuleQuizQuestionId || question.skillModuleQuizQuestionId);
         toast.success("Question saved.");
       }
 
-      setActiveQuestionId(question.skillModuleQuizQuestionId);
       onChanged();
     } catch (err) {
       toast.error(err?.message || "Unable to save question.");
@@ -1065,7 +1304,7 @@ function QuizEditor({ module, quiz, onChanged }) {
   };
 
   const deleteQuestion = async (question) => {
-    const isNewQuestion = String(question.skillModuleQuizQuestionId).startsWith("new-");
+    const isNewQuestion = isUnsavedQuestion(question);
     const nextActiveQuestion = orderedQuestions.find((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId);
 
     if (isNewQuestion) {
@@ -1251,7 +1490,14 @@ function QuizEditor({ module, quiz, onChanged }) {
               <div className="text-xs font-semibold text-slate-500">
                 {orderedQuestions.length} question{orderedQuestions.length === 1 ? "" : "s"}
               </div>
+              {hasUnsavedQuestions && (
+                <div className="mt-1 text-xs font-bold text-amber-700">
+                  Unsaved drafts are kept in this editor.
+                </div>
+              )}
             </div>
+
+            {hasUnsavedQuestions && <ModuleBadge tone="amber">Unsaved</ModuleBadge>}
           </div>
 
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC] hover:scrollbar-thumb-[#2FA084] [scrollbar-color:#B9D8CC_#F7F1E8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F7F1E8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#B9D8CC] [&::-webkit-scrollbar-thumb:hover]:bg-[#2FA084]">
