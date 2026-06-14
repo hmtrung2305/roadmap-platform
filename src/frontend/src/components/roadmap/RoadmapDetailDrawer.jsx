@@ -210,14 +210,18 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
 
           {learningModules.length > 0 && (
             <Section
-              title="Learning modules"
+              title="Curated learning modules"
               badge={
-                <span className="inline-flex items-center gap-1 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#1F6F5F]">
+                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
                   <span aria-hidden="true">✦</span>
                   Recommended
                 </span>
               }
             >
+              <p className="mb-2 text-xs font-bold leading-5 text-slate-600">
+                Official modules selected for this skill.
+              </p>
+
               <div className="grid gap-2.5">
                 {learningModules.map((module, index) => (
                   <LearningModuleRow

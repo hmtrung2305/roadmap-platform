@@ -169,6 +169,107 @@ function getIndexedLessonCount(lessons = []) {
   return lessons.filter(isLessonIndexed).length;
 }
 
+function getFailedLessonUploads(result) {
+  return Array.isArray(result?.failedLessons) ? result.failedLessons : [];
+}
+
+function getUploadedLessons(result) {
+  return Array.isArray(result?.lessons) ? result.lessons : [];
+}
+
+function getIndexFailedUploads(lessons = []) {
+  return lessons.filter((lesson) => getLessonIndexingStatus(lesson) === "failed");
+}
+
+function pluralizeLesson(count) {
+  return count === 1 ? "lesson" : "lessons";
+}
+
+function normalizeFormValue(value) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function normalizeOptionalTextValue(value) {
+  return normalizeFormValue(value).trim();
+}
+
+function normalizeNumberFormValue(value) {
+  if (value === null || value === undefined || value === "") return "";
+  return String(Number(value));
+}
+
+function hasOverviewDraftChanges(form, module) {
+  if (!module) return false;
+
+  return (
+    normalizeFormValue(form.skillId).trim() !== normalizeFormValue(module.skillId).trim()
+    || normalizeFormValue(form.title).trim() !== normalizeFormValue(module.title).trim()
+    || normalizeOptionalTextValue(form.description) !== normalizeOptionalTextValue(module.description)
+    || normalizeFormValue(form.difficultyLevel).trim() !== normalizeFormValue(module.difficultyLevel || "beginner").trim()
+    || normalizeNumberFormValue(form.estimatedHours) !== normalizeNumberFormValue(module.estimatedHours)
+  );
+}
+
+function hasLessonDraftChanges(form, lesson) {
+  if (!lesson) return false;
+
+  return (
+    normalizeFormValue(form.title).trim() !== normalizeFormValue(lesson.title).trim()
+    || normalizeOptionalTextValue(form.summary) !== normalizeOptionalTextValue(lesson.summary)
+    || normalizeNumberFormValue(form.estimatedHours) !== normalizeNumberFormValue(lesson.estimatedHours)
+  );
+}
+
+function hasQuizDraftChanges(form, quiz) {
+  if (!quiz) return false;
+
+  return (
+    normalizeFormValue(form.title).trim() !== normalizeFormValue(quiz.title).trim()
+    || normalizeNumberFormValue(form.passingScorePercent) !== normalizeNumberFormValue(quiz.passingScorePercent)
+    || normalizeNumberFormValue(form.maxAttempts) !== normalizeNumberFormValue(quiz.maxAttempts)
+  );
+}
+
+function hasQuestionDraftChanges(question) {
+  return Boolean(question?.isDirty || isUnsavedQuestion(question));
+}
+
+function DirtyStateBadge({ isDirty, label = "Unsaved changes" }) {
+  if (!isDirty) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      {label}
+    </span>
+  );
+}
+
+function showBulkUploadResultToast(result) {
+  const uploadedLessons = getUploadedLessons(result);
+  const failedLessons = getFailedLessonUploads(result);
+  const indexingFailures = getIndexFailedUploads(uploadedLessons);
+
+  if (uploadedLessons.length === 0 && failedLessons.length > 0) {
+    const firstFailure = failedLessons[0];
+    const fileLabel = firstFailure?.fileName ? ` (${firstFailure.fileName})` : "";
+    toast.error(`No lessons uploaded. ${failedLessons.length} failed${fileLabel}.`);
+    return;
+  }
+
+  if (failedLessons.length > 0) {
+    toast(`Uploaded ${uploadedLessons.length} ${pluralizeLesson(uploadedLessons.length)}. ${failedLessons.length} failed.`);
+    return;
+  }
+
+  if (indexingFailures.length > 0) {
+    toast(`Uploaded ${uploadedLessons.length} ${pluralizeLesson(uploadedLessons.length)}. ${indexingFailures.length} need reindexing.`);
+    return;
+  }
+
+  toast.success(`Uploaded ${uploadedLessons.length} ${pluralizeLesson(uploadedLessons.length)}.`);
+}
+
 function areLessonsIndexed(lessons = []) {
   return lessons.length > 0 && lessons.every(isLessonIndexed);
 }
@@ -551,6 +652,7 @@ function OverviewEditor({ module, onSaved }) {
     estimatedHours: module.estimatedHours ?? "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const isDirty = hasOverviewDraftChanges(form, module);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -602,12 +704,15 @@ function OverviewEditor({ module, onSaved }) {
     <ModuleCard className="flex h-full min-h-0 flex-col overflow-hidden p-5">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#B9D8CC]/70 pb-4">
         <div>
-          <h2 className="text-lg font-extrabold text-[#18332D]">Overview</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-extrabold text-[#18332D]">Overview</h2>
+            <DirtyStateBadge isDirty={isDirty} />
+          </div>
           <p className="mt-1 text-sm font-semibold text-slate-600">Set the basic module information learners will see.</p>
         </div>
 
-        <ModuleButton onClick={save} disabled={isSaving}>
-          <Save size={14} /> {isSaving ? "Saving..." : "Save overview"}
+        <ModuleButton onClick={save} disabled={isSaving || !isDirty}>
+          <Save size={14} /> {isSaving ? "Saving..." : isDirty ? "Save overview" : "Saved"}
         </ModuleButton>
       </div>
 
@@ -778,13 +883,14 @@ function LessonsEditor({ module, lessons, onChanged }) {
       }));
 
       const result = await counselorLearningModuleApi.bulkUploadLessons(module.skillModuleId, lessonPayload, selectedFiles);
-      const firstUploadedLessonId = result?.lessons?.[0]?.skillModuleLessonId;
+      const uploadedLessons = getUploadedLessons(result);
+      const firstUploadedLessonId = uploadedLessons[0]?.skillModuleLessonId;
 
       if (firstUploadedLessonId) {
         setActiveLessonId(firstUploadedLessonId);
       }
 
-      toast.success("Lessons uploaded.");
+      showBulkUploadResultToast(result);
       setSelectedFiles([]);
       onChanged();
     } catch (err) {
@@ -981,11 +1087,13 @@ function LessonsEditor({ module, lessons, onChanged }) {
                         <div className="truncate text-sm font-extrabold text-[#18332D]">
                           {index + 1}. {lesson.title}
                         </div>
-                        <LessonIndexingBadge lesson={lesson} />
                       </button>
-                      <ModuleButton variant="danger" size="icon" onClick={() => requestDeleteLesson(lesson)} aria-label="Delete lesson">
-                        <Trash2 size={14} />
-                      </ModuleButton>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <LessonIndexingBadge lesson={lesson} />
+                        <ModuleButton variant="danger" size="icon" onClick={() => requestDeleteLesson(lesson)} aria-label="Delete lesson">
+                          <Trash2 size={14} />
+                        </ModuleButton>
+                      </div>
                     </div>
 
                     {showDropAfter && (
@@ -1060,6 +1168,7 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
   const [replacementFile, setReplacementFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isReplacingContent, setIsReplacingContent] = useState(false);
+  const isDirty = hasLessonDraftChanges(form, lesson);
 
   useEffect(() => {
     setForm({
@@ -1139,10 +1248,16 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
   return (
     <ModuleCard className="flex h-full min-h-0 flex-col overflow-hidden p-5">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-extrabold text-[#18332D]">Lesson details</h2>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            Editing {lesson.title}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-extrabold text-[#18332D]">Lesson details</h2>
+            <DirtyStateBadge isDirty={isDirty} />
+          </div>
+          <p
+            className="mt-1 truncate text-xs font-semibold text-slate-500"
+            title={lesson.markdownFileName || lesson.fileName || "Markdown file"}
+          >
+            {lesson.markdownFileName || lesson.fileName || "Markdown file"}
           </p>
         </div>
         <ModuleBadge tone="slate" className="shrink-0">Lesson {lesson.orderIndex}</ModuleBadge>
@@ -1185,8 +1300,8 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
           />
         </ModuleField>
 
-        <ModuleButton className="w-full" onClick={saveMetadata} disabled={isSaving}>
-          <Save size={14} /> {isSaving ? "Saving..." : "Save lesson details"}
+        <ModuleButton className="w-full" onClick={saveMetadata} disabled={isSaving || !isDirty}>
+          <Save size={14} /> {isSaving ? "Saving..." : isDirty ? "Save lesson details" : "Saved"}
         </ModuleButton>
       </div>
 
@@ -1260,6 +1375,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   const [draggedQuestionId, setDraggedQuestionId] = useState(null);
   const [questionDropTarget, setQuestionDropTarget] = useState(null);
   const [questionToDelete, setQuestionToDelete] = useState(null);
+  const [unsavedQuestionToDelete, setUnsavedQuestionToDelete] = useState(null);
 
   useEffect(() => {
     const serverQuestions = quiz?.questions || [];
@@ -1297,6 +1413,9 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
     : -1;
 
   const hasUnsavedQuestions = orderedQuestions.some(isUnsavedQuestion);
+  const hasDirtyQuestions = orderedQuestions.some((question) => question.isDirty);
+  const hasQuizSettingsChanges = hasQuizDraftChanges(quizForm, quiz);
+  const hasQuizDraftWork = hasUnsavedQuestions || hasDirtyQuestions || hasQuizSettingsChanges || isQuestionOrderDirty;
   const canSaveQuestionOrder = orderedQuestions.length > 1 && !hasUnsavedQuestions && isQuestionOrderDirty;
   const updateQuiz = (key, value) => setQuizForm((current) => ({ ...current, [key]: value }));
 
@@ -1403,18 +1522,26 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   };
 
   const requestDeleteQuestion = (question) => {
-    const isNewQuestion = isUnsavedQuestion(question);
-    const nextActiveQuestion = orderedQuestions.find((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId);
-
-    if (isNewQuestion) {
-      setQuestions((current) =>
-        current.filter((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId),
-      );
-      setActiveQuestionId(nextActiveQuestion?.skillModuleQuizQuestionId || null);
+    if (isUnsavedQuestion(question)) {
+      setUnsavedQuestionToDelete(question);
       return;
     }
 
     setQuestionToDelete(question);
+  };
+
+  const confirmDeleteUnsavedQuestion = () => {
+    if (!unsavedQuestionToDelete) return;
+
+    const nextActiveQuestion = orderedQuestions.find(
+      (item) => item.skillModuleQuizQuestionId !== unsavedQuestionToDelete.skillModuleQuizQuestionId,
+    );
+
+    setQuestions((current) =>
+      current.filter((item) => item.skillModuleQuizQuestionId !== unsavedQuestionToDelete.skillModuleQuizQuestionId),
+    );
+    setActiveQuestionId(nextActiveQuestion?.skillModuleQuizQuestionId || null);
+    setUnsavedQuestionToDelete(null);
   };
 
   const confirmDeleteQuestion = async () => {
@@ -1472,9 +1599,13 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   };
 
   const updateQuestion = (nextQuestion) => {
+    const nextQuestionWithDirtyState = isUnsavedQuestion(nextQuestion)
+      ? nextQuestion
+      : { ...nextQuestion, isDirty: true };
+
     setQuestions((current) =>
       current.map((item) =>
-        item.skillModuleQuizQuestionId === nextQuestion.skillModuleQuizQuestionId ? nextQuestion : item,
+        item.skillModuleQuizQuestionId === nextQuestion.skillModuleQuizQuestionId ? nextQuestionWithDirtyState : item,
       ),
     );
   };
@@ -1561,13 +1692,19 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
       <div className="space-y-4">
         <ModuleCard className="p-5">
           <div className="mb-4">
-            <h2 className="text-lg font-extrabold text-[#18332D]">Create quiz</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-extrabold text-[#18332D]">Create quiz</h2>
+              <DirtyStateBadge isDirty={Boolean(quizForm.title.trim()) || Number(quizForm.passingScorePercent) !== 70 || Number(quizForm.maxAttempts) !== 3} />
+            </div>
           </div>
 
           {quizFields}
 
           <div className="mt-4 flex justify-end">
-            <ModuleButton onClick={saveQuiz} disabled={isSavingQuiz}>
+            <ModuleButton
+              onClick={saveQuiz}
+              disabled={isSavingQuiz || !quizForm.title.trim()}
+            >
               {isSavingQuiz ? "Creating..." : "Create quiz"}
             </ModuleButton>
           </div>
@@ -1585,9 +1722,10 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
           className="flex w-full items-center justify-between gap-4 border-b border-[#B9D8CC]/70 px-5 py-4 text-left"
         >
           <div>
-            <div className="flex items-center gap-2 text-sm font-extrabold text-[#18332D]">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-[#18332D]">
               <Settings size={16} />
               Quiz settings
+              <DirtyStateBadge isDirty={hasQuizSettingsChanges} />
             </div>
             <div className="mt-1 text-xs font-semibold text-slate-500">
               {quiz.title} · {quiz.passingScorePercent}% passing · {quiz.maxAttempts} attempts
@@ -1602,8 +1740,8 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
             {quizFields}
 
             <div className="mt-5 flex justify-end">
-              <ModuleButton onClick={saveQuiz} disabled={isSavingQuiz}>
-                {isSavingQuiz ? "Saving..." : "Save settings"}
+              <ModuleButton onClick={saveQuiz} disabled={isSavingQuiz || !hasQuizSettingsChanges}>
+                {isSavingQuiz ? "Saving..." : hasQuizSettingsChanges ? "Save settings" : "Saved"}
               </ModuleButton>
             </div>
           </div>
@@ -1701,8 +1839,11 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
                           <span>Multiple choice</span>
                           {isUnsavedQuestion(question) && (
                             <ModuleBadge tone="amber" className="px-2 py-0 text-[10px] leading-4">
-                              Unsaved
+                              New
                             </ModuleBadge>
+                          )}
+                          {!isUnsavedQuestion(question) && question.isDirty && (
+                            <DirtyStateBadge isDirty label="Edited" />
                           )}
                         </div>
                       </div>
@@ -1754,6 +1895,17 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
         cancelLabel="Keep question"
         onCancel={() => setQuestionToDelete(null)}
         onConfirm={confirmDeleteQuestion}
+      />
+
+      <ConfirmActionDialog
+        isOpen={Boolean(unsavedQuestionToDelete)}
+        tone="warning"
+        title="Discard this unsaved question?"
+        description="This question has not been saved yet. Discarding it will remove the draft question from this editor."
+        confirmLabel="Discard question"
+        cancelLabel="Keep editing"
+        onCancel={() => setUnsavedQuestionToDelete(null)}
+        onConfirm={confirmDeleteUnsavedQuestion}
       />
     </div>
   );
@@ -1814,13 +1966,22 @@ function QuestionEditorCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-extrabold text-[#18332D]">Question {questionNumber}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-sm font-extrabold text-[#18332D]">Question {questionNumber}</div>
+            <DirtyStateBadge isDirty={hasQuestionDraftChanges(question)} />
+          </div>
           <div className="text-xs font-semibold text-slate-500">Multiple choice</div>
         </div>
 
-        <ModuleButton variant="danger" size="icon" onClick={onDelete} aria-label="Delete question">
-          <Trash2 size={14} />
-        </ModuleButton>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 text-xs font-extrabold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
+          aria-label="Delete question"
+        >
+          <Trash2 size={15} strokeWidth={2.25} />
+          Delete
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC] hover:scrollbar-thumb-[#2FA084] [scrollbar-color:#B9D8CC_#F7F1E8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F7F1E8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#B9D8CC] [&::-webkit-scrollbar-thumb:hover]:bg-[#2FA084]">
@@ -1871,9 +2032,14 @@ function QuestionEditorCard({
                 />
 
                 {question.options.length > 2 ? (
-                  <ModuleButton variant="danger" size="icon" onClick={() => removeOption(option.skillModuleQuizOptionId)} aria-label="Remove option">
-                    <Trash2 size={14} />
-                  </ModuleButton>
+                  <button
+                    type="button"
+                    onClick={() => removeOption(option.skillModuleQuizOptionId)}
+                    className="grid h-7 w-7 place-items-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
+                    aria-label="Remove option"
+                  >
+                    <Trash2 size={14} strokeWidth={2.25} />
+                  </button>
                 ) : (
                   <div />
                 )}
@@ -1897,7 +2063,9 @@ function QuestionEditorCard({
         </ModuleField>
 
         <div className="flex justify-end">
-          <ModuleButton onClick={onSave}>Save question</ModuleButton>
+          <ModuleButton onClick={onSave} disabled={!hasQuestionDraftChanges(question)}>
+            {hasQuestionDraftChanges(question) ? "Save question" : "Saved"}
+          </ModuleButton>
         </div>
       </div>
     </ModuleCard>
