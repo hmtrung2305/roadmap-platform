@@ -701,6 +701,7 @@ function LessonsEditor({ module, lessons, onChanged }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [draggedLessonId, setDraggedLessonId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
   const [lessonToDelete, setLessonToDelete] = useState(null);
   const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
@@ -794,33 +795,41 @@ function LessonsEditor({ module, lessons, onChanged }) {
     }
   };
 
-  const reorderLessons = (sourceId, targetId) => {
+  const reorderLessons = (sourceId, targetId, position = "before") => {
     if (!sourceId || !targetId || sourceId === targetId) return;
 
-    const current = orderedLessons;
-    const sourceIndex = current.findIndex((lesson) => lesson.skillModuleLessonId === sourceId);
-    const targetIndex = current.findIndex((lesson) => lesson.skillModuleLessonId === targetId);
+    const sourceIndex = orderedLessons.findIndex((lesson) => lesson.skillModuleLessonId === sourceId);
+    const targetIndex = orderedLessons.findIndex((lesson) => lesson.skillModuleLessonId === targetId);
 
     if (sourceIndex < 0 || targetIndex < 0) return;
 
-    const next = current.slice();
+    const next = orderedLessons.slice();
     const [moved] = next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, moved);
+    const adjustedTargetIndex = next.findIndex((lesson) => lesson.skillModuleLessonId === targetId);
 
-    setLocalLessons(next.map((lesson, index) => ({ ...lesson, orderIndex: index + 1 })));
-  };
+    if (adjustedTargetIndex < 0) return;
 
-  const moveLesson = (lessonId, direction) => {
-    const current = orderedLessons;
-    const index = current.findIndex((lesson) => lesson.skillModuleLessonId === lessonId);
-    const targetIndex = index + direction;
-
-    if (index < 0 || targetIndex < 0 || targetIndex >= current.length) return;
-
-    const next = current.slice();
-    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    const insertIndex = position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+    next.splice(insertIndex, 0, moved);
 
     setLocalLessons(next.map((lesson, nextIndex) => ({ ...lesson, orderIndex: nextIndex + 1 })));
+  };
+
+  const updateDropTarget = (event, lessonId) => {
+    if (!draggedLessonId || draggedLessonId === lessonId) {
+      setDropTarget(null);
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = event.clientY > bounds.top + bounds.height / 2 ? "after" : "before";
+
+    setDropTarget({ lessonId, position });
+  };
+
+  const clearDragState = () => {
+    setDraggedLessonId(null);
+    setDropTarget(null);
   };
 
   const saveOrder = async () => {
@@ -920,40 +929,71 @@ function LessonsEditor({ module, lessons, onChanged }) {
         ) : (
           <ModuleCard className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
             <div className="min-h-0 overflow-y-auto">
-              {orderedLessons.map((lesson, index) => (
-                <div
-                  key={lesson.skillModuleLessonId}
-                  draggable
-                onDragStart={() => setDraggedLessonId(lesson.skillModuleLessonId)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => {
-                  reorderLessons(draggedLessonId, lesson.skillModuleLessonId);
-                  setDraggedLessonId(null);
-                }}
-                className={`border-b border-[#B9D8CC]/60 p-3 last:border-b-0 ${
-                  activeLessonId === lesson.skillModuleLessonId ? "bg-[#6FCF97]/10" : "bg-white"
-                } ${draggedLessonId === lesson.skillModuleLessonId ? "opacity-60" : ""}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <GripVertical size={16} className="cursor-grab text-slate-500" />
-                    <button
-                      type="button"
-                      onClick={() => setActiveLessonId(lesson.skillModuleLessonId)}
-                      className="min-w-0 flex-1 text-left"
-                    >
-                      <div className="truncate text-sm font-extrabold text-[#18332D]">
-                        {index + 1}. {lesson.title}
-                      </div>
-                      <LessonIndexingBadge lesson={lesson} />
-                    </button>
-                    <ModuleButton variant="secondary" size="icon" onClick={() => moveLesson(lesson.skillModuleLessonId, -1)}>↑</ModuleButton>
-                    <ModuleButton variant="secondary" size="icon" onClick={() => moveLesson(lesson.skillModuleLessonId, 1)}>↓</ModuleButton>
-                    <ModuleButton variant="danger" size="icon" onClick={() => requestDeleteLesson(lesson)} aria-label="Delete lesson">
-                      <Trash2 size={14} />
-                    </ModuleButton>
+              {orderedLessons.map((lesson, index) => {
+                const isDragging = draggedLessonId === lesson.skillModuleLessonId;
+                const isDropTarget = dropTarget?.lessonId === lesson.skillModuleLessonId;
+                const showDropBefore = isDropTarget && dropTarget.position === "before";
+                const showDropAfter = isDropTarget && dropTarget.position === "after";
+
+                return (
+                  <div
+                    key={lesson.skillModuleLessonId}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      setDraggedLessonId(lesson.skillModuleLessonId);
+                    }}
+                    onDragEnd={clearDragState}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      updateDropTarget(event, lesson.skillModuleLessonId);
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget)) {
+                        setDropTarget((current) =>
+                          current?.lessonId === lesson.skillModuleLessonId ? null : current,
+                        );
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      reorderLessons(draggedLessonId, lesson.skillModuleLessonId, dropTarget?.position || "before");
+                      clearDragState();
+                    }}
+                    className={`relative border-b border-[#B9D8CC]/60 p-3 transition-all duration-150 last:border-b-0 ${
+                      activeLessonId === lesson.skillModuleLessonId ? "bg-[#6FCF97]/10" : "bg-white"
+                    } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${
+                      isDropTarget ? "bg-[#F7F1E8]/70" : ""
+                    }`}
+                  >
+                    {showDropBefore && (
+                      <div className="absolute left-3 right-3 top-0 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <GripVertical size={16} className="shrink-0 cursor-grab text-slate-500 active:cursor-grabbing" />
+                      <button
+                        type="button"
+                        onClick={() => setActiveLessonId(lesson.skillModuleLessonId)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="truncate text-sm font-extrabold text-[#18332D]">
+                          {index + 1}. {lesson.title}
+                        </div>
+                        <LessonIndexingBadge lesson={lesson} />
+                      </button>
+                      <ModuleButton variant="danger" size="icon" onClick={() => requestDeleteLesson(lesson)} aria-label="Delete lesson">
+                        <Trash2 size={14} />
+                      </ModuleButton>
+                    </div>
+
+                    {showDropAfter && (
+                      <div className="absolute bottom-0 left-3 right-3 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="border-t border-[#B9D8CC]/60 p-3">
@@ -1105,10 +1145,7 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
             Editing {lesson.title}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <ModuleBadge tone="slate">Lesson {lesson.orderIndex}</ModuleBadge>
-          <LessonIndexingBadge lesson={lesson} />
-        </div>
+        <ModuleBadge tone="slate" className="shrink-0">Lesson {lesson.orderIndex}</ModuleBadge>
       </div>
 
       {lesson.indexingError && (
@@ -1221,6 +1258,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [isQuestionOrderDirty, setIsQuestionOrderDirty] = useState(false);
   const [draggedQuestionId, setDraggedQuestionId] = useState(null);
+  const [questionDropTarget, setQuestionDropTarget] = useState(null);
   const [questionToDelete, setQuestionToDelete] = useState(null);
 
   useEffect(() => {
@@ -1395,7 +1433,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
     }
   };
 
-  const reorderQuestions = (sourceId, targetId) => {
+  const reorderQuestions = (sourceId, targetId, position = "before") => {
     if (!sourceId || !targetId || sourceId === targetId) return;
 
     const sourceIndex = orderedQuestions.findIndex((question) => question.skillModuleQuizQuestionId === sourceId);
@@ -1405,10 +1443,32 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
 
     const next = orderedQuestions.slice();
     const [moved] = next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, moved);
+    const adjustedTargetIndex = next.findIndex((question) => question.skillModuleQuizQuestionId === targetId);
+
+    if (adjustedTargetIndex < 0) return;
+
+    const insertIndex = position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+    next.splice(insertIndex, 0, moved);
 
     setQuestions(next.map((question, index) => ({ ...question, orderIndex: index + 1 })));
     setIsQuestionOrderDirty(true);
+  };
+
+  const updateQuestionDropTarget = (event, questionId) => {
+    if (!draggedQuestionId || draggedQuestionId === questionId) {
+      setQuestionDropTarget(null);
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = event.clientY > bounds.top + bounds.height / 2 ? "after" : "before";
+
+    setQuestionDropTarget({ questionId, position });
+  };
+
+  const clearQuestionDragState = () => {
+    setDraggedQuestionId(null);
+    setQuestionDropTarget(null);
   };
 
   const updateQuestion = (nextQuestion) => {
@@ -1574,6 +1634,10 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
             ) : (
               orderedQuestions.map((question, index) => {
                 const isActive = activeQuestion?.skillModuleQuizQuestionId === question.skillModuleQuizQuestionId;
+                const isDragging = draggedQuestionId === question.skillModuleQuizQuestionId;
+                const isDropTarget = questionDropTarget?.questionId === question.skillModuleQuizQuestionId;
+                const showDropBefore = isDropTarget && questionDropTarget.position === "before";
+                const showDropAfter = isDropTarget && questionDropTarget.position === "after";
                 const questionTitle = question.questionText?.trim() || `Question ${index + 1}`;
 
                 return (
@@ -1582,21 +1646,47 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
                     type="button"
                     draggable
                     title={questionTitle}
-                    onDragStart={() => setDraggedQuestionId(question.skillModuleQuizQuestionId)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
-                      reorderQuestions(draggedQuestionId, question.skillModuleQuizQuestionId);
-                      setDraggedQuestionId(null);
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      setDraggedQuestionId(question.skillModuleQuizQuestionId);
+                    }}
+                    onDragEnd={clearQuestionDragState}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      updateQuestionDropTarget(event, question.skillModuleQuizQuestionId);
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget)) {
+                        setQuestionDropTarget((current) =>
+                          current?.questionId === question.skillModuleQuizQuestionId ? null : current,
+                        );
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      reorderQuestions(
+                        draggedQuestionId,
+                        question.skillModuleQuizQuestionId,
+                        questionDropTarget?.position || "before",
+                      );
+                      clearQuestionDragState();
                     }}
                     onClick={() => setActiveQuestionId(question.skillModuleQuizQuestionId)}
-                    className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+                    className={`relative w-full rounded-lg border px-3 py-3 text-left transition-all duration-150 ${
                       isActive
                         ? "border-[#6FCF97] bg-[#6FCF97]/14 shadow-sm"
                         : "border-[#B9D8CC]/70 bg-white hover:border-[#6FCF97] hover:bg-[#F7F1E8]/55"
+                    } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${
+                      isDropTarget ? "bg-[#F7F1E8]/70" : ""
                     }`}
                   >
+                    {showDropBefore && (
+                      <div className="absolute left-3 right-3 top-0 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
+                    )}
+
                     <div className="flex items-start gap-3">
-                      <GripVertical size={15} className="mt-1 shrink-0 cursor-grab text-slate-400" />
+                      <GripVertical size={15} className="mt-1 shrink-0 cursor-grab text-slate-400 active:cursor-grabbing" />
                       <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
                         isActive ? "bg-[#6FCF97]/24 text-[#1F6F5F]" : "bg-[#F7F1E8] text-slate-600"
                       }`}>
@@ -1617,6 +1707,10 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
                         </div>
                       </div>
                     </div>
+
+                    {showDropAfter && (
+                      <div className="absolute bottom-0 left-3 right-3 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
+                    )}
                   </button>
                 );
               })
