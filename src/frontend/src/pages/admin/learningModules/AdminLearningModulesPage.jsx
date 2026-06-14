@@ -13,7 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
 import {
   getStatusTone,
   ModuleBadge,
@@ -207,11 +207,11 @@ export default function AdminLearningModulesPage() {
 
                 <div className="relative flex justify-start gap-2 xl:justify-end">
                   {module.status === "draft" ? (
-                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${module.skillModuleId}/edit`)}>
+                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(module)}/edit`)}>
                       <Edit3 size={14} strokeWidth={2.25} /> Edit
                     </ModuleActionButton>
                   ) : (
-                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${module.skillModuleId}/preview`)}>
+                    <ModuleActionButton onClick={() => navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`)}>
                       <Eye size={14} strokeWidth={2.25} /> Preview
                     </ModuleActionButton>
                   )}
@@ -231,7 +231,7 @@ export default function AdminLearningModulesPage() {
                         <>
                           <OverflowAction onClick={() => {
                             setOpenMenuId(null);
-                            navigate(`/admin/learning-modules/${module.skillModuleId}/preview`);
+                            navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`);
                           }}>
                             <Eye size={14} /> Preview
                           </OverflowAction>

@@ -2,6 +2,17 @@ import axiosClient from "./axiosClient";
 
 const encode = (value) => encodeURIComponent(value);
 
+const adminModuleStatuses = ["draft", "published", "archived"];
+const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function getLearningModuleRouteSegment(module) {
+  return encode(module?.slug || module?.Slug || module?.skillModuleId || module?.SkillModuleId || "");
+}
+
+function normalizeRouteSegment(value) {
+  return decodeURIComponent(String(value || "")).trim().toLowerCase();
+}
+
 export const learningModuleApi = {
   getPublishedModules: async () => {
     const response = await axiosClient.get("/learning-modules");
@@ -81,6 +92,34 @@ export const counselorLearningModuleApi = {
       params: status && status !== "all" ? { status } : undefined,
     });
     return Array.isArray(response.data) ? response.data : [];
+  },
+
+  resolveModuleIdFromRoute: async (moduleSlugOrId) => {
+    const routeValue = String(moduleSlugOrId || "").trim();
+
+    if (guidPattern.test(routeValue)) {
+      return routeValue;
+    }
+
+    const normalizedSlug = normalizeRouteSegment(routeValue);
+
+    if (!normalizedSlug) {
+      throw new Error("Learning module route is missing.");
+    }
+
+    const moduleLists = await Promise.all(
+      adminModuleStatuses.map((status) => counselorLearningModuleApi.getModules(status)),
+    );
+
+    const module = moduleLists
+      .flat()
+      .find((item) => normalizeRouteSegment(item.slug || item.Slug) === normalizedSlug);
+
+    if (!module?.skillModuleId && !module?.SkillModuleId) {
+      throw new Error("Learning module was not found.");
+    }
+
+    return module.skillModuleId || module.SkillModuleId;
   },
 
   createModule: async (payload) => {

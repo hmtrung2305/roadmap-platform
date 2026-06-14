@@ -13,12 +13,38 @@ import {
   ModulePageShell,
 } from "../../../components/learningModules/learningModuleUi";
 
+
+const lessonIndexingMeta = {
+  pending: { label: "Pending", tone: "amber" },
+  indexing: { label: "Indexing", tone: "amber" },
+  indexed: { label: "Indexed", tone: "green" },
+  failed: { label: "Failed", tone: "rose" },
+  needs_reindex: { label: "Reindex", tone: "amber" },
+};
+
+function getLessonIndexingStatus(lesson) {
+  if (lesson?.indexingStatus) return lesson.indexingStatus;
+  if (lesson?.chunkCount > 0 || lesson?.chunksGenerated > 0) return "indexed";
+  return "pending";
+}
+
+function LessonIndexingBadge({ lesson }) {
+  const meta = lessonIndexingMeta[getLessonIndexingStatus(lesson)] || lessonIndexingMeta.pending;
+
+  return (
+    <ModuleBadge tone={meta.tone} className="shrink-0">
+      {meta.label}
+    </ModuleBadge>
+  );
+}
+
 export default function AdminLearningModulePreviewPage() {
-  const { moduleId } = useParams();
+  const { moduleSlug } = useParams();
   const navigate = useNavigate();
   const [detail, setDetail] = useState(null);
   const [activeLessonId, setActiveLessonId] = useState(null);
   const [lessonPreview, setLessonPreview] = useState(null);
+  const [resolvedModuleId, setResolvedModuleId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -27,12 +53,19 @@ export default function AdminLearningModulePreviewPage() {
     async function loadDetail() {
       try {
         setIsLoading(true);
+        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug);
         const data = await counselorLearningModuleApi.getModule(moduleId);
+
         if (ignore) return;
+
+        setResolvedModuleId(moduleId);
         setDetail(data);
         setActiveLessonId(data.lessons?.[0]?.skillModuleLessonId || null);
       } catch (err) {
-        if (!ignore) toast.error(err?.message || "Unable to load module preview.");
+        if (!ignore) {
+          setResolvedModuleId(null);
+          toast.error(err?.message || "Unable to load module preview.");
+        }
       } finally {
         if (!ignore) setIsLoading(false);
       }
@@ -43,7 +76,7 @@ export default function AdminLearningModulePreviewPage() {
     return () => {
       ignore = true;
     };
-  }, [moduleId]);
+  }, [moduleSlug]);
 
   useEffect(() => {
     let ignore = false;
@@ -54,8 +87,13 @@ export default function AdminLearningModulePreviewPage() {
         return;
       }
 
+      if (!resolvedModuleId) {
+        setLessonPreview(null);
+        return;
+      }
+
       try {
-        const data = await counselorLearningModuleApi.getLessonPreview(moduleId, activeLessonId);
+        const data = await counselorLearningModuleApi.getLessonPreview(resolvedModuleId, activeLessonId);
         if (!ignore) setLessonPreview(data);
       } catch {
         if (!ignore) setLessonPreview(null);
@@ -67,7 +105,7 @@ export default function AdminLearningModulePreviewPage() {
     return () => {
       ignore = true;
     };
-  }, [moduleId, activeLessonId]);
+  }, [resolvedModuleId, activeLessonId]);
 
   if (isLoading) {
     return (
@@ -130,7 +168,8 @@ export default function AdminLearningModulePreviewPage() {
                   }`}
                 >
                   <span>{lesson.orderIndex}</span>
-                  {lesson.title}
+                  <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                  <LessonIndexingBadge lesson={lesson} />
                 </button>
               ))}
               {detail.quiz && (

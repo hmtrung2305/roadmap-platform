@@ -172,8 +172,8 @@ export default function App() {
           >
             <Route path="/admin/learning-modules" element={<AdminLearningModulesPage />} />
             <Route path="/admin/learning-modules/create" element={<AdminLearningModuleCreatePage />} />
-            <Route path="/admin/learning-modules/:moduleId/edit" element={<AdminLearningModuleEditorPage />} />
-            <Route path="/admin/learning-modules/:moduleId/preview" element={<AdminLearningModulePreviewPage />} />
+            <Route path="/admin/learning-modules/:moduleSlug/edit" element={<AdminLearningModuleEditorPage />} />
+            <Route path="/admin/learning-modules/:moduleSlug/preview" element={<AdminLearningModulePreviewPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 

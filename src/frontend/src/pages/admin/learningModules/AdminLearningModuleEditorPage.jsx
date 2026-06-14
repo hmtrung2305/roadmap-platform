@@ -39,17 +39,69 @@ const editorTabs = [
   { key: "publish", label: "Publish" },
 ];
 
+const lessonIndexingMeta = {
+  pending: {
+    label: "Pending index",
+    tone: "amber",
+    description: "Waiting to be indexed for module chat.",
+  },
+  indexing: {
+    label: "Indexing",
+    tone: "amber",
+    description: "Preparing lesson chunks for module chat.",
+  },
+  indexed: {
+    label: "Indexed",
+    tone: "green",
+    description: "Ready for module chat and publishing.",
+  },
+  failed: {
+    label: "Index failed",
+    tone: "rose",
+    description: "Indexing failed. Replace the lesson file or retry indexing later.",
+  },
+  needs_reindex: {
+    label: "Needs reindex",
+    tone: "amber",
+    description: "This lesson needs to be indexed again.",
+  },
+};
+
+function getLessonIndexingStatus(lesson) {
+  if (lesson?.indexingStatus) return lesson.indexingStatus;
+  if (lesson?.chunkCount > 0 || lesson?.chunksGenerated > 0) return "indexed";
+  return "pending";
+}
+
+function getLessonIndexingMeta(lesson) {
+  return lessonIndexingMeta[getLessonIndexingStatus(lesson)] || lessonIndexingMeta.pending;
+}
+
+function isLessonIndexed(lesson) {
+  return getLessonIndexingStatus(lesson) === "indexed";
+}
+
+function getIndexedLessonCount(lessons = []) {
+  return lessons.filter(isLessonIndexed).length;
+}
+
+function areLessonsIndexed(lessons = []) {
+  return lessons.length > 0 && lessons.every(isLessonIndexed);
+}
+
 function isEditorTabComplete(tab, detail) {
   const module = detail?.module;
-  const lessonCount = detail?.lessons?.length || 0;
+  const lessons = detail?.lessons || [];
+  const lessonCount = lessons.length;
   const questionCount = detail?.quiz?.questions?.length || 0;
+  const lessonsIndexed = areLessonsIndexed(lessons);
 
   if (tab === "overview") {
     return Boolean(module?.title && module?.skillId && module?.description);
   }
 
   if (tab === "lessons") {
-    return lessonCount >= 3;
+    return lessonCount >= 3 && lessonsIndexed;
   }
 
   if (tab === "quiz") {
@@ -64,6 +116,7 @@ function isEditorTabComplete(tab, detail) {
     return (
       Boolean(module?.title && module?.skillId && module?.description)
       && lessonCount >= 3
+      && lessonsIndexed
       && Boolean(detail?.quiz)
       && questionCount >= 10
     );
@@ -73,13 +126,14 @@ function isEditorTabComplete(tab, detail) {
 }
 
 export default function AdminLearningModuleEditorPage() {
-  const { moduleId } = useParams();
+  const { moduleSlug } = useParams();
   const navigate = useNavigate();
   const [detail, setDetail] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [resolvedModuleId, setResolvedModuleId] = useState(null);
 
   const reload = () => setRefreshKey((key) => key + 1);
 
@@ -89,10 +143,18 @@ export default function AdminLearningModuleEditorPage() {
     async function loadDetail() {
       try {
         setIsLoading(true);
+        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug);
         const data = await counselorLearningModuleApi.getModule(moduleId);
-        if (!ignore) setDetail(data);
+
+        if (!ignore) {
+          setResolvedModuleId(moduleId);
+          setDetail(data);
+        }
       } catch (err) {
-        if (!ignore) toast.error(err?.message || "Unable to load module.");
+        if (!ignore) {
+          setResolvedModuleId(null);
+          toast.error(err?.message || "Unable to load module.");
+        }
       } finally {
         if (!ignore) setIsLoading(false);
       }
@@ -103,13 +165,21 @@ export default function AdminLearningModuleEditorPage() {
     return () => {
       ignore = true;
     };
-  }, [moduleId, refreshKey]);
+  }, [moduleSlug, refreshKey]);
 
   const module = detail?.module;
+  const activeModuleId = module?.skillModuleId || resolvedModuleId;
 
   const handlePublish = async () => {
     try {
       setIsPublishing(true);
+      const moduleId = activeModuleId;
+
+      if (!moduleId) {
+        toast.error("Learning module was not loaded yet.");
+        return;
+      }
+
       const result = await counselorLearningModuleApi.publishModule(moduleId);
 
       if (result?.readiness?.canPublish === false) {
@@ -196,7 +266,7 @@ export default function AdminLearningModuleEditorPage() {
         {activeTab === "overview" && <OverviewEditor module={module} onSaved={reload} />}
         {activeTab === "lessons" && <LessonsEditor module={module} lessons={detail.lessons} onChanged={reload} />}
         {activeTab === "quiz" && <QuizEditor module={module} quiz={detail.quiz} onChanged={reload} />}
-        {activeTab === "preview" && <InlinePreview moduleId={moduleId} detail={detail} />}
+        {activeTab === "preview" && <InlinePreview moduleId={activeModuleId} detail={detail} />}
         {activeTab === "publish" && (
           <PublishPanel
             detail={detail}
@@ -503,6 +573,7 @@ function LessonsEditor({ module, lessons, onChanged }) {
       onChanged();
     } catch (err) {
       toast.error(err?.message || "Unable to upload lessons.");
+      onChanged();
     } finally {
       setIsUploading(false);
     }
@@ -649,6 +720,7 @@ function LessonsEditor({ module, lessons, onChanged }) {
                       <div className="truncate text-sm font-extrabold text-[#18332D]">
                         {index + 1}. {lesson.title}
                       </div>
+                      <LessonIndexingBadge lesson={lesson} />
                     </button>
                     <ModuleButton variant="secondary" size="icon" onClick={() => moveLesson(lesson.skillModuleLessonId, -1)}>↑</ModuleButton>
                     <ModuleButton variant="secondary" size="icon" onClick={() => moveLesson(lesson.skillModuleLessonId, 1)}>↓</ModuleButton>
@@ -689,6 +761,17 @@ function LessonsEditor({ module, lessons, onChanged }) {
         </div>
       </ModuleCard>
     </div>
+  );
+}
+
+
+function LessonIndexingBadge({ lesson }) {
+  const meta = getLessonIndexingMeta(lesson);
+
+  return (
+    <ModuleBadge tone={meta.tone} className="shrink-0">
+      {meta.label}
+    </ModuleBadge>
   );
 }
 
@@ -786,8 +869,17 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
             Editing {lesson.title}
           </p>
         </div>
-        <ModuleBadge tone="slate">Lesson {lesson.orderIndex}</ModuleBadge>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <ModuleBadge tone="slate">Lesson {lesson.orderIndex}</ModuleBadge>
+          <LessonIndexingBadge lesson={lesson} />
+        </div>
       </div>
+
+      {lesson.indexingError && (
+        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold leading-5 text-rose-700">
+          {lesson.indexingError}
+        </div>
+      )}
 
       <div className="mt-4 space-y-4">
         <ModuleField label="Lesson title">
@@ -803,7 +895,7 @@ function LessonMetadataEditor({ module, lesson, onSaved, onContentReplaced }) {
           <textarea
             value={form.summary}
             onChange={(event) => update("summary", event.target.value)}
-            className={`${inputClass} min-h-28 resize-none`}
+            className={`${inputClass} min-h-20 resize-none`}
             placeholder="Short summary shown in module lists and lesson details"
           />
         </ModuleField>
@@ -1394,14 +1486,25 @@ function InlinePreview({ moduleId, detail }) {
 }
 
 function PreviewShell({ moduleId, detail }) {
-  const [activeLessonId, setActiveLessonId] = useState(detail.lessons[0]?.skillModuleLessonId || null);
+  const lessons = detail.lessons || [];
+  const [activeLessonId, setActiveLessonId] = useState(lessons[0]?.skillModuleLessonId || null);
   const [preview, setPreview] = useState(null);
+
+  useEffect(() => {
+    setActiveLessonId((current) => {
+      if (lessons.some((lesson) => lesson.skillModuleLessonId === current)) {
+        return current;
+      }
+
+      return lessons[0]?.skillModuleLessonId || null;
+    });
+  }, [lessons]);
 
   useEffect(() => {
     let ignore = false;
 
     async function loadPreview() {
-      if (!activeLessonId) {
+      if (!moduleId || !activeLessonId) {
         setPreview(null);
         return;
       }
@@ -1486,7 +1589,10 @@ function PreviewShell({ moduleId, detail }) {
 
 function PublishPanel({ detail, isPublishing, onPublish }) {
   const module = detail.module;
-  const lessonCount = detail.lessons.length;
+  const lessons = detail.lessons || [];
+  const lessonCount = lessons.length;
+  const indexedLessonCount = getIndexedLessonCount(lessons);
+  const lessonsIndexed = areLessonsIndexed(lessons);
   const questionCount = detail.quiz?.questions?.length || 0;
   const requiredLessons = 3;
   const requiredQuestions = 10;
@@ -1502,9 +1608,19 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
         label: "Lessons",
         description:
           lessonCount >= requiredLessons
-            ? `${lessonCount} lessons ready.`
+            ? `${lessonCount} lessons added.`
             : `${lessonCount}/${requiredLessons} lessons added.`,
         complete: lessonCount >= requiredLessons,
+      },
+      {
+        label: "Lesson indexing",
+        description:
+          lessonCount === 0
+            ? "Upload lessons before indexing."
+            : lessonsIndexed
+              ? "All lessons are indexed for module chat."
+              : `${indexedLessonCount}/${lessonCount} lessons indexed.`,
+        complete: lessonCount > 0 && lessonsIndexed,
       },
       {
         label: "Quiz",
@@ -1516,7 +1632,16 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
         complete: Boolean(detail.quiz) && questionCount >= requiredQuestions,
       },
     ],
-    [detail.quiz, lessonCount, module.description, module.skillId, module.title, questionCount],
+    [
+      detail.quiz,
+      indexedLessonCount,
+      lessonCount,
+      lessonsIndexed,
+      module.description,
+      module.skillId,
+      module.title,
+      questionCount,
+    ],
   );
 
   const frontendReady = checks.every((check) => check.complete);

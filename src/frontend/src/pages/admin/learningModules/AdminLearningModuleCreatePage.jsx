@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, ChevronDown } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
 import {
   inputClass,
@@ -109,7 +109,7 @@ export default function AdminLearningModuleCreatePage() {
       });
 
       toast.success("Module draft created.");
-      navigate(`/admin/learning-modules/${created.skillModuleId}/edit`);
+      navigate(`/admin/learning-modules/${getLearningModuleRouteSegment(created)}/edit`);
     } catch (err) {
       toast.error(err?.message || "Unable to create module.");
     } finally {
