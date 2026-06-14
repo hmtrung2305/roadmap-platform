@@ -60,7 +60,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                 configuration.GetSection("Jwt"));
 
             // AI, RAG Settings
-            services.Configure<LearningModuleRagSettings>(configuration.GetSection("LearningModuleRag"));
+            services.Configure<LearningModuleRagSettings>(configuration.GetSection("Rag"));
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));

@@ -4,7 +4,7 @@ public sealed class LearningModuleRagSettings
 {
     public int EmbeddingDimensions { get; set; } = 3072;
 
-    public float SimilarityThreshold { get; set; } = 0.55f;
+    public float SimilarityThreshold { get; set; } = 0.6f;
 
     public int MaxChunks { get; set; } = 5;
 

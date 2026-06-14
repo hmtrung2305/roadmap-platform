@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
+using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
@@ -14,8 +15,12 @@ namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 
 public sealed class LearningModuleChatService : ILearningModuleChatService
 {
+    private const string LearningModuleChatFeatureName = "learning_module_chat";
+    private const int LearningModuleChatCreditCost = 1;
+
     private readonly ApplicationDbContext _context;
     private readonly ILearningModuleRagIndexingService _ragIndexingService;
+    private readonly IAiCreditService _aiCreditService;
     private readonly AiSettings _aiSettings;
     private readonly LearningModuleRagSettings _ragSettings;
     private readonly Client _client;
@@ -23,11 +28,13 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
     public LearningModuleChatService(
         ApplicationDbContext context,
         ILearningModuleRagIndexingService ragIndexingService,
+        IAiCreditService aiCreditService,
         IOptions<AiSettings> aiOptions,
         IOptions<LearningModuleRagSettings> ragOptions)
     {
         _context = context;
         _ragIndexingService = ragIndexingService;
+        _aiCreditService = aiCreditService;
         _aiSettings = aiOptions.Value;
         _ragSettings = ragOptions.Value;
 
@@ -133,10 +140,23 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
             };
         }
 
+        await _aiCreditService.EnsureCanSpendAsync(
+            userId,
+            LearningModuleChatFeatureName,
+            LearningModuleChatCreditCost,
+            cancellationToken);
+
         var answer = await GenerateAnswerAsync(
             request,
             orderedChunks,
             cancellationToken);
+
+        await _aiCreditService.RecordUsageAsync(
+            userId,
+            LearningModuleChatFeatureName,
+            LearningModuleChatCreditCost,
+            skillModuleId,
+            cancellationToken: cancellationToken);
 
         return new LearningModuleChatResponseDto
         {

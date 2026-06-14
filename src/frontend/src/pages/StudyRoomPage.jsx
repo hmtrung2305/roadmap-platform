@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  Coins,
   FileText,
   Loader2,
   PanelLeftOpen,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
+import { aiCreditApi } from "../api/aiCreditApi";
 import { learningModuleApi } from "../api/learningModuleApi";
 import DocumentLoading from "../components/document/DocumentLoading";
 import DocumentReader from "../components/document/DocumentReader";
@@ -685,11 +687,42 @@ function StudyRoomChatPanel({
   ]);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [creditStatus, setCreditStatus] = useState(null);
+  const [isLoadingCredits, setIsLoadingCredits] = useState(false);
+
+  const loadCreditStatus = async () => {
+    try {
+      setIsLoadingCredits(true);
+      const status = await aiCreditApi.getStatus();
+      setCreditStatus(status);
+    } catch {
+      setCreditStatus(null);
+    } finally {
+      setIsLoadingCredits(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCreditStatus();
+    }
+  }, [isOpen]);
 
   const handleSend = async () => {
     const message = draft.trim();
 
     if (!message || isSending) return;
+
+    if (creditStatus?.remainingCreditsToday <= 0) {
+      setMessages((items) => [
+        ...items,
+        {
+          role: "assistant",
+          content: "You have no AI credits left today. Try again after the daily reset.",
+        },
+      ]);
+      return;
+    }
 
     const nextMessages = [...messages, { role: "user", content: message }];
     setMessages(nextMessages);
@@ -715,7 +748,13 @@ function StudyRoomChatPanel({
           sources: response.sources || [],
         },
       ]);
+
+      await loadCreditStatus();
     } catch (error) {
+      if (error?.status === 429 && error?.raw?.creditStatus) {
+        setCreditStatus(error.raw.creditStatus);
+      }
+
       setMessages((items) => [
         ...items,
         {
@@ -774,9 +813,7 @@ function StudyRoomChatPanel({
 
               <div className="min-w-0">
                 <h2 className="font-extrabold text-[#18332D]">Module chat</h2>
-                <p className="line-clamp-1 text-xs font-medium text-slate-500">
-                  Session-only. Nothing is saved.
-                </p>
+                <CreditPill status={creditStatus} isLoading={isLoadingCredits} />
               </div>
             </div>
 
@@ -800,14 +837,6 @@ function StudyRoomChatPanel({
               </button>
             </div>
           </div>
-
-          {module?.title && (
-            <div className="mt-3 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-2">
-              <p className="line-clamp-2 text-xs font-bold text-[#1F6F5F]">
-                {module.title}
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
@@ -853,13 +882,13 @@ function StudyRoomChatPanel({
               }
             }}
             className="min-h-20 w-full resize-none rounded-lg border border-[#B9D8CC] bg-white px-3 py-2 text-sm font-semibold outline-none transition placeholder:text-slate-500 focus:border-[#2FA084] focus:ring-2 focus:ring-[#6FCF97]/25"
-            placeholder="Ask about this lesson"
+            placeholder={creditStatus?.remainingCreditsToday <= 0 ? "Daily AI credits used up" : "Ask about this lesson"}
           />
 
           <ModuleButton
             className="mt-2 w-full"
             onClick={handleSend}
-            disabled={isSending || !draft.trim()}
+            disabled={isSending || !draft.trim() || creditStatus?.remainingCreditsToday <= 0}
           >
             <Send size={14} />
             {isSending ? "Sending..." : "Send"}
@@ -867,6 +896,45 @@ function StudyRoomChatPanel({
         </div>
       </aside>
     </>
+  );
+}
+
+
+function CreditPill({ status, isLoading }) {
+  if (isLoading && !status) {
+    return (
+      <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2.5 py-1 text-[11px] font-extrabold text-slate-500">
+        <Loader2 size={11} className="animate-spin" />
+        Loading credits
+      </div>
+    );
+  }
+
+  if (!status) {
+    return (
+      <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-extrabold text-slate-500">
+        <Coins size={11} />
+        Credits unavailable
+      </div>
+    );
+  }
+
+  const remaining = status.remainingCreditsToday ?? 0;
+  const limit = status.dailyCreditLimit ?? 0;
+  const isEmpty = remaining <= 0;
+
+  return (
+    <div
+      className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${
+        isEmpty
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : "border-[#B9D8CC] bg-[#F7F1E8] text-[#1F6F5F]"
+      }`}
+      title="Daily AI credits"
+    >
+      <Coins size={11} />
+      {remaining}/{limit} AI credits
+    </div>
   );
 }
 
