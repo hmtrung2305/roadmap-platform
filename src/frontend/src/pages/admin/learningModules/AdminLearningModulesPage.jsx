@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { counselorLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
+import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 import {
   getStatusTone,
   ModuleBadge,
@@ -37,6 +38,8 @@ export default function AdminLearningModulesPage() {
     archived: [],
   });
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -73,26 +76,22 @@ export default function AdminLearningModulesPage() {
   const visibleModules = useMemo(() => modulesByStatus[activeStatus] || [], [activeStatus, modulesByStatus]);
   const reload = () => setRefreshKey((key) => key + 1);
 
-  const handleDelete = async (module) => {
-    if (!window.confirm(`Delete draft module "${module.title}"?`)) return;
+  const requestDelete = (module) => {
+    setPendingAction({ type: "delete", module });
+  };
 
-    try {
-      await counselorLearningModuleApi.deleteDraftModule(module.skillModuleId);
-      toast.success("Draft module deleted.");
-      reload();
-    } catch (err) {
-      toast.error(err?.message || "Unable to delete module.");
-    }
+  const handleDelete = async (module) => {
+    await counselorLearningModuleApi.deleteDraftModule(module.skillModuleId);
+    toast.success("Draft module deleted.");
+  };
+
+  const requestArchive = (module) => {
+    setPendingAction({ type: "archive", module });
   };
 
   const handleArchive = async (module) => {
-    try {
-      await counselorLearningModuleApi.archiveModule(module.skillModuleId);
-      toast.success("Module archived.");
-      reload();
-    } catch (err) {
-      toast.error(err?.message || "Unable to archive module.");
-    }
+    await counselorLearningModuleApi.archiveModule(module.skillModuleId);
+    toast.success("Module archived.");
   };
 
   const handleRestore = async (module) => {
@@ -102,6 +101,48 @@ export default function AdminLearningModulesPage() {
       reload();
     } catch (err) {
       toast.error(err?.message || "Unable to restore module.");
+    }
+  };
+
+  const confirmActionCopy = {
+    delete: {
+      tone: "danger",
+      title: "Delete this draft?",
+      description: "This draft module, its lessons, quiz, and indexed content will be removed.",
+      confirmLabel: "Delete draft",
+      cancelLabel: "Keep draft",
+    },
+    archive: {
+      tone: "warning",
+      title: "Archive this module?",
+      description: "Learners will no longer be able to start this module after it is archived.",
+      confirmLabel: "Archive module",
+      cancelLabel: "Keep published",
+    },
+  };
+
+  const pendingActionCopy = pendingAction ? confirmActionCopy[pendingAction.type] : null;
+
+  const confirmPendingAction = async () => {
+    if (!pendingAction) return;
+
+    try {
+      setIsConfirmingAction(true);
+
+      if (pendingAction.type === "delete") {
+        await handleDelete(pendingAction.module);
+      }
+
+      if (pendingAction.type === "archive") {
+        await handleArchive(pendingAction.module);
+      }
+
+      setPendingAction(null);
+      reload();
+    } catch (err) {
+      toast.error(err?.message || "Unable to update module.");
+    } finally {
+      setIsConfirmingAction(false);
     }
   };
 
@@ -237,7 +278,7 @@ export default function AdminLearningModulesPage() {
                           </OverflowAction>
                           <OverflowAction tone="danger" onClick={() => {
                             setOpenMenuId(null);
-                            handleDelete(module);
+                            requestDelete(module);
                           }}>
                             <Trash2 size={14} /> Delete
                           </OverflowAction>
@@ -247,7 +288,7 @@ export default function AdminLearningModulesPage() {
                       {module.status === "published" && (
                         <OverflowAction tone="danger" onClick={() => {
                           setOpenMenuId(null);
-                          handleArchive(module);
+                          requestArchive(module);
                         }}>
                           <Archive size={14} /> Archive
                         </OverflowAction>
@@ -268,6 +309,18 @@ export default function AdminLearningModulesPage() {
             ))}
           </ModuleCard>
         )}
+
+        <ConfirmActionDialog
+          isOpen={Boolean(pendingAction)}
+          tone={pendingActionCopy?.tone}
+          title={pendingActionCopy?.title}
+          description={pendingActionCopy?.description}
+          confirmLabel={pendingActionCopy?.confirmLabel}
+          cancelLabel={pendingActionCopy?.cancelLabel}
+          isConfirming={isConfirmingAction}
+          onCancel={() => setPendingAction(null)}
+          onConfirm={confirmPendingAction}
+        />
       </div>
     </ModulePageShell>
   );

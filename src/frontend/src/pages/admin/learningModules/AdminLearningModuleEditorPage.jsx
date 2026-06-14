@@ -20,6 +20,7 @@ import { toast } from "react-toastify";
 import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
 import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learningModules/MarkdownRenderer";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
+import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 import {
   inputClass,
   numberInputClass,
@@ -217,9 +218,11 @@ export default function AdminLearningModuleEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showLoadingState, setShowLoadingState] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [resolvedModuleId, setResolvedModuleId] = useState(null);
   const [hasUnsavedQuizDrafts, setHasUnsavedQuizDrafts] = useState(false);
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
 
   const reload = () => setRefreshKey((key) => key + 1);
 
@@ -241,10 +244,19 @@ export default function AdminLearningModuleEditorPage() {
   };
 
   const leaveEditor = () => {
-    if (hasUnsavedQuizDrafts && !window.confirm("You have unsaved quiz questions. Save them before leaving this editor.")) {
+    if (hasUnsavedQuizDrafts) {
+      setIsDiscardDialogOpen(true);
       return;
     }
 
+    navigate("/admin/learning-modules");
+  };
+
+  const discardQuizDraftsAndLeave = () => {
+    removeSessionValue(getEditorStorageKey(activeModuleId, "quizDraftQuestions"));
+    removeSessionValue(getEditorStorageKey(activeModuleId, "activeQuizQuestionId"));
+    setHasUnsavedQuizDrafts(false);
+    setIsDiscardDialogOpen(false);
     navigate("/admin/learning-modules");
   };
 
@@ -322,10 +334,12 @@ export default function AdminLearningModuleEditorPage() {
 
       if (result?.readiness?.canPublish === false) {
         toast.error(result.readiness.errors?.[0] || "Module is not ready to publish.");
+        setIsPublishDialogOpen(false);
         reload();
         return;
       }
 
+      setIsPublishDialogOpen(false);
       toast.success("Module published.");
       navigate("/admin/learning-modules?status=published");
     } catch (err) {
@@ -425,13 +439,37 @@ export default function AdminLearningModuleEditorPage() {
           <PublishPanel
             detail={detail}
             isPublishing={isPublishing}
-            onPublish={handlePublish}
+            onPublish={() => setIsPublishDialogOpen(true)}
           />
         )}
+
+        <ConfirmActionDialog
+          isOpen={isDiscardDialogOpen}
+          tone="warning"
+          title="Discard unsaved questions?"
+          description="You have unsaved quiz questions. Leaving now will delete those draft questions."
+          confirmLabel="Discard and leave"
+          cancelLabel="Stay and save"
+          onCancel={() => setIsDiscardDialogOpen(false)}
+          onConfirm={discardQuizDraftsAndLeave}
+        />
+
+        <ConfirmActionDialog
+          isOpen={isPublishDialogOpen}
+          tone="success"
+          title="Publish this module?"
+          description="Learners will be able to find and start this module after it is published."
+          confirmLabel="Publish module"
+          cancelLabel="Keep editing"
+          isConfirming={isPublishing}
+          onCancel={() => setIsPublishDialogOpen(false)}
+          onConfirm={handlePublish}
+        />
       </div>
     </ModulePageShell>
   );
 }
+
 
 
 
@@ -663,6 +701,8 @@ function LessonsEditor({ module, lessons, onChanged }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [draggedLessonId, setDraggedLessonId] = useState(null);
+  const [lessonToDelete, setLessonToDelete] = useState(null);
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
   useEffect(() => {
     setLocalLessons(lessons);
@@ -802,15 +842,23 @@ function LessonsEditor({ module, lessons, onChanged }) {
     }
   };
 
-  const deleteLesson = async (lesson) => {
-    if (!window.confirm(`Delete lesson "${lesson.title}"?`)) return;
+  const requestDeleteLesson = (lesson) => {
+    setLessonToDelete(lesson);
+  };
+
+  const confirmDeleteLesson = async () => {
+    if (!lessonToDelete) return;
 
     try {
-      await counselorLearningModuleApi.deleteLesson(module.skillModuleId, lesson.skillModuleLessonId);
+      setIsDeletingLesson(true);
+      await counselorLearningModuleApi.deleteLesson(module.skillModuleId, lessonToDelete.skillModuleLessonId);
       toast.success("Lesson deleted.");
+      setLessonToDelete(null);
       onChanged();
     } catch (err) {
       toast.error(err?.message || "Unable to delete lesson.");
+    } finally {
+      setIsDeletingLesson(false);
     }
   };
 
@@ -900,7 +948,7 @@ function LessonsEditor({ module, lessons, onChanged }) {
                     </button>
                     <ModuleButton variant="secondary" size="icon" onClick={() => moveLesson(lesson.skillModuleLessonId, -1)}>↑</ModuleButton>
                     <ModuleButton variant="secondary" size="icon" onClick={() => moveLesson(lesson.skillModuleLessonId, 1)}>↓</ModuleButton>
-                    <ModuleButton variant="danger" size="icon" onClick={() => deleteLesson(lesson)} aria-label="Delete lesson">
+                    <ModuleButton variant="danger" size="icon" onClick={() => requestDeleteLesson(lesson)} aria-label="Delete lesson">
                       <Trash2 size={14} />
                     </ModuleButton>
                   </div>
@@ -936,6 +984,18 @@ function LessonsEditor({ module, lessons, onChanged }) {
           <MarkdownRenderer markdown={preview?.markdown || `# Lesson preview\n\nSelect a lesson to preview its content.`} />
         </div>
       </ModuleCard>
+
+      <ConfirmActionDialog
+        isOpen={Boolean(lessonToDelete)}
+        tone="danger"
+        title="Delete this lesson?"
+        description="This lesson file and its indexed chunks will be removed from the draft module."
+        confirmLabel="Delete lesson"
+        cancelLabel="Keep lesson"
+        isConfirming={isDeletingLesson}
+        onCancel={() => setLessonToDelete(null)}
+        onConfirm={confirmDeleteLesson}
+      />
     </div>
   );
 }
@@ -1161,6 +1221,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [isQuestionOrderDirty, setIsQuestionOrderDirty] = useState(false);
   const [draggedQuestionId, setDraggedQuestionId] = useState(null);
+  const [questionToDelete, setQuestionToDelete] = useState(null);
 
   useEffect(() => {
     const serverQuestions = quiz?.questions || [];
@@ -1303,7 +1364,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
     }
   };
 
-  const deleteQuestion = async (question) => {
+  const requestDeleteQuestion = (question) => {
     const isNewQuestion = isUnsavedQuestion(question);
     const nextActiveQuestion = orderedQuestions.find((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId);
 
@@ -1315,12 +1376,19 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
       return;
     }
 
-    if (!window.confirm("Delete this question?")) return;
+    setQuestionToDelete(question);
+  };
+
+  const confirmDeleteQuestion = async () => {
+    if (!questionToDelete) return;
+
+    const nextActiveQuestion = orderedQuestions.find((item) => item.skillModuleQuizQuestionId !== questionToDelete.skillModuleQuizQuestionId);
 
     try {
-      await counselorLearningModuleApi.deleteQuestion(module.skillModuleId, question.skillModuleQuizQuestionId);
+      await counselorLearningModuleApi.deleteQuestion(module.skillModuleId, questionToDelete.skillModuleQuizQuestionId);
       toast.success("Question deleted.");
       setActiveQuestionId(nextActiveQuestion?.skillModuleQuizQuestionId || null);
+      setQuestionToDelete(null);
       onChanged();
     } catch (err) {
       toast.error(err?.message || "Unable to delete question.");
@@ -1492,12 +1560,10 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
               </div>
               {hasUnsavedQuestions && (
                 <div className="mt-1 text-xs font-bold text-amber-700">
-                  Unsaved drafts are kept in this editor.
+                  There are unsaved questions.
                 </div>
               )}
             </div>
-
-            {hasUnsavedQuestions && <ModuleBadge tone="amber">Unsaved</ModuleBadge>}
           </div>
 
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC] hover:scrollbar-thumb-[#2FA084] [scrollbar-color:#B9D8CC_#F7F1E8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F7F1E8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#B9D8CC] [&::-webkit-scrollbar-thumb:hover]:bg-[#2FA084]">
@@ -1541,8 +1607,13 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
                         <div className="line-clamp-2 text-sm font-extrabold leading-5 text-[#18332D]">
                           {questionTitle}
                         </div>
-                        <div className="mt-1 text-xs font-semibold text-slate-500">
-                          Multiple choice
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                          <span>Multiple choice</span>
+                          {isUnsavedQuestion(question) && (
+                            <ModuleBadge tone="amber" className="px-2 py-0 text-[10px] leading-4">
+                              Unsaved
+                            </ModuleBadge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1571,7 +1642,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
             index={activeQuestionIndex}
             onChange={updateQuestion}
             onSave={() => saveQuestion(activeQuestion)}
-            onDelete={() => deleteQuestion(activeQuestion)}
+            onDelete={() => requestDeleteQuestion(activeQuestion)}
           />
         ) : (
           <ModuleEmptyState title="No question selected">
@@ -1579,9 +1650,21 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
           </ModuleEmptyState>
         )}
       </div>
+
+      <ConfirmActionDialog
+        isOpen={Boolean(questionToDelete)}
+        tone="danger"
+        title="Delete this question?"
+        description="This question and its options will be removed from the quiz."
+        confirmLabel="Delete question"
+        cancelLabel="Keep question"
+        onCancel={() => setQuestionToDelete(null)}
+        onConfirm={confirmDeleteQuestion}
+      />
     </div>
   );
 }
+
 
 function QuestionEditorCard({
   question,
