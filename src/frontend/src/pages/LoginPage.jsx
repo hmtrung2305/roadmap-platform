@@ -245,12 +245,6 @@ export default function LoginPage() {
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
-
-                  {passwordFocused && (
-                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
-                      {PASSWORD_REQUIREMENT_MESSAGE}
-                    </div>
-                  )}
                 </div>
               </div>
 
