@@ -169,6 +169,12 @@ public sealed class RoadmapQueryService(
 
         var skillsByNodeId = await LoadSkillsByNodeIdAsync([roadmapNodeId], cancellationToken);
         var resourcesByNodeId = await LoadResourcesByNodeIdAsync([roadmapNodeId], cancellationToken);
+        var skillIds = skillsByNodeId
+            .GetValueOrDefault(roadmapNodeId)?
+            .Select(skill => skill.SkillId)
+            .ToList() ?? [];
+
+        var learningModules = await LoadPublishedLearningModulesBySkillIdsAsync(skillIds, cancellationToken);
 
         var progressByNodeId = progressRows.ToDictionary(p => p.RoadmapNodeId);
         var statusByNodeId = RoadmapProgressCalculator.CalculateStatuses(nodes, edges, progressByNodeId);
@@ -184,7 +190,8 @@ public sealed class RoadmapQueryService(
             status,
             estimatedTime.NodeEstimates.GetValueOrDefault(node.RoadmapNodeId),
             skillsByNodeId,
-            resourcesByNodeId);
+            resourcesByNodeId,
+            learningModules);
     }
 
     private async Task<Guid> GetPublishedVersionIdBySlugAsync(string slug, CancellationToken cancellationToken)
@@ -426,6 +433,39 @@ public sealed class RoadmapQueryService(
                     .ToList());
     }
 
+
+    private async Task<List<RoadmapLearningModuleDto>> LoadPublishedLearningModulesBySkillIdsAsync(
+        IReadOnlyCollection<Guid> skillIds,
+        CancellationToken cancellationToken)
+    {
+        if (skillIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Set<SkillModule>()
+            .AsNoTracking()
+            .Where(module =>
+                skillIds.Contains(module.SkillId) &&
+                module.Status == "published")
+            .OrderBy(module => module.Title)
+            .Select(module => new RoadmapLearningModuleDto
+            {
+                SkillModuleId = module.SkillModuleId,
+                SkillId = module.SkillId,
+                Title = module.Title,
+                Slug = module.Slug,
+                DifficultyLevel = module.DifficultyLevel,
+                EstimatedHours = module.EstimatedHours,
+                LessonCount = module.SkillModuleLessons.Count,
+                QuestionCount = module.SkillModuleQuiz == null
+                    ? 0
+                    : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+                Provider = "Roadmap Platform"
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     private static RoadmapGraphNodeDto MapGraphNode(
         RoadmapNode node,
         IReadOnlyDictionary<Guid, UserNodeProgress> progressByNodeId,
@@ -468,7 +508,8 @@ public sealed class RoadmapQueryService(
         string effectiveStatus,
         RoadmapNodeEstimatedTime? estimatedTime,
         IReadOnlyDictionary<Guid, List<SkillDto>> skillsByNodeId,
-        IReadOnlyDictionary<Guid, List<LearningResourceDto>> resourcesByNodeId)
+        IReadOnlyDictionary<Guid, List<LearningResourceDto>> resourcesByNodeId,
+        IReadOnlyList<RoadmapLearningModuleDto> learningModules)
     {
         progressByNodeId.TryGetValue(node.RoadmapNodeId, out var progress);
 
@@ -508,6 +549,7 @@ public sealed class RoadmapQueryService(
             CompletionCriteria = DeserializeStringArray(node.CompletionCriteria),
             Skills = skillsByNodeId.GetValueOrDefault(node.RoadmapNodeId) ?? [],
             Resources = resourcesByNodeId.GetValueOrDefault(node.RoadmapNodeId) ?? [],
+            LearningModules = learningModules.ToList(),
             Children = children
                 .Where(n => n.IsRequired)
                 .OrderBy(n => n.LayoutOrder)
