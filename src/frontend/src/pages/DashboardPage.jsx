@@ -13,8 +13,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-6 py-12">
-      <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+    <section className="tm-page mx-auto max-w-7xl px-6 py-12">
+      <div className="tm-surface tm-soft-enter p-8">
         <p className="text-sm font-semibold text-[#1F6F5F]">Welcome back</p>
 
         <h1 className="mt-3 text-3xl font-bold text-slate-900">
@@ -33,7 +33,7 @@ export default function DashboardPage() {
           <InfoCard title="Portfolio" description="Build your public profile." />
         </div>
 
-        <div className="mt-8 rounded-lg border border-[#B9D8CC] bg-[#6FCF97]/15 p-6">
+        <div className="tm-surface tm-surface-hover tm-soft-enter tm-stagger-2 mt-8 bg-[#6FCF97]/15 p-6">
           <p className="text-sm font-semibold text-[#1F6F5F]">
             Demo learning resource
           </p>
@@ -50,7 +50,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={handleOpenDemoResource}
-            className="mt-5 rounded-md bg-[#2FA084] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1F6F5F]"
+            className="mt-5 rounded-md bg-[#2FA084] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1F6F5F]"
           >
             Open demo resource
           </button>
@@ -62,7 +62,7 @@ export default function DashboardPage() {
 
 function InfoCard({ title, description }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+    <div className="tm-surface tm-surface-hover bg-white p-5">
       <h3 className="font-semibold text-slate-900">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
     </div>

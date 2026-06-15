@@ -3,7 +3,7 @@ import ResourceCard from "./ResourceCard";
 export default function ResourceGrid({ resources, onOpen, onDelete }) {
   if (!resources || resources.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[#B9D8CC] bg-white p-10 text-center shadow-sm">
+      <div className="tm-surface border-dashed p-10 text-center">
         <h3 className="text-base font-extrabold text-[#18332D]">
           No documents yet
         </h3>

@@ -23,5 +23,7 @@ public partial class ProgressEvent
 
     public virtual RoadmapEnrollment RoadmapEnrollment { get; set; } = null!;
 
+    public virtual RoadmapNode RoadmapNode { get; set; } = null!;
+
     public virtual User User { get; set; } = null!;
 }

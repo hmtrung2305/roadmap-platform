@@ -7,9 +7,16 @@ export const useStreakStore = create((set, get) => ({
   tracking: false,
   error: "",
   showAnimation: false,
+  lastFetchedAt: 0,
 
-  fetchStreak: async () => {
-    if (get().loading) return null;
+  fetchStreak: async ({ force = false } = {}) => {
+    const state = get();
+
+    if (!force && state.streak && Date.now() - state.lastFetchedAt < 5 * 60 * 1000) {
+      return state.streak;
+    }
+
+    if (state.loading) return null;
 
     try {
       set({ loading: true, error: "" });
@@ -18,6 +25,7 @@ export const useStreakStore = create((set, get) => ({
 
       set({
         streak: data,
+        lastFetchedAt: Date.now(),
       });
 
       return data;
@@ -46,6 +54,7 @@ export const useStreakStore = create((set, get) => ({
       set({
         streak: data,
         showAnimation: data.increasedToday,
+        lastFetchedAt: Date.now(),
       });
 
       return data;
@@ -75,6 +84,7 @@ export const useStreakStore = create((set, get) => ({
       tracking: false,
       error: "",
       showAnimation: false,
+      lastFetchedAt: 0,
     });
   },
 }));

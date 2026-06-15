@@ -21,5 +21,7 @@ public partial class CareerRole
 
     public DateTime UpdatedAt { get; set; }
 
+    public virtual ICollection<CareerRoleSkillGroup> CareerRoleSkillGroups { get; set; } = new List<CareerRoleSkillGroup>();
+
     public virtual ICollection<Roadmap> Roadmaps { get; set; } = new List<Roadmap>();
 }

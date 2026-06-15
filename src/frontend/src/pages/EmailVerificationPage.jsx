@@ -199,7 +199,7 @@ function EmailVerificationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F4F6F3] text-black">
+    <main className="min-h-screen bg-[#F7F1E8] text-black">
       <section className="flex min-h-screen items-center justify-center px-5 py-10">
         <div className="w-full max-w-[520px]">
           <header className="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -307,7 +307,7 @@ function EmailVerificationPage() {
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => navigate(config.restartPath, { replace: true })}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border border-slate-200 bg-[#F7F1E8] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {hasRequiredContext ? config.backLabel : config.restartLabel}
                 </button>

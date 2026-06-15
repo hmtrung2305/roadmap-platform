@@ -26,4 +26,6 @@ public partial class UserNodeProgress
     public DateTime UpdatedAt { get; set; }
 
     public virtual RoadmapEnrollment RoadmapEnrollment { get; set; } = null!;
+
+    public virtual RoadmapNode RoadmapNode { get; set; } = null!;
 }

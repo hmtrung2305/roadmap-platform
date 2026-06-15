@@ -11,5 +11,7 @@ public partial class RoadmapNodeSkill
 
     public Guid SkillId { get; set; }
 
+    public virtual RoadmapNode RoadmapNode { get; set; } = null!;
+
     public virtual Skill Skill { get; set; } = null!;
 }

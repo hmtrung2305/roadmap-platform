@@ -29,13 +29,14 @@ export default function MainLayout() {
   const isRoadmapCanvas = /^\/roadmaps\/[^/]+/.test(location.pathname);
 
   const hideChrome = isStudyRoom;
-  const hideFooter = isStudyRoom || isRoadmapCanvas;
+  const isRoadmapSelection = location.pathname === "/roadmaps" || location.pathname === "/roadmap";
+  const hideFooter = isStudyRoom || isRoadmapCanvas || isRoadmapSelection;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="tm-page min-h-screen text-[#18332D]">
       {!hideChrome && <TopNavbar />}
 
-      <main>
+      <main className={isRoadmapCanvas ? "" : "tm-page-animate"}>
         <Outlet />
       </main>
 

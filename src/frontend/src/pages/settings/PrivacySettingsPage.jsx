@@ -75,7 +75,7 @@ export default function PrivacySettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-sm">
+        <div className="tm-surface p-6">
           <p className="text-sm text-slate-500">Loading privacy settings...</p>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function PrivacySettingsPage() {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-lg border border-[#B9D8CC] bg-white shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <section className="tm-surface overflow-hidden">
         <div className="border-b border-[#B9D8CC]/60 px-6 py-5">
           <div className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-lg bg-[#5A9CB5]/12 text-[#2F7F98]">
