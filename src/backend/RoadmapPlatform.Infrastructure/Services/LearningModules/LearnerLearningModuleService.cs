@@ -3,6 +3,7 @@ using Npgsql;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using System.Text;
@@ -15,11 +16,11 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ApplicationDbContext _context;
-    private readonly ILearningModuleFileStorage _fileStorage;
+    private readonly IFileStorage _fileStorage;
 
     public LearnerLearningModuleService(
         ApplicationDbContext context,
-        ILearningModuleFileStorage fileStorage)
+        IFileStorage fileStorage)
     {
         _context = context;
         _fileStorage = fileStorage;

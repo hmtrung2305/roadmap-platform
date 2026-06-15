@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
@@ -14,6 +15,7 @@ using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Security;
 using RoadmapPlatform.Application.Interfaces.Skills;
+using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using RoadmapPlatform.Application.Interfaces.Users;
 using RoadmapPlatform.Infrastructure.Clients;
@@ -34,6 +36,7 @@ using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 using RoadmapPlatform.Infrastructure.Services.Security;
 using RoadmapPlatform.Infrastructure.Services.Skills;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
+using RoadmapPlatform.Infrastructure.Services.Storage;
 using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
@@ -66,7 +69,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
 
             // File Storage Settings
-            services.Configure<LearningModuleFileStorageSettings>(configuration.GetSection("LearningModuleFileStorage"));
+            services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
 
             // Register external service implementations below.
 
@@ -126,9 +129,31 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRoadmapProgressService, RoadmapProgressService>();
             services.AddScoped<IRoadmapLayoutService, RoadmapLayoutService>();
 
+            // File Storage
+            services.AddScoped<LocalFileStorage>();
+            services.AddHttpClient<SupabaseFileStorage>();
+            services.AddScoped<IFileStorage>(serviceProvider =>
+            {
+                var settings = serviceProvider.GetRequiredService<IOptions<FileStorageSettings>>().Value;
+                var provider = string.IsNullOrWhiteSpace(settings.Provider)
+                    ? "Local"
+                    : settings.Provider.Trim();
+
+                if (provider.Equals("Supabase", StringComparison.OrdinalIgnoreCase))
+                {
+                    return serviceProvider.GetRequiredService<SupabaseFileStorage>();
+                }
+
+                if (provider.Equals("Local", StringComparison.OrdinalIgnoreCase))
+                {
+                    return serviceProvider.GetRequiredService<LocalFileStorage>();
+                }
+
+                throw new InvalidOperationException($"Unsupported file storage provider '{settings.Provider}'.");
+            });
+
             // Learning Module Services
             services.AddScoped<LearningModuleMarkdownChunker>();
-            services.AddScoped<ILearningModuleFileStorage, LocalLearningModuleFileStorage>();
             services.AddScoped<ILearningModuleRagIndexingService, LearningModuleRagIndexingService>();
             services.AddScoped<ICounselorLearningModuleService, CounselorLearningModuleService>();
             services.AddScoped<ILearningModuleLessonService, LearningModuleLessonService>();

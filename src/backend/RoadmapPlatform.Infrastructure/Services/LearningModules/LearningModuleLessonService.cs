@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using System.Security.Cryptography;
@@ -13,11 +14,11 @@ namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 public sealed class LearningModuleLessonService : ILearningModuleLessonService
 {
     private readonly ApplicationDbContext _context;
-    private readonly ILearningModuleFileStorage _fileStorage;
+    private readonly IFileStorage _fileStorage;
 
     public LearningModuleLessonService(
         ApplicationDbContext context,
-        ILearningModuleFileStorage fileStorage)
+        IFileStorage fileStorage)
     {
         _context = context;
         _fileStorage = fileStorage;

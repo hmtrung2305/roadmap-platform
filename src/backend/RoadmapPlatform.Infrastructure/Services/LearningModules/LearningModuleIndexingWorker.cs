@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using System.Text;
@@ -85,7 +86,7 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
         await using var scope = _scopeFactory.CreateAsyncScope();
 
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var fileStorage = scope.ServiceProvider.GetRequiredService<ILearningModuleFileStorage>();
+        var fileStorage = scope.ServiceProvider.GetRequiredService<IFileStorage>();
 
         var lesson = await context.SkillModuleLessons
             .FirstOrDefaultAsync(item => item.SkillModuleLessonId == lessonId, cancellationToken);

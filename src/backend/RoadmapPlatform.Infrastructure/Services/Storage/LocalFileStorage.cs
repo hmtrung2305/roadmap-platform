@@ -1,23 +1,23 @@
 using Microsoft.Extensions.Options;
-using RoadmapPlatform.Application.DTOs.LearningModules;
-using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.DTOs.Storage;
+using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Infrastructure.Configurations;
 using System.Security.Cryptography;
 
-namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
+namespace RoadmapPlatform.Infrastructure.Services.Storage;
 
-public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
+public sealed class LocalFileStorage : IFileStorage
 {
-    private readonly LearningModuleFileStorageSettings _settings;
+    private readonly FileStorageSettings _settings;
 
-    public LocalLearningModuleFileStorage(IOptions<LearningModuleFileStorageSettings> options)
+    public LocalFileStorage(IOptions<FileStorageSettings> options)
     {
         _settings = options.Value;
     }
 
     public string ProviderName => "Local";
 
-    public async Task<StoredLearningModuleFileDto> SaveAsync(
+    public async Task<StoredFileDto> SaveAsync(
         string objectPath,
         Stream content,
         string contentType,
@@ -59,7 +59,7 @@ public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
         var hash = await CalculateSha256Async(fullPath, cancellationToken);
         var length = new FileInfo(fullPath).Length;
 
-        return new StoredLearningModuleFileDto(
+        return new StoredFileDto(
             safeObjectPath,
             Url: null,
             length,
@@ -75,7 +75,7 @@ public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
 
         if (!File.Exists(fullPath))
         {
-            throw new FileNotFoundException("Learning module file was not found.", fullPath);
+            throw new FileNotFoundException("Stored file was not found.", fullPath);
         }
 
         Stream stream = new FileStream(
@@ -107,7 +107,7 @@ public sealed class LocalLearningModuleFileStorage : ILearningModuleFileStorage
     private string GetRootFolder()
     {
         var configuredFolder = string.IsNullOrWhiteSpace(_settings.LocalFolder)
-            ? "learning-modules"
+            ? "storage"
             : _settings.LocalFolder;
 
         var rootFolder = Path.IsPathRooted(configuredFolder)

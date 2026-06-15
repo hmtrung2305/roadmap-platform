@@ -1,12 +1,12 @@
-using RoadmapPlatform.Application.DTOs.LearningModules;
+using RoadmapPlatform.Application.DTOs.Storage;
 
-namespace RoadmapPlatform.Application.Interfaces.LearningModules;
+namespace RoadmapPlatform.Application.Interfaces.Storage;
 
-public interface ILearningModuleFileStorage
+public interface IFileStorage
 {
     string ProviderName { get; }
 
-    Task<StoredLearningModuleFileDto> SaveAsync(
+    Task<StoredFileDto> SaveAsync(
         string objectPath,
         Stream content,
         string contentType,

@@ -175,12 +175,6 @@ function LearningModuleListRow({ module }) {
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}
         </p>
-
-        {module.status === "archived" && (
-          <p className="mt-2 text-xs font-extrabold text-amber-700">
-            Archived module · still available because you are enrolled
-          </p>
-        )}
       </div>
 
       <div>
