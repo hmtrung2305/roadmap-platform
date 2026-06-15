@@ -141,7 +141,7 @@ export default function VerifyEmailPage() {
         setAuthenticatedUser(data.user);
       }
 
-      navigate("/dashboard", {
+      navigate("/roadmaps", {
         replace: true,
         state: {
           message: data?.message || "Email verified successfully.",

@@ -35,7 +35,6 @@ export default function TopNavbar() {
   }, [user, location.pathname, params]);
 
   const navItems = [
-    { label: "Dashboard", path: user ? "/dashboard" : "/login" },
     { label: "Roadmaps", path: user ? "/roadmaps" : "/login" },
     { label: "Learning", path: user ? "/learning-modules" : "/login" },
     { label: "Market Pulse", path: user ? "/market-pulse" : "/login" },
@@ -94,7 +93,7 @@ export default function TopNavbar() {
         <div className="flex min-w-0 items-center gap-8">
           <button
             type="button"
-            onClick={() => navigate(user ? "/dashboard" : "/")}
+            onClick={() => navigate(user ? "/roadmaps" : "/")}
             className="shrink-0"
           >
             <AuthLogo compact showTagline={false} />
@@ -146,7 +145,7 @@ export default function TopNavbar() {
               onClick={() => navigate("/login")}
               className="rounded-lg bg-[#2FA084] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F]"
             >
-              Open dashboard
+              Sign in
             </button>
           )}
         </div>
