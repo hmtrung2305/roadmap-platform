@@ -139,6 +139,26 @@ public sealed class CounselorLearningModuleLessonsController(
         return Ok(result);
     }
 
+    [HttpPost("{lessonId:guid}/reindex")]
+    [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReindexLesson(
+        Guid moduleId,
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        var counselorUserId = User.GetUserId();
+
+        var result = await lessonService.ReindexLessonAsync(
+            counselorUserId,
+            moduleId,
+            lessonId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpGet("{lessonId:guid}/preview")]
     [ProducesResponseType(typeof(LearningModuleLessonContentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -51,6 +51,21 @@ function areAllLessonsCompleted(module) {
   );
 }
 
+function isSubmittedToday(attempt) {
+  if (attempt?.status !== "submitted" || !attempt.submittedAt) {
+    return false;
+  }
+
+  const submittedAt = new Date(attempt.submittedAt);
+  const now = new Date();
+
+  return (
+    submittedAt.getFullYear() === now.getFullYear()
+    && submittedAt.getMonth() === now.getMonth()
+    && submittedAt.getDate() === now.getDate()
+  );
+}
+
 export default function StudyRoomPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -457,7 +472,7 @@ export default function StudyRoomPage() {
       >
         <section className="mx-auto min-w-0 max-w-5xl">
           {showQuiz ? (
-            <StudyQuiz module={module} canStartQuiz={isQuizUnlocked} />
+            <StudyQuiz module={module} canStartQuiz={isQuizUnlocked} onProgressChanged={() => loadModule({ silent: true })} />
           ) : isLoadingLesson ? (
             <DocumentLoading />
           ) : lessonError ? (
@@ -972,7 +987,7 @@ function CreditPill({ status, isLoading }) {
   );
 }
 
-function StudyQuiz({ module, canStartQuiz = true }) {
+function StudyQuiz({ module, canStartQuiz = true, onProgressChanged }) {
   const [attempts, setAttempts] = useState([]);
   const [attempt, setAttempt] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -985,8 +1000,9 @@ function StudyQuiz({ module, canStartQuiz = true }) {
 
   const quiz = module.quiz;
   const submittedAttempts = attempts.filter((item) => item.status === "submitted");
+  const submittedAttemptsToday = submittedAttempts.filter(isSubmittedToday);
   const remainingAttempts = quiz?.maxAttempts
-    ? Math.max(quiz.maxAttempts - submittedAttempts.length, 0)
+    ? Math.max(quiz.maxAttempts - submittedAttemptsToday.length, 0)
     : null;
   const questions = attempt?.quiz?.questions || [];
 
@@ -1076,6 +1092,7 @@ function StudyQuiz({ module, canStartQuiz = true }) {
       setAnswers({});
       setViewMode("review");
       await loadAttempts();
+      await onProgressChanged?.();
       toast.success("Quiz submitted.");
     } catch (error) {
       toast.error(error?.message || "Unable to submit quiz.");
@@ -1176,14 +1193,14 @@ function StudyQuiz({ module, canStartQuiz = true }) {
             )}
           </div>
           <ModuleBadge tone={remainingAttempts === 0 ? "rose" : "green"}>
-            {remainingAttempts === null ? "Unlimited attempts" : `${remainingAttempts} attempts left`}
+            {remainingAttempts === null ? "Unlimited attempts" : `${remainingAttempts} attempts left today`}
           </ModuleBadge>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <QuizStat label="Questions" value={quiz.questionCount || 0} />
           <QuizStat label="Passing score" value={`${quiz.passingScorePercent ?? 0}%`} />
-          <QuizStat label="Attempts allowed" value={quiz.maxAttempts || "Unlimited"} />
+          <QuizStat label="Attempts per day" value={quiz.maxAttempts || "Unlimited"} />
         </div>
 
         <div className="mt-5 flex justify-end">

@@ -31,6 +31,12 @@ public interface ILearningModuleLessonService
         LearningModuleUploadedFileDto file,
         CancellationToken cancellationToken);
 
+    Task<LearningModuleLessonDto> ReindexLessonAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        CancellationToken cancellationToken);
+
     Task<LearningModuleLessonContentDto> GetLessonPreviewAsync(
         Guid counselorUserId,
         Guid skillModuleId,

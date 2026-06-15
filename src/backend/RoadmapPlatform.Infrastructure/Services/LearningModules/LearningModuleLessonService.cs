@@ -14,16 +14,13 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILearningModuleFileStorage _fileStorage;
-    private readonly ILearningModuleRagIndexingService _ragIndexingService;
 
     public LearningModuleLessonService(
         ApplicationDbContext context,
-        ILearningModuleFileStorage fileStorage,
-        ILearningModuleRagIndexingService ragIndexingService)
+        ILearningModuleFileStorage fileStorage)
     {
         _context = context;
         _fileStorage = fileStorage;
-        _ragIndexingService = ragIndexingService;
     }
 
     public async Task<BulkUploadLessonsResultDto> BulkUploadLessonsAsync(
@@ -119,7 +116,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                     ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown),
                     ContentSizeBytes = storedFile.SizeBytes,
                     ContentVersion = 1,
-                    IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing,
+                    IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending,
                     IndexedAt = null,
                     IndexingError = null,
                     CreatedAt = now,
@@ -140,28 +137,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 continue;
             }
 
-            try
-            {
-                var chunks = await _ragIndexingService.IndexLessonAsync(
-                    skillModuleId,
-                    lesson.SkillModuleLessonId,
-                    markdown,
-                    cancellationToken);
-
-                MarkLessonIndexed(lesson, DateTime.UtcNow);
-                module.UpdatedAt = lesson.UpdatedAt;
-                await _context.SaveChangesAsync(cancellationToken);
-
-                createdLessons.Add(MapBulkUploadedLesson(item, lesson, file, chunks.Count));
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                MarkLessonIndexingFailed(lesson, ex, DateTime.UtcNow);
-                module.UpdatedAt = lesson.UpdatedAt;
-                await SaveIndexingFailureAsync(cancellationToken);
-
-                createdLessons.Add(MapBulkUploadedLesson(item, lesson, file, chunksGenerated: 0));
-            }
+            createdLessons.Add(MapBulkUploadedLesson(item, lesson, file, chunksGenerated: 0));
         }
 
         if (createdLessons.Count > 0)
@@ -195,8 +171,6 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         ValidateReorderRequest(request, lessons);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
         var now = DateTime.UtcNow;
         var highestCurrentOrderIndex = lessons.Count == 0
             ? 0
@@ -229,7 +203,6 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         module.UpdatedAt = now;
 
         await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
 
         return lessons
             .OrderBy(lesson => lesson.OrderIndex)
@@ -352,16 +325,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             lesson.ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown);
             lesson.ContentSizeBytes = storedFile.SizeBytes;
             lesson.ContentVersion += 1;
-            MarkLessonIndexing(lesson, now);
-            module.UpdatedAt = lesson.UpdatedAt;
-
-            var chunks = await _ragIndexingService.IndexLessonAsync(
-                skillModuleId,
-                lessonId,
-                markdown,
-                cancellationToken);
-
-            MarkLessonIndexed(lesson, DateTime.UtcNow);
+            QueueLessonIndexing(lesson, now);
             module.UpdatedAt = lesson.UpdatedAt;
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -373,20 +337,6 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 await TryDeleteStoredFileAsync(oldFileKey);
             }
 
-            lesson.SkillModuleChunks = chunks
-                .Select(chunk => new SkillModuleChunk
-                {
-                    SkillModuleChunkId = chunk.SkillModuleChunkId,
-                    SkillModuleId = chunk.SkillModuleId,
-                    SkillModuleLessonId = chunk.SkillModuleLessonId,
-                    ChunkIndex = chunk.ChunkIndex,
-                    Heading = chunk.Heading,
-                    Content = chunk.Content,
-                    TokenCount = chunk.TokenCount,
-                    ContentHash = chunk.ContentHash
-                })
-                .ToList();
-
             return MapLesson(lesson);
         }
         catch
@@ -395,6 +345,37 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             await TryDeleteStoredFileAsync(storedFile.ObjectPath);
             throw;
         }
+    }
+
+    public async Task<LearningModuleLessonDto> ReindexLessonAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lesson = await _context.SkillModuleLessons
+            .Include(item => item.SkillModuleChunks)
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == lessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (lesson == null)
+        {
+            throw new NotFoundException("Learning module lesson was not found.");
+        }
+
+        QueueLessonIndexing(lesson, DateTime.UtcNow);
+        module.UpdatedAt = lesson.UpdatedAt;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return MapLesson(lesson);
     }
 
     public async Task<LearningModuleLessonContentDto> GetLessonPreviewAsync(
@@ -541,6 +522,14 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         {
             // Preserve the original indexing exception for the caller.
         }
+    }
+
+    private static void QueueLessonIndexing(SkillModuleLesson lesson, DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = now;
     }
 
     private static void MarkLessonIndexing(SkillModuleLesson lesson, DateTime now)

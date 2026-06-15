@@ -190,6 +190,7 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
 
         var module = await _context.SkillModules
             .Include(item => item.SkillModuleLessons)
+            .Include(item => item.SkillModuleQuiz)
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
                 && item.Status == LearningModuleStatusValues.Published,
@@ -222,33 +223,23 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         var lessonProgress = ParseLessonProgress(enrollment.LessonProgress);
         lessonProgress[lessonId] = status;
 
-        var totalLessons = module.SkillModuleLessons.Count;
-        var completedLessons = module.SkillModuleLessons
-            .Count(lesson =>
-                lessonProgress.TryGetValue(lesson.SkillModuleLessonId, out var lessonStatus)
-                && lessonStatus == LearningModuleLessonProgressStatusValues.Completed);
-
-        var progressPercent = totalLessons == 0
-            ? 0
-            : Math.Round((decimal)completedLessons * 100 / totalLessons, 2);
-
         var now = DateTime.UtcNow;
+        var quizPassed = module.SkillModuleQuiz != null
+            && await HasPassedQuizAsync(
+                userId,
+                module.SkillModuleQuiz.SkillModuleQuizId,
+                cancellationToken);
 
         enrollment.LessonProgress = SerializeLessonProgress(lessonProgress);
-        enrollment.ProgressPercent = progressPercent;
         enrollment.LastAccessedLessonId = lessonId;
-        enrollment.UpdatedAt = now;
 
-        if (progressPercent >= 100)
-        {
-            enrollment.Status = LearningModuleEnrollmentStatusValues.Completed;
-            enrollment.CompletedAt ??= now;
-        }
-        else
-        {
-            enrollment.Status = LearningModuleEnrollmentStatusValues.InProgress;
-            enrollment.CompletedAt = null;
-        }
+        ApplyEnrollmentProgress(
+            enrollment,
+            module.SkillModuleLessons,
+            lessonProgress,
+            hasQuiz: module.SkillModuleQuiz != null,
+            quizPassed,
+            now);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -338,18 +329,6 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             enrollment,
             quiz.SkillModule.SkillModuleLessons);
 
-        var submittedAttempts = await _context.SkillModuleQuizAttempts
-            .CountAsync(item =>
-                item.SkillModuleQuizId == quiz.SkillModuleQuizId
-                && item.UserId == userId
-                && item.Status == LearningModuleQuizAttemptStatusValues.Submitted,
-                cancellationToken);
-
-        if (quiz.MaxAttempts.HasValue && submittedAttempts >= quiz.MaxAttempts.Value)
-        {
-            throw new ConflictException("Maximum quiz attempts reached.");
-        }
-
         var existingInProgressAttempt = await _context.SkillModuleQuizAttempts
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleQuizId == quiz.SkillModuleQuizId
@@ -370,14 +349,30 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             };
         }
 
+        var now = DateTime.UtcNow;
+        var attemptDayStart = now.Date;
+        var attemptDayEnd = attemptDayStart.AddDays(1);
+
+        var submittedAttemptsToday = await _context.SkillModuleQuizAttempts
+            .CountAsync(item =>
+                item.SkillModuleQuizId == quiz.SkillModuleQuizId
+                && item.UserId == userId
+                && item.Status == LearningModuleQuizAttemptStatusValues.Submitted
+                && item.SubmittedAt >= attemptDayStart
+                && item.SubmittedAt < attemptDayEnd,
+                cancellationToken);
+
+        if (quiz.MaxAttempts.HasValue && submittedAttemptsToday >= quiz.MaxAttempts.Value)
+        {
+            throw new ConflictException("Maximum quiz attempts for today reached. Try again tomorrow.");
+        }
+
         var lastAttemptNo = await _context.SkillModuleQuizAttempts
             .Where(item =>
                 item.SkillModuleQuizId == quiz.SkillModuleQuizId
                 && item.UserId == userId)
             .Select(item => (int?)item.AttemptNo)
             .MaxAsync(cancellationToken);
-
-        var now = DateTime.UtcNow;
 
         var attempt = new SkillModuleQuizAttempt
         {
@@ -417,8 +412,10 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         CancellationToken cancellationToken)
     {
         var attempt = await _context.SkillModuleQuizAttempts
+            .Include(item => item.SkillModuleEnrollment)
             .Include(item => item.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz.SkillModule)
+                    .ThenInclude(module => module.SkillModuleLessons)
             .Include(item => item.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz.SkillModuleQuizQuestions)
                     .ThenInclude(question => question.SkillModuleQuizOptions)
@@ -494,6 +491,16 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         attempt.EarnedPoints = earnedPoints;
         attempt.TotalPoints = totalPoints;
         attempt.Passed = scorePercent >= attempt.SkillModuleQuiz.PassingScorePercent;
+
+        var lessonProgress = ParseLessonProgress(attempt.SkillModuleEnrollment.LessonProgress);
+
+        ApplyEnrollmentProgress(
+            attempt.SkillModuleEnrollment,
+            attempt.SkillModuleQuiz.SkillModule.SkillModuleLessons,
+            lessonProgress,
+            hasQuiz: true,
+            quizPassed: attempt.Passed == true,
+            now);
 
         _context.SkillModuleQuizAnswers.AddRange(answers);
         await _context.SaveChangesAsync(cancellationToken);
@@ -571,6 +578,73 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                 item => item.SkillModuleId,
                 item => item,
                 cancellationToken);
+    }
+
+    private async Task<bool> HasPassedQuizAsync(
+        Guid userId,
+        Guid quizId,
+        CancellationToken cancellationToken)
+    {
+        return await _context.SkillModuleQuizAttempts
+            .AsNoTracking()
+            .AnyAsync(item =>
+                item.UserId == userId
+                && item.SkillModuleQuizId == quizId
+                && item.Status == LearningModuleQuizAttemptStatusValues.Submitted
+                && item.Passed == true,
+                cancellationToken);
+    }
+
+    private static void ApplyEnrollmentProgress(
+        SkillModuleEnrollment enrollment,
+        IEnumerable<SkillModuleLesson> lessons,
+        IReadOnlyDictionary<Guid, string> lessonProgress,
+        bool hasQuiz,
+        bool quizPassed,
+        DateTime now)
+    {
+        var progressPercent = CalculateModuleProgress(
+            lessons,
+            lessonProgress,
+            hasQuiz,
+            quizPassed);
+
+        enrollment.ProgressPercent = progressPercent;
+        enrollment.UpdatedAt = now;
+
+        if (progressPercent >= 100)
+        {
+            enrollment.Status = LearningModuleEnrollmentStatusValues.Completed;
+            enrollment.CompletedAt ??= now;
+        }
+        else
+        {
+            enrollment.Status = LearningModuleEnrollmentStatusValues.InProgress;
+            enrollment.CompletedAt = null;
+        }
+    }
+
+    private static decimal CalculateModuleProgress(
+        IEnumerable<SkillModuleLesson> lessons,
+        IReadOnlyDictionary<Guid, string> lessonProgress,
+        bool hasQuiz,
+        bool quizPassed)
+    {
+        var lessonList = lessons.ToList();
+        var totalUnits = lessonList.Count + (hasQuiz ? 1 : 0);
+
+        if (totalUnits == 0)
+        {
+            return 0;
+        }
+
+        var completedLessonUnits = lessonList.Count(lesson =>
+            lessonProgress.TryGetValue(lesson.SkillModuleLessonId, out var lessonStatus)
+            && lessonStatus == LearningModuleLessonProgressStatusValues.Completed);
+
+        var completedUnits = completedLessonUnits + (hasQuiz && quizPassed ? 1 : 0);
+
+        return Math.Round((decimal)completedUnits * 100 / totalUnits, 2);
     }
 
     private static void EnsureAllLessonsCompletedBeforeQuiz(

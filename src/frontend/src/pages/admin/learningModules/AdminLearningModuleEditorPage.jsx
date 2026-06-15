@@ -172,6 +172,22 @@ function getIndexedLessonCount(lessons = []) {
   return lessons.filter(isLessonIndexed).length;
 }
 
+function shouldPollLessonIndexing(lessons = []) {
+  return lessons.some((lesson) =>
+    ["pending", "indexing", "needs_reindex"].includes(getLessonIndexingStatus(lesson)),
+  );
+}
+
+function canRetryLessonIndexing(lesson) {
+  return ["failed", "needs_reindex"].includes(getLessonIndexingStatus(lesson));
+}
+
+function getQueuedLessonUploads(lessons = []) {
+  return lessons.filter((lesson) =>
+    ["pending", "indexing", "needs_reindex"].includes(getLessonIndexingStatus(lesson)),
+  );
+}
+
 function getFailedLessonUploads(result) {
   return Array.isArray(result?.failedLessons) ? result.failedLessons : [];
 }
@@ -256,6 +272,7 @@ function showBulkUploadResultToast(result) {
   const uploadedLessons = getUploadedLessons(result);
   const failedLessons = getFailedLessonUploads(result);
   const indexingFailures = getIndexFailedUploads(uploadedLessons);
+  const queuedLessons = getQueuedLessonUploads(uploadedLessons);
 
   if (uploadedLessons.length === 0 && failedLessons.length > 0) {
     const firstFailure = failedLessons[0];
@@ -271,6 +288,11 @@ function showBulkUploadResultToast(result) {
 
   if (indexingFailures.length > 0) {
     toast(`Uploaded ${uploadedLessons.length} ${pluralizeLesson(uploadedLessons.length)}. ${indexingFailures.length} need reindexing.`);
+    return;
+  }
+
+  if (queuedLessons.length > 0) {
+    toast.success(`Uploaded ${uploadedLessons.length} ${pluralizeLesson(uploadedLessons.length)}. Indexing started.`);
     return;
   }
 
@@ -480,6 +502,22 @@ export default function AdminLearningModuleEditorPage() {
     }
   };
 
+  const refreshDetailSilently = async () => {
+    const moduleId = activeModuleId;
+
+    if (!moduleId) {
+      return;
+    }
+
+    try {
+      const data = await counselorLearningModuleApi.getModule(moduleId);
+      setDetail(data);
+      rememberLearningModuleRoute(data?.module);
+    } catch {
+      // Polling is best-effort. Manual refresh/save actions still surface errors.
+    }
+  };
+
   const handlePublish = async () => {
     try {
       setIsPublishing(true);
@@ -592,7 +630,7 @@ export default function AdminLearningModuleEditorPage() {
         </div>
 
         {activeTab === "overview" && <OverviewEditor module={module} onSaved={handleOverviewSaved} />}
-        {activeTab === "lessons" && <LessonsEditor module={module} lessons={detail.lessons} onChanged={reload} />}
+        {activeTab === "lessons" && <LessonsEditor module={module} lessons={detail.lessons} onChanged={reload} onIndexingStatusPoll={refreshDetailSilently} />}
         {activeTab === "quiz" && <QuizEditor module={module} quiz={detail.quiz} onChanged={reload} onDraftStateChange={setHasUnsavedQuizDrafts} />}
         {activeTab === "preview" && <InlinePreview moduleId={activeModuleId} detail={detail} />}
         {activeTab === "publish" && (
@@ -879,7 +917,7 @@ function OverviewEditor({ module, onSaved }) {
 }
 
 
-function LessonsEditor({ module, lessons, onChanged }) {
+function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
   const activeLessonStorageKey = getEditorStorageKey(module.skillModuleId, "activeLessonId");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [localLessons, setLocalLessons] = useState(lessons);
@@ -897,6 +935,7 @@ function LessonsEditor({ module, lessons, onChanged }) {
   const [lessonToReplace, setLessonToReplace] = useState(null);
   const [lessonToDelete, setLessonToDelete] = useState(null);
   const [isReplacingContent, setIsReplacingContent] = useState(false);
+  const [reindexingLessonId, setReindexingLessonId] = useState(null);
   const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
   useEffect(() => {
@@ -922,6 +961,18 @@ function LessonsEditor({ module, lessons, onChanged }) {
       removeSessionValue(activeLessonStorageKey);
     }
   }, [activeLessonId, activeLessonStorageKey]);
+
+  useEffect(() => {
+    if (!shouldPollLessonIndexing(localLessons)) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      onIndexingStatusPoll?.();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [localLessons, onIndexingStatusPoll]);
 
   const orderedLessons = localLessons.slice().sort((a, b) => a.orderIndex - b.orderIndex);
   const activeLesson = orderedLessons.find((lesson) => lesson.skillModuleLessonId === activeLessonId) || null;
@@ -1065,13 +1116,32 @@ function LessonsEditor({ module, lessons, onChanged }) {
         file,
       );
 
-      toast.success("Lesson content replaced.");
+      toast.success("Lesson file replaced. Indexing started.");
       setLessonToReplace(null);
       handleLessonSaved(updated);
     } catch (err) {
       toast.error(err?.message || "Unable to replace lesson content.");
     } finally {
       setIsReplacingContent(false);
+    }
+  };
+
+  const retryLessonIndexing = async (lesson) => {
+    setOpenLessonMenuId(null);
+
+    try {
+      setReindexingLessonId(lesson.skillModuleLessonId);
+      const updated = await counselorLearningModuleApi.reindexLesson(
+        module.skillModuleId,
+        lesson.skillModuleLessonId,
+      );
+
+      toast.success("Lesson queued for indexing.");
+      handleLessonSaved(updated);
+    } catch (err) {
+      toast.error(err?.message || "Unable to retry lesson indexing.");
+    } finally {
+      setReindexingLessonId(null);
     }
   };
 
@@ -1127,12 +1197,12 @@ function LessonsEditor({ module, lessons, onChanged }) {
             {isUploading && (
               <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
                 <Loader2 size={14} className="shrink-0 animate-spin" />
-                Uploading and indexing lessons...
+                Uploading lessons...
               </div>
             )}
 
             <ModuleButton className="mt-4 w-full" onClick={upload} disabled={isUploading}>
-              {isUploading ? "Preparing lessons..." : "Upload lessons"}
+              {isUploading ? "Uploading..." : "Upload lessons"}
             </ModuleButton>
           </ModuleCard>
 
@@ -1230,6 +1300,21 @@ function LessonsEditor({ module, lessons, onChanged }) {
                               >
                                 <FileUp size={14} /> Replace file
                               </button>
+                              {canRetryLessonIndexing(lesson) && (
+                                <button
+                                  type="button"
+                                  onClick={() => retryLessonIndexing(lesson)}
+                                  disabled={reindexingLessonId === lesson.skillModuleLessonId}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-extrabold text-[#1F6F5F] hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:text-slate-400"
+                                >
+                                  {reindexingLessonId === lesson.skillModuleLessonId ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <Loader2 size={14} />
+                                  )}
+                                  Retry indexing
+                                </button>
+                              )}
                               <div className="my-1 border-t border-[#B9D8CC]/70" />
                               <button
                                 type="button"
@@ -1251,7 +1336,14 @@ function LessonsEditor({ module, lessons, onChanged }) {
                 })}
               </div>
 
-              <div className="border-t border-[#B9D8CC]/60 p-3">
+              <div className="space-y-2 border-t border-[#B9D8CC]/60 p-3">
+                {shouldPollLessonIndexing(localLessons) && (
+                  <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                    <Loader2 size={13} className="shrink-0 animate-spin" />
+                    Indexing in background...
+                  </div>
+                )}
+
                 <ModuleButton className="w-full" onClick={saveOrder} disabled={isSavingOrder}>
                   <Save size={14} /> {isSavingOrder ? "Saving..." : "Save order"}
                 </ModuleButton>
@@ -1508,7 +1600,7 @@ function ReplaceLessonContentDialog({ isOpen, lesson, isReplacing, onClose, onRe
           <div className="min-w-0">
             <h2 className="text-base font-extrabold text-[#18332D]">Replace lesson file</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
-              Upload a new Markdown file for {lesson?.title || "this lesson"}. This will rebuild the lesson chunks for module chat.
+              Upload a new Markdown file for {lesson?.title || "this lesson"}. Indexing will run in the background after the file is replaced.
             </p>
           </div>
         </div>
@@ -1530,7 +1622,7 @@ function ReplaceLessonContentDialog({ isOpen, lesson, isReplacing, onClose, onRe
         {isReplacing && (
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
             <Loader2 size={14} className="shrink-0 animate-spin" />
-            Replacing and indexing content...
+            Replacing file...
           </div>
         )}
 

@@ -302,6 +302,13 @@ export const counselorLearningModuleApi = {
     return response.data;
   },
 
+  reindexLesson: async (moduleId, lessonId) => {
+    const response = await axiosClient.post(
+      `/counselor/learning-modules/${moduleId}/lessons/${lessonId}/reindex`,
+    );
+    return response.data;
+  },
+
   deleteLesson: async (moduleId, lessonId) => {
     const response = await axiosClient.delete(
       `/counselor/learning-modules/${moduleId}/lessons/${lessonId}`,

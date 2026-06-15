@@ -11,23 +11,25 @@
     <Compile Remove="DTOs\Chat\**" />
     <Compile Remove="DTOs\Rag\**" />
     <Compile Remove="DTOs\Resources\**" />
+    <Compile Remove="Interfaces\Chat\**" />
     <Compile Remove="Interfaces\Rag\**" />
     <Compile Remove="Interfaces\Resources\**" />
     <EmbeddedResource Remove="DTOs\Chat\**" />
     <EmbeddedResource Remove="DTOs\Rag\**" />
     <EmbeddedResource Remove="DTOs\Resources\**" />
+    <EmbeddedResource Remove="Interfaces\Chat\**" />
     <EmbeddedResource Remove="Interfaces\Rag\**" />
     <EmbeddedResource Remove="Interfaces\Resources\**" />
     <None Remove="DTOs\Chat\**" />
     <None Remove="DTOs\Rag\**" />
     <None Remove="DTOs\Resources\**" />
+    <None Remove="Interfaces\Chat\**" />
     <None Remove="Interfaces\Rag\**" />
     <None Remove="Interfaces\Resources\**" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Exceptions\" />
-    <Folder Include="Interfaces\Chat\" />
   </ItemGroup>
 
   <ItemGroup>
