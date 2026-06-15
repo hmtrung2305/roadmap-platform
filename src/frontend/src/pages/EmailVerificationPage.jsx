@@ -22,7 +22,7 @@ const verificationConfig = {
     resendRequiresEmail: true,
     successMessage: "Email verified successfully.",
     actionLabel: "Verify account",
-    defaultReturnTo: "/dashboard",
+    defaultReturnTo: "/roadmaps",
     backLabel: "Back to sign in",
     missingContextMessage:
       "Registration email was not provided. Please restart registration to request a new verification code.",

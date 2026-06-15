@@ -119,7 +119,7 @@ export default function LoginPage() {
       });
 
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/roadmaps");
       }, 250);
     } catch (error) {
       console.log("Login failed:", error.response?.data || error);

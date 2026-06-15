@@ -106,7 +106,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
                 AppendAccessTokenCookie(loginResponse.AccessToken);
 
-                return Redirect(BuildFrontendUrl("/dashboard"));
+                return Redirect(BuildFrontendUrl("/roadmaps"));
             }
             catch (Exception ex)
             {
@@ -149,7 +149,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
                 AppendAccessTokenCookie(loginResponse.AccessToken);
 
-                return Redirect(BuildFrontendUrl("/dashboard"));
+                return Redirect(BuildFrontendUrl("/roadmaps"));
             }
             catch (Exception ex)
             {

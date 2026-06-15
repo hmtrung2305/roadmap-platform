@@ -83,7 +83,7 @@ const capabilityTabs = [
     points: ["GitHub repository sync", "README summarization", "Shareable profile URL"],
     previewTitle: "Portfolio card",
     preview:
-      "react-learning-dashboard: React, REST API, resource reader. Objective: help learners continue roadmap tasks.",
+      "react-learning-roadmap: React, REST API, resource reader. Objective: help learners continue roadmap tasks.",
   },
 ];
 
@@ -120,7 +120,7 @@ const workflowCards = [
 const trustItems = [
   "Email/password and Google OAuth authentication.",
   "Persistent chat history, roadmap progress, skill assessments, and portfolio data.",
-  "Public landing remains separate from the protected /dashboard workspace.",
+  "Public landing remains separate from the protected roadmap workspace.",
 ];
 
 function useCountUp(target, start = false, duration = 1200) {
@@ -193,8 +193,8 @@ export default function LandingPage() {
   const lastScrollYRef = useRef(0);
 
   const user = useAuthStore((state) => state.user);
-  const primaryPath = user ? "/dashboard" : "/register";
-  const primaryLabel = user ? "Open dashboard" : "Start building";
+  const primaryPath = user ? "/roadmaps" : "/register";
+  const primaryLabel = user ? "Open roadmaps" : "Start building";
 
   const activeCapability = useMemo(
     () => capabilityTabs.find((item) => item.id === activeCapabilityId) || capabilityTabs[0],
@@ -291,7 +291,7 @@ export default function LandingPage() {
           transform: translateY(0);
         }
 
-        .landing-dashboard-shell {
+        .landing-roadmap-shell {
           position: relative;
           animation: landingFloat 6.5s ease-in-out infinite;
           border-color: rgba(185, 216, 204, 0.85) !important;
@@ -302,7 +302,7 @@ export default function LandingPage() {
             0 0 90px rgba(47, 160, 132, 0.2);
         }
 
-        .landing-dashboard-shell::before {
+        .landing-roadmap-shell::before {
           content: "";
           position: absolute;
           inset: -2px;
@@ -314,7 +314,7 @@ export default function LandingPage() {
           pointer-events: none;
         }
 
-        .landing-dashboard-shell > * {
+        .landing-roadmap-shell > * {
           position: relative;
           z-index: 1;
         }
@@ -375,7 +375,7 @@ export default function LandingPage() {
           box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07) !important;
         }
 
-        .landing-main :where(.landing-dashboard-shell):hover {
+        .landing-main :where(.landing-roadmap-shell):hover {
           transform: translate3d(0, -2px, 0) !important;
         }
 
@@ -546,7 +546,7 @@ export default function LandingPage() {
                 <p className="mt-1 text-sm font-bold">React demand +18%</p>
               </div>
 
-              <div className="landing-reveal landing-dashboard-shell overflow-hidden rounded-[1.5rem] border border-[#B9D8CC] bg-white/40 p-2 backdrop-blur-xl">
+              <div className="landing-reveal landing-roadmap-shell overflow-hidden rounded-[1.5rem] border border-[#B9D8CC] bg-white/40 p-2 backdrop-blur-xl">
                 <div className="flex items-center justify-between border-b border-white/10 bg-[#05070d]/60 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="size-3 rounded-full bg-red-400" />
@@ -555,7 +555,7 @@ export default function LandingPage() {
                   </div>
                   <div className="landing-soft-float hidden items-center gap-2 rounded-full border border-blue-300/70 bg-blue-400/15 px-3 py-1 text-xs font-semibold text-blue-100 shadow-lg shadow-blue-500/30 sm:flex">
                     <Lock size={13} aria-hidden="true" />
-                    /dashboard
+                    /roadmaps
                   </div>
                 </div>
 
@@ -804,12 +804,12 @@ export default function LandingPage() {
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#B9D8CC]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-bold text-[#1F6F5F]">react-learning-dashboard</p>
-                      <p className="mt-1 text-sm text-slate-500">an/techmap-dashboard</p>
+                      <p className="font-bold text-[#1F6F5F]">react-learning-roadmap</p>
+                      <p className="mt-1 text-sm text-slate-500">an/techmap-roadmap</p>
                     </div>
                     <Terminal size={18} className="text-slate-400" />
                   </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">Objective: help learners continue roadmap tasks with a resource reader and progress dashboard.</p>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">Objective: help learners continue roadmap tasks with a resource reader and roadmap progress.</p>
                   <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
                     <span className="rounded-xl bg-[#6FCF97]/15 px-3 py-1 text-sm font-medium text-[#1F6F5F]">React</span>
                     <span className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-1 text-sm text-slate-700"><Star size={14} /> 8</span>

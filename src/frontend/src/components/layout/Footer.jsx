@@ -8,7 +8,7 @@ export default function Footer() {
     <footer className="border-t border-[#B9D8CC] bg-white/85 backdrop-blur-xl">
       <div className="mx-auto grid max-w-7xl gap-8 px-3 py-3 text-sm sm:px-6 md:grid-cols-[1.2fr_1fr_1fr_1fr] lg:px-8">
         <div>
-          <button type="button" onClick={() => navigate("/dashboard")}>
+          <button type="button" onClick={() => navigate("/roadmaps")}>
             <AuthLogo compact showTagline={false} />
           </button>
           <p className="mt-4 max-w-sm leading-6 text-slate-600">
@@ -29,7 +29,6 @@ export default function Footer() {
         <FooterGroup
           title="Platform"
           items={[
-            ["Dashboard", "/dashboard"],
             ["Public Portfolio", "/portfolio"],
             ["Market Pulse", "/market-pulse"],
           ]}

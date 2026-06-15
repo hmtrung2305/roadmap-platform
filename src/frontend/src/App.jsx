@@ -4,7 +4,6 @@ import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import LandingPage from "./pages/LandingPage";
-import DashboardPage from "./pages/DashboardPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
@@ -138,8 +137,7 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/home" element={<Navigate to="/roadmaps" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/portfolio/edit" element={<EditPortfolioPage />} />
