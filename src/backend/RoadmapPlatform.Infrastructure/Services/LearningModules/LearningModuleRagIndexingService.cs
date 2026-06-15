@@ -2,6 +2,8 @@ using Google.GenAI;
 using Google.GenAI.Types;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
+using NpgsqlTypes;
 using Pgvector;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -134,48 +136,142 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
 
         var queryEmbedding = await CreateEmbeddingAsync(query, cancellationToken);
 
-        var chunks = await _context.SkillModuleChunks
-            .AsNoTracking()
-            .Include(chunk => chunk.SkillModuleLesson)
-            .Where(chunk => chunk.SkillModuleId == skillModuleId)
-            .Where(chunk => chunk.Embedding != null)
-            .ToListAsync(cancellationToken);
-
-        if (chunks.Count == 0)
+        if (queryEmbedding.Length != _ragSettings.EmbeddingDimensions)
         {
-            return [];
+            throw new InvalidOperationException(
+                $"Generated embedding dimension {queryEmbedding.Length} does not match configured dimension {_ragSettings.EmbeddingDimensions}.");
         }
 
         var maxResults = limit > 0
             ? limit
             : _ragSettings.MaxChunks;
 
-        return chunks
-            .Select(chunk => new
+        return await SearchRelevantChunksWithPgvectorAsync(
+            skillModuleId,
+            preferredLessonId,
+            queryEmbedding,
+            maxResults,
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<LearningModuleRagSourceDto>> SearchRelevantChunksWithPgvectorAsync(
+        Guid skillModuleId,
+        Guid? preferredLessonId,
+        float[] queryEmbedding,
+        int maxResults,
+        CancellationToken cancellationToken)
+    {
+        var candidateLimit = Math.Clamp(maxResults * 4, maxResults, 50);
+        var results = new List<LearningModuleRagSourceDto>(maxResults);
+
+        var connection = _context.Database.GetDbConnection();
+        var shouldCloseConnection = connection.State != System.Data.ConnectionState.Open;
+
+        if (shouldCloseConnection)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            
+            command.CommandText = """
+                WITH nearest_chunks AS (
+                    SELECT
+                        c.skill_module_chunk_id,
+                        c.skill_module_lesson_id,
+                        l.title AS lesson_title,
+                        c.heading,
+                        c.content,
+                        (1 - (c.embedding <=> @query_embedding))::double precision AS similarity_score,
+                        CASE
+                            WHEN CAST(@preferred_lesson_id AS uuid) IS NOT NULL
+                                 AND c.skill_module_lesson_id = CAST(@preferred_lesson_id AS uuid)
+                                THEN 1
+                            ELSE 0
+                        END AS lesson_priority,
+                        (c.embedding <=> @query_embedding)::double precision AS distance
+                    FROM public.skill_module_chunk c
+                    INNER JOIN public.skill_module_lesson l
+                        ON l.skill_module_lesson_id = c.skill_module_lesson_id
+                    WHERE c.skill_module_id = @skill_module_id
+                      AND c.embedding IS NOT NULL
+                    ORDER BY c.embedding <=> @query_embedding
+                    LIMIT @candidate_limit
+                )
+                SELECT
+                    skill_module_chunk_id,
+                    skill_module_lesson_id,
+                    lesson_title,
+                    heading,
+                    content,
+                    similarity_score
+                FROM nearest_chunks
+                WHERE similarity_score >= @similarity_threshold
+                ORDER BY lesson_priority DESC, distance ASC
+                LIMIT @max_results;
+                """;
+
+            command.Parameters.Add(new NpgsqlParameter("skill_module_id", NpgsqlDbType.Uuid)
             {
-                Chunk = chunk,
-                Score = CalculateCosineSimilarity(
-                    queryEmbedding,
-                    chunk.Embedding!.ToArray()),
-                LessonPriority = preferredLessonId.HasValue
-                    && chunk.SkillModuleLessonId == preferredLessonId.Value
-                        ? 1
-                        : 0
-            })
-            .Where(item => item.Score >= _ragSettings.SimilarityThreshold)
-            .OrderByDescending(item => item.LessonPriority)
-            .ThenByDescending(item => item.Score)
-            .Take(maxResults)
-            .Select(item => new LearningModuleRagSourceDto
+                Value = skillModuleId
+            });
+            command.Parameters.Add(new NpgsqlParameter("preferred_lesson_id", NpgsqlDbType.Uuid)
             {
-                SkillModuleChunkId = item.Chunk.SkillModuleChunkId,
-                SkillModuleLessonId = item.Chunk.SkillModuleLessonId,
-                LessonTitle = item.Chunk.SkillModuleLesson.Title,
-                Heading = item.Chunk.Heading,
-                ContentPreview = CreatePreview(item.Chunk.Content),
-                SimilarityScore = item.Score
-            })
-            .ToList();
+                Value = preferredLessonId.HasValue
+                    ? preferredLessonId.Value
+                    : DBNull.Value
+            });
+            command.Parameters.Add(new NpgsqlParameter("query_embedding", new Vector(queryEmbedding)));
+            command.Parameters.Add(new NpgsqlParameter("candidate_limit", NpgsqlDbType.Integer)
+            {
+                Value = candidateLimit
+            });
+            command.Parameters.Add(new NpgsqlParameter("similarity_threshold", NpgsqlDbType.Double)
+            {
+                Value = (double)_ragSettings.SimilarityThreshold
+            });
+            command.Parameters.Add(new NpgsqlParameter("max_results", NpgsqlDbType.Integer)
+            {
+                Value = maxResults
+            });
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            var chunkIdOrdinal = reader.GetOrdinal("skill_module_chunk_id");
+            var lessonIdOrdinal = reader.GetOrdinal("skill_module_lesson_id");
+            var lessonTitleOrdinal = reader.GetOrdinal("lesson_title");
+            var headingOrdinal = reader.GetOrdinal("heading");
+            var contentOrdinal = reader.GetOrdinal("content");
+            var similarityScoreOrdinal = reader.GetOrdinal("similarity_score");
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var content = reader.GetString(contentOrdinal);
+
+                results.Add(new LearningModuleRagSourceDto
+                {
+                    SkillModuleChunkId = reader.GetGuid(chunkIdOrdinal),
+                    SkillModuleLessonId = reader.GetGuid(lessonIdOrdinal),
+                    LessonTitle = reader.GetString(lessonTitleOrdinal),
+                    Heading = reader.IsDBNull(headingOrdinal)
+                        ? null
+                        : reader.GetString(headingOrdinal),
+                    ContentPreview = CreatePreview(content),
+                    SimilarityScore = reader.GetDouble(similarityScoreOrdinal)
+                });
+            }
+        }
+        finally
+        {
+            if (shouldCloseConnection)
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        return results;
     }
 
     private async Task<float[]> CreateEmbeddingAsync(
