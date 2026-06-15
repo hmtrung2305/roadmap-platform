@@ -46,6 +46,8 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
         Guid skillModuleId,
         Guid skillModuleLessonId,
         string markdown,
+        int expectedContentVersion,
+        string? expectedContentHash,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(markdown))
@@ -53,17 +55,22 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
             throw new InvalidOperationException("Lesson Markdown content cannot be empty.");
         }
 
-        var lessonExists = await _context.SkillModuleLessons
+        var lesson = await _context.SkillModuleLessons
             .AsNoTracking()
-            .AnyAsync(lesson =>
-                lesson.SkillModuleLessonId == skillModuleLessonId
-                && lesson.SkillModuleId == skillModuleId,
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == skillModuleLessonId
+                && item.SkillModuleId == skillModuleId,
                 cancellationToken);
 
-        if (!lessonExists)
+        if (lesson == null)
         {
             throw new KeyNotFoundException("Learning module lesson was not found.");
         }
+
+        ThrowIfLessonContentChanged(
+            lesson,
+            expectedContentVersion,
+            expectedContentHash);
 
         var markdownChunks = _chunker.Chunk(markdown);
         var entities = new List<SkillModuleChunk>();
@@ -87,6 +94,23 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
                 CreatedAt = DateTime.UtcNow
             });
         }
+
+        var currentLesson = await _context.SkillModuleLessons
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == skillModuleLessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (currentLesson == null)
+        {
+            throw new KeyNotFoundException("Learning module lesson was not found.");
+        }
+
+        ThrowIfLessonContentChanged(
+            currentLesson,
+            expectedContentVersion,
+            expectedContentHash);
 
         var existingChunks = await _context.SkillModuleChunks
             .Where(chunk => chunk.SkillModuleLessonId == skillModuleLessonId)
@@ -197,6 +221,7 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
                         ON l.skill_module_lesson_id = c.skill_module_lesson_id
                     WHERE c.skill_module_id = @skill_module_id
                       AND c.embedding IS NOT NULL
+                      AND l.indexing_status = @indexed_status
                     ORDER BY c.embedding <=> @query_embedding
                     LIMIT @candidate_limit
                 )
@@ -224,6 +249,10 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
                     : DBNull.Value
             });
             command.Parameters.Add(new NpgsqlParameter("query_embedding", new Vector(queryEmbedding)));
+            command.Parameters.Add(new NpgsqlParameter("indexed_status", NpgsqlDbType.Text)
+            {
+                Value = LearningModuleLessonIndexingStatusValues.Indexed
+            });
             command.Parameters.Add(new NpgsqlParameter("candidate_limit", NpgsqlDbType.Integer)
             {
                 Value = candidateLimit
@@ -298,6 +327,24 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
         }
 
         return values;
+    }
+
+    private static void ThrowIfLessonContentChanged(
+        SkillModuleLesson lesson,
+        int expectedContentVersion,
+        string? expectedContentHash)
+    {
+        if (lesson.ContentVersion == expectedContentVersion
+            && string.Equals(
+                lesson.ContentHash,
+                expectedContentHash,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        throw new LearningModuleIndexingSkippedException(
+            "Lesson content changed while indexing. Indexing was skipped.");
     }
 
     private static LearningModuleChunkDto MapChunk(SkillModuleChunk chunk)

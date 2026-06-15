@@ -12,7 +12,7 @@ namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 
 public sealed class LearningModuleIndexingWorker : BackgroundService
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan StaleIndexingTimeout = TimeSpan.FromMinutes(15);
     private const int BatchSize = 5;
     private const int MaxErrorLength = 1000;
@@ -115,6 +115,9 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
         try
         {
             var now = DateTime.UtcNow;
+            var expectedContentVersion = lesson.ContentVersion;
+            var expectedContentHash = lesson.ContentHash;
+            var expectedMarkdownFileKey = lesson.MarkdownFileKey;
 
             lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing;
             lesson.IndexingError = null;
@@ -124,7 +127,7 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
             await context.SaveChangesAsync(cancellationToken);
 
             await using var stream = await fileStorage.OpenReadAsync(
-                lesson.MarkdownFileKey,
+                expectedMarkdownFileKey,
                 cancellationToken);
 
             using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -134,7 +137,24 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
                 lesson.SkillModuleId,
                 lesson.SkillModuleLessonId,
                 markdown,
+                expectedContentVersion,
+                expectedContentHash,
                 cancellationToken);
+
+            await context.Entry(lesson).ReloadAsync(cancellationToken);
+
+            if (!IsSameLessonContent(
+                lesson,
+                expectedContentVersion,
+                expectedContentHash,
+                expectedMarkdownFileKey))
+            {
+                _logger.LogInformation(
+                    "Skipped marking lesson {LessonId} as indexed because the lesson file changed while indexing.",
+                    lesson.SkillModuleLessonId);
+
+                return;
+            }
 
             lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexed;
             lesson.IndexingError = null;
@@ -142,6 +162,14 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
             lesson.UpdatedAt = lesson.IndexedAt.Value;
 
             await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (LearningModuleIndexingSkippedException ex)
+        {
+            await HandleSkippedIndexingAsync(
+                context,
+                lesson,
+                ex,
+                cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -160,6 +188,42 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
                 "Failed to index learning module lesson {LessonId}.",
                 lesson.SkillModuleLessonId);
         }
+    }
+
+    private static async Task HandleSkippedIndexingAsync(
+        ApplicationDbContext context,
+        SkillModuleLesson lesson,
+        LearningModuleIndexingSkippedException exception,
+        CancellationToken cancellationToken)
+    {
+        await context.Entry(lesson).ReloadAsync(cancellationToken);
+
+        if (lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexing)
+        {
+            lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending;
+            lesson.IndexingError = null;
+            lesson.IndexedAt = null;
+            lesson.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private static bool IsSameLessonContent(
+        SkillModuleLesson lesson,
+        int expectedContentVersion,
+        string? expectedContentHash,
+        string expectedMarkdownFileKey)
+    {
+        return lesson.ContentVersion == expectedContentVersion
+            && string.Equals(
+                lesson.ContentHash,
+                expectedContentHash,
+                StringComparison.Ordinal)
+            && string.Equals(
+                lesson.MarkdownFileKey,
+                expectedMarkdownFileKey,
+                StringComparison.Ordinal);
     }
 
     private static async Task MarkLessonFailedAsync(

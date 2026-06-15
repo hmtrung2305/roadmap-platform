@@ -8,6 +8,8 @@ public interface ILearningModuleRagIndexingService
         Guid skillModuleId,
         Guid skillModuleLessonId,
         string markdown,
+        int expectedContentVersion,
+        string? expectedContentHash,
         CancellationToken cancellationToken);
 
     Task DeleteLessonChunksAsync(
