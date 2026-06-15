@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { roadmapApi } from "../api/roadmapApi";
 import RoadmapCard from "../components/roadmap/RoadmapCard";
+import CareerMentorWidget from "../components/mentor/CareerMentorWidget";
 
 export default function RoadmapSelectionPage() {
   const navigate = useNavigate();
@@ -204,6 +205,8 @@ export default function RoadmapSelectionPage() {
           </section>
         )}
       </main>
+
+      <CareerMentorWidget />
     </PageShell>
   );
 }
