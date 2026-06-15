@@ -245,6 +245,8 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
 
         ValidateReorderRequest(request, quiz.SkillModuleQuizQuestions);
 
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var questions = quiz.SkillModuleQuizQuestions.ToList();
         var highestCurrentOrderIndex = questions.Count == 0
@@ -279,6 +281,7 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
         module.UpdatedAt = now;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return questions
             .OrderBy(question => question.OrderIndex)

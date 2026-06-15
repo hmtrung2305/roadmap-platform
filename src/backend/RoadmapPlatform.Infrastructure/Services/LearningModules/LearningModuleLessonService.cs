@@ -195,6 +195,8 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         ValidateReorderRequest(request, lessons);
 
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var highestCurrentOrderIndex = lessons.Count == 0
             ? 0
@@ -227,6 +229,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         module.UpdatedAt = now;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return lessons
             .OrderBy(lesson => lesson.OrderIndex)
