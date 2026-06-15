@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { learningModuleApi } from "../../api/learningModuleApi";
 import {
@@ -12,13 +12,59 @@ import {
   ModulePageShell,
 } from "../../components/learningModules/learningModuleUi";
 
+const difficultyFilters = ["all", "beginner", "intermediate", "advanced"];
+
+function getBrowseStateFromSearchParams(searchParams) {
+  const difficultyParam = searchParams.get("difficulty");
+
+  return {
+    search: searchParams.get("q") || "",
+    difficulty: difficultyFilters.includes(difficultyParam)
+      ? difficultyParam
+      : "all",
+  };
+}
+
 export default function BrowseLearningModulesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialBrowseState = getBrowseStateFromSearchParams(searchParams);
   const [modules, setModules] = useState([]);
-  const [search, setSearch] = useState("");
-  const [difficulty, setDifficulty] = useState("all");
+  const [search, setSearch] = useState(initialBrowseState.search);
+  const [difficulty, setDifficulty] = useState(initialBrowseState.difficulty);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const nextState = getBrowseStateFromSearchParams(searchParams);
+
+    setSearch((current) => (current === nextState.search ? current : nextState.search));
+    setDifficulty((current) => (current === nextState.difficulty ? current : nextState.difficulty));
+  }, [searchParams]);
+
+  const updateBrowseFilters = (nextSearch, nextDifficulty) => {
+    setSearch(nextSearch);
+    setDifficulty(nextDifficulty);
+
+    setSearchParams((current) => {
+      const nextParams = new URLSearchParams(current);
+      const trimmedSearch = nextSearch.trim();
+
+      if (trimmedSearch) {
+        nextParams.set("q", trimmedSearch);
+      } else {
+        nextParams.delete("q");
+      }
+
+      if (nextDifficulty === "all") {
+        nextParams.delete("difficulty");
+      } else {
+        nextParams.set("difficulty", nextDifficulty);
+      }
+
+      return nextParams;
+    }, { replace: true });
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -80,7 +126,7 @@ export default function BrowseLearningModulesPage() {
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => updateBrowseFilters(event.target.value, difficulty)}
                 className="w-full rounded-lg border border-[#B9D8CC] bg-white py-2.5 pl-9 pr-3 text-sm font-semibold outline-none transition focus:border-[#2FA084] focus:ring-2 focus:ring-[#6FCF97]/25"
                 placeholder="Search modules by title, skill, or topic"
               />
@@ -91,7 +137,7 @@ export default function BrowseLearningModulesPage() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setDifficulty(key)}
+                  onClick={() => updateBrowseFilters(search, key)}
                   className={`rounded-lg border px-3.5 py-1.5 text-xs font-bold capitalize transition ${
                     difficulty === key
                       ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"

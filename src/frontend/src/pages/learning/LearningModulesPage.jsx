@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { learningModuleApi } from "../../api/learningModuleApi";
 import {
@@ -13,12 +13,44 @@ import {
   prettyEnrollmentStatus,
 } from "../../components/learningModules/learningModuleUi";
 
+const moduleStatusTabs = ["in_progress", "completed"];
+
+function getStatusFromSearchParams(searchParams) {
+  const statusParam = searchParams.get("status");
+
+  return moduleStatusTabs.includes(statusParam)
+    ? statusParam
+    : "in_progress";
+}
+
 export default function LearningModulesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [modules, setModules] = useState([]);
-  const [status, setStatus] = useState("in_progress");
+  const [status, setStatus] = useState(() => getStatusFromSearchParams(searchParams));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const nextStatus = getStatusFromSearchParams(searchParams);
+
+    setStatus((current) => (current === nextStatus ? current : nextStatus));
+  }, [searchParams]);
+
+  const updateStatus = (nextStatus) => {
+    setStatus(nextStatus);
+    setSearchParams((current) => {
+      const nextParams = new URLSearchParams(current);
+
+      if (nextStatus === "in_progress") {
+        nextParams.delete("status");
+      } else {
+        nextParams.set("status", nextStatus);
+      }
+
+      return nextParams;
+    }, { replace: true });
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -70,7 +102,7 @@ export default function LearningModulesPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => setStatus(key)}
+                onClick={() => updateStatus(key)}
                 className={`rounded-lg border px-3.5 py-1.5 text-xs font-bold transition ${
                   status === key
                     ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
@@ -143,6 +175,12 @@ function LearningModuleListRow({ module }) {
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}
         </p>
+
+        {module.status === "archived" && (
+          <p className="mt-2 text-xs font-extrabold text-amber-700">
+            Archived module · still available because you are enrolled
+          </p>
+        )}
       </div>
 
       <div>

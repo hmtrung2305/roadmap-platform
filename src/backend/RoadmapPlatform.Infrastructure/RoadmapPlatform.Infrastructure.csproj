@@ -1,10 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Compile Remove="Services\Chat\**" />
     <Compile Remove="Services\Rag\**" />
     <Compile Remove="Services\Resources\**" />
+    <EmbeddedResource Remove="Services\Chat\**" />
     <EmbeddedResource Remove="Services\Rag\**" />
     <EmbeddedResource Remove="Services\Resources\**" />
+    <None Remove="Services\Chat\**" />
     <None Remove="Services\Rag\**" />
     <None Remove="Services\Resources\**" />
   </ItemGroup>
@@ -32,7 +35,6 @@
 
   <ItemGroup>
     <Folder Include="Entities\" />
-    <Folder Include="Services\Chat\" />
   </ItemGroup>
 
   <PropertyGroup>

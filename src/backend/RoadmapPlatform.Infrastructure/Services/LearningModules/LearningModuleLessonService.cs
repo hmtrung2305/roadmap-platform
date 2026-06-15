@@ -83,6 +83,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             var appendedOrderIndex = maxExistingOrderIndex + createdLessons.Count + 1;
 
             SkillModuleLesson? lesson = null;
+            string? storedFileKey = null;
 
             try
             {
@@ -101,6 +102,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                     saveStream,
                     file.ContentType,
                     cancellationToken);
+                storedFileKey = storedFile.ObjectPath;
 
                 lesson = new SkillModuleLesson
                 {
@@ -131,6 +133,11 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 if (lesson != null)
                 {
                     _context.Entry(lesson).State = EntityState.Detached;
+                }
+
+                if (!string.IsNullOrWhiteSpace(storedFileKey))
+                {
+                    await TryDeleteStoredFileAsync(storedFileKey);
                 }
 
                 failedLessons.Add(CreateBulkUploadLessonFailure(item, CreateUploadFailureReason(ex)));
@@ -171,6 +178,8 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         ValidateReorderRequest(request, lessons);
 
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var highestCurrentOrderIndex = lessons.Count == 0
             ? 0
@@ -203,6 +212,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         module.UpdatedAt = now;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return lessons
             .OrderBy(lesson => lesson.OrderIndex)
@@ -444,11 +454,18 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         var fileKey = lesson.MarkdownFileKey;
 
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        await _context.SkillModuleChunks
+            .Where(chunk => chunk.SkillModuleLessonId == lessonId)
+            .ExecuteDeleteAsync(cancellationToken);
+
         _context.SkillModuleLessons.Remove(lesson);
 
         module.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         await TryDeleteStoredFileAsync(fileKey);
     }
