@@ -321,6 +321,7 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
 
         var quiz = await _context.SkillModuleQuizzes
             .Include(item => item.SkillModule)
+                .ThenInclude(module => module.SkillModuleLessons)
             .Include(item => item.SkillModuleQuizQuestions)
                 .ThenInclude(question => question.SkillModuleQuizOptions)
             .FirstOrDefaultAsync(item =>
@@ -332,6 +333,10 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         {
             throw new NotFoundException("Quiz was not found.");
         }
+
+        EnsureAllLessonsCompletedBeforeQuiz(
+            enrollment,
+            quiz.SkillModule.SkillModuleLessons);
 
         var submittedAttempts = await _context.SkillModuleQuizAttempts
             .CountAsync(item =>
@@ -566,6 +571,21 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                 item => item.SkillModuleId,
                 item => item,
                 cancellationToken);
+    }
+
+    private static void EnsureAllLessonsCompletedBeforeQuiz(
+        SkillModuleEnrollment enrollment,
+        IEnumerable<SkillModuleLesson> lessons)
+    {
+        var lessonProgress = ParseLessonProgress(enrollment.LessonProgress);
+        var incompleteLessonExists = lessons.Any(lesson =>
+            !lessonProgress.TryGetValue(lesson.SkillModuleLessonId, out var status)
+            || status != LearningModuleLessonProgressStatusValues.Completed);
+
+        if (incompleteLessonExists)
+        {
+            throw new ConflictException("Complete all lessons before starting the quiz.");
+        }
     }
 
     private static void ValidateSubmitRequest(

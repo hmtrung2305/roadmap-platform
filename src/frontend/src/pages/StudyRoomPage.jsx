@@ -38,6 +38,19 @@ const SIDEBAR_MAX_WIDTH = 420;
 const CHAT_MIN_WIDTH = 320;
 const CHAT_MAX_WIDTH = 640;
 
+function areAllLessonsCompleted(module) {
+  const lessons = module?.lessons || [];
+  const lessonProgress = module?.enrollment?.lessonProgress || {};
+
+  if (lessons.length === 0) {
+    return true;
+  }
+
+  return lessons.every(
+    (lesson) => lessonProgress[lesson.skillModuleLessonId] === "completed",
+  );
+}
+
 export default function StudyRoomPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -290,7 +303,7 @@ export default function StudyRoomPage() {
           ...current,
           enrollment: {
             ...current.enrollment,
-            status: result?.moduleStatus || current.enrollment.status,
+            status: result?.enrollmentStatus || current.enrollment.status,
             progressPercent: result?.progressPercent ?? current.enrollment.progressPercent,
             lessonProgress: {
               ...(current.enrollment.lessonProgress || {}),
@@ -373,6 +386,7 @@ export default function StudyRoomPage() {
     module.enrollment,
     activeLesson?.skillModuleLessonId,
   );
+  const isQuizUnlocked = areAllLessonsCompleted(module);
 
   return (
     <div className="relative h-screen overflow-hidden bg-[#F7F1E8] text-[#18332D]">
@@ -407,7 +421,15 @@ export default function StudyRoomPage() {
           setShowQuiz(false);
           setActiveLessonId(lessonId);
         }}
-        onShowQuiz={() => setShowQuiz(true)}
+        canStartQuiz={isQuizUnlocked}
+        onShowQuiz={() => {
+          if (!isQuizUnlocked) {
+            toast.info("Complete all lessons before starting the quiz.");
+            return;
+          }
+
+          setShowQuiz(true);
+        }}
       />
 
       <StudyRoomChatPanel
@@ -435,7 +457,7 @@ export default function StudyRoomPage() {
       >
         <section className="mx-auto min-w-0 max-w-5xl">
           {showQuiz ? (
-            <StudyQuiz module={module} />
+            <StudyQuiz module={module} canStartQuiz={isQuizUnlocked} />
           ) : isLoadingLesson ? (
             <DocumentLoading />
           ) : lessonError ? (
@@ -550,6 +572,7 @@ function StudyLessonSidebar({
   onClose,
   onSelectLesson,
   onShowQuiz,
+  canStartQuiz,
 }) {
   const progress = getProgress(module);
 
@@ -654,14 +677,25 @@ function StudyLessonSidebar({
             <button
               type="button"
               onClick={onShowQuiz}
-              className={`mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-sm font-extrabold transition ${
+              disabled={!canStartQuiz}
+              className={`mt-3 flex w-full items-start gap-2 rounded-lg px-3 py-3 text-left text-sm font-extrabold transition ${
                 showQuiz
                   ? "bg-[#6FCF97]/20 text-[#1F6F5F] ring-1 ring-[#6FCF97]"
-                  : "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"
+                  : canStartQuiz
+                    ? "text-slate-600 hover:bg-[#F7F1E8] hover:text-[#18332D]"
+                    : "cursor-not-allowed bg-slate-50 text-slate-400"
               }`}
+              title={canStartQuiz ? "Open final quiz" : "Complete all lessons before starting the quiz."}
             >
-              <Trophy size={16} />
-              Final quiz
+              <Trophy size={16} className="mt-0.5 shrink-0" />
+              <span>
+                Final quiz
+                {!canStartQuiz && (
+                  <span className="mt-1 block text-xs font-semibold">
+                    Complete all lessons first
+                  </span>
+                )}
+              </span>
             </button>
           </div>
         </div>
@@ -938,7 +972,7 @@ function CreditPill({ status, isLoading }) {
   );
 }
 
-function StudyQuiz({ module }) {
+function StudyQuiz({ module, canStartQuiz = true }) {
   const [attempts, setAttempts] = useState([]);
   const [attempt, setAttempt] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -979,7 +1013,12 @@ function StudyQuiz({ module }) {
   }, [module.skillModuleId]);
 
   const startAttempt = async () => {
-    if (!quiz) return;
+    if (!quiz || isStarting || remainingAttempts === 0) return;
+
+    if (!canStartQuiz) {
+      toast.info("Complete all lessons before starting the quiz.");
+      return;
+    }
 
     try {
       setIsStarting(true);
@@ -1012,7 +1051,7 @@ function StudyQuiz({ module }) {
   };
 
   const handleSubmit = async () => {
-    if (!attempt) return;
+    if (!attempt || isSubmitting) return;
 
     const payload = questions.map((question) => ({
       skillModuleQuizQuestionId: question.skillModuleQuizQuestionId,
@@ -1148,8 +1187,14 @@ function StudyQuiz({ module }) {
         </div>
 
         <div className="mt-5 flex justify-end">
-          <ModuleButton onClick={startAttempt} disabled={isStarting || remainingAttempts === 0}>
-            {isStarting ? "Starting..." : attempts.some((item) => item.status === "in_progress") ? "Resume quiz" : "Start quiz"}
+          <ModuleButton onClick={startAttempt} disabled={isStarting || remainingAttempts === 0 || !canStartQuiz}>
+            {isStarting
+              ? "Starting..."
+              : !canStartQuiz
+                ? "Locked"
+                : attempts.some((item) => item.status === "in_progress")
+                  ? "Resume quiz"
+                  : "Start quiz"}
           </ModuleButton>
         </div>
       </div>
