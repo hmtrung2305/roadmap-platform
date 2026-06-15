@@ -1,18 +1,23 @@
-namespace RoadmapPlatform.Infrastructure.Configurations
+namespace RoadmapPlatform.Infrastructure.Configurations;
+
+public sealed class FileStorageSettings
 {
-    public sealed class FileStorageSettings
-    {
-        public string Provider { get; set; } = "Local";
+    public const string SectionName = "FileStorage";
 
-        public string LocalFolder { get; set; } = "docs";
-    }
+    public string Provider { get; set; } = "Local";
 
-    public sealed class SupabaseStorageSettings
-    {
-        public string Url { get; set; } = string.Empty;
+    public string LocalFolder { get; set; } = "storage";
 
-        public string ServiceRoleKey { get; set; } = string.Empty;
+    public SupabaseFileStorageSettings Supabase { get; set; } = new();
+}
 
-        public string Bucket { get; set; } = "roadmap-docs";
-    }
+public sealed class SupabaseFileStorageSettings
+{
+    public string Url { get; set; } = string.Empty;
+
+    public string ServiceRoleKey { get; set; } = string.Empty;
+
+    public string Bucket { get; set; } = string.Empty;
+
+    public bool UsePublicUrls { get; set; }
 }

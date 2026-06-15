@@ -36,8 +36,8 @@ export default function TopNavbar() {
 
   const navItems = [
     { label: "Dashboard", path: user ? "/dashboard" : "/login" },
-    { label: "Roadmaps", path: user ? "/roadmap" : "/login" },
-    { label: "Resources", path: user ? "/resources" : "/login" },
+    { label: "Roadmaps", path: user ? "/roadmaps" : "/login" },
+    { label: "Learning", path: user ? "/learning-modules" : "/login" },
     { label: "Market Pulse", path: user ? "/market-pulse" : "/login" },
     { label: "E-Portfolio", path: portfolioPath },
   ];

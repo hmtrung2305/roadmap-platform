@@ -1,0 +1,873 @@
+using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.DTOs.LearningModules;
+using RoadmapPlatform.Application.Exceptions;
+using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.Interfaces.Storage;
+using RoadmapPlatform.Infrastructure.Data;
+using RoadmapPlatform.Infrastructure.Entities;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
+
+public sealed class LearningModuleLessonService : ILearningModuleLessonService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly IFileStorage _fileStorage;
+
+    public LearningModuleLessonService(
+        ApplicationDbContext context,
+        IFileStorage fileStorage)
+    {
+        _context = context;
+        _fileStorage = fileStorage;
+    }
+
+    public async Task<BulkUploadLessonsResultDto> BulkUploadLessonsAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        BulkUploadLessonsRequestDto request,
+        IReadOnlyList<LearningModuleUploadedFileDto> files,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        ValidateBulkUploadRequest(request, files);
+
+        var filesByName = files.ToDictionary(
+            file => file.FileName,
+            StringComparer.OrdinalIgnoreCase);
+
+        var maxExistingOrderIndex = await _context.SkillModuleLessons
+            .Where(lesson => lesson.SkillModuleId == skillModuleId)
+            .Select(lesson => (int?)lesson.OrderIndex)
+            .MaxAsync(cancellationToken) ?? 0;
+
+        var orderedLessonItems = request.Lessons
+            .Select((lesson, index) => new { Lesson = lesson, OriginalIndex = index })
+            .OrderBy(item => item.Lesson.OrderIndex > 0 ? item.Lesson.OrderIndex : int.MaxValue)
+            .ThenBy(item => item.OriginalIndex)
+            .ToList();
+
+        var now = DateTime.UtcNow;
+        var createdLessons = new List<BulkUploadedLessonDto>();
+        var failedLessons = new List<BulkUploadLessonFailureDto>();
+
+        foreach (var itemWrapper in orderedLessonItems)
+        {
+            var item = itemWrapper.Lesson;
+
+            if (!TryValidateBulkUploadLessonItem(item, filesByName, out var file, out var failureReason))
+            {
+                failedLessons.Add(CreateBulkUploadLessonFailure(item, failureReason));
+                continue;
+            }
+
+            string markdown;
+
+            try
+            {
+                markdown = await ReadMarkdownAsync(file.Content, cancellationToken);
+                ValidateMarkdownFile(file, markdown);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failedLessons.Add(CreateBulkUploadLessonFailure(item, CreateUploadFailureReason(ex)));
+                continue;
+            }
+
+            var lessonId = Guid.NewGuid();
+            var appendedOrderIndex = maxExistingOrderIndex + createdLessons.Count + 1;
+
+            SkillModuleLesson? lesson = null;
+            string? storedFileKey = null;
+
+            try
+            {
+                var slug = await CreateUniqueLessonSlugAsync(
+                    skillModuleId,
+                    string.IsNullOrWhiteSpace(item.Slug) ? item.Title : item.Slug,
+                    excludeLessonId: null,
+                    cancellationToken);
+
+                var safeFileName = CreateSafeFileName(file.FileName);
+                var objectPath = $"learning-modules/{skillModuleId}/lessons/{lessonId}-{safeFileName}";
+
+                await using var saveStream = new MemoryStream(Encoding.UTF8.GetBytes(markdown));
+                var storedFile = await _fileStorage.SaveAsync(
+                    objectPath,
+                    saveStream,
+                    file.ContentType,
+                    cancellationToken);
+                storedFileKey = storedFile.ObjectPath;
+
+                lesson = new SkillModuleLesson
+                {
+                    SkillModuleLessonId = lessonId,
+                    SkillModuleId = skillModuleId,
+                    Title = item.Title.Trim(),
+                    Slug = slug,
+                    Summary = NormalizeOptionalText(item.Summary),
+                    OrderIndex = appendedOrderIndex,
+                    EstimatedHours = item.EstimatedHours,
+                    MarkdownFileKey = storedFile.ObjectPath,
+                    MarkdownFileName = file.FileName,
+                    ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown),
+                    ContentSizeBytes = storedFile.SizeBytes,
+                    ContentVersion = 1,
+                    IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending,
+                    IndexedAt = null,
+                    IndexingError = null,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                _context.SkillModuleLessons.Add(lesson);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                if (lesson != null)
+                {
+                    _context.Entry(lesson).State = EntityState.Detached;
+                }
+
+                if (!string.IsNullOrWhiteSpace(storedFileKey))
+                {
+                    await TryDeleteStoredFileAsync(storedFileKey);
+                }
+
+                failedLessons.Add(CreateBulkUploadLessonFailure(item, CreateUploadFailureReason(ex)));
+                continue;
+            }
+
+            createdLessons.Add(MapBulkUploadedLesson(item, lesson, file, chunksGenerated: 0));
+        }
+
+        if (createdLessons.Count > 0)
+        {
+            module.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        return new BulkUploadLessonsResultDto
+        {
+            Lessons = createdLessons,
+            FailedLessons = failedLessons
+        };
+    }
+
+    public async Task<IReadOnlyList<LearningModuleLessonDto>> ReorderLessonsAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        ReorderLessonsRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lessons = await _context.SkillModuleLessons
+            .Include(lesson => lesson.SkillModuleChunks)
+            .Where(lesson => lesson.SkillModuleId == skillModuleId)
+            .ToListAsync(cancellationToken);
+
+        ValidateReorderRequest(request, lessons);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        var highestCurrentOrderIndex = lessons.Count == 0
+            ? 0
+            : lessons.Max(lesson => lesson.OrderIndex);
+        var highestRequestedOrderIndex = request.Lessons.Count == 0
+            ? 0
+            : request.Lessons.Max(lesson => lesson.OrderIndex);
+        var temporaryOrderIndexStart = Math.Max(highestCurrentOrderIndex, highestRequestedOrderIndex)
+            + lessons.Count
+            + 1;
+
+        for (var index = 0; index < lessons.Count; index++)
+        {
+            lessons[index].OrderIndex = temporaryOrderIndexStart + index;
+            lessons[index].UpdatedAt = now;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var orderMap = request.Lessons.ToDictionary(
+            item => item.SkillModuleLessonId,
+            item => item.OrderIndex);
+
+        foreach (var lesson in lessons)
+        {
+            lesson.OrderIndex = orderMap[lesson.SkillModuleLessonId];
+            lesson.UpdatedAt = now;
+        }
+
+        module.UpdatedAt = now;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return lessons
+            .OrderBy(lesson => lesson.OrderIndex)
+            .Select(MapLesson)
+            .ToList();
+    }
+
+    public async Task<LearningModuleLessonDto> UpdateLessonAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        UpdateLearningModuleLessonRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lesson = await _context.SkillModuleLessons
+            .Include(item => item.SkillModuleChunks)
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == lessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (lesson == null)
+        {
+            throw new NotFoundException("Learning module lesson was not found.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Title))
+        {
+            lesson.Title = request.Title.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Slug))
+        {
+            lesson.Slug = await CreateUniqueLessonSlugAsync(
+                skillModuleId,
+                request.Slug,
+                lessonId,
+                cancellationToken);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.Title))
+        {
+            lesson.Slug = await CreateUniqueLessonSlugAsync(
+                skillModuleId,
+                request.Title,
+                lessonId,
+                cancellationToken);
+        }
+
+        if (request.Summary != null)
+        {
+            lesson.Summary = NormalizeOptionalText(request.Summary);
+        }
+
+        if (request.EstimatedHours.HasValue)
+        {
+            lesson.EstimatedHours = request.EstimatedHours;
+        }
+
+        var now = DateTime.UtcNow;
+        lesson.UpdatedAt = now;
+        module.UpdatedAt = now;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return MapLesson(lesson);
+    }
+
+    public async Task<LearningModuleLessonDto> ReplaceLessonContentAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        LearningModuleUploadedFileDto file,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lesson = await _context.SkillModuleLessons
+            .Include(item => item.SkillModuleChunks)
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == lessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (lesson == null)
+        {
+            throw new NotFoundException("Learning module lesson was not found.");
+        }
+
+        var markdown = await ReadMarkdownAsync(file.Content, cancellationToken);
+        ValidateMarkdownFile(file, markdown);
+
+        var oldFileKey = lesson.MarkdownFileKey;
+
+        var safeFileName = CreateSafeFileName(file.FileName);
+        var objectPath = $"learning-modules/{skillModuleId}/lessons/{lessonId}-{safeFileName}";
+
+        await using var saveStream = new MemoryStream(Encoding.UTF8.GetBytes(markdown));
+        var storedFile = await _fileStorage.SaveAsync(
+            objectPath,
+            saveStream,
+            file.ContentType,
+            cancellationToken);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            var now = DateTime.UtcNow;
+
+            lesson.MarkdownFileKey = storedFile.ObjectPath;
+            lesson.MarkdownFileName = file.FileName;
+            lesson.ContentHash = storedFile.ContentHash ?? CalculateSha256(markdown);
+            lesson.ContentSizeBytes = storedFile.SizeBytes;
+            lesson.ContentVersion += 1;
+            QueueLessonIndexing(lesson, now);
+            module.UpdatedAt = lesson.UpdatedAt;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(oldFileKey)
+                && !string.Equals(oldFileKey, lesson.MarkdownFileKey, StringComparison.Ordinal))
+            {
+                await TryDeleteStoredFileAsync(oldFileKey);
+            }
+
+            return MapLesson(lesson);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            await TryDeleteStoredFileAsync(storedFile.ObjectPath);
+            throw;
+        }
+    }
+
+    public async Task<LearningModuleLessonDto> ReindexLessonAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lesson = await _context.SkillModuleLessons
+            .Include(item => item.SkillModuleChunks)
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == lessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (lesson == null)
+        {
+            throw new NotFoundException("Learning module lesson was not found.");
+        }
+
+        QueueLessonIndexing(lesson, DateTime.UtcNow);
+        module.UpdatedAt = lesson.UpdatedAt;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return MapLesson(lesson);
+    }
+
+    public async Task<LearningModuleLessonContentDto> GetLessonPreviewAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureOwnedModuleExistsAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lesson = await _context.SkillModuleLessons
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == lessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (lesson == null)
+        {
+            throw new NotFoundException("Learning module lesson was not found.");
+        }
+
+        await using var stream = await _fileStorage.OpenReadAsync(
+            lesson.MarkdownFileKey,
+            cancellationToken);
+
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var markdown = await reader.ReadToEndAsync(cancellationToken);
+
+        return new LearningModuleLessonContentDto
+        {
+            SkillModuleLessonId = lesson.SkillModuleLessonId,
+            SkillModuleId = lesson.SkillModuleId,
+            Title = lesson.Title,
+            Slug = lesson.Slug,
+            Markdown = markdown,
+            ContentVersion = lesson.ContentVersion,
+            ContentHash = lesson.ContentHash
+        };
+    }
+
+    public async Task DeleteDraftLessonAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedDraftModuleAsync(
+            counselorUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lesson = await _context.SkillModuleLessons
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleLessonId == lessonId
+                && item.SkillModuleId == skillModuleId,
+                cancellationToken);
+
+        if (lesson == null)
+        {
+            throw new NotFoundException("Learning module lesson was not found.");
+        }
+
+        var fileKey = lesson.MarkdownFileKey;
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        await _context.SkillModuleChunks
+            .Where(chunk => chunk.SkillModuleLessonId == lessonId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        _context.SkillModuleLessons.Remove(lesson);
+
+        module.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        await TryDeleteStoredFileAsync(fileKey);
+    }
+
+    private async Task<SkillModule> GetOwnedDraftModuleAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        var module = await _context.SkillModules
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleId == skillModuleId
+                && item.CreatedByUserId == counselorUserId,
+                cancellationToken);
+
+        if (module == null)
+        {
+            throw new NotFoundException("Learning module was not found.");
+        }
+
+        if (module.Status != LearningModuleStatusValues.Draft)
+        {
+            throw new ConflictException("Only draft modules can be edited.");
+        }
+
+        return module;
+    }
+
+    private async Task EnsureOwnedModuleExistsAsync(
+        Guid counselorUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        var exists = await _context.SkillModules
+            .AsNoTracking()
+            .AnyAsync(item =>
+                item.SkillModuleId == skillModuleId
+                && item.CreatedByUserId == counselorUserId,
+                cancellationToken);
+
+        if (!exists)
+        {
+            throw new NotFoundException("Learning module was not found.");
+        }
+    }
+
+    private async Task TryDeleteStoredFileAsync(string? fileKey)
+    {
+        if (string.IsNullOrWhiteSpace(fileKey))
+        {
+            return;
+        }
+
+        try
+        {
+            await _fileStorage.DeleteAsync(fileKey, CancellationToken.None);
+        }
+        catch
+        {
+            // File cleanup is best-effort after the database operation has already succeeded.
+        }
+    }
+
+    private async Task SaveIndexingFailureAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            // Preserve the original indexing exception for the caller.
+        }
+    }
+
+    private static void QueueLessonIndexing(SkillModuleLesson lesson, DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = now;
+    }
+
+    private static void MarkLessonIndexing(SkillModuleLesson lesson, DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = now;
+    }
+
+    private static void MarkLessonIndexed(SkillModuleLesson lesson, DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexed;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = now;
+        lesson.UpdatedAt = now;
+    }
+
+    private static void MarkLessonIndexingFailed(
+        SkillModuleLesson lesson,
+        Exception exception,
+        DateTime now)
+    {
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Failed;
+        lesson.IndexingError = CreateIndexingError(exception);
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = now;
+    }
+
+    private static string CreateIndexingError(Exception exception)
+    {
+        const int maxLength = 1000;
+        var message = exception.Message.Trim();
+
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            message = "Lesson indexing failed.";
+        }
+
+        return message.Length <= maxLength
+            ? message
+            : message[..maxLength];
+    }
+
+    private static BulkUploadedLessonDto MapBulkUploadedLesson(
+        BulkUploadLessonItemDto item,
+        SkillModuleLesson lesson,
+        LearningModuleUploadedFileDto file,
+        int chunksGenerated)
+    {
+        return new BulkUploadedLessonDto
+        {
+            ClientId = item.ClientId,
+            SkillModuleLessonId = lesson.SkillModuleLessonId,
+            Title = lesson.Title,
+            Slug = lesson.Slug,
+            OrderIndex = lesson.OrderIndex,
+            MarkdownFileName = lesson.MarkdownFileName ?? file.FileName,
+            MarkdownFileKey = lesson.MarkdownFileKey,
+            ContentHash = lesson.ContentHash,
+            ContentSizeBytes = lesson.ContentSizeBytes ?? file.Length,
+            ContentVersion = lesson.ContentVersion,
+            IndexingStatus = lesson.IndexingStatus,
+            IndexedAt = lesson.IndexedAt,
+            IndexingError = lesson.IndexingError,
+            ChunksGenerated = chunksGenerated
+        };
+    }
+
+    private static BulkUploadLessonFailureDto CreateBulkUploadLessonFailure(
+        BulkUploadLessonItemDto item,
+        string reason)
+    {
+        return new BulkUploadLessonFailureDto
+        {
+            ClientId = item.ClientId,
+            FileName = item.FileName,
+            Title = item.Title,
+            Reason = reason
+        };
+    }
+
+    private static string CreateUploadFailureReason(Exception exception)
+    {
+        return CreateIndexingError(exception);
+    }
+
+    private static void ValidateBulkUploadRequest(
+        BulkUploadLessonsRequestDto request,
+        IReadOnlyList<LearningModuleUploadedFileDto> files)
+    {
+        if (request.Lessons.Count == 0)
+        {
+            throw new ConflictException("At least one lesson is required.");
+        }
+
+        if (files.Count == 0)
+        {
+            throw new ConflictException("At least one Markdown file is required.");
+        }
+
+        var duplicateClientIds = request.Lessons
+            .Where(item => !string.IsNullOrWhiteSpace(item.ClientId))
+            .GroupBy(item => item.ClientId)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToList();
+
+        if (duplicateClientIds.Count > 0)
+        {
+            throw new ConflictException("Lesson client IDs must be unique.");
+        }
+
+        var duplicateFileNames = files
+            .GroupBy(file => file.FileName, StringComparer.OrdinalIgnoreCase)
+            .Any(group => group.Count() > 1);
+
+        if (duplicateFileNames)
+        {
+            throw new ConflictException("Uploaded file names must be unique.");
+        }
+    }
+
+    private static bool TryValidateBulkUploadLessonItem(
+        BulkUploadLessonItemDto item,
+        IReadOnlyDictionary<string, LearningModuleUploadedFileDto> filesByName,
+        out LearningModuleUploadedFileDto file,
+        out string failureReason)
+    {
+        file = null!;
+        failureReason = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(item.ClientId))
+        {
+            failureReason = "Lesson client ID is required.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.Title))
+        {
+            failureReason = "Lesson title is required.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.FileName))
+        {
+            failureReason = "Lesson file name is required.";
+            return false;
+        }
+
+        if (!filesByName.TryGetValue(item.FileName, out var matchedFile))
+        {
+            failureReason = "Uploaded file was not found.";
+            return false;
+        }
+
+        file = matchedFile;
+        return true;
+    }
+
+    private static void ValidateReorderRequest(
+        ReorderLessonsRequestDto request,
+        IReadOnlyList<SkillModuleLesson> existingLessons)
+    {
+        if (request.Lessons.Count == 0)
+        {
+            throw new ConflictException("Lesson order list cannot be empty.");
+        }
+
+        var existingIds = existingLessons
+            .Select(lesson => lesson.SkillModuleLessonId)
+            .OrderBy(id => id)
+            .ToList();
+
+        var requestIds = request.Lessons
+            .Select(lesson => lesson.SkillModuleLessonId)
+            .OrderBy(id => id)
+            .ToList();
+
+        if (!existingIds.SequenceEqual(requestIds))
+        {
+            throw new ConflictException("Lesson reorder request must include every lesson in the module.");
+        }
+
+        if (request.Lessons.Any(lesson => lesson.OrderIndex <= 0))
+        {
+            throw new ConflictException("Lesson order values must be positive.");
+        }
+
+        if (request.Lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() != request.Lessons.Count)
+        {
+            throw new ConflictException("Lesson order values must be unique.");
+        }
+    }
+
+    private static void ValidateMarkdownFile(
+        LearningModuleUploadedFileDto file,
+        string markdown)
+    {
+        if (file.Length <= 0)
+        {
+            throw new ConflictException("Markdown file cannot be empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(markdown))
+        {
+            throw new ConflictException("Markdown file content cannot be empty.");
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+
+        if (!string.Equals(extension, ".md", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(extension, ".markdown", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException("Only Markdown files are allowed.");
+        }
+    }
+
+    private static async Task<string> ReadMarkdownAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        if (stream.CanSeek)
+        {
+            stream.Position = 0;
+        }
+
+        using var reader = new StreamReader(
+            stream,
+            Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: true,
+            leaveOpen: false);
+
+        return await reader.ReadToEndAsync(cancellationToken);
+    }
+
+    private async Task<string> CreateUniqueLessonSlugAsync(
+        Guid skillModuleId,
+        string value,
+        Guid? excludeLessonId,
+        CancellationToken cancellationToken)
+    {
+        var baseSlug = Slugify(value);
+
+        if (string.IsNullOrWhiteSpace(baseSlug))
+        {
+            baseSlug = "lesson";
+        }
+
+        var slug = baseSlug;
+        var suffix = 2;
+
+        while (await _context.SkillModuleLessons.AnyAsync(
+            lesson => lesson.SkillModuleId == skillModuleId
+                && lesson.Slug == slug
+                && (!excludeLessonId.HasValue || lesson.SkillModuleLessonId != excludeLessonId.Value),
+            cancellationToken))
+        {
+            slug = $"{baseSlug}-{suffix}";
+            suffix++;
+        }
+
+        return slug;
+    }
+
+    private static string Slugify(string value)
+    {
+        var lower = value.Trim().ToLowerInvariant();
+        var slug = Regex.Replace(lower, @"[^a-z0-9]+", "-");
+        slug = Regex.Replace(slug, @"-+", "-").Trim('-');
+
+        return slug.Length <= 200
+            ? slug
+            : slug[..200].Trim('-');
+    }
+
+    private static string CreateSafeFileName(string fileName)
+    {
+        var name = Path.GetFileName(fileName);
+        var safe = Regex.Replace(name, @"[^a-zA-Z0-9._-]+", "-");
+        return string.IsNullOrWhiteSpace(safe)
+            ? "lesson.md"
+            : safe;
+    }
+
+    private static string CalculateSha256(string content)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
+    }
+
+    private static LearningModuleLessonDto MapLesson(SkillModuleLesson lesson)
+    {
+        return new LearningModuleLessonDto
+        {
+            SkillModuleLessonId = lesson.SkillModuleLessonId,
+            SkillModuleId = lesson.SkillModuleId,
+            Title = lesson.Title,
+            Slug = lesson.Slug,
+            Summary = lesson.Summary,
+            OrderIndex = lesson.OrderIndex,
+            EstimatedHours = lesson.EstimatedHours,
+            MarkdownFileKey = lesson.MarkdownFileKey,
+            MarkdownFileName = lesson.MarkdownFileName,
+            ContentHash = lesson.ContentHash,
+            ContentSizeBytes = lesson.ContentSizeBytes,
+            ContentVersion = lesson.ContentVersion,
+            IndexingStatus = lesson.IndexingStatus,
+            IndexedAt = lesson.IndexedAt,
+            IndexingError = lesson.IndexingError,
+            ChunkCount = lesson.SkillModuleChunks.Count,
+            CreatedAt = lesson.CreatedAt,
+            UpdatedAt = lesson.UpdatedAt
+        };
+    }
+}

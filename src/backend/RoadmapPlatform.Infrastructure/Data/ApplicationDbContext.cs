@@ -19,11 +19,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<CareerRole> CareerRoles { get; set; }
 
     public virtual DbSet<CareerRoleSkillGroup> CareerRoleSkillGroups { get; set; }
-
-    public virtual DbSet<ChatbotMessage> ChatbotMessages { get; set; }
-
-    public virtual DbSet<Conversation> Conversations { get; set; }
-
+    
     public virtual DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
 
     public virtual DbSet<Invoice> Invoices { get; set; }
@@ -38,10 +34,6 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<LearningResourceSkill> LearningResourceSkills { get; set; }
 
-    public virtual DbSet<MyResource> MyResources { get; set; }
-
-    public virtual DbSet<OtherResource> OtherResources { get; set; }
-
     public virtual DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
     public virtual DbSet<PendingLocalRegistration> PendingLocalRegistrations { get; set; }
@@ -55,10 +47,6 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<RepoInsight> RepoInsights { get; set; }
 
     public virtual DbSet<Repository> Repositories { get; set; }
-
-    public virtual DbSet<Resource> Resources { get; set; }
-
-    public virtual DbSet<ResourceChunk> ResourceChunks { get; set; }
 
     public virtual DbSet<Roadmap> Roadmaps { get; set; }
 
@@ -78,6 +66,24 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Skill> Skills { get; set; }
 
+    public virtual DbSet<SkillModule> SkillModules { get; set; }
+
+    public virtual DbSet<SkillModuleChunk> SkillModuleChunks { get; set; }
+
+    public virtual DbSet<SkillModuleEnrollment> SkillModuleEnrollments { get; set; }
+
+    public virtual DbSet<SkillModuleLesson> SkillModuleLessons { get; set; }
+
+    public virtual DbSet<SkillModuleQuiz> SkillModuleQuizzes { get; set; }
+
+    public virtual DbSet<SkillModuleQuizAnswer> SkillModuleQuizAnswers { get; set; }
+
+    public virtual DbSet<SkillModuleQuizAttempt> SkillModuleQuizAttempts { get; set; }
+
+    public virtual DbSet<SkillModuleQuizOption> SkillModuleQuizOptions { get; set; }
+
+    public virtual DbSet<SkillModuleQuizQuestion> SkillModuleQuizQuestions { get; set; }
+    
     public virtual DbSet<SkillGroup> SkillGroups { get; set; }
 
     public virtual DbSet<SkillGroupItem> SkillGroupItems { get; set; }
@@ -218,56 +224,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_career_role_skill_group_group");
         });
 
-        modelBuilder.Entity<ChatbotMessage>(entity =>
-        {
-            entity.HasKey(e => e.RequestId).HasName("chatbot_message_pkey");
-
-            entity.ToTable("chatbot_message");
-
-            entity.Property(e => e.RequestId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("request_id");
-            entity.Property(e => e.ContentMessage).HasColumnName("content_message");
-            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
-            entity.Property(e => e.Metadata)
-                .HasColumnType("jsonb")
-                .HasColumnName("metadata");
-
-            entity.HasOne(d => d.Conversation).WithMany(p => p.ChatbotMessages)
-                .HasForeignKey(d => d.ConversationId)
-                .HasConstraintName("fk_chatbot_message_conversation_id");
-        });
-
-        modelBuilder.Entity<Conversation>(entity =>
-        {
-            entity.HasKey(e => e.ConversationId).HasName("conversation_pkey");
-
-            entity.ToTable("conversation");
-
-            entity.Property(e => e.ConversationId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("conversation_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.ResourceId).HasColumnName("resource_id");
-            entity.Property(e => e.Title)
-                .HasMaxLength(100)
-                .HasColumnName("title");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.Resource).WithMany(p => p.Conversations)
-                .HasForeignKey(d => d.ResourceId)
-                .HasConstraintName("fk_conversation_resource_id");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Conversations)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("fk_conversation_user_id");
-        });
-
         modelBuilder.Entity<EmailVerificationToken>(entity =>
         {
             entity.HasKey(e => e.VerificationId).HasName("email_verification_token_pkey");
@@ -374,24 +330,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.JobPostingId).HasName("job_posting_pkey");
 
-            entity.ToTable("job_posting", tb =>
-            {
-                tb.HasCheckConstraint(
-                    "chk_job_posting_requirements_json_array",
-                    "jsonb_typeof(requirements) = 'array'");
-                tb.HasCheckConstraint(
-                    "chk_job_posting_specialties_json_array",
-                    "jsonb_typeof(specialties) = 'array'");
-                tb.HasCheckConstraint(
-                    "chk_job_posting_benefits_json_array",
-                    "jsonb_typeof(benefits) = 'array'");
-            });
+            entity.ToTable("job_posting");
 
             entity.HasIndex(e => new { e.IsActive, e.LastSeenAt }, "ix_job_posting_active_last_seen");
 
-            entity.HasIndex(e => e.LifecycleStatus, "ix_job_posting_lifecycle_status");
-
             entity.HasIndex(e => e.Category, "ix_job_posting_category");
+
+            entity.HasIndex(e => e.LifecycleStatus, "ix_job_posting_lifecycle_status");
 
             entity.HasIndex(e => e.PublishedAt, "ix_job_posting_published_at");
 
@@ -406,17 +351,17 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.JobPostingId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("job_posting_id");
-            entity.Property(e => e.ClosedDetectedAt).HasColumnName("closed_detected_at");
-            entity.Property(e => e.CompanyName)
-                .HasMaxLength(160)
-                .HasColumnName("company_name");
-            entity.Property(e => e.Category)
-                .HasMaxLength(100)
-                .HasColumnName("category");
             entity.Property(e => e.Benefits)
                 .HasDefaultValueSql("'[]'::jsonb")
                 .HasColumnType("jsonb")
                 .HasColumnName("benefits");
+            entity.Property(e => e.Category)
+                .HasMaxLength(100)
+                .HasColumnName("category");
+            entity.Property(e => e.ClosedDetectedAt).HasColumnName("closed_detected_at");
+            entity.Property(e => e.CompanyName)
+                .HasMaxLength(160)
+                .HasColumnName("company_name");
             entity.Property(e => e.ContentHash)
                 .HasMaxLength(64)
                 .HasDefaultValueSql("''::character varying")
@@ -425,10 +370,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.Experience)
                 .HasMaxLength(100)
                 .HasColumnName("experience");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.ExternalId)
                 .HasMaxLength(120)
                 .HasColumnName("external_id");
@@ -454,10 +399,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(160)
                 .HasColumnName("location");
             entity.Property(e => e.MissingScanCount).HasColumnName("missing_scan_count");
-            entity.Property(e => e.PublishedAt).HasColumnName("published_at");
             entity.Property(e => e.PostDateText)
                 .HasMaxLength(80)
                 .HasColumnName("post_date_text");
+            entity.Property(e => e.PublishedAt).HasColumnName("published_at");
             entity.Property(e => e.Requirements)
                 .HasDefaultValueSql("'[]'::jsonb")
                 .HasColumnType("jsonb")
@@ -597,42 +542,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Skill).WithMany(p => p.LearningResourceSkills)
                 .HasForeignKey(d => d.SkillId)
                 .HasConstraintName("fk_learning_resource_skill_skill");
-        });
-
-        modelBuilder.Entity<MyResource>(entity =>
-        {
-            entity.HasKey(e => e.ResourceId).HasName("my_resource_pkey");
-
-            entity.ToTable("my_resource");
-
-            entity.Property(e => e.ResourceId)
-                .ValueGeneratedNever()
-                .HasColumnName("resource_id");
-
-            entity.HasOne(d => d.Resource).WithOne(p => p.MyResource)
-                .HasForeignKey<MyResource>(d => d.ResourceId)
-                .HasConstraintName("fk_my_resource_id");
-        });
-
-        modelBuilder.Entity<OtherResource>(entity =>
-        {
-            entity.HasKey(e => e.ResourceId).HasName("other_resource_pkey");
-
-            entity.ToTable("other_resource");
-
-            entity.Property(e => e.ResourceId)
-                .ValueGeneratedNever()
-                .HasColumnName("resource_id");
-            entity.Property(e => e.Provider)
-                .HasMaxLength(100)
-                .HasColumnName("provider");
-            entity.Property(e => e.ResourceType)
-                .HasMaxLength(100)
-                .HasColumnName("resource_type");
-
-            entity.HasOne(d => d.Resource).WithOne(p => p.OtherResource)
-                .HasForeignKey<OtherResource>(d => d.ResourceId)
-                .HasConstraintName("fk_other_resource_id");
         });
 
         modelBuilder.Entity<PaymentTransaction>(entity =>
@@ -876,55 +785,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Repositories)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_repository_user_id");
-        });
-
-        modelBuilder.Entity<Resource>(entity =>
-        {
-            entity.HasKey(e => e.ResourceId).HasName("resource_pkey");
-
-            entity.ToTable("resource");
-
-            entity.Property(e => e.ResourceId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("resource_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Metadata)
-                .HasColumnType("jsonb")
-                .HasColumnName("metadata");
-            entity.Property(e => e.SkillId).HasColumnName("skill_id");
-            entity.Property(e => e.Title)
-                .HasMaxLength(100)
-                .HasColumnName("title");
-            entity.Property(e => e.Url)
-                .HasMaxLength(100)
-                .HasColumnName("url");
-
-            entity.HasOne(d => d.Skill).WithMany(p => p.Resources)
-                .HasForeignKey(d => d.SkillId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_skill_id");
-        });
-
-        modelBuilder.Entity<ResourceChunk>(entity =>
-        {
-            entity.HasKey(e => e.ChunkId).HasName("resource_chunk_pkey");
-
-            entity.ToTable("resource_chunk");
-
-            entity.Property(e => e.ChunkId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("chunk_id");
-            entity.Property(e => e.ChunkContent).HasColumnName("chunk_content");
-            entity.Property(e => e.Embedding)
-                .HasMaxLength(3072)
-                .HasColumnName("embedding");
-            entity.Property(e => e.ResourceId).HasColumnName("resource_id");
-
-            entity.HasOne(d => d.Resource).WithMany(p => p.ResourceChunks)
-                .HasForeignKey(d => d.ResourceId)
-                .HasConstraintName("fk_chunk_resource");
         });
 
         modelBuilder.Entity<Roadmap>(entity =>
@@ -1353,6 +1213,403 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<SkillModule>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleId).HasName("skill_module_pkey");
+
+            entity.ToTable("skill_module");
+
+            entity.HasIndex(e => e.CreatedByUserId, "ix_skill_module_created_by_user_id");
+
+            entity.HasIndex(e => e.PublishedAt, "ix_skill_module_published_at").IsDescending();
+
+            entity.HasIndex(e => e.SkillId, "ix_skill_module_skill_id");
+
+            entity.HasIndex(e => new { e.Status, e.UpdatedAt }, "ix_skill_module_status_updated_at").IsDescending(false, true);
+
+            entity.HasIndex(e => e.Slug, "uq_skill_module_slug").IsUnique();
+
+            entity.Property(e => e.SkillModuleId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_id");
+            entity.Property(e => e.ArchivedAt).HasColumnName("archived_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedByUserId).HasColumnName("created_by_user_id");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.DifficultyLevel)
+                .HasMaxLength(30)
+                .HasColumnName("difficulty_level");
+            entity.Property(e => e.EstimatedHours)
+                .HasPrecision(5, 2)
+                .HasColumnName("estimated_hours");
+            entity.Property(e => e.Metadata)
+                .HasDefaultValueSql("'{}'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("metadata");
+            entity.Property(e => e.PublishedAt).HasColumnName("published_at");
+            entity.Property(e => e.SkillId).HasColumnName("skill_id");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(200)
+                .HasColumnName("slug");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'draft'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.CreatedByUser).WithMany(p => p.SkillModules)
+                .HasForeignKey(d => d.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_skill_module_created_by_user");
+
+            entity.HasOne(d => d.Skill).WithMany(p => p.SkillModules)
+                .HasForeignKey(d => d.SkillId)
+                .HasConstraintName("fk_skill_module_skill");
+        });
+
+        modelBuilder.Entity<SkillModuleChunk>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleChunkId).HasName("skill_module_chunk_pkey");
+
+            entity.ToTable("skill_module_chunk");
+
+            entity.HasIndex(e => e.SkillModuleLessonId, "ix_skill_module_chunk_lesson_id");
+
+            entity.HasIndex(e => e.SkillModuleId, "ix_skill_module_chunk_module_id");
+
+            entity.HasIndex(e => new { e.SkillModuleLessonId, e.ChunkIndex }, "uq_skill_module_chunk_lesson_index").IsUnique();
+
+            entity.Property(e => e.SkillModuleChunkId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_chunk_id");
+            entity.Property(e => e.ChunkIndex).HasColumnName("chunk_index");
+            entity.Property(e => e.Content).HasColumnName("content");
+            entity.Property(e => e.ContentHash).HasColumnName("content_hash");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Embedding)
+                .HasMaxLength(3072)
+                .HasColumnName("embedding");
+            entity.Property(e => e.Heading).HasColumnName("heading");
+            entity.Property(e => e.SkillModuleId).HasColumnName("skill_module_id");
+            entity.Property(e => e.SkillModuleLessonId).HasColumnName("skill_module_lesson_id");
+            entity.Property(e => e.TokenCount).HasColumnName("token_count");
+
+            entity.HasOne(d => d.SkillModule).WithMany(p => p.SkillModuleChunks)
+                .HasForeignKey(d => d.SkillModuleId)
+                .HasConstraintName("fk_skill_module_chunk_module");
+
+            entity.HasOne(d => d.SkillModuleLesson).WithMany(p => p.SkillModuleChunks)
+                .HasForeignKey(d => d.SkillModuleLessonId)
+                .HasConstraintName("fk_skill_module_chunk_lesson");
+        });
+
+        modelBuilder.Entity<SkillModuleEnrollment>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleEnrollmentId).HasName("skill_module_enrollment_pkey");
+
+            entity.ToTable("skill_module_enrollment");
+
+            entity.HasIndex(e => e.SkillModuleId, "ix_skill_module_enrollment_module_id");
+
+            entity.HasIndex(e => e.UserId, "ix_skill_module_enrollment_user_id");
+
+            entity.HasIndex(e => new { e.UserId, e.SkillModuleId }, "uq_skill_module_enrollment_user_module").IsUnique();
+
+            entity.Property(e => e.SkillModuleEnrollmentId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_enrollment_id");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.LastAccessedLessonId).HasColumnName("last_accessed_lesson_id");
+            entity.Property(e => e.LessonProgress)
+                .HasDefaultValueSql("'{}'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("lesson_progress");
+            entity.Property(e => e.ProgressPercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("progress_percent");
+            entity.Property(e => e.SkillModuleId).HasColumnName("skill_module_id");
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("started_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'in_progress'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.LastAccessedLesson).WithMany(p => p.SkillModuleEnrollments)
+                .HasForeignKey(d => d.LastAccessedLessonId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_skill_module_enrollment_last_lesson");
+
+            entity.HasOne(d => d.SkillModule).WithMany(p => p.SkillModuleEnrollments)
+                .HasForeignKey(d => d.SkillModuleId)
+                .HasConstraintName("fk_skill_module_enrollment_module");
+
+            entity.HasOne(d => d.User).WithMany(p => p.SkillModuleEnrollments)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_skill_module_enrollment_user");
+        });
+
+        modelBuilder.Entity<SkillModuleLesson>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleLessonId).HasName("skill_module_lesson_pkey");
+
+            entity.ToTable("skill_module_lesson");
+
+            entity.HasIndex(e => new { e.SkillModuleId, e.IndexingStatus }, "ix_skill_module_lesson_indexing_status");
+
+            entity.HasIndex(e => new { e.SkillModuleId, e.OrderIndex }, "ix_skill_module_lesson_module_order");
+
+            entity.HasIndex(e => new { e.SkillModuleId, e.OrderIndex }, "uq_skill_module_lesson_order").IsUnique();
+
+            entity.HasIndex(e => new { e.SkillModuleId, e.Slug }, "uq_skill_module_lesson_slug").IsUnique();
+
+            entity.Property(e => e.SkillModuleLessonId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_lesson_id");
+            entity.Property(e => e.ContentHash).HasColumnName("content_hash");
+            entity.Property(e => e.ContentSizeBytes).HasColumnName("content_size_bytes");
+            entity.Property(e => e.ContentVersion)
+                .HasDefaultValue(1)
+                .HasColumnName("content_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.EstimatedHours)
+                .HasPrecision(5, 2)
+                .HasColumnName("estimated_hours");
+            entity.Property(e => e.IndexedAt).HasColumnName("indexed_at");
+            entity.Property(e => e.IndexingError).HasColumnName("indexing_error");
+            entity.Property(e => e.IndexingStatus)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'pending'::character varying")
+                .HasColumnName("indexing_status");
+            entity.Property(e => e.MarkdownFileKey).HasColumnName("markdown_file_key");
+            entity.Property(e => e.MarkdownFileName)
+                .HasMaxLength(255)
+                .HasColumnName("markdown_file_name");
+            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
+            entity.Property(e => e.SkillModuleId).HasColumnName("skill_module_id");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(200)
+                .HasColumnName("slug");
+            entity.Property(e => e.Summary).HasColumnName("summary");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.SkillModule).WithMany(p => p.SkillModuleLessons)
+                .HasForeignKey(d => d.SkillModuleId)
+                .HasConstraintName("fk_skill_module_lesson_module");
+        });
+
+        modelBuilder.Entity<SkillModuleQuiz>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleQuizId).HasName("skill_module_quiz_pkey");
+
+            entity.ToTable("skill_module_quiz");
+
+            entity.HasIndex(e => e.Status, "ix_skill_module_quiz_status");
+
+            entity.HasIndex(e => e.SkillModuleId, "uq_skill_module_quiz_module").IsUnique();
+
+            entity.Property(e => e.SkillModuleQuizId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_quiz_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.MaxAttempts).HasColumnName("max_attempts");
+            entity.Property(e => e.PassingScorePercent)
+                .HasPrecision(5, 2)
+                .HasDefaultValue(70m)
+                .HasColumnName("passing_score_percent");
+            entity.Property(e => e.SkillModuleId).HasColumnName("skill_module_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'draft'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.SkillModule).WithOne(p => p.SkillModuleQuiz)
+                .HasForeignKey<SkillModuleQuiz>(d => d.SkillModuleId)
+                .HasConstraintName("fk_skill_module_quiz_module");
+        });
+
+        modelBuilder.Entity<SkillModuleQuizAnswer>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleQuizAnswerId).HasName("skill_module_quiz_answer_pkey");
+
+            entity.ToTable("skill_module_quiz_answer");
+
+            entity.HasIndex(e => e.SkillModuleQuizAttemptId, "ix_skill_module_answer_attempt_id");
+
+            entity.HasIndex(e => new { e.SkillModuleQuizAttemptId, e.SkillModuleQuizQuestionId }, "uq_skill_module_quiz_answer_question").IsUnique();
+
+            entity.Property(e => e.SkillModuleQuizAnswerId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_quiz_answer_id");
+            entity.Property(e => e.AnsweredAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("answered_at");
+            entity.Property(e => e.EarnedPoints).HasColumnName("earned_points");
+            entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
+            entity.Property(e => e.SelectedOptionId).HasColumnName("selected_option_id");
+            entity.Property(e => e.SkillModuleQuizAttemptId).HasColumnName("skill_module_quiz_attempt_id");
+            entity.Property(e => e.SkillModuleQuizQuestionId).HasColumnName("skill_module_quiz_question_id");
+
+            entity.HasOne(d => d.SelectedOption).WithMany(p => p.SkillModuleQuizAnswers)
+                .HasForeignKey(d => d.SelectedOptionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_skill_module_quiz_answer_option");
+
+            entity.HasOne(d => d.SkillModuleQuizAttempt).WithMany(p => p.SkillModuleQuizAnswers)
+                .HasForeignKey(d => d.SkillModuleQuizAttemptId)
+                .HasConstraintName("fk_skill_module_quiz_answer_attempt");
+
+            entity.HasOne(d => d.SkillModuleQuizQuestion).WithMany(p => p.SkillModuleQuizAnswers)
+                .HasForeignKey(d => d.SkillModuleQuizQuestionId)
+                .HasConstraintName("fk_skill_module_quiz_answer_question");
+        });
+
+        modelBuilder.Entity<SkillModuleQuizAttempt>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleQuizAttemptId).HasName("skill_module_quiz_attempt_pkey");
+
+            entity.ToTable("skill_module_quiz_attempt");
+
+            entity.HasIndex(e => e.SkillModuleEnrollmentId, "ix_skill_module_attempt_enrollment_id");
+
+            entity.HasIndex(e => e.UserId, "ix_skill_module_attempt_user_id");
+
+            entity.HasIndex(e => new { e.SkillModuleQuizId, e.UserId, e.AttemptNo }, "uq_skill_module_quiz_attempt_no").IsUnique();
+
+            entity.Property(e => e.SkillModuleQuizAttemptId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_quiz_attempt_id");
+            entity.Property(e => e.AttemptNo).HasColumnName("attempt_no");
+            entity.Property(e => e.EarnedPoints).HasColumnName("earned_points");
+            entity.Property(e => e.Passed).HasColumnName("passed");
+            entity.Property(e => e.ScorePercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("score_percent");
+            entity.Property(e => e.SkillModuleEnrollmentId).HasColumnName("skill_module_enrollment_id");
+            entity.Property(e => e.SkillModuleQuizId).HasColumnName("skill_module_quiz_id");
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("started_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'in_progress'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(e => e.TotalPoints).HasColumnName("total_points");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.SkillModuleEnrollment).WithMany(p => p.SkillModuleQuizAttempts)
+                .HasForeignKey(d => d.SkillModuleEnrollmentId)
+                .HasConstraintName("fk_skill_module_quiz_attempt_enrollment");
+
+            entity.HasOne(d => d.SkillModuleQuiz).WithMany(p => p.SkillModuleQuizAttempts)
+                .HasForeignKey(d => d.SkillModuleQuizId)
+                .HasConstraintName("fk_skill_module_quiz_attempt_quiz");
+
+            entity.HasOne(d => d.User).WithMany(p => p.SkillModuleQuizAttempts)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_skill_module_quiz_attempt_user");
+        });
+
+        modelBuilder.Entity<SkillModuleQuizOption>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleQuizOptionId).HasName("skill_module_quiz_option_pkey");
+
+            entity.ToTable("skill_module_quiz_option");
+
+            entity.HasIndex(e => new { e.SkillModuleQuizQuestionId, e.OrderIndex }, "ix_skill_module_option_question_order");
+
+            entity.HasIndex(e => new { e.SkillModuleQuizQuestionId, e.OrderIndex }, "uq_skill_module_quiz_option_order").IsUnique();
+
+            entity.Property(e => e.SkillModuleQuizOptionId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_quiz_option_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Explanation).HasColumnName("explanation");
+            entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
+            entity.Property(e => e.OptionText).HasColumnName("option_text");
+            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
+            entity.Property(e => e.SkillModuleQuizQuestionId).HasColumnName("skill_module_quiz_question_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.SkillModuleQuizQuestion).WithMany(p => p.SkillModuleQuizOptions)
+                .HasForeignKey(d => d.SkillModuleQuizQuestionId)
+                .HasConstraintName("fk_skill_module_quiz_option_question");
+        });
+
+        modelBuilder.Entity<SkillModuleQuizQuestion>(entity =>
+        {
+            entity.HasKey(e => e.SkillModuleQuizQuestionId).HasName("skill_module_quiz_question_pkey");
+
+            entity.ToTable("skill_module_quiz_question");
+
+            entity.HasIndex(e => new { e.SkillModuleQuizId, e.OrderIndex }, "ix_skill_module_question_quiz_order");
+
+            entity.HasIndex(e => new { e.SkillModuleQuizId, e.OrderIndex }, "uq_skill_module_quiz_question_order").IsUnique();
+
+            entity.Property(e => e.SkillModuleQuizQuestionId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_module_quiz_question_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Explanation).HasColumnName("explanation");
+            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
+            entity.Property(e => e.Points)
+                .HasDefaultValue(1)
+                .HasColumnName("points");
+            entity.Property(e => e.QuestionText).HasColumnName("question_text");
+            entity.Property(e => e.QuestionType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'single_choice'::character varying")
+                .HasColumnName("question_type");
+            entity.Property(e => e.SkillModuleQuizId).HasColumnName("skill_module_quiz_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.SkillModuleQuiz).WithMany(p => p.SkillModuleQuizQuestions)
+                .HasForeignKey(d => d.SkillModuleQuizId)
+                .HasConstraintName("fk_skill_module_quiz_question_quiz");
+        });
+
         modelBuilder.Entity<SkillGroup>(entity =>
         {
             entity.HasKey(e => e.SkillGroupId).HasName("skill_group_pkey");
@@ -1404,12 +1661,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
 
-            entity.ToTable("skill_trend_snapshot", tb =>
-            {
-                tb.HasCheckConstraint(
-                    "chk_skill_trend_snapshot_counts",
-                    "mention_count >= 0 AND posting_count >= 0");
-            });
+            entity.ToTable("skill_trend_snapshot");
 
             entity.HasIndex(e => e.SnapshotDate, "ix_skill_trend_snapshot_date");
 

@@ -26,6 +26,7 @@ public sealed class RoadmapNodeDetailDto
     public List<string> CompletionCriteria { get; set; } = [];
     public List<SkillDto> Skills { get; set; } = [];
     public List<LearningResourceDto> Resources { get; set; } = [];
+    public List<RoadmapLearningModuleDto> LearningModules { get; set; } = [];
     public List<RoadmapChildSummaryDto> Children { get; set; } = [];
     public UserNodeProgressDto Progress { get; set; } = new();
 }

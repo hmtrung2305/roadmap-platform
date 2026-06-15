@@ -7,10 +7,10 @@ import LandingPage from "./pages/LandingPage";
 import DashboardPage from "./pages/DashboardPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
+import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
-import ResourceManagementPage from "./pages/ResourceManagementPage";
 import StudyRoomPage from "./pages/StudyRoomPage";
 import ManagePortfolioRepositoriesPage from "./pages/ManagePortfolioRepositoryPage";
 import EditPortfolioPage from "./pages/EditPortfolioPage";
@@ -25,6 +25,14 @@ import ProfilePage from "./pages/ProfilePage";
 import RoadmapSelectionPage from "./pages/RoadmapSelectionPage";
 import RoadmapViewerPage from "./pages/RoadmapViewerPage";
 import MarketPulsePage from "./pages/MarketPulsePage";
+import LearningModulesPage from "./pages/learning/LearningModulesPage";
+import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
+import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
+import AdminLearningModulesPage from "./pages/admin/learningModules/AdminLearningModulesPage";
+import AdminLearningModuleCreatePage from "./pages/admin/learningModules/AdminLearningModuleCreatePage";
+import AdminLearningModuleEditorPage from "./pages/admin/learningModules/AdminLearningModuleEditorPage";
+import AdminLearningModulePreviewPage from "./pages/admin/learningModules/AdminLearningModulePreviewPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -139,13 +147,33 @@ export default function App() {
               path="/portfolio/repositories"
               element={<ManagePortfolioRepositoriesPage />}
             />
-            <Route path="/resources" element={<ResourceManagementPage />} />
-            <Route path="/study/:resourceId" element={<StudyRoomPage />} />
+            <Route path="/resources" element={<Navigate to="/learning-modules" replace />} />
+            <Route path="/study/:resourceId" element={<Navigate to="/learning-modules" replace />} />
+
+            <Route path="/learning-modules" element={<LearningModulesPage />} />
+            <Route path="/learning-modules/browse" element={<BrowseLearningModulesPage />} />
+            <Route path="/learning-modules/:slug/overview" element={<LearningModuleOverviewPage />} />
+            <Route path="/learning-modules/:slug/study" element={<StudyRoomPage />} />
+            <Route path="/learning-modules/:slug" element={<StudyRoomPage />} />
 
             <Route path="/roadmaps" element={<RoadmapSelectionPage />} />
             <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
             <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
             <Route path="/market-pulse" element={<MarketPulsePage />} />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/admin/learning-modules" element={<AdminLearningModulesPage />} />
+            <Route path="/admin/learning-modules/create" element={<AdminLearningModuleCreatePage />} />
+            <Route path="/admin/learning-modules/:moduleSlug/edit" element={<AdminLearningModuleEditorPage />} />
+            <Route path="/admin/learning-modules/:moduleSlug/preview" element={<AdminLearningModulePreviewPage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 
           <Route

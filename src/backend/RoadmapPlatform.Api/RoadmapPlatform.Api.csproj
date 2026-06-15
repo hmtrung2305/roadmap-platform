@@ -8,6 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Controllers\Chat\**" />
+    <Compile Remove="Controllers\Resources\**" />
+    <Content Remove="Controllers\Chat\**" />
+    <Content Remove="Controllers\Resources\**" />
+    <EmbeddedResource Remove="Controllers\Chat\**" />
+    <EmbeddedResource Remove="Controllers\Resources\**" />
+    <None Remove="Controllers\Chat\**" />
+    <None Remove="Controllers\Resources\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AspNet.Security.OAuth.GitHub" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />

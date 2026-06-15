@@ -3,19 +3,20 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
-using RoadmapPlatform.Application.Interfaces.Chat;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
+using RoadmapPlatform.Application.Interfaces.LearningModules;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
-using RoadmapPlatform.Application.Interfaces.Rag;
-using RoadmapPlatform.Application.Interfaces.Resources;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Security;
+using RoadmapPlatform.Application.Interfaces.Skills;
+using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using RoadmapPlatform.Application.Interfaces.Users;
 using RoadmapPlatform.Infrastructure.Clients;
@@ -27,17 +28,17 @@ using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.Auth;
 using RoadmapPlatform.Infrastructure.Services.CareerRoleSkill;
-using RoadmapPlatform.Infrastructure.Services.Chat;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
+using RoadmapPlatform.Infrastructure.Services.LearningModules;
 using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
-using RoadmapPlatform.Infrastructure.Services.Rag;
-using RoadmapPlatform.Infrastructure.Services.Resources;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 using RoadmapPlatform.Infrastructure.Services.Security;
+using RoadmapPlatform.Infrastructure.Services.Skills;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
+using RoadmapPlatform.Infrastructure.Services.Storage;
 using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
@@ -64,12 +65,13 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                 configuration.GetSection("Jwt"));
 
             // AI, RAG Settings
+            services.Configure<LearningModuleRagSettings>(configuration.GetSection("Rag"));
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
-            services.Configure<RagSettings>(configuration.GetSection("Rag"));
-            services.Configure<FileStorageSettings>(configuration.GetSection("FileStorage"));
-            services.Configure<SupabaseStorageSettings>(configuration.GetSection("SupabaseStorage"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
+
+            // File Storage Settings
+            services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
 
             // Register external service implementations below.
 
@@ -97,23 +99,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRepoSummaryGenerator, AiRepoSummaryGenerator>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
 
-            // Chatbot, RAG Services
-            services.AddScoped<IResourceService, ResourceService>();
-
-            var fileStorageProvider = configuration["FileStorage:Provider"];
-
-            if (string.Equals(fileStorageProvider, "Supabase", StringComparison.OrdinalIgnoreCase))
-            {
-                services.AddHttpClient<IResourceFileStorage, SupabaseResourceFileStorage>();
-            }
-            else
-            {
-                services.AddScoped<IResourceFileStorage, LocalResourceFileStorage>();
-            }
-
-            services.AddScoped<IChatService, ChatService>();
             services.AddScoped<IAiCreditService, AiCreditService>();
-            services.AddSingleton<IRagService, RagService>();
 
             // Streak Service
             services.AddScoped<IStreakService, StreakService>();
@@ -135,12 +121,48 @@ namespace RoadmapPlatform.Infrastructure.Extensions
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("RoadmapPlatform-MarketPulse/1.0");
             });
 
+            // Skill Services
+            services.AddScoped<ISkillLookupService, SkillLookupService>();
+
             // Roadmap Services
             services.AddScoped<RoadmapDetailBuilder>();
             services.AddScoped<IRoadmapQueryService, RoadmapQueryService>();
             services.AddScoped<IRoadmapEnrollmentService, RoadmapEnrollmentService>();
             services.AddScoped<IRoadmapProgressService, RoadmapProgressService>();
             services.AddScoped<IRoadmapLayoutService, RoadmapLayoutService>();
+
+            // File Storage
+            services.AddScoped<LocalFileStorage>();
+            services.AddHttpClient<SupabaseFileStorage>();
+            services.AddScoped<IFileStorage>(serviceProvider =>
+            {
+                var settings = serviceProvider.GetRequiredService<IOptions<FileStorageSettings>>().Value;
+                var provider = string.IsNullOrWhiteSpace(settings.Provider)
+                    ? "Local"
+                    : settings.Provider.Trim();
+
+                if (provider.Equals("Supabase", StringComparison.OrdinalIgnoreCase))
+                {
+                    return serviceProvider.GetRequiredService<SupabaseFileStorage>();
+                }
+
+                if (provider.Equals("Local", StringComparison.OrdinalIgnoreCase))
+                {
+                    return serviceProvider.GetRequiredService<LocalFileStorage>();
+                }
+
+                throw new InvalidOperationException($"Unsupported file storage provider '{settings.Provider}'.");
+            });
+
+            // Learning Module Services
+            services.AddScoped<LearningModuleMarkdownChunker>();
+            services.AddScoped<ILearningModuleRagIndexingService, LearningModuleRagIndexingService>();
+            services.AddScoped<ICounselorLearningModuleService, CounselorLearningModuleService>();
+            services.AddScoped<ILearningModuleLessonService, LearningModuleLessonService>();
+            services.AddScoped<ILearningModuleQuizService, LearningModuleQuizService>();
+            services.AddScoped<ILearnerLearningModuleService, LearnerLearningModuleService>();
+            services.AddScoped<ILearningModuleChatService, LearningModuleChatService>();
+            services.AddHostedService<LearningModuleIndexingWorker>();
 
             // Cache memory
             services.AddMemoryCache();

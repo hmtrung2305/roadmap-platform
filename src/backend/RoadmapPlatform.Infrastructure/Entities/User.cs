@@ -21,8 +21,6 @@ public partial class User
 
     public virtual ICollection<AiCreditUsage> AiCreditUsages { get; set; } = new List<AiCreditUsage>();
 
-    public virtual ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
-
     public virtual ICollection<EmailVerificationToken> EmailVerificationTokens { get; set; } = new List<EmailVerificationToken>();
 
     public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
@@ -36,6 +34,12 @@ public partial class User
     public virtual ICollection<RoadmapVersion> RoadmapVersions { get; set; } = new List<RoadmapVersion>();
 
     public virtual ICollection<Roadmap> Roadmaps { get; set; } = new List<Roadmap>();
+
+    public virtual ICollection<SkillModuleEnrollment> SkillModuleEnrollments { get; set; } = new List<SkillModuleEnrollment>();
+
+    public virtual ICollection<SkillModuleQuizAttempt> SkillModuleQuizAttempts { get; set; } = new List<SkillModuleQuizAttempt>();
+
+    public virtual ICollection<SkillModule> SkillModules { get; set; } = new List<SkillModule>();
 
     public virtual UserActivityStat? UserActivityStat { get; set; }
 

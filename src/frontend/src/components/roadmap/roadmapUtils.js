@@ -80,9 +80,17 @@ export function getStartFlowNode(flowNodes) {
 }
 
 export function mergeGraphNodeWithDetail(graphNode, detailNode) {
+  const detailLearningModules =
+    detailNode.learningModules ||
+    detailNode.LearningModules ||
+    graphNode.learningModules ||
+    graphNode.LearningModules ||
+    [];
+
   return {
     ...graphNode,
     ...detailNode,
+    learningModules: detailLearningModules,
     progress: {
       ...(graphNode.progress || {}),
       ...(detailNode.progress || {}),

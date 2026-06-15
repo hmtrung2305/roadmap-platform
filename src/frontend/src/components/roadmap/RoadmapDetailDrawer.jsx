@@ -108,6 +108,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
   const canTrack = isEnrolled && isManualNode && node.isTrackable !== false && status !== "locked";
   const resources = getSortedResources(node.resources || []);
   const resourceGroups = groupResourcesByType(resources);
+  const learningModules = node.learningModules || node.LearningModules || [];
   const lockedReason = getLockedReason(node);
   const isOptional = node.isRequired === false;
   const description = buildDescription(node, metadata);
@@ -202,6 +203,31 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
                   >
                     {formatSkillLabel(skill)}
                   </span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {learningModules.length > 0 && (
+            <Section
+              title="Curated learning modules"
+              badge={
+                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
+                  <span aria-hidden="true">✦</span>
+                  Recommended
+                </span>
+              }
+            >
+              <p className="mb-2 text-xs font-bold leading-5 text-slate-600">
+                Official modules selected for this skill.
+              </p>
+
+              <div className="grid gap-2.5">
+                {learningModules.map((module, index) => (
+                  <LearningModuleRow
+                    key={module.skillModuleId || module.SkillModuleId || module.slug || index}
+                    module={module}
+                  />
                 ))}
               </div>
             </Section>
@@ -336,12 +362,15 @@ function buildDescription(node, metadata) {
   return `${description} In practice, this helps you see where the idea is useful: ${sentence}`;
 }
 
-function Section({ title, children }) {
+function Section({ title, badge, children }) {
   return (
     <section className="mt-2 rounded-md border border-[#A8D3C4] bg-white px-3 py-2 shadow-sm">
-      <h3 className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-        {title}
-      </h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+          {title}
+        </h3>
+        {badge}
+      </div>
       <div className="mt-1.5">{children}</div>
     </section>
   );
@@ -352,6 +381,33 @@ function CompactNotice({ children }) {
     <div className="mb-2 rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-3 py-2 text-sm font-black text-[#18332D] shadow-sm">
       {children}
     </div>
+  );
+}
+
+
+function LearningModuleRow({ module }) {
+  const title = module.title || module.Title || "Learning module";
+  const slug = module.slug || module.Slug;
+  const url = slug ? `/learning-modules/${slug}/overview` : null;
+
+  const content = (
+    <div className="truncate text-sm font-black leading-5 text-[#18332D]">
+      <span>{title}</span>
+      <span className="font-bold text-slate-500"> - Roadmap Platform</span>
+    </div>
+  );
+
+  const className =
+    "block rounded-md border border-[#A8D3C4] bg-[#F8FFFC] px-3 py-2.5 shadow-sm transition-colors hover:bg-[#DFF4EA]";
+
+  if (!url) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <a href={url} className={className}>
+      {content}
+    </a>
   );
 }
 
