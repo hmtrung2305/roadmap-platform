@@ -25,7 +25,6 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
     }
 
     public async Task<IReadOnlyList<LearnerLearningModuleSummaryDto>> GetPublishedModulesAsync(
-        Guid? userId,
         CancellationToken cancellationToken)
     {
         var modules = await _context.SkillModules
@@ -36,6 +35,31 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
             .Where(module => module.Status == LearningModuleStatusValues.Published)
             .OrderByDescending(module => module.PublishedAt)
+            .ThenBy(module => module.Title)
+            .ToListAsync(cancellationToken);
+
+        return modules
+            .Select(module => MapLearnerSummary(module, enrollment: null))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<LearnerLearningModuleSummaryDto>> GetEnrolledModulesAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var modules = await _context.SkillModules
+            .AsNoTracking()
+            .Include(module => module.Skill)
+            .Include(module => module.SkillModuleLessons)
+            .Include(module => module.SkillModuleQuiz)
+                .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
+            .Where(module =>
+                (
+                    module.Status == LearningModuleStatusValues.Published
+                    || module.Status == LearningModuleStatusValues.Archived)
+                && module.SkillModuleEnrollments.Any(enrollment => enrollment.UserId == userId))
+            .OrderBy(module => module.Status == LearningModuleStatusValues.Archived)
+            .ThenByDescending(module => module.PublishedAt)
             .ThenBy(module => module.Title)
             .ToListAsync(cancellationToken);
 
@@ -64,7 +88,9 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
             .FirstOrDefaultAsync(item =>
                 item.Slug == slug
-                && item.Status == LearningModuleStatusValues.Published,
+                && (
+                    item.Status == LearningModuleStatusValues.Published
+                    || item.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (module == null)
@@ -80,6 +106,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                     && item.SkillModuleId == module.SkillModuleId,
                     cancellationToken)
             : null;
+
+        EnsureLearnerCanAccessModule(module, enrollment);
 
         return MapLearnerOverview(module, enrollment);
     }
@@ -152,7 +180,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleLessonId == lessonId
                 && item.SkillModuleId == skillModuleId
-                && item.SkillModule.Status == LearningModuleStatusValues.Published,
+                && (item.SkillModule.Status == LearningModuleStatusValues.Published
+                    || item.SkillModule.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (lesson == null)
@@ -193,7 +222,9 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             .Include(item => item.SkillModuleQuiz)
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.Status == LearningModuleStatusValues.Published,
+                && (
+                    item.Status == LearningModuleStatusValues.Published
+                    || item.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (module == null)
@@ -270,7 +301,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             .Include(item => item.SkillModule)
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.SkillModule.Status == LearningModuleStatusValues.Published,
+                && (item.SkillModule.Status == LearningModuleStatusValues.Published
+                    || item.SkillModule.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (quiz == null)
@@ -317,7 +349,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                 .ThenInclude(question => question.SkillModuleQuizOptions)
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.SkillModule.Status == LearningModuleStatusValues.Published,
+                && (item.SkillModule.Status == LearningModuleStatusValues.Published
+                    || item.SkillModule.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (quiz == null)
@@ -424,7 +457,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
                 item.SkillModuleQuizAttemptId == attemptId
                 && item.UserId == userId
                 && item.SkillModuleQuiz.SkillModuleId == skillModuleId
-                && item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Published,
+                && (item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Published
+                    || item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (attempt == null)
@@ -538,6 +572,23 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         }
 
         return MapAttemptReview(attempt);
+    }
+
+    private static void EnsureLearnerCanAccessModule(
+        SkillModule module,
+        SkillModuleEnrollment? enrollment)
+    {
+        if (module.Status == LearningModuleStatusValues.Published)
+        {
+            return;
+        }
+
+        if (module.Status == LearningModuleStatusValues.Archived && enrollment != null)
+        {
+            return;
+        }
+
+        throw new NotFoundException("Learning module was not found.");
     }
 
     private async Task<SkillModuleEnrollment> EnsureEnrollmentExistsAsync(
@@ -769,6 +820,7 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             SkillName = module.Skill.Name,
             Title = module.Title,
             Slug = module.Slug,
+            Status = module.Status,
             Description = module.Description,
             DifficultyLevel = module.DifficultyLevel,
             EstimatedHours = module.EstimatedHours,
@@ -789,6 +841,7 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             SkillName = module.Skill.Name,
             Title = module.Title,
             Slug = module.Slug,
+            Status = module.Status,
             Description = module.Description,
             DifficultyLevel = module.DifficultyLevel,
             EstimatedHours = module.EstimatedHours,

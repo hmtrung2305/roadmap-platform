@@ -84,6 +84,11 @@ export const learningModuleApi = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
+  getEnrolledModules: async () => {
+    const response = await axiosClient.get("/learning-modules/enrolled");
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
   getPublishedModuleBySlug: async (slug) => {
     const response = await axiosClient.get(`/learning-modules/${encode(slug)}`);
     return response.data;
@@ -228,11 +233,6 @@ export const counselorLearningModuleApi = {
 
   archiveModule: async (moduleId) => {
     const response = await axiosClient.post(`/counselor/learning-modules/${moduleId}/archive`);
-    return response.data;
-  },
-
-  restoreModule: async (moduleId) => {
-    const response = await axiosClient.post(`/counselor/learning-modules/${moduleId}/restore`);
     return response.data;
   },
 

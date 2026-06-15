@@ -477,6 +477,12 @@ export default function StudyRoomPage() {
         }}
       >
         <section className="mx-auto min-w-0 max-w-5xl">
+          {module.status === "archived" && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800 shadow-sm">
+              This module is archived. You can still access lessons, quiz attempts, and module chat.
+            </div>
+          )}
+
           {showQuiz ? (
             <StudyQuiz module={module} canStartQuiz={isQuizUnlocked} onProgressChanged={() => loadModule({ silent: true })} />
           ) : isLoadingLesson ? (

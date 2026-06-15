@@ -16,9 +16,19 @@ public sealed class LearningModulesController(
     [ProducesResponseType(typeof(IReadOnlyList<LearnerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPublishedModules(CancellationToken cancellationToken)
     {
-        var userId = TryGetCurrentUserId();
+        var result = await moduleService.GetPublishedModulesAsync(cancellationToken);
 
-        var result = await moduleService.GetPublishedModulesAsync(
+        return Ok(result);
+    }
+
+    [HttpGet("enrolled")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<LearnerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetEnrolledModules(CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+
+        var result = await moduleService.GetEnrolledModulesAsync(
             userId,
             cancellationToken);
 

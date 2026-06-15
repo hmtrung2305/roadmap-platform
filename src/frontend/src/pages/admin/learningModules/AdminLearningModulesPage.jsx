@@ -8,7 +8,6 @@ import {
   FileQuestion,
   MoreHorizontal,
   Plus,
-  RotateCcw,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -94,16 +93,6 @@ export default function AdminLearningModulesPage() {
     toast.success("Module archived.");
   };
 
-  const handleRestore = async (module) => {
-    try {
-      await counselorLearningModuleApi.restoreModule(module.skillModuleId);
-      toast.success("Module restored to draft.");
-      reload();
-    } catch (err) {
-      toast.error(err?.message || "Unable to restore module.");
-    }
-  };
-
   const confirmActionCopy = {
     delete: {
       tone: "danger",
@@ -115,7 +104,7 @@ export default function AdminLearningModulesPage() {
     archive: {
       tone: "warning",
       title: "Archive this module?",
-      description: "Learners will no longer be able to start this module after it is archived.",
+      description: "New learners will no longer be able to start this module, but enrolled learners can still access it.",
       confirmLabel: "Archive module",
       cancelLabel: "Keep published",
     },
@@ -263,16 +252,18 @@ export default function AdminLearningModulesPage() {
                     </ModuleActionButton>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setOpenMenuId((current) => current === module.skillModuleId ? null : module.skillModuleId)}
-                    className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[#B9D8CC] bg-white text-slate-600 transition hover:border-[#2FA084] hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
-                    aria-label="More actions"
-                  >
-                    <MoreHorizontal size={16} strokeWidth={2.5} />
-                  </button>
+                  {module.status !== "archived" && (
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuId((current) => current === module.skillModuleId ? null : module.skillModuleId)}
+                      className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[#B9D8CC] bg-white text-slate-600 transition hover:border-[#2FA084] hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
+                      aria-label="More actions"
+                    >
+                      <MoreHorizontal size={16} strokeWidth={2.5} />
+                    </button>
+                  )}
 
-                  {openMenuId === module.skillModuleId && (
+                  {module.status !== "archived" && openMenuId === module.skillModuleId && (
                     <div className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-lg">
                       {module.status === "draft" && (
                         <>
@@ -303,14 +294,6 @@ export default function AdminLearningModulesPage() {
                         </OverflowAction>
                       )}
 
-                      {module.status === "archived" && (
-                        <OverflowAction onClick={() => {
-                          setOpenMenuId(null);
-                          handleRestore(module);
-                        }}>
-                          <RotateCcw size={14} /> Restore
-                        </OverflowAction>
-                      )}
                     </div>
                   )}
                 </div>

@@ -61,7 +61,9 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
             .AsNoTracking()
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.Status == LearningModuleStatusValues.Published,
+                && (
+                    item.Status == LearningModuleStatusValues.Published
+                    || item.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (module == null)

@@ -5,7 +5,10 @@ namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 public interface ILearnerLearningModuleService
 {
     Task<IReadOnlyList<LearnerLearningModuleSummaryDto>> GetPublishedModulesAsync(
-        Guid? userId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<LearnerLearningModuleSummaryDto>> GetEnrolledModulesAsync(
+        Guid userId,
         CancellationToken cancellationToken);
 
     Task<LearnerLearningModuleOverviewDto> GetPublishedModuleBySlugAsync(

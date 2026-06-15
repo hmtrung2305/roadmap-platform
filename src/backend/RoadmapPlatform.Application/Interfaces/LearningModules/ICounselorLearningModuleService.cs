@@ -45,11 +45,6 @@ public interface ICounselorLearningModuleService
         Guid skillModuleId,
         CancellationToken cancellationToken);
 
-    Task<SkillModuleDto> RestoreModuleAsync(
-        Guid counselorUserId,
-        Guid skillModuleId,
-        CancellationToken cancellationToken);
-
     Task<LearningModulePreviewDto> GetPreviewAsync(
         Guid counselorUserId,
         Guid skillModuleId,

@@ -335,34 +335,6 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
         return MapModule(module);
     }
 
-    public async Task<SkillModuleDto> RestoreModuleAsync(
-        Guid counselorUserId,
-        Guid skillModuleId,
-        CancellationToken cancellationToken)
-    {
-        var module = await GetOwnedModuleQuery(counselorUserId)
-            .Include(item => item.Skill)
-            .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
-
-        if (module == null)
-        {
-            throw new NotFoundException("Learning module was not found.");
-        }
-
-        if (module.Status != LearningModuleStatusValues.Archived)
-        {
-            throw new ConflictException("Only archived modules can be restored.");
-        }
-
-        module.Status = LearningModuleStatusValues.Draft;
-        module.ArchivedAt = null;
-        module.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return MapModule(module);
-    }
-
     public async Task<LearningModulePreviewDto> GetPreviewAsync(
         Guid counselorUserId,
         Guid skillModuleId,

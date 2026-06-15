@@ -138,24 +138,6 @@ public sealed class CounselorLearningModulesController(
         return Ok(result);
     }
 
-    [HttpPost("{moduleId:guid}/restore")]
-    [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> RestoreModule(
-        Guid moduleId,
-        CancellationToken cancellationToken)
-    {
-        var counselorUserId = User.GetUserId();
-
-        var result = await moduleService.RestoreModuleAsync(
-            counselorUserId,
-            moduleId,
-            cancellationToken);
-
-        return Ok(result);
-    }
-
     [HttpGet("{moduleId:guid}/preview")]
     [ProducesResponseType(typeof(LearningModulePreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

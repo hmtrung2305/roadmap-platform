@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import { learningModuleApi } from "../../api/learningModuleApi";
 import {
@@ -88,7 +88,9 @@ export default function LearningModuleOverviewPage() {
     );
   }
 
-  const actionLabel = getEnrollmentStatus(module) === "not_started" ? "Start module" : "Continue module";
+  const isArchived = module.status === "archived";
+  const enrollmentStatus = getEnrollmentStatus(module);
+  const actionLabel = enrollmentStatus === "not_started" ? "Start module" : "Continue module";
 
   return (
     <ModulePageShell>
@@ -101,12 +103,24 @@ export default function LearningModuleOverviewPage() {
           <ArrowLeft size={16} /> Back to browse
         </button>
 
+        {isArchived && (
+          <ModuleCard className="border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-800">
+            <div className="flex gap-3">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                This module is archived. You can still access it because you are enrolled, but it is no longer available to new learners.
+              </div>
+            </div>
+          </ModuleCard>
+        )}
+
         <ModuleCard className="p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap gap-2">
                 <ModuleBadge tone="green">{module.skillName}</ModuleBadge>
                 {module.difficultyLevel && <ModuleBadge tone="slate">{module.difficultyLevel}</ModuleBadge>}
+                {isArchived && <ModuleBadge tone="amber">Archived</ModuleBadge>}
               </div>
 
               <h1 className="mt-3 text-3xl font-extrabold text-[#18332D]">{module.title}</h1>
@@ -124,7 +138,11 @@ export default function LearningModuleOverviewPage() {
               </div>
             </div>
 
-            <ModuleButton size="md" onClick={handleStart} disabled={isStarting}>
+            <ModuleButton
+              size="md"
+              onClick={handleStart}
+              disabled={isStarting || (isArchived && enrollmentStatus === "not_started")}
+            >
               {isStarting ? "Starting..." : actionLabel}
             </ModuleButton>
           </div>

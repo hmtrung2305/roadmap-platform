@@ -27,10 +27,10 @@ export default function LearningModulesPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await learningModuleApi.getPublishedModules();
+        const data = await learningModuleApi.getEnrolledModules();
         if (!ignore) setModules(data);
       } catch (err) {
-        if (!ignore) setError(err?.message || "Unable to load learning modules.");
+        if (!ignore) setError(err?.message || "Unable to load your learning modules.");
       } finally {
         if (!ignore) setIsLoading(false);
       }
@@ -138,6 +138,7 @@ function LearningModuleListRow({ module }) {
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="truncate text-base font-extrabold text-[#18332D]">{module.title}</h2>
           {module.difficultyLevel && <ModuleBadge tone="purple" className="capitalize">{module.difficultyLevel}</ModuleBadge>}
+          {module.status === "archived" && <ModuleBadge tone="amber">Archived</ModuleBadge>}
         </div>
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}

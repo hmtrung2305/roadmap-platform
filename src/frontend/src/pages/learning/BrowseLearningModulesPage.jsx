@@ -47,6 +47,7 @@ export default function BrowseLearningModulesPage() {
     const term = search.trim().toLowerCase();
 
     return modules
+      .filter((module) => module.status !== "archived")
       .filter((module) => getEnrollmentStatus(module) === "not_started")
       .filter((module) => difficulty === "all" || module.difficultyLevel === difficulty)
       .filter((module) => {

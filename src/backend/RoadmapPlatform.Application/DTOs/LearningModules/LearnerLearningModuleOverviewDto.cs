@@ -7,6 +7,7 @@ public sealed class LearnerLearningModuleOverviewDto
     public string SkillName { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? DifficultyLevel { get; set; }
     public decimal? EstimatedHours { get; set; }
