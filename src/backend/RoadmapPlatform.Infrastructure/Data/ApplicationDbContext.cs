@@ -1399,6 +1399,7 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Skill).WithMany(p => p.SkillGroupItems)
                 .HasForeignKey(d => d.SkillId)
                 .HasConstraintName("fk_skill_group_item_skill");
+        });
         modelBuilder.Entity<SkillTrendSnapshot>(entity =>
         {
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
