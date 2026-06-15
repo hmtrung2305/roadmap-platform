@@ -15,16 +15,6 @@ CREATE TEMP TABLE seed_shared_skill (
 
 INSERT INTO seed_shared_skill (slug, name, category, description)
 VALUES
-
-
-
-
-
-
-
-
-
-
 ('a-b-testing', 'A/B Testing', 'Software Quality', 'Designing controlled experiments with variants, metrics, randomization, sample sizing, statistical interpretation, and decision criteria.'),
 ('accessibility', 'Accessibility', 'Design & UX', 'Designing and implementing software that works with assistive technologies, keyboard navigation, semantic structure, contrast, and adaptable content.'),
 ('accessibility-testing', 'Accessibility Testing', 'Software Quality', 'Evaluating software with accessibility checks, keyboard flows, screen readers, semantic markup, contrast, and issue reporting.'),
@@ -286,7 +276,23 @@ VALUES
 ('web-performance-optimization', 'Web Performance Optimization', 'Frontend', 'Web Performance Optimization supports web interface development through components, browser behavior, layout, state, accessibility, and performance considerations.'),
 ('webpack', 'Webpack', 'Frontend', 'Webpack supports web interface development through components, browser behavior, layout, state, accessibility, and performance considerations.'),
 ('window-functions', 'Window Functions', 'Database', 'Writing SQL window functions with partitions, ordering, frames, ranking, offsets, rolling calculations, and grouped comparisons.'),
-('workflow-orchestration', 'Workflow Orchestration', 'Tools & Workflow', 'Scheduling and coordinating dependent tasks with retries, parameters, monitoring, backfills, and failure recovery.');
+('workflow-orchestration', 'Workflow Orchestration', 'Tools & Workflow', 'Scheduling and coordinating dependent tasks with retries, parameters, monitoring, backfills, and failure recovery.'),
+('data-science-workflow', 'Data Science Workflow', 'Data & Analytics', 'Framing analytical questions, collecting data, exploring patterns, modeling, validating results, and communicating decisions in an iterative workflow.'),
+('causal-inference', 'Causal Inference', 'Data & Analytics', 'Estimating cause-and-effect relationships with study design, confounding control, assumptions, counterfactual reasoning, and sensitivity checks.'),
+('experimental-design', 'Experimental Design', 'Data & Analytics', 'Designing experiments with treatments, controls, randomization, metrics, sample sizing, validity threats, and interpretation plans.'),
+('scikit-learn', 'scikit-learn', 'AI & Machine Learning', 'Building machine learning workflows with estimators, pipelines, preprocessing, model selection, metrics, and validation in scikit-learn.'),
+('deep-learning', 'Deep Learning', 'AI & Machine Learning', 'Building neural network models with layers, activations, losses, optimizers, regularization, training data, and evaluation metrics.'),
+('numpy', 'NumPy', 'Programming', 'Working with numerical arrays, vectorized operations, broadcasting, indexing, and mathematical transformations using NumPy.'),
+('service-level-objectives', 'Service Level Objectives', 'DevOps & Platform', 'Defining measurable reliability targets with service indicators, thresholds, time windows, error budgets, and user-impact reasoning.'),
+('error-budgets', 'Error Budgets', 'DevOps & Platform', 'Using the allowed reliability gap between target and actual service performance to guide release, risk, and operational decisions.'),
+('reliability-engineering', 'Reliability Engineering', 'DevOps & Platform', 'Designing systems and operations for availability, resilience, graceful degradation, recovery, observability, and safe change.'),
+('database-administration', 'Database Administration', 'Database', 'Operating databases through configuration, access management, backups, monitoring, maintenance, upgrades, and operational safety practices.'),
+('backup-and-recovery', 'Backup and Recovery', 'Database', 'Protecting data with backup strategy, restore testing, point-in-time recovery, retention, replication, and disaster recovery planning.'),
+('schema-migrations', 'Schema Migrations', 'Database', 'Changing database schemas safely with versioned migration scripts, rollback planning, compatibility checks, and deployment coordination.'),
+('database-observability', 'Database Observability', 'Database', 'Monitoring database health with metrics, logs, slow queries, wait events, replication lag, storage growth, and alerting signals.'),
+('runbooks', 'Runbooks', 'DevOps & Platform', 'Documenting repeatable operational procedures for diagnosis, mitigation, escalation, verification, and recovery during production work.'),
+('on-call-readiness', 'On-Call Readiness', 'DevOps & Platform', 'Preparing for production support with alert triage, escalation paths, runbooks, incident roles, communication, and fatigue management.'),
+('capacity-engineering', 'Capacity Engineering', 'Cloud & Infrastructure', 'Forecasting and testing resource needs for traffic, storage, latency, throughput, scaling limits, and operational headroom.');
 
 -- Update canonical rows that already exist by slug.
 UPDATE public.skill s

@@ -1,0 +1,1061 @@
+-- ============================================================
+-- Site Reliability Engineer roadmap seed
+-- Generated from deep roadmap prompt using fixed-v12 baseline rules.
+-- ============================================================
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DROP TABLE IF EXISTS seed_edge;
+DROP TABLE IF EXISTS seed_node_resource;
+DROP TABLE IF EXISTS seed_node_skill;
+DROP TABLE IF EXISTS seed_node;
+DROP TABLE IF EXISTS seed_resource_map;
+DROP TABLE IF EXISTS seed_resource;
+DROP TABLE IF EXISTS seed_skill;
+DROP TABLE IF EXISTS seed_roadmap_map;
+
+-- Clean previous copy of this specific roadmap only.
+DELETE FROM public.progress_event
+WHERE roadmap_enrollment_id IN (
+    SELECT e.roadmap_enrollment_id
+    FROM public.roadmap_enrollment e
+    JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
+    JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
+    WHERE r.title = 'Site Reliability Engineer Roadmap'
+);
+
+DELETE FROM public.user_node_progress
+WHERE roadmap_enrollment_id IN (
+    SELECT e.roadmap_enrollment_id
+    FROM public.roadmap_enrollment e
+    JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
+    JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
+    WHERE r.title = 'Site Reliability Engineer Roadmap'
+);
+
+DELETE FROM public.roadmap_enrollment
+WHERE roadmap_version_id IN (
+    SELECT rv.roadmap_version_id
+    FROM public.roadmap_version rv
+    JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
+    WHERE r.title = 'Site Reliability Engineer Roadmap'
+);
+
+DELETE FROM public.roadmap
+WHERE title = 'Site Reliability Engineer Roadmap';
+
+INSERT INTO public.career_role (name, slug, description, category, is_active)
+VALUES (
+    'Site Reliability Engineer',
+    'site-reliability-engineer',
+    'A practical SRE roadmap for CS students covering systems, automation, cloud, Kubernetes, observability, incidents, reliability engineering, security awareness, and production-ready portfolio work.',
+    'Infrastructure',
+    true
+)
+ON CONFLICT (slug) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    is_active = true,
+    updated_at = now();
+
+DROP TABLE IF EXISTS seed_roadmap_map;
+CREATE TEMP TABLE seed_roadmap_map AS
+WITH role_row AS (
+    SELECT career_role_id FROM public.career_role WHERE slug = 'site-reliability-engineer'
+), inserted_roadmap AS (
+    INSERT INTO public.roadmap (career_role_id, title, description, roadmap_type, source_type, visibility)
+    SELECT
+        career_role_id,
+        'Site Reliability Engineer Roadmap',
+        'A practical SRE roadmap for CS students covering systems, automation, cloud, Kubernetes, observability, incidents, reliability engineering, security awareness, and production-ready portfolio work.',
+        'template',
+        'static',
+        'public'
+    FROM role_row
+    RETURNING roadmap_id
+), inserted_version AS (
+    INSERT INTO public.roadmap_version
+    (roadmap_id, version_number, status, title, description, estimated_total_hours, generation_status, generation_context, layout_direction, layout_algorithm, published_at)
+    SELECT
+        roadmap_id,
+        1,
+        'published',
+        'Site Reliability Engineer Roadmap v1',
+        'A curated static roadmap for CS students with phases, topics, checkpoints, projects, direct skills, resources, and validation-safe persisted mappings.',
+        450,
+        'none',
+        '{"source":"deep-roadmap-generation-prompt-data-scientist-database-engineer-sre","version":"v1","baseline":"fixed-v12"}'::jsonb,
+        'TB',
+        'manual',
+        now()
+    FROM inserted_roadmap
+    RETURNING roadmap_version_id, roadmap_id
+)
+SELECT roadmap_id, roadmap_version_id FROM inserted_version;
+
+-- Local skills.
+DROP TABLE IF EXISTS seed_skill;
+CREATE TEMP TABLE seed_skill (slug text PRIMARY KEY, name text NOT NULL, category text NOT NULL, description text NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_skill VALUES
+('site-reliability-engineer-alerting-and-runbooks', 'Alerting And Runbooks (Site Reliability Engineer)', 'DevOps & Platform', 'Alerting And Runbooks supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-architecture', 'Architecture (Site Reliability Engineer)', 'Architecture & System Design', 'Architecture supports system design through boundaries, dependencies, tradeoffs, scalability, reliability, and maintainability decisions.'),
+('site-reliability-engineer-automation', 'Automation (Site Reliability Engineer)', 'DevOps & Platform', 'Automation supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-cybersecurity', 'Cybersecurity (Site Reliability Engineer)', 'Cybersecurity', 'Cybersecurity supports security work through access control, risk reduction, validation, monitoring, and operational response.'),
+('site-reliability-engineer-deployment', 'Deployment (Site Reliability Engineer)', 'DevOps & Platform', 'Deployment supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-governance-risk-and-compliance', 'Governance Risk And Compliance (Site Reliability Engineer)', 'Cybersecurity', 'Governance Risk And Compliance supports security work through access control, risk reduction, validation, monitoring, and operational response.'),
+('site-reliability-engineer-grafana', 'Grafana (Site Reliability Engineer)', 'DevOps & Platform', 'Grafana supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-identity-and-access-management', 'Identity And Access Management (Site Reliability Engineer)', 'DevOps & Platform', 'Identity And Access Management supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-opentelemetry', 'OpenTelemetry (Site Reliability Engineer)', 'DevOps & Platform', 'Using OpenTelemetry concepts to collect traces, metrics, logs, context propagation, and service telemetry for reliability analysis.'),
+('site-reliability-engineer-performance-testing', 'Performance Testing (Site Reliability Engineer)', 'Software Quality', 'Performance Testing supports quality work through expected behavior, test evidence, defect signals, automation scope, and release confidence.'),
+('site-reliability-engineer-postmortems', 'Postmortems (Site Reliability Engineer)', 'DevOps & Platform', 'Postmortems supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-prometheus', 'Prometheus (Site Reliability Engineer)', 'DevOps & Platform', 'Prometheus supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-resilience-patterns', 'Resilience Patterns (Site Reliability Engineer)', 'DevOps & Platform', 'Resilience Patterns supports production operations through automation, observability, reliability practices, incident readiness, and safe delivery workflow.'),
+('site-reliability-engineer-systems-programming', 'Systems Programming (Site Reliability Engineer)', 'Systems & Operating Systems', 'Understanding low-level system behavior, processes, memory, I/O, signals, and runtime constraints that affect production reliability.'),
+('site-reliability-engineer-technical-writing', 'Technical Writing (Site Reliability Engineer)', 'Career & Communication', 'Technical Writing supports professional communication through technical evidence, audience awareness, project framing, tradeoff explanation, and portfolio presentation.'),
+('site-reliability-engineer-web', 'Web (Site Reliability Engineer)', 'Web', 'Understanding HTTP, DNS, caching, TLS, browser-to-service behavior, and web delivery paths from a reliability perspective.'),
+('site-reliability-engineer-security-hardening', 'Security Hardening (Site Reliability Engineer)', 'Cybersecurity', 'Reducing production exposure through secure configuration, patching, identity controls, network boundaries, and verification checks.');
+
+INSERT INTO public.skill (name, slug, category, description, is_active)
+SELECT ss.name, ss.slug, ss.category, ss.description, true
+FROM seed_skill ss
+ON CONFLICT (slug) DO UPDATE SET
+    name = EXCLUDED.name,
+    category = EXCLUDED.category,
+    description = EXCLUDED.description,
+    is_active = true,
+    updated_at = now();
+
+-- Learning resources.
+DROP TABLE IF EXISTS seed_resource;
+CREATE TEMP TABLE seed_resource (resource_key text PRIMARY KEY, title text NOT NULL, url text NOT NULL, resource_type text NOT NULL, description text NOT NULL, provider text, difficulty_level text) ON COMMIT DROP;
+INSERT INTO seed_resource VALUES
+('google-sre-book', 'Google SRE Book', 'https://sre.google/books/', 'book', 'Google''s free books on site reliability engineering, incident response, and production operations.', 'Google', 'intermediate'),
+('linux-command-line', 'The Linux Command Line', 'https://linuxcommand.org/tlcl.php', 'book', 'Free book for Linux shell and command line fundamentals.', 'William Shotts', 'beginner'),
+('missing-semester', 'MIT Missing Semester', 'https://missing.csail.mit.edu/', 'course', 'MIT course on shell, Git, debugging, profiling, and developer productivity tools.', 'MIT', 'beginner'),
+('kubernetes-docs', 'Kubernetes Documentation', 'https://kubernetes.io/docs/', 'documentation', 'Official Kubernetes documentation for workloads, services, operations, and cluster concepts.', 'Kubernetes', 'intermediate'),
+('docker-docs', 'Docker Documentation', 'https://docs.docker.com/', 'documentation', 'Official Docker documentation for images, containers, networking, and Compose.', 'Docker', 'beginner'),
+('prometheus-docs', 'Prometheus Documentation', 'https://prometheus.io/docs/introduction/overview/', 'documentation', 'Official Prometheus documentation for metrics, alerting, and monitoring architecture.', 'Prometheus', 'intermediate'),
+('grafana-docs', 'Grafana Documentation', 'https://grafana.com/docs/grafana/latest/', 'documentation', 'Official Grafana documentation for dashboards, alerting, and visualization.', 'Grafana', 'intermediate'),
+('opentelemetry-docs', 'OpenTelemetry Documentation', 'https://opentelemetry.io/docs/', 'documentation', 'Official OpenTelemetry documentation for traces, metrics, logs, and instrumentation.', 'OpenTelemetry', 'intermediate'),
+('terraform-docs', 'Terraform Documentation', 'https://developer.hashicorp.com/terraform/docs', 'documentation', 'Official Terraform documentation for infrastructure as code workflows.', 'HashiCorp', 'intermediate'),
+('aws-reliability-pillar', 'AWS Reliability Pillar', 'https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html', 'documentation', 'AWS Well-Architected reliability guidance for resilient workloads.', 'AWS', 'intermediate'),
+('github-actions-docs', 'GitHub Actions Documentation', 'https://docs.github.com/en/actions', 'documentation', 'GitHub Actions documentation for CI/CD workflows and automation.', 'GitHub', 'beginner'),
+('nginx-docs', 'NGINX Documentation', 'https://docs.nginx.com/', 'documentation', 'NGINX documentation for web serving, reverse proxying, and load balancing.', 'NGINX', 'intermediate'),
+('cloudflare-learning', 'Cloudflare Learning Center', 'https://www.cloudflare.com/learning/', 'article', 'Conceptual articles on networking, DNS, CDN, security, and performance.', 'Cloudflare', 'beginner'),
+('owasp-top-ten', 'OWASP Top Ten', 'https://owasp.org/www-project-top-ten/', 'article', 'OWASP reference for common web application security risks.', 'OWASP', 'intermediate'),
+('atlassian-incident-management', 'Atlassian Incident Management', 'https://www.atlassian.com/incident-management', 'article', 'Guides for incident management practices, roles, communication, and post-incident review.', 'Atlassian', 'intermediate'),
+('kubernetes-probes', 'Kubernetes Liveness, Readiness, and Startup Probes', 'https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/', 'documentation', 'Official Kubernetes documentation for configuring health probes.', 'Kubernetes', 'intermediate'),
+('kubernetes-deployments', 'Kubernetes Deployments', 'https://kubernetes.io/docs/concepts/workloads/controllers/deployment/', 'documentation', 'Official Kubernetes documentation for Deployment rollout and workload behavior.', 'Kubernetes', 'intermediate'),
+('kubernetes-debugging', 'Kubernetes Debugging', 'https://kubernetes.io/docs/tasks/debug/', 'documentation', 'Official Kubernetes documentation for debugging applications and clusters.', 'Kubernetes', 'intermediate'),
+('prometheus-alerting', 'Prometheus Alerting Overview', 'https://prometheus.io/docs/alerting/latest/overview/', 'documentation', 'Official Prometheus documentation for alerting architecture and Alertmanager workflow.', 'Prometheus', 'intermediate'),
+('opentelemetry-concepts', 'OpenTelemetry Concepts', 'https://opentelemetry.io/docs/concepts/', 'documentation', 'Official OpenTelemetry documentation for signals, context, instrumentation, and telemetry concepts.', 'OpenTelemetry', 'intermediate'),
+('google-sre-monitoring', 'Monitoring Distributed Systems', 'https://sre.google/sre-book/monitoring-distributed-systems/', 'book', 'Google SRE Book chapter on monitoring distributed systems.', 'Google SRE', 'intermediate'),
+('cloudflare-dns', 'What is DNS?', 'https://www.cloudflare.com/learning/dns/what-is-dns/', 'article', 'Cloudflare Learning Center explanation of DNS concepts and lookup flow.', 'Cloudflare', 'beginner'),
+('github-actions-deployments', 'Deploying with GitHub Actions', 'https://docs.github.com/en/actions/deployment/about-deployments/deploying-with-github-actions', 'documentation', 'GitHub documentation for deployment workflows with GitHub Actions.', 'GitHub', 'intermediate'),
+('google-sre-managing-incidents', 'Managing Incidents', 'https://sre.google/sre-book/managing-incidents/', 'book', 'Google SRE Book chapter about incident response, roles, and coordination.', 'Google SRE', 'intermediate'),
+('google-sre-emergency-response', 'Emergency Response', 'https://sre.google/sre-book/emergency-response/', 'book', 'Google SRE Book chapter on emergency response and operational readiness.', 'Google SRE', 'intermediate'),
+('google-sre-error-budget-policy', 'Error Budget Policy', 'https://sre.google/workbook/error-budget-policy/', 'book', 'Google SRE Workbook chapter on error budget policies.', 'Google SRE', 'intermediate'),
+('prometheus-querying', 'Prometheus Querying Basics', 'https://prometheus.io/docs/prometheus/latest/querying/basics/', 'documentation', 'Official Prometheus documentation for PromQL querying basics.', 'Prometheus', 'intermediate');
+
+INSERT INTO public.learning_resource
+(title, url, resource_type, description, provider, difficulty_level, language_code, verification_status)
+SELECT sr.title, sr.url, sr.resource_type, sr.description, sr.provider, sr.difficulty_level, 'en', 'verified'
+FROM (
+    SELECT DISTINCT ON (url) title, url, resource_type, description, provider, difficulty_level
+    FROM seed_resource
+    ORDER BY url, resource_key
+) sr
+WHERE NOT EXISTS (SELECT 1 FROM public.learning_resource lr WHERE lr.url = sr.url);
+
+DROP TABLE IF EXISTS seed_resource_map;
+CREATE TEMP TABLE seed_resource_map AS
+SELECT sr.resource_key, lr.learning_resource_id
+FROM seed_resource sr
+JOIN (
+    SELECT DISTINCT ON (url) learning_resource_id, url
+    FROM public.learning_resource
+    ORDER BY url, created_at DESC, learning_resource_id
+) lr ON lr.url = sr.url;
+
+-- Roadmap nodes.
+DROP TABLE IF EXISTS seed_node;
+CREATE TEMP TABLE seed_node (
+    node_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    node_key text UNIQUE NOT NULL,
+    parent_key text,
+    order_index int NOT NULL,
+    node_type text NOT NULL,
+    checkpoint_type text,
+    selection_type text,
+    required_count int,
+    title text NOT NULL,
+    description text,
+    reason text,
+    layout_role text NOT NULL,
+    layout_group text,
+    layout_rank int,
+    layout_order int NOT NULL,
+    estimated_hours int,
+    difficulty_level text,
+    priority int NOT NULL,
+    position_x numeric(10,2),
+    position_y numeric(10,2),
+    metadata jsonb NOT NULL,
+    is_required boolean NOT NULL,
+    is_trackable boolean NOT NULL,
+    learning_outcomes jsonb NOT NULL,
+    completion_criteria jsonb NOT NULL
+) ON COMMIT DROP;
+
+INSERT INTO seed_node
+(node_key, parent_key, order_index, node_type, checkpoint_type, selection_type, required_count, title, description, reason, layout_role, layout_group, layout_rank, layout_order, estimated_hours, difficulty_level, priority, position_x, position_y, metadata, is_required, is_trackable, learning_outcomes, completion_criteria)
+VALUES
+('ph-sre-role-and-reliability-mindset', NULL, 1, 'phase', NULL, NULL, NULL, 'SRE Role and Reliability Mindset', 'This stage builds the sre role and reliability mindset layer of the Site Reliability Engineer path.', 'Phase grouping for SRE Role and Reliability Mindset.', 'trunk', 'roadmap-main', 1, 1, NULL, NULL, 100, 500, 1130, '{"role":"site-reliability-engineer","nodeKey":"ph-sre-role-and-reliability-mindset"}'::jsonb, true, false, '["SRE Role and Reliability Mindset"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('sre-responsibilities-and-tradeoffs', 'grp-sre-role-and-reliability-mindset-foundations', 1, 'topic', NULL, NULL, NULL, 'SRE Responsibilities and Tradeoffs', 'Apply sre responsibilities and tradeoffs to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Role and Reliability Mindset.', 'side', 'grp-sre-role-and-reliability-mindset-foundations-support', 1, 1, 4, 'beginner', 70, 300, 1170, '{"role":"site-reliability-engineer","nodeKey":"sre-responsibilities-and-tradeoffs"}'::jsonb, true, true, '["Explain sre responsibilities and tradeoffs using concrete examples.","Apply sre responsibilities and tradeoffs to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates sre responsibilities and tradeoffs with reviewable evidence."]'::jsonb),
+('user-centric-reliability', 'grp-sre-role-and-reliability-mindset-foundations', 2, 'topic', NULL, NULL, NULL, 'User-Centric Reliability', 'Apply user-centric reliability to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Role and Reliability Mindset.', 'choice', 'grp-sre-role-and-reliability-mindset-foundations-topics', 1, 2, 4, 'beginner', 70, 700, 1170, '{"role":"site-reliability-engineer","nodeKey":"user-centric-reliability"}'::jsonb, true, true, '["Explain user-centric reliability using concrete examples.","Apply user-centric reliability to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates user-centric reliability with reviewable evidence."]'::jsonb),
+('toil-identification-and-reduction', 'grp-sre-role-and-reliability-mindset-foundations', 3, 'topic', NULL, NULL, NULL, 'Toil Identification and Reduction', 'Apply toil identification and reduction to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Role and Reliability Mindset.', 'choice', 'grp-sre-role-and-reliability-mindset-foundations-topics', 1, 3, 4, 'beginner', 70, 300, 1280, '{"role":"site-reliability-engineer","nodeKey":"toil-identification-and-reduction"}'::jsonb, true, true, '["Explain toil identification and reduction using concrete examples.","Apply toil identification and reduction to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates toil identification and reduction with reviewable evidence."]'::jsonb),
+('risk-change-and-reliability-balance', 'grp-sre-role-and-reliability-mindset-foundations', 4, 'topic', NULL, NULL, NULL, 'Risk, Change, and Reliability Balance', 'Apply risk, change, and reliability balance to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Role and Reliability Mindset.', 'choice', 'grp-sre-role-and-reliability-mindset-foundations-topics', 1, 4, 4, 'beginner', 70, 700, 1280, '{"role":"site-reliability-engineer","nodeKey":"risk-change-and-reliability-balance"}'::jsonb, true, true, '["Explain risk, change, and reliability balance using concrete examples.","Apply risk, change, and reliability balance to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates risk, change, and reliability balance with reviewable evidence."]'::jsonb),
+('production-readiness-reviews', 'grp-sre-role-and-reliability-mindset-core-practice', 1, 'topic', NULL, NULL, NULL, 'Production Readiness Reviews', 'Apply production readiness reviews to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Role and Reliability Mindset.', 'side', 'grp-sre-role-and-reliability-mindset-core-practice-support', 1, 1, 4, 'beginner', 70, 300, 1290, '{"role":"site-reliability-engineer","nodeKey":"production-readiness-reviews"}'::jsonb, true, true, '["Explain production readiness reviews using concrete examples.","Apply production readiness reviews to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates production readiness reviews with reviewable evidence."]'::jsonb),
+('sre-communication-practices', 'grp-sre-role-and-reliability-mindset-core-practice', 2, 'topic', NULL, NULL, NULL, 'SRE Communication Practices', 'Turn analysis results into a clear narrative with context, evidence, limitations, and actionable recommendations.', 'Core topic in SRE Role and Reliability Mindset.', 'side', 'grp-sre-role-and-reliability-mindset-core-practice-support', 1, 2, 3, 'beginner', 70, 700, 1290, '{"role":"site-reliability-engineer","nodeKey":"sre-communication-practices"}'::jsonb, true, true, '["Explain sre communication practices using concrete examples.","Apply sre communication practices to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates sre communication practices with reviewable evidence."]'::jsonb),
+('chk-sre-role-and-reliability-mindset-review', 'grp-sre-role-and-reliability-mindset-core-practice', 3, 'checkpoint', 'review', NULL, NULL, 'SRE Role and Reliability Mindset Review', 'Validate the learner''s evidence for the sre role and reliability mindset stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-sre-role-and-reliability-mindset-core-practice-checkpoints', 1, 1, 2, 'intermediate', 65, 500, 1410, '{"role":"site-reliability-engineer","nodeKey":"chk-sre-role-and-reliability-mindset-review"}'::jsonb, true, true, '["Review and explain the main work from SRE Role and Reliability Mindset."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-linux-networking-and-systems-foundations', NULL, 2, 'phase', NULL, NULL, NULL, 'Linux, Networking, and Systems Foundations', 'This stage builds the linux, networking, and systems foundations layer of the Site Reliability Engineer path.', 'Phase grouping for Linux, Networking, and Systems Foundations.', 'trunk', 'roadmap-main', 2, 2, NULL, NULL, 100, 500, 1710, '{"role":"site-reliability-engineer","nodeKey":"ph-linux-networking-and-systems-foundations"}'::jsonb, true, false, '["Linux, Networking, and Systems Foundations"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('linux-process-and-service-management', 'grp-linux-networking-and-systems-foundations-foundations', 1, 'topic', NULL, NULL, NULL, 'Linux Process and Service Management', 'Troubleshoot production systems with process, file, network, DNS, and service-level evidence.', 'Core topic in Linux, Networking, and Systems Foundations.', 'choice', 'grp-linux-networking-and-systems-foundations-foundations-topics', 2, 1, 5, 'beginner', 70, 300, 1750, '{"role":"site-reliability-engineer","nodeKey":"linux-process-and-service-management"}'::jsonb, true, true, '["Explain linux process and service management using concrete examples.","Apply linux process and service management to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates linux process and service management with reviewable evidence."]'::jsonb),
+('shell-scripting-for-operations', 'grp-linux-networking-and-systems-foundations-foundations', 2, 'topic', NULL, NULL, NULL, 'Shell Scripting for Operations', 'Apply shell scripting for operations to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Linux, Networking, and Systems Foundations.', 'choice', 'grp-linux-networking-and-systems-foundations-foundations-topics', 2, 2, 5, 'beginner', 70, 700, 1750, '{"role":"site-reliability-engineer","nodeKey":"shell-scripting-for-operations"}'::jsonb, true, true, '["Explain shell scripting for operations using concrete examples.","Apply shell scripting for operations to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates shell scripting for operations with reviewable evidence."]'::jsonb),
+('filesystems-permissions-and-logs', 'grp-linux-networking-and-systems-foundations-foundations', 3, 'topic', NULL, NULL, NULL, 'Filesystems, Permissions, and Logs', 'Troubleshoot production systems with process, file, network, DNS, and service-level evidence.', 'Core topic in Linux, Networking, and Systems Foundations.', 'choice', 'grp-linux-networking-and-systems-foundations-foundations-topics', 2, 3, 4, 'beginner', 70, 300, 1860, '{"role":"site-reliability-engineer","nodeKey":"filesystems-permissions-and-logs"}'::jsonb, true, true, '["Explain filesystems, permissions, and logs using concrete examples.","Apply filesystems, permissions, and logs to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates filesystems, permissions, and logs with reviewable evidence."]'::jsonb),
+('tcp-ip-and-dns-troubleshooting', 'grp-linux-networking-and-systems-foundations-foundations', 4, 'topic', NULL, NULL, NULL, 'TCP/IP and DNS Troubleshooting', 'Troubleshoot production systems with process, file, network, DNS, and service-level evidence.', 'Core topic in Linux, Networking, and Systems Foundations.', 'choice', 'grp-linux-networking-and-systems-foundations-foundations-topics', 2, 4, 5, 'beginner', 70, 700, 1860, '{"role":"site-reliability-engineer","nodeKey":"tcp-ip-and-dns-troubleshooting"}'::jsonb, true, true, '["Explain tcp/ip and dns troubleshooting using concrete examples.","Apply tcp/ip and dns troubleshooting to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates tcp/ip and dns troubleshooting with reviewable evidence."]'::jsonb),
+('http-tls-and-reverse-proxies', 'grp-linux-networking-and-systems-foundations-core-practice', 1, 'topic', NULL, NULL, NULL, 'HTTP, TLS, and Reverse Proxies', 'Apply http, tls, and reverse proxies to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Linux, Networking, and Systems Foundations.', 'choice', 'grp-linux-networking-and-systems-foundations-core-practice-topics', 2, 1, 5, 'beginner', 70, 300, 1870, '{"role":"site-reliability-engineer","nodeKey":"http-tls-and-reverse-proxies"}'::jsonb, true, true, '["Explain http, tls, and reverse proxies using concrete examples.","Apply http, tls, and reverse proxies to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates http, tls, and reverse proxies with reviewable evidence."]'::jsonb),
+('system-debugging-tools', 'grp-linux-networking-and-systems-foundations-core-practice', 2, 'topic', NULL, NULL, NULL, 'System Debugging Tools', 'Troubleshoot production systems with process, file, network, DNS, and service-level evidence.', 'Core topic in Linux, Networking, and Systems Foundations.', 'choice', 'grp-linux-networking-and-systems-foundations-core-practice-topics', 2, 2, 5, 'beginner', 70, 700, 1870, '{"role":"site-reliability-engineer","nodeKey":"system-debugging-tools"}'::jsonb, true, true, '["Explain system debugging tools using concrete examples.","Apply system debugging tools to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates system debugging tools with reviewable evidence."]'::jsonb),
+('chk-linux-networking-and-systems-foundations-review', 'grp-linux-networking-and-systems-foundations-core-practice', 3, 'checkpoint', 'review', NULL, NULL, 'Linux, Networking, and Systems Foundations Review', 'Validate the learner''s evidence for the linux, networking, and systems foundations stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-linux-networking-and-systems-foundations-core-practice-checkpoints', 2, 1, 2, 'intermediate', 65, 500, 1990, '{"role":"site-reliability-engineer","nodeKey":"chk-linux-networking-and-systems-foundations-review"}'::jsonb, true, true, '["Review and explain the main work from Linux, Networking, and Systems Foundations."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-programming-and-automation', NULL, 3, 'phase', NULL, NULL, NULL, 'Programming and Automation', 'This stage builds the programming and automation layer of the Site Reliability Engineer path.', 'Phase grouping for Programming and Automation.', 'trunk', 'roadmap-main', 3, 3, NULL, NULL, 100, 500, 2290, '{"role":"site-reliability-engineer","nodeKey":"ph-programming-and-automation"}'::jsonb, true, false, '["Programming and Automation"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('python-automation-scripts', 'grp-programming-and-automation-foundations', 1, 'topic', NULL, NULL, NULL, 'Python Automation Scripts', 'Automate repeatable database tasks with scripts or infrastructure definitions while protecting credentials and change safety.', 'Core topic in Programming and Automation.', 'choice', 'grp-programming-and-automation-foundations-topics', 3, 1, 5, 'beginner', 70, 300, 2330, '{"role":"site-reliability-engineer","nodeKey":"python-automation-scripts"}'::jsonb, true, true, '["Explain python automation scripts using concrete examples.","Apply python automation scripts to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates python automation scripts with reviewable evidence."]'::jsonb),
+('cli-tools-and-operational-scripts', 'grp-programming-and-automation-foundations', 2, 'topic', NULL, NULL, NULL, 'CLI Tools and Operational Scripts', 'Apply cli tools and operational scripts to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Programming and Automation.', 'choice', 'grp-programming-and-automation-foundations-topics', 3, 2, 4, 'beginner', 70, 700, 2330, '{"role":"site-reliability-engineer","nodeKey":"cli-tools-and-operational-scripts"}'::jsonb, true, true, '["Explain cli tools and operational scripts using concrete examples.","Apply cli tools and operational scripts to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates cli tools and operational scripts with reviewable evidence."]'::jsonb),
+('apis-for-automation', 'grp-programming-and-automation-foundations', 3, 'topic', NULL, NULL, NULL, 'APIs for Automation', 'Expose analytical or model outputs through a small API with validation, clear response contracts, and basic operational awareness.', 'Core topic in Programming and Automation.', 'choice', 'grp-programming-and-automation-foundations-topics', 3, 3, 4, 'beginner', 70, 300, 2440, '{"role":"site-reliability-engineer","nodeKey":"apis-for-automation"}'::jsonb, true, true, '["Explain apis for automation using concrete examples.","Apply apis for automation to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates apis for automation with reviewable evidence."]'::jsonb),
+('configuration-management', 'grp-programming-and-automation-foundations', 4, 'topic', NULL, NULL, NULL, 'Configuration Management', 'Apply configuration management to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Programming and Automation.', 'choice', 'grp-programming-and-automation-foundations-topics', 3, 4, 4, 'beginner', 70, 700, 2440, '{"role":"site-reliability-engineer","nodeKey":"configuration-management"}'::jsonb, true, true, '["Explain configuration management using concrete examples.","Apply configuration management to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates configuration management with reviewable evidence."]'::jsonb),
+('safe-automation-and-rollback', 'grp-programming-and-automation-core-practice', 1, 'topic', NULL, NULL, NULL, 'Safe Automation and Rollback', 'Automate repeatable database tasks with scripts or infrastructure definitions while protecting credentials and change safety.', 'Core topic in Programming and Automation.', 'choice', 'grp-programming-and-automation-core-practice-topics', 3, 1, 5, 'beginner', 70, 300, 2450, '{"role":"site-reliability-engineer","nodeKey":"safe-automation-and-rollback"}'::jsonb, true, true, '["Explain safe automation and rollback using concrete examples.","Apply safe automation and rollback to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates safe automation and rollback with reviewable evidence."]'::jsonb),
+('testing-operational-code', 'grp-programming-and-automation-core-practice', 2, 'topic', NULL, NULL, NULL, 'Testing Operational Code', 'Apply testing operational code to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Programming and Automation.', 'choice', 'grp-programming-and-automation-core-practice-topics', 3, 2, 4, 'beginner', 70, 700, 2450, '{"role":"site-reliability-engineer","nodeKey":"testing-operational-code"}'::jsonb, true, true, '["Explain testing operational code using concrete examples.","Apply testing operational code to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates testing operational code with reviewable evidence."]'::jsonb),
+('chk-programming-and-automation-review', 'grp-programming-and-automation-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Programming and Automation Review', 'Validate the learner''s evidence for the programming and automation stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-programming-and-automation-core-practice-checkpoints', 3, 1, 2, 'intermediate', 65, 500, 2570, '{"role":"site-reliability-engineer","nodeKey":"chk-programming-and-automation-review"}'::jsonb, true, true, '["Review and explain the main work from Programming and Automation."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-cloud-and-infrastructure-fundamentals', NULL, 4, 'phase', NULL, NULL, NULL, 'Cloud and Infrastructure Fundamentals', 'This stage builds the cloud and infrastructure fundamentals layer of the Site Reliability Engineer path.', 'Phase grouping for Cloud and Infrastructure Fundamentals.', 'trunk', 'roadmap-main', 4, 4, NULL, NULL, 100, 500, 2870, '{"role":"site-reliability-engineer","nodeKey":"ph-cloud-and-infrastructure-fundamentals"}'::jsonb, true, false, '["Cloud and Infrastructure Fundamentals"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('cloud-architecture-basics', 'grp-cloud-and-infrastructure-fundamentals-foundations', 1, 'topic', NULL, NULL, NULL, 'Cloud Architecture Basics', 'Apply cloud architecture basics to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Cloud and Infrastructure Fundamentals.', 'choice', 'grp-cloud-and-infrastructure-fundamentals-foundations-topics', 4, 1, 5, 'beginner', 70, 300, 2910, '{"role":"site-reliability-engineer","nodeKey":"cloud-architecture-basics"}'::jsonb, true, true, '["Explain cloud architecture basics using concrete examples.","Apply cloud architecture basics to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates cloud architecture basics with reviewable evidence."]'::jsonb),
+('compute-storage-and-networking', 'grp-cloud-and-infrastructure-fundamentals-foundations', 2, 'topic', NULL, NULL, NULL, 'Compute, Storage, and Networking', 'Troubleshoot production systems with process, file, network, DNS, and service-level evidence.', 'Core topic in Cloud and Infrastructure Fundamentals.', 'choice', 'grp-cloud-and-infrastructure-fundamentals-foundations-topics', 4, 2, 5, 'beginner', 70, 700, 2910, '{"role":"site-reliability-engineer","nodeKey":"compute-storage-and-networking"}'::jsonb, true, true, '["Explain compute, storage, and networking using concrete examples.","Apply compute, storage, and networking to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates compute, storage, and networking with reviewable evidence."]'::jsonb),
+('identity-and-access-for-operations', 'grp-cloud-and-infrastructure-fundamentals-foundations', 3, 'topic', NULL, NULL, NULL, 'Identity and Access for Operations', 'Apply least-privilege access, authentication rules, encryption controls, and audit evidence for safer database operations.', 'Core topic in Cloud and Infrastructure Fundamentals.', 'choice', 'grp-cloud-and-infrastructure-fundamentals-foundations-topics', 4, 3, 4, 'beginner', 70, 300, 3020, '{"role":"site-reliability-engineer","nodeKey":"identity-and-access-for-operations"}'::jsonb, true, true, '["Explain identity and access for operations using concrete examples.","Apply identity and access for operations to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates identity and access for operations with reviewable evidence."]'::jsonb),
+('infrastructure-as-code', 'grp-cloud-and-infrastructure-fundamentals-foundations', 4, 'topic', NULL, NULL, NULL, 'Infrastructure as Code', 'Automate repeatable database tasks with scripts or infrastructure definitions while protecting credentials and change safety.', 'Core topic in Cloud and Infrastructure Fundamentals.', 'choice', 'grp-cloud-and-infrastructure-fundamentals-foundations-topics', 4, 4, 5, 'beginner', 70, 700, 3020, '{"role":"site-reliability-engineer","nodeKey":"infrastructure-as-code"}'::jsonb, true, true, '["Explain infrastructure as code using concrete examples.","Apply infrastructure as code to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates infrastructure as code with reviewable evidence."]'::jsonb),
+('load-balancing-and-traffic-routing', 'grp-cloud-and-infrastructure-fundamentals-core-practice', 1, 'topic', NULL, NULL, NULL, 'Load Balancing and Traffic Routing', 'Estimate capacity needs, test load behavior, identify bottlenecks, and plan safe scaling or resilience improvements.', 'Core topic in Cloud and Infrastructure Fundamentals.', 'choice', 'grp-cloud-and-infrastructure-fundamentals-core-practice-topics', 4, 1, 5, 'beginner', 70, 300, 3030, '{"role":"site-reliability-engineer","nodeKey":"load-balancing-and-traffic-routing"}'::jsonb, true, true, '["Explain load balancing and traffic routing using concrete examples.","Apply load balancing and traffic routing to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates load balancing and traffic routing with reviewable evidence."]'::jsonb),
+('cost-and-capacity-awareness', 'grp-cloud-and-infrastructure-fundamentals-core-practice', 2, 'topic', NULL, NULL, NULL, 'Cost and Capacity Awareness', 'Estimate capacity needs, test load behavior, identify bottlenecks, and plan safe scaling or resilience improvements.', 'Core topic in Cloud and Infrastructure Fundamentals.', 'side', 'grp-cloud-and-infrastructure-fundamentals-core-practice-support', 4, 2, 4, 'beginner', 70, 700, 3030, '{"role":"site-reliability-engineer","nodeKey":"cost-and-capacity-awareness"}'::jsonb, true, true, '["Explain cost and capacity awareness using concrete examples.","Apply cost and capacity awareness to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates cost and capacity awareness with reviewable evidence."]'::jsonb),
+('chk-cloud-and-infrastructure-fundamentals-review', 'grp-cloud-and-infrastructure-fundamentals-core-practice', 3, 'checkpoint', 'review', NULL, NULL, 'Cloud and Infrastructure Fundamentals Review', 'Validate the learner''s evidence for the cloud and infrastructure fundamentals stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-cloud-and-infrastructure-fundamentals-core-practice-checkpoints', 4, 1, 2, 'intermediate', 65, 500, 3150, '{"role":"site-reliability-engineer","nodeKey":"chk-cloud-and-infrastructure-fundamentals-review"}'::jsonb, true, true, '["Review and explain the main work from Cloud and Infrastructure Fundamentals."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-containers-and-kubernetes', NULL, 5, 'phase', NULL, NULL, NULL, 'Containers and Kubernetes', 'This stage builds the containers and kubernetes layer of the Site Reliability Engineer path.', 'Phase grouping for Containers and Kubernetes.', 'trunk', 'roadmap-main', 5, 5, NULL, NULL, 100, 500, 3450, '{"role":"site-reliability-engineer","nodeKey":"ph-containers-and-kubernetes"}'::jsonb, true, false, '["Containers and Kubernetes"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('grp-containers-and-kubernetes-specialization-choices', 'ph-containers-and-kubernetes', 20, 'choice_group', NULL, 'choose_one', '1', 'Operations Focus Choice', 'Choose the learning path that best matches your goals for operations focus choice.', 'Provides a real learner choice for operations focus choice.', 'side', 'ph-containers-and-kubernetes-groups', 5, 20, NULL, NULL, 80, 850, 5610, '{"role":"site-reliability-engineer","nodeKey":"grp-containers-and-kubernetes-specialization-choices"}'::jsonb, false, false, '["Choose a specialization inside Containers and Kubernetes."]'::jsonb, '["One option is selected and completed."]'::jsonb),
+('platform-operations-track', 'grp-containers-and-kubernetes-specialization-choices', 1, 'choice_option', NULL, NULL, NULL, 'Platform Operations Track', 'Focus on Kubernetes operations, deployment safety, cluster troubleshooting, and platform handoff.', 'Real choice option for Platform Operations Track.', 'choice', 'grp-containers-and-kubernetes-specialization-choices-options', 5, 1, 6, 'intermediate', 60, 330, 5330, '{"role":"site-reliability-engineer","nodeKey":"platform-operations-track","choiceTitle":"Platform Operations Track"}'::jsonb, false, true, '["Complete the Platform Operations Track option with reviewable evidence."]'::jsonb, '["Focus on Kubernetes operations, deployment safety, cluster troubleshooting, and platform handoff."]'::jsonb),
+('service-reliability-track', 'grp-containers-and-kubernetes-specialization-choices', 2, 'choice_option', NULL, NULL, NULL, 'Service Reliability Track', 'Focus on service health, probes, runtime configuration, failure behavior, and production readiness.', 'Real choice option for Service Reliability Track.', 'choice', 'grp-containers-and-kubernetes-specialization-choices-options', 5, 2, 6, 'intermediate', 60, 670, 5330, '{"role":"site-reliability-engineer","nodeKey":"service-reliability-track","choiceTitle":"Service Reliability Track"}'::jsonb, false, true, '["Complete the Service Reliability Track option with reviewable evidence."]'::jsonb, '["Focus on service health, probes, runtime configuration, failure behavior, and production readiness."]'::jsonb),
+('docker-images-and-runtime-behavior', 'grp-containers-and-kubernetes-foundations', 1, 'topic', NULL, NULL, NULL, 'Docker Images and Runtime Behavior', 'Apply docker images and runtime behavior to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Containers and Kubernetes.', 'choice', 'grp-containers-and-kubernetes-foundations-topics', 5, 1, 5, 'beginner', 70, 300, 3490, '{"role":"site-reliability-engineer","nodeKey":"docker-images-and-runtime-behavior"}'::jsonb, true, true, '["Explain docker images and runtime behavior using concrete examples.","Apply docker images and runtime behavior to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates docker images and runtime behavior with reviewable evidence."]'::jsonb),
+('kubernetes-workloads', 'grp-containers-and-kubernetes-foundations', 2, 'topic', NULL, NULL, NULL, 'Kubernetes Workloads', 'Operate Kubernetes workloads by reading object state, rollout behavior, events, logs, probes, and service connectivity.', 'Core topic in Containers and Kubernetes.', 'choice', 'grp-containers-and-kubernetes-foundations-topics', 5, 2, 6, 'beginner', 70, 700, 3490, '{"role":"site-reliability-engineer","nodeKey":"kubernetes-workloads"}'::jsonb, true, true, '["Explain kubernetes workloads using concrete examples.","Apply kubernetes workloads to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates kubernetes workloads with reviewable evidence."]'::jsonb),
+('services-ingress-and-networking', 'grp-containers-and-kubernetes-foundations', 3, 'topic', NULL, NULL, NULL, 'Services, Ingress, and Networking', 'Troubleshoot production systems with process, file, network, DNS, and service-level evidence.', 'Core topic in Containers and Kubernetes.', 'choice', 'grp-containers-and-kubernetes-foundations-topics', 5, 3, 5, 'beginner', 70, 300, 3600, '{"role":"site-reliability-engineer","nodeKey":"services-ingress-and-networking"}'::jsonb, true, true, '["Explain services, ingress, and networking using concrete examples.","Apply services, ingress, and networking to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates services, ingress, and networking with reviewable evidence."]'::jsonb),
+('configmaps-secrets-and-runtime-config', 'grp-containers-and-kubernetes-foundations', 4, 'topic', NULL, NULL, NULL, 'ConfigMaps, Secrets, and Runtime Config', 'Apply configmaps, secrets, and runtime config to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Containers and Kubernetes.', 'choice', 'grp-containers-and-kubernetes-foundations-topics', 5, 4, 5, 'beginner', 70, 700, 3600, '{"role":"site-reliability-engineer","nodeKey":"configmaps-secrets-and-runtime-config"}'::jsonb, true, true, '["Explain configmaps, secrets, and runtime config using concrete examples.","Apply configmaps, secrets, and runtime config to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates configmaps, secrets, and runtime config with reviewable evidence."]'::jsonb),
+('health-checks-and-probes', 'grp-containers-and-kubernetes-core-practice', 1, 'topic', NULL, NULL, NULL, 'Health Checks and Probes', 'Apply health checks and probes to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Containers and Kubernetes.', 'choice', 'grp-containers-and-kubernetes-core-practice-topics', 5, 1, 4, 'beginner', 70, 300, 3610, '{"role":"site-reliability-engineer","nodeKey":"health-checks-and-probes"}'::jsonb, true, true, '["Explain health checks and probes using concrete examples.","Apply health checks and probes to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates health checks and probes with reviewable evidence."]'::jsonb),
+('kubernetes-troubleshooting', 'grp-containers-and-kubernetes-core-practice', 2, 'topic', NULL, NULL, NULL, 'Kubernetes Troubleshooting', 'Operate Kubernetes workloads by reading object state, rollout behavior, events, logs, probes, and service connectivity.', 'Core topic in Containers and Kubernetes.', 'choice', 'grp-containers-and-kubernetes-core-practice-topics', 5, 2, 6, 'beginner', 70, 700, 3610, '{"role":"site-reliability-engineer","nodeKey":"kubernetes-troubleshooting"}'::jsonb, true, true, '["Explain kubernetes troubleshooting using concrete examples.","Apply kubernetes troubleshooting to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates kubernetes troubleshooting with reviewable evidence."]'::jsonb),
+('chk-containers-and-kubernetes-review', 'grp-containers-and-kubernetes-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Containers and Kubernetes Review', 'Validate the learner''s evidence for the containers and kubernetes stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-containers-and-kubernetes-core-practice-checkpoints', 5, 1, 2, 'intermediate', 65, 500, 3730, '{"role":"site-reliability-engineer","nodeKey":"chk-containers-and-kubernetes-review"}'::jsonb, true, true, '["Review and explain the main work from Containers and Kubernetes."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-ci-cd-and-release-engineering', NULL, 6, 'phase', NULL, NULL, NULL, 'CI/CD and Release Engineering', 'This stage builds the ci/cd and release engineering layer of the Site Reliability Engineer path.', 'Phase grouping for CI/CD and Release Engineering.', 'trunk', 'roadmap-main', 6, 6, NULL, NULL, 100, 500, 4030, '{"role":"site-reliability-engineer","nodeKey":"ph-ci-cd-and-release-engineering"}'::jsonb, true, false, '["CI/CD and Release Engineering"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('ci-pipeline-design', 'grp-ci-cd-and-release-engineering-foundations', 1, 'topic', NULL, NULL, NULL, 'CI Pipeline Design', 'Design delivery workflows with validation, promotion, rollback, and release risk controls.', 'Core topic in CI/CD and Release Engineering.', 'choice', 'grp-ci-cd-and-release-engineering-foundations-topics', 6, 1, 5, 'beginner', 70, 300, 4070, '{"role":"site-reliability-engineer","nodeKey":"ci-pipeline-design"}'::jsonb, true, true, '["Explain ci pipeline design using concrete examples.","Apply ci pipeline design to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates ci pipeline design with reviewable evidence."]'::jsonb),
+('deployment-strategies', 'grp-ci-cd-and-release-engineering-foundations', 2, 'topic', NULL, NULL, NULL, 'Deployment Strategies', 'Operate Kubernetes workloads by reading object state, rollout behavior, events, logs, probes, and service connectivity.', 'Core topic in CI/CD and Release Engineering.', 'choice', 'grp-ci-cd-and-release-engineering-foundations-topics', 6, 2, 5, 'beginner', 70, 700, 4070, '{"role":"site-reliability-engineer","nodeKey":"deployment-strategies"}'::jsonb, true, true, '["Explain deployment strategies using concrete examples.","Apply deployment strategies to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates deployment strategies with reviewable evidence."]'::jsonb),
+('progressive-delivery-and-rollback', 'grp-ci-cd-and-release-engineering-foundations', 3, 'topic', NULL, NULL, NULL, 'Progressive Delivery and Rollback', 'Design delivery workflows with validation, promotion, rollback, and release risk controls.', 'Core topic in CI/CD and Release Engineering.', 'choice', 'grp-ci-cd-and-release-engineering-foundations-topics', 6, 3, 5, 'beginner', 70, 300, 4180, '{"role":"site-reliability-engineer","nodeKey":"progressive-delivery-and-rollback"}'::jsonb, true, true, '["Explain progressive delivery and rollback using concrete examples.","Apply progressive delivery and rollback to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates progressive delivery and rollback with reviewable evidence."]'::jsonb),
+('release-gates-and-change-risk', 'grp-ci-cd-and-release-engineering-foundations', 4, 'topic', NULL, NULL, NULL, 'Release Gates and Change Risk', 'Design delivery workflows with validation, promotion, rollback, and release risk controls.', 'Core topic in CI/CD and Release Engineering.', 'choice', 'grp-ci-cd-and-release-engineering-foundations-topics', 6, 4, 4, 'beginner', 70, 700, 4180, '{"role":"site-reliability-engineer","nodeKey":"release-gates-and-change-risk"}'::jsonb, true, true, '["Explain release gates and change risk using concrete examples.","Apply release gates and change risk to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates release gates and change risk with reviewable evidence."]'::jsonb),
+('artifact-and-environment-promotion', 'grp-ci-cd-and-release-engineering-core-practice', 1, 'topic', NULL, NULL, NULL, 'Artifact and Environment Promotion', 'Apply artifact and environment promotion to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in CI/CD and Release Engineering.', 'side', 'grp-ci-cd-and-release-engineering-core-practice-support', 6, 1, 4, 'beginner', 70, 300, 4190, '{"role":"site-reliability-engineer","nodeKey":"artifact-and-environment-promotion"}'::jsonb, true, true, '["Explain artifact and environment promotion using concrete examples.","Apply artifact and environment promotion to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates artifact and environment promotion with reviewable evidence."]'::jsonb),
+('deployment-failure-analysis', 'grp-ci-cd-and-release-engineering-core-practice', 2, 'topic', NULL, NULL, NULL, 'Deployment Failure Analysis', 'Operate Kubernetes workloads by reading object state, rollout behavior, events, logs, probes, and service connectivity.', 'Core topic in CI/CD and Release Engineering.', 'choice', 'grp-ci-cd-and-release-engineering-core-practice-topics', 6, 2, 5, 'beginner', 70, 700, 4190, '{"role":"site-reliability-engineer","nodeKey":"deployment-failure-analysis"}'::jsonb, true, true, '["Explain deployment failure analysis using concrete examples.","Apply deployment failure analysis to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates deployment failure analysis with reviewable evidence."]'::jsonb),
+('chk-ci-cd-and-release-engineering-review', 'grp-ci-cd-and-release-engineering-core-practice', 3, 'checkpoint', 'review', NULL, NULL, 'CI/CD and Release Engineering Review', 'Validate the learner''s evidence for the ci/cd and release engineering stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-ci-cd-and-release-engineering-core-practice-checkpoints', 6, 1, 2, 'intermediate', 65, 500, 4310, '{"role":"site-reliability-engineer","nodeKey":"chk-ci-cd-and-release-engineering-review"}'::jsonb, true, true, '["Review and explain the main work from CI/CD and Release Engineering."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-observability-and-monitoring', NULL, 7, 'phase', NULL, NULL, NULL, 'Observability and Monitoring', 'This stage builds the observability and monitoring layer of the Site Reliability Engineer path.', 'Phase grouping for Observability and Monitoring.', 'trunk', 'roadmap-main', 7, 7, NULL, NULL, 100, 500, 4610, '{"role":"site-reliability-engineer","nodeKey":"ph-observability-and-monitoring"}'::jsonb, true, false, '["Observability and Monitoring"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('metrics-logs-and-traces', 'grp-observability-and-monitoring-foundations', 1, 'topic', NULL, NULL, NULL, 'Metrics, Logs, and Traces', 'Use database metrics, wait events, logs, and dashboards to investigate health, saturation, and performance risks.', 'Core topic in Observability and Monitoring.', 'choice', 'grp-observability-and-monitoring-foundations-topics', 7, 1, 5, 'beginner', 70, 300, 4650, '{"role":"site-reliability-engineer","nodeKey":"metrics-logs-and-traces"}'::jsonb, true, true, '["Explain metrics, logs, and traces using concrete examples.","Apply metrics, logs, and traces to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates metrics, logs, and traces with reviewable evidence."]'::jsonb),
+('prometheus-metrics-and-alerting', 'grp-observability-and-monitoring-foundations', 2, 'topic', NULL, NULL, NULL, 'Prometheus Metrics and Alerting', 'Use database metrics, wait events, logs, and dashboards to investigate health, saturation, and performance risks.', 'Core topic in Observability and Monitoring.', 'choice', 'grp-observability-and-monitoring-foundations-topics', 7, 2, 6, 'beginner', 70, 700, 4650, '{"role":"site-reliability-engineer","nodeKey":"prometheus-metrics-and-alerting"}'::jsonb, true, true, '["Explain prometheus metrics and alerting using concrete examples.","Apply prometheus metrics and alerting to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates prometheus metrics and alerting with reviewable evidence."]'::jsonb),
+('grafana-dashboards', 'grp-observability-and-monitoring-foundations', 3, 'topic', NULL, NULL, NULL, 'Grafana Dashboards', 'Choose charts, layout, labels, and interaction patterns that communicate trends, uncertainty, and decisions clearly.', 'Core topic in Observability and Monitoring.', 'choice', 'grp-observability-and-monitoring-foundations-topics', 7, 3, 5, 'beginner', 70, 300, 4760, '{"role":"site-reliability-engineer","nodeKey":"grafana-dashboards"}'::jsonb, true, true, '["Explain grafana dashboards using concrete examples.","Apply grafana dashboards to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates grafana dashboards with reviewable evidence."]'::jsonb),
+('distributed-tracing', 'grp-observability-and-monitoring-foundations', 4, 'topic', NULL, NULL, NULL, 'Distributed Tracing', 'Compare distributed and NoSQL data models, consistency behavior, access patterns, and operational tradeoffs.', 'Core topic in Observability and Monitoring.', 'choice', 'grp-observability-and-monitoring-foundations-topics', 7, 4, 5, 'beginner', 70, 700, 4760, '{"role":"site-reliability-engineer","nodeKey":"distributed-tracing"}'::jsonb, true, true, '["Explain distributed tracing using concrete examples.","Apply distributed tracing to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates distributed tracing with reviewable evidence."]'::jsonb),
+('alert-design-and-noise-reduction', 'grp-observability-and-monitoring-core-practice', 1, 'topic', NULL, NULL, NULL, 'Alert Design and Noise Reduction', 'Apply alert design and noise reduction to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Observability and Monitoring.', 'choice', 'grp-observability-and-monitoring-core-practice-topics', 7, 1, 5, 'beginner', 70, 300, 4770, '{"role":"site-reliability-engineer","nodeKey":"alert-design-and-noise-reduction"}'::jsonb, true, true, '["Explain alert design and noise reduction using concrete examples.","Apply alert design and noise reduction to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates alert design and noise reduction with reviewable evidence."]'::jsonb),
+('service-health-reviews', 'grp-observability-and-monitoring-core-practice', 2, 'topic', NULL, NULL, NULL, 'Service Health Reviews', 'Apply service health reviews to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Observability and Monitoring.', 'choice', 'grp-observability-and-monitoring-core-practice-topics', 7, 2, 4, 'beginner', 70, 700, 4770, '{"role":"site-reliability-engineer","nodeKey":"service-health-reviews"}'::jsonb, true, true, '["Explain service health reviews using concrete examples.","Apply service health reviews to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates service health reviews with reviewable evidence."]'::jsonb),
+('chk-observability-and-monitoring-review', 'grp-observability-and-monitoring-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Observability and Monitoring Review', 'Validate the learner''s evidence for the observability and monitoring stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-observability-and-monitoring-core-practice-checkpoints', 7, 1, 2, 'intermediate', 65, 500, 4890, '{"role":"site-reliability-engineer","nodeKey":"chk-observability-and-monitoring-review"}'::jsonb, true, true, '["Review and explain the main work from Observability and Monitoring."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-incident-response-and-on-call-readiness', NULL, 8, 'phase', NULL, NULL, NULL, 'Incident Response and On-Call Readiness', 'This stage builds the incident response and on-call readiness layer of the Site Reliability Engineer path.', 'Phase grouping for Incident Response and On-Call Readiness.', 'trunk', 'roadmap-main', 8, 8, NULL, NULL, 100, 500, 5190, '{"role":"site-reliability-engineer","nodeKey":"ph-incident-response-and-on-call-readiness"}'::jsonb, true, false, '["Incident Response and On-Call Readiness"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('grp-incident-response-and-on-call-readiness-specialization-choices', 'ph-incident-response-and-on-call-readiness', 20, 'choice_group', NULL, 'choose_one', '1', 'Incident Practice Choice', 'Choose the learning path that best matches your goals for incident practice choice.', 'Provides a real learner choice for incident practice choice.', 'side', 'ph-incident-response-and-on-call-readiness-groups', 8, 20, NULL, NULL, 80, 850, 7350, '{"role":"site-reliability-engineer","nodeKey":"grp-incident-response-and-on-call-readiness-specialization-choices"}'::jsonb, false, false, '["Choose a specialization inside Incident Response and On-Call Readiness."]'::jsonb, '["One option is selected and completed."]'::jsonb),
+('incident-commander-practice', 'grp-incident-response-and-on-call-readiness-specialization-choices', 1, 'choice_option', NULL, NULL, NULL, 'Incident Commander Practice', 'Practice incident coordination, severity assessment, communication, escalation, and post-incident follow-up.', 'Real choice option for Incident Commander Practice.', 'choice', 'grp-incident-response-and-on-call-readiness-specialization-choices-options', 8, 1, 6, 'intermediate', 60, 330, 7070, '{"role":"site-reliability-engineer","nodeKey":"incident-commander-practice","choiceTitle":"Incident Commander Practice"}'::jsonb, false, true, '["Complete the Incident Commander Practice option with reviewable evidence."]'::jsonb, '["Practice incident coordination, severity assessment, communication, escalation, and post-incident follow-up."]'::jsonb),
+('observability-debugging-practice', 'grp-incident-response-and-on-call-readiness-specialization-choices', 2, 'choice_option', NULL, NULL, NULL, 'Observability Debugging Practice', 'Practice debugging incidents with metrics, logs, traces, dashboards, and service-level symptoms.', 'Real choice option for Observability Debugging Practice.', 'choice', 'grp-incident-response-and-on-call-readiness-specialization-choices-options', 8, 2, 6, 'intermediate', 60, 670, 7070, '{"role":"site-reliability-engineer","nodeKey":"observability-debugging-practice","choiceTitle":"Observability Debugging Practice"}'::jsonb, false, true, '["Complete the Observability Debugging Practice option with reviewable evidence."]'::jsonb, '["Practice debugging incidents with metrics, logs, traces, dashboards, and service-level symptoms."]'::jsonb),
+('incident-severity-and-triage', 'grp-incident-response-and-on-call-readiness-foundations', 1, 'topic', NULL, NULL, NULL, 'Incident Severity and Triage', 'Triage incidents, coordinate communication, assign roles, track mitigation actions, and capture follow-up work after recovery.', 'Core topic in Incident Response and On-Call Readiness.', 'choice', 'grp-incident-response-and-on-call-readiness-foundations-topics', 8, 1, 4, 'beginner', 70, 300, 5230, '{"role":"site-reliability-engineer","nodeKey":"incident-severity-and-triage"}'::jsonb, true, true, '["Explain incident severity and triage using concrete examples.","Apply incident severity and triage to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates incident severity and triage with reviewable evidence."]'::jsonb),
+('incident-commander-workflow', 'grp-incident-response-and-on-call-readiness-foundations', 2, 'topic', NULL, NULL, NULL, 'Incident Commander Workflow', 'Triage incidents, coordinate communication, assign roles, track mitigation actions, and capture follow-up work after recovery.', 'Core topic in Incident Response and On-Call Readiness.', 'choice', 'grp-incident-response-and-on-call-readiness-foundations-topics', 8, 2, 4, 'beginner', 70, 700, 5230, '{"role":"site-reliability-engineer","nodeKey":"incident-commander-workflow"}'::jsonb, true, true, '["Explain incident commander workflow using concrete examples.","Apply incident commander workflow to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates incident commander workflow with reviewable evidence."]'::jsonb),
+('runbook-execution', 'grp-incident-response-and-on-call-readiness-foundations', 3, 'topic', NULL, NULL, NULL, 'Runbook Execution', 'Write actionable runbooks and blameless postmortems that preserve context, decisions, timelines, and prevention work.', 'Core topic in Incident Response and On-Call Readiness.', 'choice', 'grp-incident-response-and-on-call-readiness-foundations-topics', 8, 3, 4, 'beginner', 70, 300, 5340, '{"role":"site-reliability-engineer","nodeKey":"runbook-execution"}'::jsonb, true, true, '["Explain runbook execution using concrete examples.","Apply runbook execution to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates runbook execution with reviewable evidence."]'::jsonb),
+('status-updates-and-stakeholder-communication', 'grp-incident-response-and-on-call-readiness-foundations', 4, 'topic', NULL, NULL, NULL, 'Status Updates and Stakeholder Communication', 'Turn analysis results into a clear narrative with context, evidence, limitations, and actionable recommendations.', 'Core topic in Incident Response and On-Call Readiness.', 'side', 'grp-incident-response-and-on-call-readiness-foundations-support', 8, 4, 4, 'beginner', 70, 700, 5340, '{"role":"site-reliability-engineer","nodeKey":"status-updates-and-stakeholder-communication"}'::jsonb, true, true, '["Explain status updates and stakeholder communication using concrete examples.","Apply status updates and stakeholder communication to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates status updates and stakeholder communication with reviewable evidence."]'::jsonb),
+('blameless-postmortems', 'grp-incident-response-and-on-call-readiness-core-practice', 1, 'topic', NULL, NULL, NULL, 'Blameless Postmortems', 'Write actionable runbooks and blameless postmortems that preserve context, decisions, timelines, and prevention work.', 'Core topic in Incident Response and On-Call Readiness.', 'choice', 'grp-incident-response-and-on-call-readiness-core-practice-topics', 8, 1, 5, 'beginner', 70, 300, 5350, '{"role":"site-reliability-engineer","nodeKey":"blameless-postmortems"}'::jsonb, true, true, '["Explain blameless postmortems using concrete examples.","Apply blameless postmortems to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates blameless postmortems with reviewable evidence."]'::jsonb),
+('on-call-health-and-handoffs', 'grp-incident-response-and-on-call-readiness-core-practice', 2, 'topic', NULL, NULL, NULL, 'On-Call Health and Handoffs', 'Apply on-call health and handoffs to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Incident Response and On-Call Readiness.', 'choice', 'grp-incident-response-and-on-call-readiness-core-practice-topics', 8, 2, 4, 'beginner', 70, 700, 5350, '{"role":"site-reliability-engineer","nodeKey":"on-call-health-and-handoffs"}'::jsonb, true, true, '["Explain on-call health and handoffs using concrete examples.","Apply on-call health and handoffs to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates on-call health and handoffs with reviewable evidence."]'::jsonb),
+('chk-incident-response-and-on-call-readiness-review', 'grp-incident-response-and-on-call-readiness-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Incident Response and On-Call Readiness Review', 'Validate the learner''s evidence for the incident response and on-call readiness stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-incident-response-and-on-call-readiness-core-practice-checkpoints', 8, 1, 2, 'intermediate', 65, 500, 5470, '{"role":"site-reliability-engineer","nodeKey":"chk-incident-response-and-on-call-readiness-review"}'::jsonb, true, true, '["Review and explain the main work from Incident Response and On-Call Readiness."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-reliability-engineering-and-slos', NULL, 9, 'phase', NULL, NULL, NULL, 'Reliability Engineering and SLOs', 'This stage builds the reliability engineering and slos layer of the Site Reliability Engineer path.', 'Phase grouping for Reliability Engineering and SLOs.', 'trunk', 'roadmap-main', 9, 9, NULL, NULL, 100, 500, 5770, '{"role":"site-reliability-engineer","nodeKey":"ph-reliability-engineering-and-slos"}'::jsonb, true, false, '["Reliability Engineering and SLOs"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('service-level-indicators', 'grp-reliability-engineering-and-slos-foundations', 1, 'topic', NULL, NULL, NULL, 'Service Level Indicators', 'Define service level indicators, set SLO targets, calculate error budgets, and explain how reliability goals guide tradeoffs.', 'Core topic in Reliability Engineering and SLOs.', 'choice', 'grp-reliability-engineering-and-slos-foundations-topics', 9, 1, 5, 'beginner', 70, 300, 5810, '{"role":"site-reliability-engineer","nodeKey":"service-level-indicators"}'::jsonb, true, true, '["Explain service level indicators using concrete examples.","Apply service level indicators to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates service level indicators with reviewable evidence."]'::jsonb),
+('slo-design-and-error-budgets', 'grp-reliability-engineering-and-slos-foundations', 2, 'topic', NULL, NULL, NULL, 'SLO Design and Error Budgets', 'Define service level indicators, set SLO targets, calculate error budgets, and explain how reliability goals guide tradeoffs.', 'Core topic in Reliability Engineering and SLOs.', 'choice', 'grp-reliability-engineering-and-slos-foundations-topics', 9, 2, 6, 'beginner', 70, 700, 5810, '{"role":"site-reliability-engineer","nodeKey":"slo-design-and-error-budgets"}'::jsonb, true, true, '["Explain slo design and error budgets using concrete examples.","Apply slo design and error budgets to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates slo design and error budgets with reviewable evidence."]'::jsonb),
+('error-budget-policy', 'grp-reliability-engineering-and-slos-foundations', 3, 'topic', NULL, NULL, NULL, 'Error Budget Policy', 'Apply error budget policy to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Reliability Engineering and SLOs.', 'choice', 'grp-reliability-engineering-and-slos-foundations-topics', 9, 3, 5, 'beginner', 70, 300, 5920, '{"role":"site-reliability-engineer","nodeKey":"error-budget-policy"}'::jsonb, true, true, '["Explain error budget policy using concrete examples.","Apply error budget policy to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates error budget policy with reviewable evidence."]'::jsonb),
+('reliability-risk-reviews', 'grp-reliability-engineering-and-slos-foundations', 4, 'topic', NULL, NULL, NULL, 'Reliability Risk Reviews', 'Apply reliability risk reviews to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Reliability Engineering and SLOs.', 'choice', 'grp-reliability-engineering-and-slos-foundations-topics', 9, 4, 5, 'beginner', 70, 700, 5920, '{"role":"site-reliability-engineer","nodeKey":"reliability-risk-reviews"}'::jsonb, true, true, '["Explain reliability risk reviews using concrete examples.","Apply reliability risk reviews to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates reliability risk reviews with reviewable evidence."]'::jsonb),
+('availability-and-latency-targets', 'grp-reliability-engineering-and-slos-core-practice', 1, 'topic', NULL, NULL, NULL, 'Availability and Latency Targets', 'Apply availability and latency targets to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Reliability Engineering and SLOs.', 'choice', 'grp-reliability-engineering-and-slos-core-practice-topics', 9, 1, 5, 'beginner', 70, 300, 5930, '{"role":"site-reliability-engineer","nodeKey":"availability-and-latency-targets"}'::jsonb, true, true, '["Explain availability and latency targets using concrete examples.","Apply availability and latency targets to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates availability and latency targets with reviewable evidence."]'::jsonb),
+('customer-impact-analysis', 'grp-reliability-engineering-and-slos-core-practice', 2, 'topic', NULL, NULL, NULL, 'Customer Impact Analysis', 'Apply customer impact analysis to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Reliability Engineering and SLOs.', 'choice', 'grp-reliability-engineering-and-slos-core-practice-topics', 9, 2, 4, 'beginner', 70, 700, 5930, '{"role":"site-reliability-engineer","nodeKey":"customer-impact-analysis"}'::jsonb, true, true, '["Explain customer impact analysis using concrete examples.","Apply customer impact analysis to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates customer impact analysis with reviewable evidence."]'::jsonb),
+('chk-reliability-engineering-and-slos-review', 'grp-reliability-engineering-and-slos-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Reliability Engineering and SLOs Review', 'Validate the learner''s evidence for the reliability engineering and slos stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-reliability-engineering-and-slos-core-practice-checkpoints', 9, 1, 2, 'intermediate', 65, 500, 6050, '{"role":"site-reliability-engineer","nodeKey":"chk-reliability-engineering-and-slos-review"}'::jsonb, true, true, '["Review and explain the main work from Reliability Engineering and SLOs."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-performance-capacity-and-resilience', NULL, 10, 'phase', NULL, NULL, NULL, 'Performance, Capacity, and Resilience', 'This stage builds the performance, capacity, and resilience layer of the Site Reliability Engineer path.', 'Phase grouping for Performance, Capacity, and Resilience.', 'trunk', 'roadmap-main', 10, 10, NULL, NULL, 100, 500, 6350, '{"role":"site-reliability-engineer","nodeKey":"ph-performance-capacity-and-resilience"}'::jsonb, true, false, '["Performance, Capacity, and Resilience"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('load-testing-basics', 'grp-performance-capacity-and-resilience-foundations', 1, 'topic', NULL, NULL, NULL, 'Load Testing Basics', 'Estimate capacity needs, test load behavior, identify bottlenecks, and plan safe scaling or resilience improvements.', 'Core topic in Performance, Capacity, and Resilience.', 'choice', 'grp-performance-capacity-and-resilience-foundations-topics', 10, 1, 5, 'beginner', 70, 300, 6390, '{"role":"site-reliability-engineer","nodeKey":"load-testing-basics"}'::jsonb, true, true, '["Explain load testing basics using concrete examples.","Apply load testing basics to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates load testing basics with reviewable evidence."]'::jsonb),
+('capacity-planning', 'grp-performance-capacity-and-resilience-foundations', 2, 'topic', NULL, NULL, NULL, 'Capacity Planning', 'Estimate capacity needs, test load behavior, identify bottlenecks, and plan safe scaling or resilience improvements.', 'Core topic in Performance, Capacity, and Resilience.', 'choice', 'grp-performance-capacity-and-resilience-foundations-topics', 10, 2, 5, 'beginner', 70, 700, 6390, '{"role":"site-reliability-engineer","nodeKey":"capacity-planning"}'::jsonb, true, true, '["Explain capacity planning using concrete examples.","Apply capacity planning to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates capacity planning with reviewable evidence."]'::jsonb),
+('backpressure-and-rate-limits', 'grp-performance-capacity-and-resilience-foundations', 3, 'topic', NULL, NULL, NULL, 'Backpressure and Rate Limits', 'Apply backpressure and rate limits to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Performance, Capacity, and Resilience.', 'choice', 'grp-performance-capacity-and-resilience-foundations-topics', 10, 3, 5, 'beginner', 70, 300, 6500, '{"role":"site-reliability-engineer","nodeKey":"backpressure-and-rate-limits"}'::jsonb, true, true, '["Explain backpressure and rate limits using concrete examples.","Apply backpressure and rate limits to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates backpressure and rate limits with reviewable evidence."]'::jsonb),
+('circuit-breakers-and-timeouts', 'grp-performance-capacity-and-resilience-foundations', 4, 'topic', NULL, NULL, NULL, 'Circuit Breakers and Timeouts', 'Apply circuit breakers and timeouts to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Performance, Capacity, and Resilience.', 'choice', 'grp-performance-capacity-and-resilience-foundations-topics', 10, 4, 5, 'beginner', 70, 700, 6500, '{"role":"site-reliability-engineer","nodeKey":"circuit-breakers-and-timeouts"}'::jsonb, true, true, '["Explain circuit breakers and timeouts using concrete examples.","Apply circuit breakers and timeouts to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates circuit breakers and timeouts with reviewable evidence."]'::jsonb),
+('caching-and-cdn-strategy', 'grp-performance-capacity-and-resilience-core-practice', 1, 'topic', NULL, NULL, NULL, 'Caching and CDN Strategy', 'Apply caching and cdn strategy to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Performance, Capacity, and Resilience.', 'choice', 'grp-performance-capacity-and-resilience-core-practice-topics', 10, 1, 4, 'beginner', 70, 300, 6510, '{"role":"site-reliability-engineer","nodeKey":"caching-and-cdn-strategy"}'::jsonb, true, true, '["Explain caching and cdn strategy using concrete examples.","Apply caching and cdn strategy to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates caching and cdn strategy with reviewable evidence."]'::jsonb),
+('chaos-and-failure-mode-testing', 'grp-performance-capacity-and-resilience-core-practice', 2, 'topic', NULL, NULL, NULL, 'Chaos and Failure Mode Testing', 'Apply chaos and failure mode testing to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Performance, Capacity, and Resilience.', 'choice', 'grp-performance-capacity-and-resilience-core-practice-topics', 10, 2, 5, 'beginner', 70, 700, 6510, '{"role":"site-reliability-engineer","nodeKey":"chaos-and-failure-mode-testing"}'::jsonb, true, true, '["Explain chaos and failure mode testing using concrete examples.","Apply chaos and failure mode testing to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates chaos and failure mode testing with reviewable evidence."]'::jsonb),
+('chk-performance-capacity-and-resilience-review', 'grp-performance-capacity-and-resilience-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Performance, Capacity, and Resilience Review', 'Validate the learner''s evidence for the performance, capacity, and resilience stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-performance-capacity-and-resilience-core-practice-checkpoints', 10, 1, 2, 'intermediate', 65, 500, 6630, '{"role":"site-reliability-engineer","nodeKey":"chk-performance-capacity-and-resilience-review"}'::jsonb, true, true, '["Review and explain the main work from Performance, Capacity, and Resilience."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-security-and-compliance-awareness', NULL, 11, 'phase', NULL, NULL, NULL, 'Security and Compliance Awareness', 'This stage builds the security and compliance awareness layer of the Site Reliability Engineer path.', 'Phase grouping for Security and Compliance Awareness.', 'trunk', 'roadmap-main', 11, 11, NULL, NULL, 100, 500, 6930, '{"role":"site-reliability-engineer","nodeKey":"ph-security-and-compliance-awareness"}'::jsonb, true, false, '["Security and Compliance Awareness"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('grp-security-and-compliance-awareness-specialization-choices', 'ph-security-and-compliance-awareness', 20, 'choice_group', NULL, 'choose_one', '1', 'Security and Compliance Choice', 'Choose the learning path that best matches your goals for security and compliance choice.', 'Provides a real learner choice for security and compliance choice.', 'side', 'ph-security-and-compliance-awareness-groups', 11, 20, NULL, NULL, 80, 850, 9090, '{"role":"site-reliability-engineer","nodeKey":"grp-security-and-compliance-awareness-specialization-choices"}'::jsonb, false, false, '["Choose a specialization inside Security and Compliance Awareness."]'::jsonb, '["One option is selected and completed."]'::jsonb),
+('security-hardening-track', 'grp-security-and-compliance-awareness-specialization-choices', 1, 'choice_option', NULL, NULL, NULL, 'Security Hardening Track', 'Focus on operational security, secrets, access boundaries, patching, and security evidence.', 'Real choice option for Security Hardening Track.', 'choice', 'grp-security-and-compliance-awareness-specialization-choices-options', 11, 1, 6, 'intermediate', 60, 330, 8810, '{"role":"site-reliability-engineer","nodeKey":"security-hardening-track","choiceTitle":"Security Hardening Track"}'::jsonb, false, true, '["Complete the Security Hardening Track option with reviewable evidence."]'::jsonb, '["Focus on operational security, secrets, access boundaries, patching, and security evidence."]'::jsonb),
+('compliance-runbook-track', 'grp-security-and-compliance-awareness-specialization-choices', 2, 'choice_option', NULL, NULL, NULL, 'Compliance Runbook Track', 'Focus on audit-ready runbooks, operational evidence, policy checks, and controlled response procedures.', 'Real choice option for Compliance Runbook Track.', 'choice', 'grp-security-and-compliance-awareness-specialization-choices-options', 11, 2, 6, 'intermediate', 60, 670, 8810, '{"role":"site-reliability-engineer","nodeKey":"compliance-runbook-track","choiceTitle":"Compliance Runbook Track"}'::jsonb, false, true, '["Complete the Compliance Runbook Track option with reviewable evidence."]'::jsonb, '["Focus on audit-ready runbooks, operational evidence, policy checks, and controlled response procedures."]'::jsonb),
+('operational-security-basics', 'grp-security-and-compliance-awareness-foundations', 1, 'topic', NULL, NULL, NULL, 'Operational Security Basics', 'Apply least-privilege access, authentication rules, encryption controls, and audit evidence for safer database operations.', 'Core topic in Security and Compliance Awareness.', 'choice', 'grp-security-and-compliance-awareness-foundations-topics', 11, 1, 4, 'beginner', 70, 300, 6970, '{"role":"site-reliability-engineer","nodeKey":"operational-security-basics"}'::jsonb, true, true, '["Explain operational security basics using concrete examples.","Apply operational security basics to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates operational security basics with reviewable evidence."]'::jsonb),
+('secrets-management', 'grp-security-and-compliance-awareness-foundations', 2, 'topic', NULL, NULL, NULL, 'Secrets Management', 'Apply secrets management to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Security and Compliance Awareness.', 'choice', 'grp-security-and-compliance-awareness-foundations-topics', 11, 2, 4, 'beginner', 70, 700, 6970, '{"role":"site-reliability-engineer","nodeKey":"secrets-management"}'::jsonb, true, true, '["Explain secrets management using concrete examples.","Apply secrets management to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates secrets management with reviewable evidence."]'::jsonb),
+('network-security-controls', 'grp-security-and-compliance-awareness-foundations', 3, 'topic', NULL, NULL, NULL, 'Network Security Controls', 'Apply least-privilege access, authentication rules, encryption controls, and audit evidence for safer database operations.', 'Core topic in Security and Compliance Awareness.', 'choice', 'grp-security-and-compliance-awareness-foundations-topics', 11, 3, 4, 'beginner', 70, 300, 7080, '{"role":"site-reliability-engineer","nodeKey":"network-security-controls"}'::jsonb, true, true, '["Explain network security controls using concrete examples.","Apply network security controls to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates network security controls with reviewable evidence."]'::jsonb),
+('vulnerability-and-patch-operations', 'grp-security-and-compliance-awareness-foundations', 4, 'topic', NULL, NULL, NULL, 'Vulnerability and Patch Operations', 'Apply vulnerability and patch operations to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in Security and Compliance Awareness.', 'choice', 'grp-security-and-compliance-awareness-foundations-topics', 11, 4, 4, 'beginner', 70, 700, 7080, '{"role":"site-reliability-engineer","nodeKey":"vulnerability-and-patch-operations"}'::jsonb, true, true, '["Explain vulnerability and patch operations using concrete examples.","Apply vulnerability and patch operations to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates vulnerability and patch operations with reviewable evidence."]'::jsonb),
+('audit-evidence-for-operations', 'grp-security-and-compliance-awareness-core-practice', 1, 'topic', NULL, NULL, NULL, 'Audit Evidence for Operations', 'Apply least-privilege access, authentication rules, encryption controls, and audit evidence for safer database operations.', 'Core topic in Security and Compliance Awareness.', 'side', 'grp-security-and-compliance-awareness-core-practice-support', 11, 1, 4, 'beginner', 70, 300, 7090, '{"role":"site-reliability-engineer","nodeKey":"audit-evidence-for-operations"}'::jsonb, true, true, '["Explain audit evidence for operations using concrete examples.","Apply audit evidence for operations to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates audit evidence for operations with reviewable evidence."]'::jsonb),
+('compliance-friendly-runbooks', 'grp-security-and-compliance-awareness-core-practice', 2, 'topic', NULL, NULL, NULL, 'Compliance-Friendly Runbooks', 'Write actionable runbooks and blameless postmortems that preserve context, decisions, timelines, and prevention work.', 'Core topic in Security and Compliance Awareness.', 'side', 'grp-security-and-compliance-awareness-core-practice-support', 11, 2, 4, 'beginner', 70, 700, 7090, '{"role":"site-reliability-engineer","nodeKey":"compliance-friendly-runbooks"}'::jsonb, true, true, '["Explain compliance-friendly runbooks using concrete examples.","Apply compliance-friendly runbooks to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates compliance-friendly runbooks with reviewable evidence."]'::jsonb),
+('chk-security-and-compliance-awareness-review', 'grp-security-and-compliance-awareness-core-practice', 3, 'checkpoint', 'review', NULL, NULL, 'Security and Compliance Awareness Review', 'Validate the learner''s evidence for the security and compliance awareness stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-security-and-compliance-awareness-core-practice-checkpoints', 11, 1, 2, 'intermediate', 65, 500, 7210, '{"role":"site-reliability-engineer","nodeKey":"chk-security-and-compliance-awareness-review"}'::jsonb, true, true, '["Review and explain the main work from Security and Compliance Awareness."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('ph-sre-portfolio-capstone', NULL, 12, 'phase', NULL, NULL, NULL, 'SRE Portfolio Capstone', 'This stage builds the sre portfolio capstone layer of the Site Reliability Engineer path.', 'Phase grouping for SRE Portfolio Capstone.', 'trunk', 'roadmap-main', 12, 12, NULL, NULL, 100, 500, 7510, '{"role":"site-reliability-engineer","nodeKey":"ph-sre-portfolio-capstone"}'::jsonb, true, false, '["SRE Portfolio Capstone"]'::jsonb, '["Required child nodes in this phase are completed."]'::jsonb),
+('sre-portfolio-case-study-planning', 'grp-sre-portfolio-capstone-foundations', 1, 'topic', NULL, NULL, NULL, 'SRE Portfolio Case Study Planning', 'Apply sre portfolio case study planning to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Portfolio Capstone.', 'side', 'grp-sre-portfolio-capstone-foundations-support', 12, 1, 3, 'beginner', 70, 300, 7550, '{"role":"site-reliability-engineer","nodeKey":"sre-portfolio-case-study-planning"}'::jsonb, true, true, '["Explain sre portfolio case study planning using concrete examples.","Apply sre portfolio case study planning to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates sre portfolio case study planning with reviewable evidence."]'::jsonb),
+('sre-interview-scenarios', 'grp-sre-portfolio-capstone-foundations', 2, 'topic', NULL, NULL, NULL, 'SRE Interview Scenarios', 'Apply sre interview scenarios to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Portfolio Capstone.', 'side', 'grp-sre-portfolio-capstone-foundations-support', 12, 2, 3, 'beginner', 70, 700, 7550, '{"role":"site-reliability-engineer","nodeKey":"sre-interview-scenarios"}'::jsonb, true, true, '["Explain sre interview scenarios using concrete examples.","Apply sre interview scenarios to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates sre interview scenarios with reviewable evidence."]'::jsonb),
+('capstone-service-definition', 'grp-sre-portfolio-capstone-foundations', 3, 'topic', NULL, NULL, NULL, 'Capstone Service Definition', 'Apply capstone service definition to production reliability work with observable evidence, operational safeguards, and clear handoff notes.', 'Core topic in SRE Portfolio Capstone.', 'side', 'grp-sre-portfolio-capstone-foundations-support', 12, 3, 4, 'beginner', 70, 300, 7660, '{"role":"site-reliability-engineer","nodeKey":"capstone-service-definition"}'::jsonb, true, true, '["Explain capstone service definition using concrete examples.","Apply capstone service definition to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates capstone service definition with reviewable evidence."]'::jsonb),
+('capstone-monitoring-plan', 'grp-sre-portfolio-capstone-foundations', 4, 'topic', NULL, NULL, NULL, 'Capstone Monitoring Plan', 'Use database metrics, wait events, logs, and dashboards to investigate health, saturation, and performance risks.', 'Core topic in SRE Portfolio Capstone.', 'choice', 'grp-sre-portfolio-capstone-foundations-topics', 12, 4, 5, 'beginner', 70, 700, 7660, '{"role":"site-reliability-engineer","nodeKey":"capstone-monitoring-plan"}'::jsonb, true, true, '["Explain capstone monitoring plan using concrete examples.","Apply capstone monitoring plan to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates capstone monitoring plan with reviewable evidence."]'::jsonb),
+('capstone-incident-walkthrough', 'grp-sre-portfolio-capstone-core-practice', 1, 'topic', NULL, NULL, NULL, 'Capstone Incident Walkthrough', 'Triage incidents, coordinate communication, assign roles, track mitigation actions, and capture follow-up work after recovery.', 'Core topic in SRE Portfolio Capstone.', 'choice', 'grp-sre-portfolio-capstone-core-practice-topics', 12, 1, 5, 'beginner', 70, 300, 7670, '{"role":"site-reliability-engineer","nodeKey":"capstone-incident-walkthrough"}'::jsonb, true, true, '["Explain capstone incident walkthrough using concrete examples.","Apply capstone incident walkthrough to a realistic Site Reliability Engineer task."]'::jsonb, '["Notes, code, query, diagram, or report demonstrates capstone incident walkthrough with reviewable evidence."]'::jsonb),
+('chk-sre-portfolio-capstone-review', 'grp-sre-portfolio-capstone-core-practice', 3, 'checkpoint', 'review', NULL, NULL, 'SRE Portfolio Capstone Review', 'Validate the learner''s evidence for the sre portfolio capstone stage with explanations, artifacts, and next-step notes.', 'End-of-phase review checkpoint.', 'checkpoint', 'grp-sre-portfolio-capstone-core-practice-checkpoints', 12, 1, 2, 'intermediate', 65, 500, 7790, '{"role":"site-reliability-engineer","nodeKey":"chk-sre-portfolio-capstone-review"}'::jsonb, true, true, '["Review and explain the main work from SRE Portfolio Capstone."]'::jsonb, '["Evidence is complete, reviewable, and tied to the phase outcomes."]'::jsonb),
+('proj-monitored-service-deployment', 'grp-containers-and-kubernetes-core-practice', 3, 'project', NULL, NULL, NULL, 'Monitored Service Deployment', 'Build a portfolio-ready deliverable for monitored service deployment with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'checkpoint', 'grp-containers-and-kubernetes-core-practice-projects', 5, 1, 18, 'intermediate', 90, 500, 3770, '{"role":"site-reliability-engineer","nodeKey":"proj-monitored-service-deployment","project":true}'::jsonb, true, true, '["Produce the monitored service deployment deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('proj-incident-response-simulation', 'grp-incident-response-and-on-call-readiness-core-practice', 3, 'project', NULL, NULL, NULL, 'Incident Response Simulation', 'Build a portfolio-ready deliverable for incident response simulation with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'checkpoint', 'grp-incident-response-and-on-call-readiness-core-practice-projects', 8, 1, 14, 'intermediate', 90, 500, 5510, '{"role":"site-reliability-engineer","nodeKey":"proj-incident-response-simulation","project":true}'::jsonb, true, true, '["Produce the incident response simulation deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('proj-slo-and-error-budget-report', 'grp-reliability-engineering-and-slos-core-practice', 3, 'project', NULL, NULL, NULL, 'SLO and Error Budget Report', 'Build a portfolio-ready deliverable for slo and error budget report with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'checkpoint', 'grp-reliability-engineering-and-slos-core-practice-projects', 9, 1, 14, 'intermediate', 90, 500, 6090, '{"role":"site-reliability-engineer","nodeKey":"proj-slo-and-error-budget-report","project":true}'::jsonb, true, true, '["Produce the slo and error budget report deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('proj-reliability-automation-script', 'grp-programming-and-automation-core-practice', 3, 'project', NULL, NULL, NULL, 'Reliability Automation Script', 'Build a portfolio-ready deliverable for reliability automation script with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'checkpoint', 'grp-programming-and-automation-core-practice-projects', 3, 1, 12, 'intermediate', 90, 500, 2610, '{"role":"site-reliability-engineer","nodeKey":"proj-reliability-automation-script","project":true}'::jsonb, true, true, '["Produce the reliability automation script deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('proj-observability-dashboard', 'ph-observability-and-monitoring', 3, 'project', NULL, NULL, NULL, 'Observability Dashboard', 'Build a portfolio-ready deliverable for observability dashboard with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'side', 'ph-observability-and-monitoring-projects', 7, 1, 12, 'intermediate', 60, 920, 4790, '{"role":"site-reliability-engineer","nodeKey":"proj-observability-dashboard","project":true}'::jsonb, false, true, '["Produce the observability dashboard deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('proj-capacity-and-resilience-test', 'ph-performance-capacity-and-resilience', 3, 'project', NULL, NULL, NULL, 'Capacity and Resilience Test', 'Build a portfolio-ready deliverable for capacity and resilience test with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'side', 'ph-performance-capacity-and-resilience-projects', 10, 1, 14, 'intermediate', 60, 920, 6570, '{"role":"site-reliability-engineer","nodeKey":"proj-capacity-and-resilience-test","project":true}'::jsonb, false, true, '["Produce the capacity and resilience test deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('proj-sre-capstone-with-runbook-and-postmortem', 'grp-sre-portfolio-capstone-core-practice', 2, 'project', NULL, NULL, NULL, 'SRE Capstone with Runbook and Postmortem', 'Build a portfolio-ready deliverable for sre capstone with runbook and postmortem with implementation notes, verification evidence, and a concise explanation of tradeoffs.', 'Project node for applied evidence.', 'checkpoint', 'grp-sre-portfolio-capstone-core-practice-projects', 12, 1, 24, 'advanced', 90, 500, 7830, '{"role":"site-reliability-engineer","nodeKey":"proj-sre-capstone-with-runbook-and-postmortem","project":true}'::jsonb, true, true, '["Produce the sre capstone with runbook and postmortem deliverable.","Explain decisions, tradeoffs, and validation results."]'::jsonb, '["The deliverable runs or can be reviewed, includes documentation, and demonstrates the mapped skills."]'::jsonb),
+('chk-final-site-reliability-engineer-portfolio-review', 'grp-sre-portfolio-capstone-core-practice', 4, 'checkpoint', 'review', NULL, NULL, 'Final Site Reliability Engineer Portfolio Review', 'Review the final Site Reliability Engineer portfolio for technical depth, evidence quality, communication, and readiness for interviews or capstone defense.', 'Final roadmap review checkpoint.', 'checkpoint', 'grp-sre-portfolio-capstone-core-practice-checkpoints', 12, 2, 3, 'advanced', 100, 500, 7880, '{"role":"site-reliability-engineer","nodeKey":"chk-final-site-reliability-engineer-portfolio-review"}'::jsonb, true, true, '["Explain the portfolio narrative and technical decisions.","Identify gaps and next learning priorities."]'::jsonb, '["Portfolio artifacts, reports, and project notes are complete and reviewable."]'::jsonb),
+('grp-sre-role-and-reliability-mindset-foundations', 'ph-sre-role-and-reliability-mindset', 1, 'choice_group', NULL, 'complete_all', NULL, 'SRE Responsibilities and Reliability Mindset', 'Complete the related learning units for sre responsibilities and reliability mindset.', 'Groups related sre responsibilities and reliability mindset work inside this phase.', 'side', 'ph-sre-role-and-reliability-mindset-groups', 1, 1, NULL, NULL, 80, 150, 1010, '{"role":"site-reliability-engineer","nodeKey":"grp-sre-role-and-reliability-mindset-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for SRE Role and Reliability Mindset Foundations."]'::jsonb, '["All required child nodes in SRE Role and Reliability Mindset Foundations are completed."]'::jsonb),
+('grp-sre-role-and-reliability-mindset-core-practice', 'ph-sre-role-and-reliability-mindset', 2, 'choice_group', NULL, 'complete_all', NULL, 'Service Ownership Practice', 'Complete the related learning units for service ownership practice.', 'Groups related service ownership practice work inside this phase.', 'side', 'ph-sre-role-and-reliability-mindset-groups', 1, 2, NULL, NULL, 80, 850, 1130, '{"role":"site-reliability-engineer","nodeKey":"grp-sre-role-and-reliability-mindset-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for SRE Role and Reliability Mindset Core Practice."]'::jsonb, '["All required child nodes in SRE Role and Reliability Mindset Core Practice are completed."]'::jsonb),
+('grp-linux-networking-and-systems-foundations-foundations', 'ph-linux-networking-and-systems-foundations', 1, 'choice_group', NULL, 'complete_all', NULL, 'Linux Service Operations', 'Complete the related learning units for linux service operations.', 'Groups related linux service operations work inside this phase.', 'side', 'ph-linux-networking-and-systems-foundations-groups', 2, 1, NULL, NULL, 80, 150, 1590, '{"role":"site-reliability-engineer","nodeKey":"grp-linux-networking-and-systems-foundations-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Linux, Networking, and Systems Foundations Foundations."]'::jsonb, '["All required child nodes in Linux, Networking, and Systems Foundations Foundations are completed."]'::jsonb),
+('grp-linux-networking-and-systems-foundations-core-practice', 'ph-linux-networking-and-systems-foundations', 2, 'choice_group', NULL, 'complete_all', NULL, 'Networking for Production Services', 'Complete the related learning units for networking for production services.', 'Groups related networking for production services work inside this phase.', 'side', 'ph-linux-networking-and-systems-foundations-groups', 2, 2, NULL, NULL, 80, 850, 1710, '{"role":"site-reliability-engineer","nodeKey":"grp-linux-networking-and-systems-foundations-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Linux, Networking, and Systems Foundations Core Practice."]'::jsonb, '["All required child nodes in Linux, Networking, and Systems Foundations Core Practice are completed."]'::jsonb),
+('grp-programming-and-automation-foundations', 'ph-programming-and-automation', 1, 'choice_group', NULL, 'complete_all', NULL, 'Automation Scripting Basics', 'Complete the related learning units for automation scripting basics.', 'Groups related automation scripting basics work inside this phase.', 'side', 'ph-programming-and-automation-groups', 3, 1, NULL, NULL, 80, 150, 2170, '{"role":"site-reliability-engineer","nodeKey":"grp-programming-and-automation-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Programming and Automation Foundations."]'::jsonb, '["All required child nodes in Programming and Automation Foundations are completed."]'::jsonb),
+('grp-programming-and-automation-core-practice', 'ph-programming-and-automation', 2, 'choice_group', NULL, 'complete_all', NULL, 'Operational Automation Practice', 'Complete the related learning units for operational automation practice.', 'Groups related operational automation practice work inside this phase.', 'side', 'ph-programming-and-automation-groups', 3, 2, NULL, NULL, 80, 850, 2290, '{"role":"site-reliability-engineer","nodeKey":"grp-programming-and-automation-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Programming and Automation Core Practice."]'::jsonb, '["All required child nodes in Programming and Automation Core Practice are completed."]'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-foundations', 'ph-cloud-and-infrastructure-fundamentals', 1, 'choice_group', NULL, 'complete_all', NULL, 'Cloud Infrastructure Building Blocks', 'Complete the related learning units for cloud infrastructure building blocks.', 'Groups related cloud infrastructure building blocks work inside this phase.', 'side', 'ph-cloud-and-infrastructure-fundamentals-groups', 4, 1, NULL, NULL, 80, 150, 2750, '{"role":"site-reliability-engineer","nodeKey":"grp-cloud-and-infrastructure-fundamentals-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Cloud and Infrastructure Fundamentals Foundations."]'::jsonb, '["All required child nodes in Cloud and Infrastructure Fundamentals Foundations are completed."]'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-core-practice', 'ph-cloud-and-infrastructure-fundamentals', 2, 'choice_group', NULL, 'complete_all', NULL, 'Infrastructure Operations Practice', 'Complete the related learning units for infrastructure operations practice.', 'Groups related infrastructure operations practice work inside this phase.', 'side', 'ph-cloud-and-infrastructure-fundamentals-groups', 4, 2, NULL, NULL, 80, 850, 2870, '{"role":"site-reliability-engineer","nodeKey":"grp-cloud-and-infrastructure-fundamentals-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Cloud and Infrastructure Fundamentals Core Practice."]'::jsonb, '["All required child nodes in Cloud and Infrastructure Fundamentals Core Practice are completed."]'::jsonb),
+('grp-containers-and-kubernetes-foundations', 'ph-containers-and-kubernetes', 1, 'choice_group', NULL, 'complete_all', NULL, 'Kubernetes Workload Basics', 'Complete the related learning units for kubernetes workload basics.', 'Groups related kubernetes workload basics work inside this phase.', 'side', 'ph-containers-and-kubernetes-groups', 5, 1, NULL, NULL, 80, 150, 3330, '{"role":"site-reliability-engineer","nodeKey":"grp-containers-and-kubernetes-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Containers and Kubernetes Foundations."]'::jsonb, '["All required child nodes in Containers and Kubernetes Foundations are completed."]'::jsonb),
+('grp-containers-and-kubernetes-core-practice', 'ph-containers-and-kubernetes', 2, 'choice_group', NULL, 'complete_all', NULL, 'Kubernetes Operations Practice', 'Complete the related learning units for kubernetes operations practice.', 'Groups related kubernetes operations practice work inside this phase.', 'side', 'ph-containers-and-kubernetes-groups', 5, 2, NULL, NULL, 80, 850, 3450, '{"role":"site-reliability-engineer","nodeKey":"grp-containers-and-kubernetes-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Containers and Kubernetes Core Practice."]'::jsonb, '["All required child nodes in Containers and Kubernetes Core Practice are completed."]'::jsonb),
+('grp-ci-cd-and-release-engineering-foundations', 'ph-ci-cd-and-release-engineering', 1, 'choice_group', NULL, 'complete_all', NULL, 'Release Pipeline Basics', 'Complete the related learning units for release pipeline basics.', 'Groups related release pipeline basics work inside this phase.', 'side', 'ph-ci-cd-and-release-engineering-groups', 6, 1, NULL, NULL, 80, 150, 3910, '{"role":"site-reliability-engineer","nodeKey":"grp-ci-cd-and-release-engineering-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for CI/CD and Release Engineering Foundations."]'::jsonb, '["All required child nodes in CI/CD and Release Engineering Foundations are completed."]'::jsonb),
+('grp-ci-cd-and-release-engineering-core-practice', 'ph-ci-cd-and-release-engineering', 2, 'choice_group', NULL, 'complete_all', NULL, 'Safe Deployment Practice', 'Complete the related learning units for safe deployment practice.', 'Groups related safe deployment practice work inside this phase.', 'side', 'ph-ci-cd-and-release-engineering-groups', 6, 2, NULL, NULL, 80, 850, 4030, '{"role":"site-reliability-engineer","nodeKey":"grp-ci-cd-and-release-engineering-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for CI/CD and Release Engineering Core Practice."]'::jsonb, '["All required child nodes in CI/CD and Release Engineering Core Practice are completed."]'::jsonb),
+('grp-observability-and-monitoring-foundations', 'ph-observability-and-monitoring', 1, 'choice_group', NULL, 'complete_all', NULL, 'Observability Signals', 'Complete the related learning units for observability signals.', 'Groups related observability signals work inside this phase.', 'side', 'ph-observability-and-monitoring-groups', 7, 1, NULL, NULL, 80, 150, 4490, '{"role":"site-reliability-engineer","nodeKey":"grp-observability-and-monitoring-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Observability and Monitoring Foundations."]'::jsonb, '["All required child nodes in Observability and Monitoring Foundations are completed."]'::jsonb),
+('grp-observability-and-monitoring-core-practice', 'ph-observability-and-monitoring', 2, 'choice_group', NULL, 'complete_all', NULL, 'Monitoring Dashboards and Alerts', 'Complete the related learning units for monitoring dashboards and alerts.', 'Groups related monitoring dashboards and alerts work inside this phase.', 'side', 'ph-observability-and-monitoring-groups', 7, 2, NULL, NULL, 80, 850, 4610, '{"role":"site-reliability-engineer","nodeKey":"grp-observability-and-monitoring-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Observability and Monitoring Core Practice."]'::jsonb, '["All required child nodes in Observability and Monitoring Core Practice are completed."]'::jsonb),
+('grp-incident-response-and-on-call-readiness-foundations', 'ph-incident-response-and-on-call-readiness', 1, 'choice_group', NULL, 'complete_all', NULL, 'Incident Triage and Escalation', 'Complete the related learning units for incident triage and escalation.', 'Groups related incident triage and escalation work inside this phase.', 'side', 'ph-incident-response-and-on-call-readiness-groups', 8, 1, NULL, NULL, 80, 150, 5070, '{"role":"site-reliability-engineer","nodeKey":"grp-incident-response-and-on-call-readiness-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Incident Response and On-Call Readiness Foundations."]'::jsonb, '["All required child nodes in Incident Response and On-Call Readiness Foundations are completed."]'::jsonb),
+('grp-incident-response-and-on-call-readiness-core-practice', 'ph-incident-response-and-on-call-readiness', 2, 'choice_group', NULL, 'complete_all', NULL, 'Runbooks and Postmortems', 'Complete the related learning units for runbooks and postmortems.', 'Groups related runbooks and postmortems work inside this phase.', 'side', 'ph-incident-response-and-on-call-readiness-groups', 8, 2, NULL, NULL, 80, 850, 5190, '{"role":"site-reliability-engineer","nodeKey":"grp-incident-response-and-on-call-readiness-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Incident Response and On-Call Readiness Core Practice."]'::jsonb, '["All required child nodes in Incident Response and On-Call Readiness Core Practice are completed."]'::jsonb),
+('grp-reliability-engineering-and-slos-foundations', 'ph-reliability-engineering-and-slos', 1, 'choice_group', NULL, 'complete_all', NULL, 'SLO Targets and Error Budgets', 'Complete the related learning units for slo targets and error budgets.', 'Groups related slo targets and error budgets work inside this phase.', 'side', 'ph-reliability-engineering-and-slos-groups', 9, 1, NULL, NULL, 80, 150, 5650, '{"role":"site-reliability-engineer","nodeKey":"grp-reliability-engineering-and-slos-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Reliability Engineering and SLOs Foundations."]'::jsonb, '["All required child nodes in Reliability Engineering and SLOs Foundations are completed."]'::jsonb),
+('grp-reliability-engineering-and-slos-core-practice', 'ph-reliability-engineering-and-slos', 2, 'choice_group', NULL, 'complete_all', NULL, 'Reliability Tradeoff Practice', 'Complete the related learning units for reliability tradeoff practice.', 'Groups related reliability tradeoff practice work inside this phase.', 'side', 'ph-reliability-engineering-and-slos-groups', 9, 2, NULL, NULL, 80, 850, 5770, '{"role":"site-reliability-engineer","nodeKey":"grp-reliability-engineering-and-slos-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Reliability Engineering and SLOs Core Practice."]'::jsonb, '["All required child nodes in Reliability Engineering and SLOs Core Practice are completed."]'::jsonb),
+('grp-performance-capacity-and-resilience-foundations', 'ph-performance-capacity-and-resilience', 1, 'choice_group', NULL, 'complete_all', NULL, 'Capacity and Resilience Planning', 'Complete the related learning units for capacity and resilience planning.', 'Groups related capacity and resilience planning work inside this phase.', 'side', 'ph-performance-capacity-and-resilience-groups', 10, 1, NULL, NULL, 80, 150, 6230, '{"role":"site-reliability-engineer","nodeKey":"grp-performance-capacity-and-resilience-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Performance, Capacity, and Resilience Foundations."]'::jsonb, '["All required child nodes in Performance, Capacity, and Resilience Foundations are completed."]'::jsonb),
+('grp-performance-capacity-and-resilience-core-practice', 'ph-performance-capacity-and-resilience', 2, 'choice_group', NULL, 'complete_all', NULL, 'Failure Mode and Load Testing', 'Complete the related learning units for failure mode and load testing.', 'Groups related failure mode and load testing work inside this phase.', 'side', 'ph-performance-capacity-and-resilience-groups', 10, 2, NULL, NULL, 80, 850, 6350, '{"role":"site-reliability-engineer","nodeKey":"grp-performance-capacity-and-resilience-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Performance, Capacity, and Resilience Core Practice."]'::jsonb, '["All required child nodes in Performance, Capacity, and Resilience Core Practice are completed."]'::jsonb),
+('grp-security-and-compliance-awareness-foundations', 'ph-security-and-compliance-awareness', 1, 'choice_group', NULL, 'complete_all', NULL, 'Operational Security Controls', 'Complete the related learning units for operational security controls.', 'Groups related operational security controls work inside this phase.', 'side', 'ph-security-and-compliance-awareness-groups', 11, 1, NULL, NULL, 80, 150, 6810, '{"role":"site-reliability-engineer","nodeKey":"grp-security-and-compliance-awareness-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Security and Compliance Awareness Foundations."]'::jsonb, '["All required child nodes in Security and Compliance Awareness Foundations are completed."]'::jsonb),
+('grp-security-and-compliance-awareness-core-practice', 'ph-security-and-compliance-awareness', 2, 'choice_group', NULL, 'complete_all', NULL, 'Compliance Evidence and Guardrails', 'Complete the related learning units for compliance evidence and guardrails.', 'Groups related compliance evidence and guardrails work inside this phase.', 'side', 'ph-security-and-compliance-awareness-groups', 11, 2, NULL, NULL, 80, 850, 6930, '{"role":"site-reliability-engineer","nodeKey":"grp-security-and-compliance-awareness-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for Security and Compliance Awareness Core Practice."]'::jsonb, '["All required child nodes in Security and Compliance Awareness Core Practice are completed."]'::jsonb),
+('grp-sre-portfolio-capstone-foundations', 'ph-sre-portfolio-capstone', 1, 'choice_group', NULL, 'complete_all', NULL, 'SRE Portfolio Planning', 'Complete the related learning units for sre portfolio planning.', 'Groups related sre portfolio planning work inside this phase.', 'side', 'ph-sre-portfolio-capstone-groups', 12, 1, NULL, NULL, 80, 150, 7390, '{"role":"site-reliability-engineer","nodeKey":"grp-sre-portfolio-capstone-foundations","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for SRE Portfolio Capstone Foundations."]'::jsonb, '["All required child nodes in SRE Portfolio Capstone Foundations are completed."]'::jsonb),
+('grp-sre-portfolio-capstone-core-practice', 'ph-sre-portfolio-capstone', 2, 'choice_group', NULL, 'complete_all', NULL, 'SRE Capstone Delivery', 'Complete the related learning units for sre capstone delivery.', 'Groups related sre capstone delivery work inside this phase.', 'side', 'ph-sre-portfolio-capstone-groups', 12, 2, NULL, NULL, 80, 850, 7510, '{"role":"site-reliability-engineer","nodeKey":"grp-sre-portfolio-capstone-core-practice","groupType":"complete_all"}'::jsonb, true, false, '["Complete the grouped learning units for SRE Portfolio Capstone Core Practice."]'::jsonb, '["All required child nodes in SRE Portfolio Capstone Core Practice are completed."]'::jsonb);
+
+INSERT INTO public.roadmap_node
+(roadmap_node_id, roadmap_version_id, parent_node_id, slug, node_type, checkpoint_type, selection_type, required_count, title, description, reason, order_index, layout_role, layout_group, layout_rank, layout_order, estimated_hours, difficulty_level, priority, position_x, position_y, metadata, is_required, is_trackable, learning_outcomes, completion_criteria)
+SELECT
+    sn.node_id, m.roadmap_version_id, parent.node_id, sn.node_key, sn.node_type, sn.checkpoint_type, sn.selection_type, sn.required_count, sn.title, sn.description, sn.reason, sn.order_index, sn.layout_role, sn.layout_group, sn.layout_rank, sn.layout_order, sn.estimated_hours, sn.difficulty_level, sn.priority, sn.position_x, sn.position_y, sn.metadata, sn.is_required, sn.is_trackable, sn.learning_outcomes, sn.completion_criteria
+FROM seed_node sn
+CROSS JOIN seed_roadmap_map m
+LEFT JOIN seed_node parent ON parent.node_key = sn.parent_key
+ON CONFLICT (roadmap_version_id, slug) DO UPDATE SET
+    parent_node_id = EXCLUDED.parent_node_id,
+    node_type = EXCLUDED.node_type,
+    checkpoint_type = EXCLUDED.checkpoint_type,
+    selection_type = EXCLUDED.selection_type,
+    required_count = EXCLUDED.required_count,
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    reason = EXCLUDED.reason,
+    order_index = EXCLUDED.order_index,
+    layout_role = EXCLUDED.layout_role,
+    layout_group = EXCLUDED.layout_group,
+    layout_rank = EXCLUDED.layout_rank,
+    layout_order = EXCLUDED.layout_order,
+    estimated_hours = EXCLUDED.estimated_hours,
+    difficulty_level = EXCLUDED.difficulty_level,
+    priority = EXCLUDED.priority,
+    position_x = EXCLUDED.position_x,
+    position_y = EXCLUDED.position_y,
+    metadata = EXCLUDED.metadata,
+    is_required = EXCLUDED.is_required,
+    is_trackable = EXCLUDED.is_trackable,
+    learning_outcomes = EXCLUDED.learning_outcomes,
+    completion_criteria = EXCLUDED.completion_criteria;
+
+-- Node-skill mappings.
+DROP TABLE IF EXISTS seed_node_skill;
+CREATE TEMP TABLE seed_node_skill (node_key text NOT NULL, skill_slug text NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_node_skill VALUES
+('alert-design-and-noise-reduction', 'on-call-readiness'),
+('alert-design-and-noise-reduction', 'site-reliability-engineer-alerting-and-runbooks'),
+('apis-for-automation', 'api'),
+('apis-for-automation', 'python'),
+('artifact-and-environment-promotion', 'ci-cd'),
+('artifact-and-environment-promotion', 'environment-management'),
+('audit-evidence-for-operations', 'site-reliability-engineer-cybersecurity'),
+('audit-evidence-for-operations', 'site-reliability-engineer-technical-writing'),
+('availability-and-latency-targets', 'capacity-engineering'),
+('availability-and-latency-targets', 'service-level-objectives'),
+('backpressure-and-rate-limits', 'api'),
+('backpressure-and-rate-limits', 'site-reliability-engineer-resilience-patterns'),
+('blameless-postmortems', 'incident-response'),
+('blameless-postmortems', 'site-reliability-engineer-postmortems'),
+('caching-and-cdn-strategy', 'cloud-computing'),
+('caching-and-cdn-strategy', 'web-performance-optimization'),
+('capacity-planning', 'capacity-engineering'),
+('capacity-planning', 'capacity-planning'),
+('capstone-incident-walkthrough', 'incident-response'),
+('capstone-incident-walkthrough', 'site-reliability-engineer-postmortems'),
+('capstone-monitoring-plan', 'observability'),
+('capstone-monitoring-plan', 'site-reliability-engineer-prometheus'),
+('capstone-service-definition', 'cloud-architecture'),
+('capstone-service-definition', 'service-level-objectives'),
+('chaos-and-failure-mode-testing', 'reliability-engineering'),
+('chaos-and-failure-mode-testing', 'testing'),
+('chk-ci-cd-and-release-engineering-review', 'ci-cd'),
+('chk-ci-cd-and-release-engineering-review', 'site-reliability-engineer-deployment'),
+('chk-cloud-and-infrastructure-fundamentals-review', 'cloud-architecture'),
+('chk-cloud-and-infrastructure-fundamentals-review', 'cloud-computing'),
+('chk-containers-and-kubernetes-review', 'docker'),
+('chk-containers-and-kubernetes-review', 'kubernetes'),
+('chk-final-site-reliability-engineer-portfolio-review', 'career-planning'),
+('chk-final-site-reliability-engineer-portfolio-review', 'incident-response'),
+('chk-final-site-reliability-engineer-portfolio-review', 'portfolio-communication'),
+('chk-final-site-reliability-engineer-portfolio-review', 'service-level-objectives'),
+('chk-incident-response-and-on-call-readiness-review', 'incident-response'),
+('chk-linux-networking-and-systems-foundations-review', 'bash'),
+('chk-linux-networking-and-systems-foundations-review', 'linux'),
+('chk-observability-and-monitoring-review', 'observability'),
+('chk-observability-and-monitoring-review', 'site-reliability-engineer-prometheus'),
+('chk-performance-capacity-and-resilience-review', 'capacity-planning'),
+('chk-performance-capacity-and-resilience-review', 'site-reliability-engineer-performance-testing'),
+('chk-programming-and-automation-review', 'command-line'),
+('chk-programming-and-automation-review', 'python'),
+('chk-reliability-engineering-and-slos-review', 'service-level-objectives'),
+('chk-security-and-compliance-awareness-review', 'secrets-management'),
+('chk-security-and-compliance-awareness-review', 'site-reliability-engineer-cybersecurity'),
+('chk-sre-portfolio-capstone-review', 'career-planning'),
+('chk-sre-portfolio-capstone-review', 'portfolio-communication'),
+('chk-sre-role-and-reliability-mindset-review', 'reliability-engineering'),
+('chk-sre-role-and-reliability-mindset-review', 'service-level-objectives'),
+('ci-pipeline-design', 'ci-cd'),
+('ci-pipeline-design', 'testing'),
+('circuit-breakers-and-timeouts', 'reliability-engineering'),
+('circuit-breakers-and-timeouts', 'site-reliability-engineer-architecture'),
+('cli-tools-and-operational-scripts', 'command-line'),
+('cli-tools-and-operational-scripts', 'python'),
+('cloud-architecture-basics', 'aws'),
+('cloud-architecture-basics', 'cloud-architecture'),
+('compliance-friendly-runbooks', 'runbooks'),
+('compliance-friendly-runbooks', 'site-reliability-engineer-governance-risk-and-compliance'),
+('compute-storage-and-networking', 'cloud-computing'),
+('compute-storage-and-networking', 'cloud-networking'),
+('configmaps-secrets-and-runtime-config', 'kubernetes'),
+('configmaps-secrets-and-runtime-config', 'secrets-management'),
+('configuration-management', 'configuration-management'),
+('configuration-management', 'site-reliability-engineer-automation'),
+('cost-and-capacity-awareness', 'capacity-engineering'),
+('cost-and-capacity-awareness', 'cloud-cost-optimization'),
+('customer-impact-analysis', 'business-metrics'),
+('customer-impact-analysis', 'incident-response'),
+('deployment-failure-analysis', 'incident-response'),
+('deployment-failure-analysis', 'observability'),
+('deployment-strategies', 'release-management'),
+('deployment-strategies', 'site-reliability-engineer-deployment'),
+('distributed-tracing', 'observability'),
+('distributed-tracing', 'site-reliability-engineer-opentelemetry'),
+('docker-images-and-runtime-behavior', 'containerization'),
+('docker-images-and-runtime-behavior', 'docker'),
+('error-budget-policy', 'error-budgets'),
+('error-budget-policy', 'release-management'),
+('filesystems-permissions-and-logs', 'linux'),
+('filesystems-permissions-and-logs', 'observability'),
+('grafana-dashboards', 'dashboard-design'),
+('grafana-dashboards', 'site-reliability-engineer-grafana'),
+('health-checks-and-probes', 'kubernetes'),
+('health-checks-and-probes', 'reliability-engineering'),
+('http-tls-and-reverse-proxies', 'reverse-proxies'),
+('http-tls-and-reverse-proxies', 'site-reliability-engineer-web'),
+('identity-and-access-for-operations', 'site-reliability-engineer-cybersecurity'),
+('identity-and-access-for-operations', 'site-reliability-engineer-identity-and-access-management'),
+('incident-commander-workflow', 'incident-response'),
+('incident-commander-workflow', 'stakeholder-communication'),
+('incident-severity-and-triage', 'incident-response'),
+('incident-severity-and-triage', 'on-call-readiness'),
+('infrastructure-as-code', 'infrastructure-as-code'),
+('infrastructure-as-code', 'terraform'),
+('kubernetes-troubleshooting', 'kubernetes'),
+('kubernetes-troubleshooting', 'observability'),
+('kubernetes-workloads', 'cloud-computing'),
+('kubernetes-workloads', 'kubernetes'),
+('linux-process-and-service-management', 'linux'),
+('linux-process-and-service-management', 'site-reliability-engineer-systems-programming'),
+('load-balancing-and-traffic-routing', 'load-balancing'),
+('load-balancing-and-traffic-routing', 'networking'),
+('load-testing-basics', 'capacity-engineering'),
+('load-testing-basics', 'site-reliability-engineer-performance-testing'),
+('metrics-logs-and-traces', 'observability'),
+('metrics-logs-and-traces', 'site-reliability-engineer-opentelemetry'),
+('network-security-controls', 'networking'),
+('network-security-controls', 'site-reliability-engineer-cybersecurity'),
+('on-call-health-and-handoffs', 'on-call-readiness'),
+('on-call-health-and-handoffs', 'runbooks'),
+('operational-security-basics', 'site-reliability-engineer-cybersecurity'),
+('operational-security-basics', 'site-reliability-engineer-identity-and-access-management'),
+('production-readiness-reviews', 'on-call-readiness'),
+('production-readiness-reviews', 'runbooks'),
+('progressive-delivery-and-rollback', 'release-management'),
+('progressive-delivery-and-rollback', 'reliability-engineering'),
+('proj-capacity-and-resilience-test', 'capacity-engineering'),
+('proj-capacity-and-resilience-test', 'reliability-engineering'),
+('proj-capacity-and-resilience-test', 'site-reliability-engineer-performance-testing'),
+('proj-incident-response-simulation', 'incident-response'),
+('proj-incident-response-simulation', 'runbooks'),
+('proj-incident-response-simulation', 'site-reliability-engineer-postmortems'),
+('proj-monitored-service-deployment', 'docker'),
+('proj-monitored-service-deployment', 'kubernetes'),
+('proj-monitored-service-deployment', 'observability'),
+('proj-observability-dashboard', 'observability'),
+('proj-observability-dashboard', 'site-reliability-engineer-grafana'),
+('proj-observability-dashboard', 'site-reliability-engineer-prometheus'),
+('proj-reliability-automation-script', 'python'),
+('proj-reliability-automation-script', 'site-reliability-engineer-automation'),
+('proj-reliability-automation-script', 'testing'),
+('proj-slo-and-error-budget-report', 'data-storytelling'),
+('proj-slo-and-error-budget-report', 'error-budgets'),
+('proj-slo-and-error-budget-report', 'service-level-objectives'),
+('proj-sre-capstone-with-runbook-and-postmortem', 'incident-response'),
+('proj-sre-capstone-with-runbook-and-postmortem', 'portfolio-communication'),
+('proj-sre-capstone-with-runbook-and-postmortem', 'runbooks'),
+('proj-sre-capstone-with-runbook-and-postmortem', 'service-level-objectives'),
+('prometheus-metrics-and-alerting', 'observability'),
+('prometheus-metrics-and-alerting', 'site-reliability-engineer-prometheus'),
+('python-automation-scripts', 'python'),
+('python-automation-scripts', 'site-reliability-engineer-automation'),
+('release-gates-and-change-risk', 'error-budgets'),
+('release-gates-and-change-risk', 'release-management'),
+('reliability-risk-reviews', 'reliability-engineering'),
+('reliability-risk-reviews', 'site-reliability-engineer-architecture'),
+('risk-change-and-reliability-balance', 'error-budgets'),
+('risk-change-and-reliability-balance', 'release-management'),
+('runbook-execution', 'incident-response'),
+('runbook-execution', 'runbooks'),
+('safe-automation-and-rollback', 'release-management'),
+('safe-automation-and-rollback', 'site-reliability-engineer-automation'),
+('secrets-management', 'secrets-management'),
+('secrets-management', 'site-reliability-engineer-cybersecurity'),
+('service-health-reviews', 'observability'),
+('service-health-reviews', 'service-level-objectives'),
+('service-level-indicators', 'observability'),
+('service-level-indicators', 'service-level-objectives'),
+('services-ingress-and-networking', 'kubernetes'),
+('services-ingress-and-networking', 'networking'),
+('shell-scripting-for-operations', 'bash'),
+('shell-scripting-for-operations', 'site-reliability-engineer-automation'),
+('slo-design-and-error-budgets', 'error-budgets'),
+('slo-design-and-error-budgets', 'service-level-objectives'),
+('sre-communication-practices', 'incident-response'),
+('sre-communication-practices', 'stakeholder-communication'),
+('sre-interview-scenarios', 'career-planning'),
+('sre-interview-scenarios', 'incident-response'),
+('sre-portfolio-case-study-planning', 'portfolio-communication'),
+('sre-portfolio-case-study-planning', 'technical-case-studies'),
+('sre-responsibilities-and-tradeoffs', 'reliability-engineering'),
+('sre-responsibilities-and-tradeoffs', 'service-level-objectives'),
+('status-updates-and-stakeholder-communication', 'incident-response'),
+('status-updates-and-stakeholder-communication', 'stakeholder-communication'),
+('system-debugging-tools', 'linux'),
+('system-debugging-tools', 'observability'),
+('tcp-ip-and-dns-troubleshooting', 'dns'),
+('tcp-ip-and-dns-troubleshooting', 'networking-fundamentals'),
+('testing-operational-code', 'python'),
+('testing-operational-code', 'testing'),
+('toil-identification-and-reduction', 'reliability-engineering'),
+('toil-identification-and-reduction', 'site-reliability-engineer-automation'),
+('user-centric-reliability', 'business-metrics'),
+('user-centric-reliability', 'service-level-objectives'),
+('vulnerability-and-patch-operations', 'runbooks'),
+('vulnerability-and-patch-operations', 'site-reliability-engineer-cybersecurity'),
+('platform-operations-track', 'kubernetes'),
+('platform-operations-track', 'platform-engineering'),
+('platform-operations-track', 'observability'),
+('service-reliability-track', 'reliability-engineering'),
+('service-reliability-track', 'service-level-objectives'),
+('service-reliability-track', 'error-budgets'),
+('incident-commander-practice', 'incident-response'),
+('incident-commander-practice', 'runbooks'),
+('incident-commander-practice', 'site-reliability-engineer-postmortems'),
+('observability-debugging-practice', 'observability'),
+('observability-debugging-practice', 'site-reliability-engineer-opentelemetry'),
+('observability-debugging-practice', 'site-reliability-engineer-prometheus'),
+('observability-debugging-practice', 'site-reliability-engineer-grafana'),
+('security-hardening-track', 'iam'),
+('security-hardening-track', 'kubernetes'),
+('security-hardening-track', 'site-reliability-engineer-cybersecurity'),
+('compliance-runbook-track', 'runbooks'),
+('compliance-runbook-track', 'governance-and-guardrails'),
+('compliance-runbook-track', 'site-reliability-engineer-governance-risk-and-compliance'),
+('security-hardening-track', 'site-reliability-engineer-security-hardening');
+
+INSERT INTO public.roadmap_node_skill (roadmap_node_id, skill_id)
+SELECT DISTINCT
+    rn.roadmap_node_id,
+    resolved_skill.skill_id
+FROM seed_node_skill sns
+JOIN seed_roadmap_map m
+    ON true
+JOIN public.roadmap_node rn
+    ON rn.roadmap_version_id = m.roadmap_version_id
+   AND rn.slug = sns.node_key
+LEFT JOIN seed_skill ss
+    ON ss.slug = sns.skill_slug
+JOIN LATERAL (
+    SELECT s.skill_id
+    FROM public.skill s
+    WHERE s.slug = sns.skill_slug
+       OR (ss.name IS NOT NULL AND s.name = ss.name)
+    ORDER BY
+        CASE WHEN s.slug = sns.skill_slug THEN 0 ELSE 1 END
+    LIMIT 1
+) resolved_skill ON true
+ON CONFLICT (roadmap_node_id, skill_id) DO NOTHING;
+
+-- Node-resource mappings.
+DROP TABLE IF EXISTS seed_node_resource;
+CREATE TEMP TABLE seed_node_resource (node_key text NOT NULL, resource_key text NOT NULL, order_index int NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_node_resource VALUES
+('alert-design-and-noise-reduction', 'grafana-docs', 2),
+('alert-design-and-noise-reduction', 'prometheus-alerting', 1),
+('apis-for-automation', 'missing-semester', 1),
+('artifact-and-environment-promotion', 'github-actions-deployments', 1),
+('artifact-and-environment-promotion', 'kubernetes-docs', 2),
+('audit-evidence-for-operations', 'aws-reliability-pillar', 2),
+('audit-evidence-for-operations', 'google-sre-book', 1),
+('availability-and-latency-targets', 'aws-reliability-pillar', 1),
+('availability-and-latency-targets', 'terraform-docs', 2),
+('backpressure-and-rate-limits', 'aws-reliability-pillar', 2),
+('backpressure-and-rate-limits', 'google-sre-book', 1),
+('blameless-postmortems', 'github-actions-docs', 1),
+('blameless-postmortems', 'kubernetes-docs', 2),
+('caching-and-cdn-strategy', 'aws-reliability-pillar', 1),
+('caching-and-cdn-strategy', 'terraform-docs', 2),
+('capacity-planning', 'aws-reliability-pillar', 1),
+('capacity-planning', 'terraform-docs', 2),
+('capstone-incident-walkthrough', 'github-actions-docs', 1),
+('capstone-incident-walkthrough', 'kubernetes-docs', 2),
+('capstone-monitoring-plan', 'grafana-docs', 2),
+('capstone-monitoring-plan', 'prometheus-docs', 1),
+('capstone-service-definition', 'aws-reliability-pillar', 1),
+('capstone-service-definition', 'terraform-docs', 2),
+('chaos-and-failure-mode-testing', 'aws-reliability-pillar', 2),
+('chaos-and-failure-mode-testing', 'google-sre-book', 1),
+('ci-pipeline-design', 'github-actions-deployments', 1),
+('ci-pipeline-design', 'kubernetes-docs', 2),
+('circuit-breakers-and-timeouts', 'github-actions-docs', 1),
+('circuit-breakers-and-timeouts', 'kubernetes-docs', 2),
+('cli-tools-and-operational-scripts', 'missing-semester', 1),
+('cloud-architecture-basics', 'aws-reliability-pillar', 1),
+('cloud-architecture-basics', 'terraform-docs', 2),
+('compliance-friendly-runbooks', 'atlassian-incident-management', 2),
+('compliance-friendly-runbooks', 'google-sre-emergency-response', 1),
+('compute-storage-and-networking', 'cloudflare-dns', 1),
+('compute-storage-and-networking', 'nginx-docs', 2),
+('configmaps-secrets-and-runtime-config', 'kubernetes-docs', 1),
+('configmaps-secrets-and-runtime-config', 'owasp-top-ten', 2),
+('configuration-management', 'google-sre-book', 2),
+('configuration-management', 'missing-semester', 1),
+('cost-and-capacity-awareness', 'aws-reliability-pillar', 1),
+('cost-and-capacity-awareness', 'terraform-docs', 2),
+('customer-impact-analysis', 'github-actions-docs', 1),
+('customer-impact-analysis', 'kubernetes-docs', 2),
+('deployment-failure-analysis', 'github-actions-deployments', 1),
+('deployment-failure-analysis', 'kubernetes-deployments', 2),
+('deployment-strategies', 'github-actions-deployments', 1),
+('deployment-strategies', 'kubernetes-deployments', 2),
+('distributed-tracing', 'github-actions-docs', 1),
+('distributed-tracing', 'kubernetes-docs', 2),
+('docker-images-and-runtime-behavior', 'docker-docs', 1),
+('error-budget-policy', 'github-actions-docs', 1),
+('error-budget-policy', 'google-sre-error-budget-policy', 2),
+('filesystems-permissions-and-logs', 'linux-command-line', 1),
+('filesystems-permissions-and-logs', 'missing-semester', 2),
+('grafana-dashboards', 'grafana-docs', 2),
+('grafana-dashboards', 'prometheus-docs', 1),
+('health-checks-and-probes', 'google-sre-book', 2),
+('health-checks-and-probes', 'kubernetes-probes', 1),
+('http-tls-and-reverse-proxies', 'cloudflare-learning', 1),
+('http-tls-and-reverse-proxies', 'nginx-docs', 2),
+('identity-and-access-for-operations', 'aws-reliability-pillar', 2),
+('identity-and-access-for-operations', 'google-sre-book', 1),
+('incident-commander-workflow', 'github-actions-docs', 1),
+('incident-commander-workflow', 'kubernetes-docs', 2),
+('service-reliability-track', 'github-actions-docs', 1),
+('service-reliability-track', 'kubernetes-docs', 2),
+('observability-debugging-practice', 'github-actions-docs', 1),
+('observability-debugging-practice', 'kubernetes-debugging', 2),
+('compliance-runbook-track', 'github-actions-docs', 1),
+('compliance-runbook-track', 'kubernetes-docs', 2),
+('incident-severity-and-triage', 'github-actions-docs', 1),
+('incident-severity-and-triage', 'kubernetes-docs', 2),
+('infrastructure-as-code', 'aws-reliability-pillar', 1),
+('infrastructure-as-code', 'terraform-docs', 2),
+('platform-operations-track', 'kubernetes-docs', 1),
+('platform-operations-track', 'prometheus-docs', 2),
+('incident-commander-practice', 'kubernetes-docs', 1),
+('incident-commander-practice', 'prometheus-docs', 2),
+('security-hardening-track', 'kubernetes-docs', 1),
+('security-hardening-track', 'prometheus-docs', 2),
+('kubernetes-troubleshooting', 'kubernetes-debugging', 1),
+('kubernetes-troubleshooting', 'prometheus-docs', 2),
+('kubernetes-workloads', 'cloudflare-learning', 1),
+('kubernetes-workloads', 'nginx-docs', 2),
+('linux-process-and-service-management', 'linux-command-line', 1),
+('linux-process-and-service-management', 'missing-semester', 2),
+('load-balancing-and-traffic-routing', 'cloudflare-learning', 1),
+('load-balancing-and-traffic-routing', 'nginx-docs', 2),
+('load-testing-basics', 'cloudflare-learning', 1),
+('load-testing-basics', 'nginx-docs', 2),
+('metrics-logs-and-traces', 'grafana-docs', 2),
+('metrics-logs-and-traces', 'opentelemetry-concepts', 1),
+('network-security-controls', 'cloudflare-dns', 1),
+('network-security-controls', 'nginx-docs', 2),
+('on-call-health-and-handoffs', 'atlassian-incident-management', 2),
+('on-call-health-and-handoffs', 'google-sre-emergency-response', 1),
+('operational-security-basics', 'aws-reliability-pillar', 2),
+('operational-security-basics', 'google-sre-book', 1),
+('production-readiness-reviews', 'atlassian-incident-management', 2),
+('production-readiness-reviews', 'google-sre-book', 1),
+('progressive-delivery-and-rollback', 'github-actions-deployments', 1),
+('progressive-delivery-and-rollback', 'kubernetes-deployments', 2),
+('proj-capacity-and-resilience-test', 'aws-reliability-pillar', 1),
+('proj-capacity-and-resilience-test', 'github-actions-docs', 3),
+('proj-capacity-and-resilience-test', 'terraform-docs', 2),
+('proj-incident-response-simulation', 'github-actions-docs', 1),
+('proj-incident-response-simulation', 'google-sre-monitoring', 3),
+('proj-incident-response-simulation', 'kubernetes-docs', 2),
+('proj-monitored-service-deployment', 'docker-docs', 1),
+('proj-monitored-service-deployment', 'github-actions-deployments', 3),
+('proj-monitored-service-deployment', 'kubernetes-probes', 2),
+('proj-observability-dashboard', 'grafana-docs', 2),
+('proj-observability-dashboard', 'opentelemetry-docs', 3),
+('proj-observability-dashboard', 'prometheus-docs', 1),
+('proj-reliability-automation-script', 'aws-reliability-pillar', 3),
+('proj-reliability-automation-script', 'google-sre-book', 2),
+('proj-reliability-automation-script', 'missing-semester', 1),
+('proj-slo-and-error-budget-report', 'aws-reliability-pillar', 2),
+('proj-slo-and-error-budget-report', 'google-sre-error-budget-policy', 1),
+('proj-sre-capstone-with-runbook-and-postmortem', 'github-actions-docs', 1),
+('proj-sre-capstone-with-runbook-and-postmortem', 'google-sre-managing-incidents', 3),
+('proj-sre-capstone-with-runbook-and-postmortem', 'kubernetes-docs', 2),
+('prometheus-metrics-and-alerting', 'grafana-docs', 2),
+('prometheus-metrics-and-alerting', 'prometheus-alerting', 1),
+('python-automation-scripts', 'google-sre-book', 2),
+('python-automation-scripts', 'missing-semester', 1),
+('release-gates-and-change-risk', 'github-actions-deployments', 1),
+('release-gates-and-change-risk', 'kubernetes-docs', 2),
+('reliability-risk-reviews', 'aws-reliability-pillar', 2),
+('reliability-risk-reviews', 'google-sre-book', 1),
+('risk-change-and-reliability-balance', 'github-actions-docs', 1),
+('risk-change-and-reliability-balance', 'kubernetes-docs', 2),
+('runbook-execution', 'google-sre-emergency-response', 1),
+('runbook-execution', 'kubernetes-docs', 2),
+('safe-automation-and-rollback', 'github-actions-deployments', 2),
+('safe-automation-and-rollback', 'missing-semester', 1),
+('secrets-management', 'aws-reliability-pillar', 2),
+('secrets-management', 'google-sre-book', 1),
+('service-health-reviews', 'grafana-docs', 2),
+('service-health-reviews', 'prometheus-docs', 1),
+('service-level-indicators', 'grafana-docs', 2),
+('service-level-indicators', 'prometheus-querying', 1),
+('services-ingress-and-networking', 'cloudflare-dns', 1),
+('services-ingress-and-networking', 'nginx-docs', 2),
+('shell-scripting-for-operations', 'linux-command-line', 1),
+('shell-scripting-for-operations', 'missing-semester', 2),
+('slo-design-and-error-budgets', 'aws-reliability-pillar', 2),
+('slo-design-and-error-budgets', 'google-sre-error-budget-policy', 1),
+('sre-communication-practices', 'github-actions-docs', 1),
+('sre-communication-practices', 'kubernetes-docs', 2),
+('sre-interview-scenarios', 'github-actions-docs', 1),
+('sre-interview-scenarios', 'kubernetes-docs', 2),
+('sre-portfolio-case-study-planning', 'google-sre-book', 1),
+('sre-portfolio-case-study-planning', 'missing-semester', 2),
+('sre-responsibilities-and-tradeoffs', 'aws-reliability-pillar', 2),
+('sre-responsibilities-and-tradeoffs', 'google-sre-book', 1),
+('status-updates-and-stakeholder-communication', 'github-actions-docs', 1),
+('status-updates-and-stakeholder-communication', 'kubernetes-docs', 2),
+('system-debugging-tools', 'linux-command-line', 1),
+('system-debugging-tools', 'missing-semester', 2),
+('tcp-ip-and-dns-troubleshooting', 'cloudflare-dns', 1),
+('tcp-ip-and-dns-troubleshooting', 'nginx-docs', 2),
+('testing-operational-code', 'missing-semester', 1),
+('toil-identification-and-reduction', 'google-sre-book', 2),
+('toil-identification-and-reduction', 'missing-semester', 1),
+('user-centric-reliability', 'grafana-docs', 2),
+('user-centric-reliability', 'prometheus-docs', 1),
+('vulnerability-and-patch-operations', 'atlassian-incident-management', 2),
+('vulnerability-and-patch-operations', 'google-sre-book', 1);
+
+WITH deduped_node_resource AS (
+    SELECT DISTINCT ON (rn.roadmap_node_id, rm.learning_resource_id)
+        rn.roadmap_node_id,
+        rm.learning_resource_id,
+        snr.order_index,
+        (snr.order_index = 1) AS is_primary
+    FROM seed_node_resource snr
+    JOIN seed_roadmap_map m ON true
+    JOIN public.roadmap_node rn
+        ON rn.roadmap_version_id = m.roadmap_version_id
+       AND rn.slug = snr.node_key
+    JOIN seed_resource_map rm ON rm.resource_key = snr.resource_key
+    ORDER BY rn.roadmap_node_id, rm.learning_resource_id, snr.order_index
+)
+INSERT INTO public.roadmap_node_resource (roadmap_node_id, learning_resource_id, order_index, is_primary)
+SELECT roadmap_node_id, learning_resource_id, order_index, is_primary
+FROM deduped_node_resource
+ON CONFLICT (roadmap_node_id, learning_resource_id) DO UPDATE SET
+    order_index = EXCLUDED.order_index,
+    is_primary = EXCLUDED.is_primary;
+
+INSERT INTO public.learning_resource_skill (learning_resource_id, skill_id)
+SELECT DISTINCT rm.learning_resource_id, s.skill_id
+FROM seed_node_resource snr
+JOIN seed_node_skill sns ON sns.node_key = snr.node_key
+JOIN seed_resource_map rm ON rm.resource_key = snr.resource_key
+JOIN public.skill s ON s.slug = sns.skill_slug
+ON CONFLICT (learning_resource_id, skill_id) DO NOTHING;
+
+-- Edges.
+DROP TABLE IF EXISTS seed_edge;
+CREATE TEMP TABLE seed_edge (from_key text NOT NULL, to_key text NOT NULL, edge_type text NOT NULL, dependency_type text NOT NULL, condition jsonb NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_edge VALUES
+('ph-sre-role-and-reliability-mindset', 'ph-linux-networking-and-systems-foundations', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-linux-networking-and-systems-foundations', 'ph-programming-and-automation', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-programming-and-automation', 'ph-cloud-and-infrastructure-fundamentals', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-cloud-and-infrastructure-fundamentals', 'ph-containers-and-kubernetes', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-containers-and-kubernetes', 'ph-ci-cd-and-release-engineering', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-ci-cd-and-release-engineering', 'ph-observability-and-monitoring', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-observability-and-monitoring', 'ph-incident-response-and-on-call-readiness', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-incident-response-and-on-call-readiness', 'ph-reliability-engineering-and-slos', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-reliability-engineering-and-slos', 'ph-performance-capacity-and-resilience', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-performance-capacity-and-resilience', 'ph-security-and-compliance-awareness', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-security-and-compliance-awareness', 'ph-sre-portfolio-capstone', 'sequence', 'required', '{"rule":"phase_sequence"}'::jsonb),
+('ph-containers-and-kubernetes', 'grp-containers-and-kubernetes-specialization-choices', 'contains', 'optional', '{"rule":"parent_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-specialization-choices', 'platform-operations-track', 'choice', 'optional', '{"rule":"choice_child"}'::jsonb),
+('grp-containers-and-kubernetes-specialization-choices', 'service-reliability-track', 'choice', 'optional', '{"rule":"choice_child"}'::jsonb),
+('ph-incident-response-and-on-call-readiness', 'grp-incident-response-and-on-call-readiness-specialization-choices', 'contains', 'optional', '{"rule":"parent_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-specialization-choices', 'incident-commander-practice', 'choice', 'optional', '{"rule":"choice_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-specialization-choices', 'observability-debugging-practice', 'choice', 'optional', '{"rule":"choice_child"}'::jsonb),
+('ph-security-and-compliance-awareness', 'grp-security-and-compliance-awareness-specialization-choices', 'contains', 'optional', '{"rule":"parent_contains_child"}'::jsonb),
+('grp-security-and-compliance-awareness-specialization-choices', 'security-hardening-track', 'choice', 'optional', '{"rule":"choice_child"}'::jsonb),
+('grp-security-and-compliance-awareness-specialization-choices', 'compliance-runbook-track', 'choice', 'optional', '{"rule":"choice_child"}'::jsonb),
+('sre-responsibilities-and-tradeoffs', 'user-centric-reliability', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('user-centric-reliability', 'toil-identification-and-reduction', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('toil-identification-and-reduction', 'risk-change-and-reliability-balance', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('risk-change-and-reliability-balance', 'production-readiness-reviews', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('production-readiness-reviews', 'sre-communication-practices', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('sre-communication-practices', 'chk-sre-role-and-reliability-mindset-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('linux-process-and-service-management', 'shell-scripting-for-operations', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('shell-scripting-for-operations', 'filesystems-permissions-and-logs', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('filesystems-permissions-and-logs', 'tcp-ip-and-dns-troubleshooting', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('tcp-ip-and-dns-troubleshooting', 'http-tls-and-reverse-proxies', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('http-tls-and-reverse-proxies', 'system-debugging-tools', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('system-debugging-tools', 'chk-linux-networking-and-systems-foundations-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('python-automation-scripts', 'cli-tools-and-operational-scripts', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('cli-tools-and-operational-scripts', 'apis-for-automation', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('apis-for-automation', 'configuration-management', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('configuration-management', 'safe-automation-and-rollback', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('safe-automation-and-rollback', 'testing-operational-code', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('testing-operational-code', 'proj-reliability-automation-script', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-reliability-automation-script', 'chk-programming-and-automation-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('cloud-architecture-basics', 'compute-storage-and-networking', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('compute-storage-and-networking', 'identity-and-access-for-operations', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('identity-and-access-for-operations', 'infrastructure-as-code', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('infrastructure-as-code', 'load-balancing-and-traffic-routing', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('load-balancing-and-traffic-routing', 'cost-and-capacity-awareness', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('cost-and-capacity-awareness', 'chk-cloud-and-infrastructure-fundamentals-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('docker-images-and-runtime-behavior', 'kubernetes-workloads', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('kubernetes-workloads', 'services-ingress-and-networking', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('services-ingress-and-networking', 'configmaps-secrets-and-runtime-config', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('configmaps-secrets-and-runtime-config', 'health-checks-and-probes', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('health-checks-and-probes', 'kubernetes-troubleshooting', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('kubernetes-troubleshooting', 'proj-monitored-service-deployment', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-monitored-service-deployment', 'chk-containers-and-kubernetes-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('ci-pipeline-design', 'deployment-strategies', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('deployment-strategies', 'progressive-delivery-and-rollback', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('progressive-delivery-and-rollback', 'release-gates-and-change-risk', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('release-gates-and-change-risk', 'artifact-and-environment-promotion', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('artifact-and-environment-promotion', 'deployment-failure-analysis', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('deployment-failure-analysis', 'chk-ci-cd-and-release-engineering-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('metrics-logs-and-traces', 'prometheus-metrics-and-alerting', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('prometheus-metrics-and-alerting', 'grafana-dashboards', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('grafana-dashboards', 'distributed-tracing', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('distributed-tracing', 'alert-design-and-noise-reduction', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('alert-design-and-noise-reduction', 'service-health-reviews', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('service-health-reviews', 'proj-observability-dashboard', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-observability-dashboard', 'chk-observability-and-monitoring-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('incident-severity-and-triage', 'incident-commander-workflow', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('incident-commander-workflow', 'runbook-execution', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('runbook-execution', 'status-updates-and-stakeholder-communication', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('status-updates-and-stakeholder-communication', 'blameless-postmortems', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('blameless-postmortems', 'on-call-health-and-handoffs', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('on-call-health-and-handoffs', 'proj-incident-response-simulation', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-incident-response-simulation', 'chk-incident-response-and-on-call-readiness-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('service-level-indicators', 'slo-design-and-error-budgets', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('slo-design-and-error-budgets', 'error-budget-policy', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('error-budget-policy', 'reliability-risk-reviews', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('reliability-risk-reviews', 'availability-and-latency-targets', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('availability-and-latency-targets', 'customer-impact-analysis', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('customer-impact-analysis', 'proj-slo-and-error-budget-report', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-slo-and-error-budget-report', 'chk-reliability-engineering-and-slos-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('load-testing-basics', 'capacity-planning', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('capacity-planning', 'backpressure-and-rate-limits', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('backpressure-and-rate-limits', 'circuit-breakers-and-timeouts', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('circuit-breakers-and-timeouts', 'caching-and-cdn-strategy', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('caching-and-cdn-strategy', 'chaos-and-failure-mode-testing', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('chaos-and-failure-mode-testing', 'proj-capacity-and-resilience-test', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-capacity-and-resilience-test', 'chk-performance-capacity-and-resilience-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('operational-security-basics', 'secrets-management', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('secrets-management', 'network-security-controls', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('network-security-controls', 'vulnerability-and-patch-operations', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('vulnerability-and-patch-operations', 'audit-evidence-for-operations', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('audit-evidence-for-operations', 'compliance-friendly-runbooks', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('compliance-friendly-runbooks', 'chk-security-and-compliance-awareness-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('sre-portfolio-case-study-planning', 'sre-interview-scenarios', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('sre-interview-scenarios', 'capstone-service-definition', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('capstone-service-definition', 'capstone-monitoring-plan', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('capstone-monitoring-plan', 'capstone-incident-walkthrough', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('capstone-incident-walkthrough', 'proj-sre-capstone-with-runbook-and-postmortem', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('proj-sre-capstone-with-runbook-and-postmortem', 'chk-sre-portfolio-capstone-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('chk-sre-portfolio-capstone-review', 'chk-final-site-reliability-engineer-portfolio-review', 'recommendation', 'recommended', '{"rule":"suggested_order"}'::jsonb),
+('ph-sre-role-and-reliability-mindset', 'grp-sre-role-and-reliability-mindset-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-foundations', 'sre-responsibilities-and-tradeoffs', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-foundations', 'user-centric-reliability', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-foundations', 'toil-identification-and-reduction', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-foundations', 'risk-change-and-reliability-balance', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-sre-role-and-reliability-mindset', 'grp-sre-role-and-reliability-mindset-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-core-practice', 'production-readiness-reviews', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-core-practice', 'sre-communication-practices', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-role-and-reliability-mindset-core-practice', 'chk-sre-role-and-reliability-mindset-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-linux-networking-and-systems-foundations', 'grp-linux-networking-and-systems-foundations-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-foundations', 'linux-process-and-service-management', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-foundations', 'shell-scripting-for-operations', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-foundations', 'filesystems-permissions-and-logs', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-foundations', 'tcp-ip-and-dns-troubleshooting', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-linux-networking-and-systems-foundations', 'grp-linux-networking-and-systems-foundations-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-core-practice', 'http-tls-and-reverse-proxies', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-core-practice', 'system-debugging-tools', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-linux-networking-and-systems-foundations-core-practice', 'chk-linux-networking-and-systems-foundations-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-programming-and-automation', 'grp-programming-and-automation-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-programming-and-automation-foundations', 'python-automation-scripts', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-programming-and-automation-foundations', 'cli-tools-and-operational-scripts', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-programming-and-automation-foundations', 'apis-for-automation', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-programming-and-automation-foundations', 'configuration-management', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-programming-and-automation', 'grp-programming-and-automation-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-programming-and-automation-core-practice', 'safe-automation-and-rollback', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-programming-and-automation-core-practice', 'testing-operational-code', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-programming-and-automation-core-practice', 'proj-reliability-automation-script', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-programming-and-automation-core-practice', 'chk-programming-and-automation-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-cloud-and-infrastructure-fundamentals', 'grp-cloud-and-infrastructure-fundamentals-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-foundations', 'cloud-architecture-basics', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-foundations', 'compute-storage-and-networking', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-foundations', 'identity-and-access-for-operations', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-foundations', 'infrastructure-as-code', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-cloud-and-infrastructure-fundamentals', 'grp-cloud-and-infrastructure-fundamentals-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-core-practice', 'load-balancing-and-traffic-routing', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-core-practice', 'cost-and-capacity-awareness', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-cloud-and-infrastructure-fundamentals-core-practice', 'chk-cloud-and-infrastructure-fundamentals-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-containers-and-kubernetes', 'grp-containers-and-kubernetes-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-containers-and-kubernetes-foundations', 'docker-images-and-runtime-behavior', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-foundations', 'kubernetes-workloads', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-foundations', 'services-ingress-and-networking', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-foundations', 'configmaps-secrets-and-runtime-config', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-containers-and-kubernetes', 'grp-containers-and-kubernetes-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-containers-and-kubernetes-core-practice', 'health-checks-and-probes', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-core-practice', 'kubernetes-troubleshooting', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-core-practice', 'proj-monitored-service-deployment', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-containers-and-kubernetes-core-practice', 'chk-containers-and-kubernetes-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-ci-cd-and-release-engineering', 'grp-ci-cd-and-release-engineering-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-ci-cd-and-release-engineering-foundations', 'ci-pipeline-design', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-ci-cd-and-release-engineering-foundations', 'deployment-strategies', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-ci-cd-and-release-engineering-foundations', 'progressive-delivery-and-rollback', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-ci-cd-and-release-engineering-foundations', 'release-gates-and-change-risk', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-ci-cd-and-release-engineering', 'grp-ci-cd-and-release-engineering-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-ci-cd-and-release-engineering-core-practice', 'artifact-and-environment-promotion', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-ci-cd-and-release-engineering-core-practice', 'deployment-failure-analysis', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-ci-cd-and-release-engineering-core-practice', 'chk-ci-cd-and-release-engineering-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-observability-and-monitoring', 'grp-observability-and-monitoring-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-observability-and-monitoring-foundations', 'metrics-logs-and-traces', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-observability-and-monitoring-foundations', 'prometheus-metrics-and-alerting', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-observability-and-monitoring-foundations', 'grafana-dashboards', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-observability-and-monitoring-foundations', 'distributed-tracing', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-observability-and-monitoring', 'grp-observability-and-monitoring-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-observability-and-monitoring-core-practice', 'alert-design-and-noise-reduction', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-observability-and-monitoring-core-practice', 'service-health-reviews', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-observability-and-monitoring', 'proj-observability-dashboard', 'contains', 'required', '{"rule":"phase_contains_optional_project"}'::jsonb),
+('grp-observability-and-monitoring-core-practice', 'chk-observability-and-monitoring-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-incident-response-and-on-call-readiness', 'grp-incident-response-and-on-call-readiness-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-foundations', 'incident-severity-and-triage', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-foundations', 'incident-commander-workflow', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-foundations', 'runbook-execution', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-foundations', 'status-updates-and-stakeholder-communication', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-incident-response-and-on-call-readiness', 'grp-incident-response-and-on-call-readiness-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-core-practice', 'blameless-postmortems', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-core-practice', 'on-call-health-and-handoffs', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-core-practice', 'proj-incident-response-simulation', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-incident-response-and-on-call-readiness-core-practice', 'chk-incident-response-and-on-call-readiness-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-reliability-engineering-and-slos', 'grp-reliability-engineering-and-slos-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-reliability-engineering-and-slos-foundations', 'service-level-indicators', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-reliability-engineering-and-slos-foundations', 'slo-design-and-error-budgets', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-reliability-engineering-and-slos-foundations', 'error-budget-policy', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-reliability-engineering-and-slos-foundations', 'reliability-risk-reviews', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-reliability-engineering-and-slos', 'grp-reliability-engineering-and-slos-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-reliability-engineering-and-slos-core-practice', 'availability-and-latency-targets', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-reliability-engineering-and-slos-core-practice', 'customer-impact-analysis', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-reliability-engineering-and-slos-core-practice', 'proj-slo-and-error-budget-report', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-reliability-engineering-and-slos-core-practice', 'chk-reliability-engineering-and-slos-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-performance-capacity-and-resilience', 'grp-performance-capacity-and-resilience-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-performance-capacity-and-resilience-foundations', 'load-testing-basics', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-performance-capacity-and-resilience-foundations', 'capacity-planning', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-performance-capacity-and-resilience-foundations', 'backpressure-and-rate-limits', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-performance-capacity-and-resilience-foundations', 'circuit-breakers-and-timeouts', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-performance-capacity-and-resilience', 'grp-performance-capacity-and-resilience-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-performance-capacity-and-resilience-core-practice', 'caching-and-cdn-strategy', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-performance-capacity-and-resilience-core-practice', 'chaos-and-failure-mode-testing', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-performance-capacity-and-resilience', 'proj-capacity-and-resilience-test', 'contains', 'required', '{"rule":"phase_contains_optional_project"}'::jsonb),
+('grp-performance-capacity-and-resilience-core-practice', 'chk-performance-capacity-and-resilience-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-security-and-compliance-awareness', 'grp-security-and-compliance-awareness-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-security-and-compliance-awareness-foundations', 'operational-security-basics', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-security-and-compliance-awareness-foundations', 'secrets-management', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-security-and-compliance-awareness-foundations', 'network-security-controls', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-security-and-compliance-awareness-foundations', 'vulnerability-and-patch-operations', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-security-and-compliance-awareness', 'grp-security-and-compliance-awareness-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-security-and-compliance-awareness-core-practice', 'audit-evidence-for-operations', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-security-and-compliance-awareness-core-practice', 'compliance-friendly-runbooks', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-security-and-compliance-awareness-core-practice', 'chk-security-and-compliance-awareness-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-sre-portfolio-capstone', 'grp-sre-portfolio-capstone-foundations', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-sre-portfolio-capstone-foundations', 'sre-portfolio-case-study-planning', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-portfolio-capstone-foundations', 'sre-interview-scenarios', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-portfolio-capstone-foundations', 'capstone-service-definition', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-portfolio-capstone-foundations', 'capstone-monitoring-plan', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('ph-sre-portfolio-capstone', 'grp-sre-portfolio-capstone-core-practice', 'contains', 'required', '{"rule":"phase_contains_group"}'::jsonb),
+('grp-sre-portfolio-capstone-core-practice', 'capstone-incident-walkthrough', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-portfolio-capstone-core-practice', 'proj-sre-capstone-with-runbook-and-postmortem', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-portfolio-capstone-core-practice', 'chk-sre-portfolio-capstone-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb),
+('grp-sre-portfolio-capstone-core-practice', 'chk-final-site-reliability-engineer-portfolio-review', 'choice', 'required', '{"rule":"group_contains_child"}'::jsonb);
+
+INSERT INTO public.roadmap_edge
+(roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
+SELECT m.roadmap_version_id, source.node_id, target.node_id, se.edge_type, se.dependency_type, se.condition
+FROM seed_edge se
+CROSS JOIN seed_roadmap_map m
+JOIN seed_node source ON source.node_key = se.from_key
+JOIN seed_node target ON target.node_key = se.to_key
+ON CONFLICT (roadmap_version_id, from_node_id, to_node_id, edge_type) DO UPDATE SET
+    dependency_type = EXCLUDED.dependency_type,
+    condition = EXCLUDED.condition;
+
+COMMIT;
+
+-- Summary: nodes=112, local_skills=16, resources=15, node_skill_mappings=202, node_resource_mappings=170, edges=190
