@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -362,79 +363,86 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             enrollment,
             quiz.SkillModule.SkillModuleLessons);
 
-        var existingInProgressAttempt = await _context.SkillModuleQuizAttempts
-            .FirstOrDefaultAsync(item =>
-                item.SkillModuleQuizId == quiz.SkillModuleQuizId
-                && item.UserId == userId
-                && item.Status == LearningModuleQuizAttemptStatusValues.InProgress,
+        try
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                System.Data.IsolationLevel.Serializable,
                 cancellationToken);
 
-        if (existingInProgressAttempt != null)
-        {
-            return new StartQuizAttemptResultDto
+            var existingInProgressAttempt = await GetExistingInProgressAttemptAsync(
+                quiz.SkillModuleQuizId,
+                userId,
+                cancellationToken);
+
+            if (existingInProgressAttempt != null)
             {
-                SkillModuleQuizAttemptId = existingInProgressAttempt.SkillModuleQuizAttemptId,
-                SkillModuleQuizId = existingInProgressAttempt.SkillModuleQuizId,
-                AttemptNo = existingInProgressAttempt.AttemptNo,
-                Status = existingInProgressAttempt.Status,
-                StartedAt = existingInProgressAttempt.StartedAt,
-                Quiz = MapQuizForLearnerAttempt(quiz)
+                await transaction.CommitAsync(cancellationToken);
+                return MapStartQuizAttemptResult(existingInProgressAttempt, quiz);
+            }
+
+            var now = DateTime.UtcNow;
+            var attemptDayStart = now.Date;
+            var attemptDayEnd = attemptDayStart.AddDays(1);
+
+            var submittedAttemptsToday = await _context.SkillModuleQuizAttempts
+                .CountAsync(item =>
+                    item.SkillModuleQuizId == quiz.SkillModuleQuizId
+                    && item.UserId == userId
+                    && item.Status == LearningModuleQuizAttemptStatusValues.Submitted
+                    && item.SubmittedAt >= attemptDayStart
+                    && item.SubmittedAt < attemptDayEnd,
+                    cancellationToken);
+
+            if (quiz.MaxAttempts.HasValue && submittedAttemptsToday >= quiz.MaxAttempts.Value)
+            {
+                throw new ConflictException("Maximum quiz attempts for today reached. Try again tomorrow.");
+            }
+
+            var lastAttemptNo = await _context.SkillModuleQuizAttempts
+                .Where(item =>
+                    item.SkillModuleQuizId == quiz.SkillModuleQuizId
+                    && item.UserId == userId)
+                .Select(item => (int?)item.AttemptNo)
+                .MaxAsync(cancellationToken);
+
+            var attempt = new SkillModuleQuizAttempt
+            {
+                SkillModuleQuizAttemptId = Guid.NewGuid(),
+                SkillModuleQuizId = quiz.SkillModuleQuizId,
+                SkillModuleEnrollmentId = enrollment.SkillModuleEnrollmentId,
+                UserId = userId,
+                AttemptNo = (lastAttemptNo ?? 0) + 1,
+                Status = LearningModuleQuizAttemptStatusValues.InProgress,
+                StartedAt = now,
+                SubmittedAt = null,
+                ScorePercent = null,
+                EarnedPoints = null,
+                TotalPoints = null,
+                Passed = null
             };
+
+            _context.SkillModuleQuizAttempts.Add(attempt);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return MapStartQuizAttemptResult(attempt, quiz);
         }
+        catch (DbUpdateException ex) when (IsQuizRequestConflict(ex))
+        {
+            _context.ChangeTracker.Clear();
 
-        var now = DateTime.UtcNow;
-        var attemptDayStart = now.Date;
-        var attemptDayEnd = attemptDayStart.AddDays(1);
-
-        var submittedAttemptsToday = await _context.SkillModuleQuizAttempts
-            .CountAsync(item =>
-                item.SkillModuleQuizId == quiz.SkillModuleQuizId
-                && item.UserId == userId
-                && item.Status == LearningModuleQuizAttemptStatusValues.Submitted
-                && item.SubmittedAt >= attemptDayStart
-                && item.SubmittedAt < attemptDayEnd,
+            var existingInProgressAttempt = await GetExistingInProgressAttemptAsync(
+                quiz.SkillModuleQuizId,
+                userId,
                 cancellationToken);
 
-        if (quiz.MaxAttempts.HasValue && submittedAttemptsToday >= quiz.MaxAttempts.Value)
-        {
-            throw new ConflictException("Maximum quiz attempts for today reached. Try again tomorrow.");
+            if (existingInProgressAttempt != null)
+            {
+                return MapStartQuizAttemptResult(existingInProgressAttempt, quiz);
+            }
+
+            throw new ConflictException("A quiz attempt was already started. Refresh and try again.");
         }
-
-        var lastAttemptNo = await _context.SkillModuleQuizAttempts
-            .Where(item =>
-                item.SkillModuleQuizId == quiz.SkillModuleQuizId
-                && item.UserId == userId)
-            .Select(item => (int?)item.AttemptNo)
-            .MaxAsync(cancellationToken);
-
-        var attempt = new SkillModuleQuizAttempt
-        {
-            SkillModuleQuizAttemptId = Guid.NewGuid(),
-            SkillModuleQuizId = quiz.SkillModuleQuizId,
-            SkillModuleEnrollmentId = enrollment.SkillModuleEnrollmentId,
-            UserId = userId,
-            AttemptNo = (lastAttemptNo ?? 0) + 1,
-            Status = LearningModuleQuizAttemptStatusValues.InProgress,
-            StartedAt = now,
-            SubmittedAt = null,
-            ScorePercent = null,
-            EarnedPoints = null,
-            TotalPoints = null,
-            Passed = null
-        };
-
-        _context.SkillModuleQuizAttempts.Add(attempt);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return new StartQuizAttemptResultDto
-        {
-            SkillModuleQuizAttemptId = attempt.SkillModuleQuizAttemptId,
-            SkillModuleQuizId = attempt.SkillModuleQuizId,
-            AttemptNo = attempt.AttemptNo,
-            Status = attempt.Status,
-            StartedAt = attempt.StartedAt,
-            Quiz = MapQuizForLearnerAttempt(quiz)
-        };
     }
 
     public async Task<QuizAttemptReviewDto> SubmitQuizAttemptAsync(
@@ -444,100 +452,113 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         SubmitQuizAttemptRequestDto request,
         CancellationToken cancellationToken)
     {
-        var attempt = await _context.SkillModuleQuizAttempts
-            .Include(item => item.SkillModuleEnrollment)
-            .Include(item => item.SkillModuleQuiz)
-                .ThenInclude(quiz => quiz.SkillModule)
-                    .ThenInclude(module => module.SkillModuleLessons)
-            .Include(item => item.SkillModuleQuiz)
-                .ThenInclude(quiz => quiz.SkillModuleQuizQuestions)
-                    .ThenInclude(question => question.SkillModuleQuizOptions)
-            .Include(item => item.SkillModuleQuizAnswers)
-            .FirstOrDefaultAsync(item =>
-                item.SkillModuleQuizAttemptId == attemptId
-                && item.UserId == userId
-                && item.SkillModuleQuiz.SkillModuleId == skillModuleId
-                && (item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Published
-                    || item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Archived),
+        try
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                System.Data.IsolationLevel.Serializable,
                 cancellationToken);
 
-        if (attempt == null)
-        {
-            throw new NotFoundException("Quiz attempt was not found.");
-        }
+            var attempt = await _context.SkillModuleQuizAttempts
+                .Include(item => item.SkillModuleEnrollment)
+                .Include(item => item.SkillModuleQuiz)
+                    .ThenInclude(quiz => quiz.SkillModule)
+                        .ThenInclude(module => module.SkillModuleLessons)
+                .Include(item => item.SkillModuleQuiz)
+                    .ThenInclude(quiz => quiz.SkillModuleQuizQuestions)
+                        .ThenInclude(question => question.SkillModuleQuizOptions)
+                .Include(item => item.SkillModuleQuizAnswers)
+                .FirstOrDefaultAsync(item =>
+                    item.SkillModuleQuizAttemptId == attemptId
+                    && item.UserId == userId
+                    && item.SkillModuleQuiz.SkillModuleId == skillModuleId
+                    && (item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Published
+                        || item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Archived),
+                    cancellationToken);
 
-        if (attempt.Status != LearningModuleQuizAttemptStatusValues.InProgress)
-        {
-            throw new ConflictException("Only in-progress attempts can be submitted.");
-        }
-
-        if (attempt.SkillModuleQuizAnswers.Count > 0)
-        {
-            throw new ConflictException("This attempt has already been submitted.");
-        }
-
-        var questions = attempt.SkillModuleQuiz.SkillModuleQuizQuestions
-            .OrderBy(question => question.OrderIndex)
-            .ToList();
-
-        ValidateSubmitRequest(request, questions);
-
-        var selectedOptionByQuestionId = request.Answers.ToDictionary(
-            answer => answer.SkillModuleQuizQuestionId,
-            answer => answer.SelectedOptionId);
-
-        var answers = new List<SkillModuleQuizAnswer>();
-        var earnedPoints = 0;
-        var totalPoints = questions.Sum(question => question.Points);
-        var now = DateTime.UtcNow;
-
-        foreach (var question in questions)
-        {
-            var selectedOptionId = selectedOptionByQuestionId[question.SkillModuleQuizQuestionId];
-
-            var selectedOption = question.SkillModuleQuizOptions
-                .First(option => option.SkillModuleQuizOptionId == selectedOptionId);
-
-            var isCorrect = selectedOption.IsCorrect;
-            var questionEarnedPoints = isCorrect ? question.Points : 0;
-
-            earnedPoints += questionEarnedPoints;
-
-            answers.Add(new SkillModuleQuizAnswer
+            if (attempt == null)
             {
-                SkillModuleQuizAnswerId = Guid.NewGuid(),
-                SkillModuleQuizAttemptId = attempt.SkillModuleQuizAttemptId,
-                SkillModuleQuizQuestionId = question.SkillModuleQuizQuestionId,
-                SelectedOptionId = selectedOption.SkillModuleQuizOptionId,
-                IsCorrect = isCorrect,
-                EarnedPoints = questionEarnedPoints,
-                AnsweredAt = now
-            });
+                throw new NotFoundException("Quiz attempt was not found.");
+            }
+
+            if (attempt.Status != LearningModuleQuizAttemptStatusValues.InProgress)
+            {
+                throw new ConflictException("This quiz attempt has already been submitted.");
+            }
+
+            if (attempt.SkillModuleQuizAnswers.Count > 0)
+            {
+                throw new ConflictException("This quiz attempt has already been submitted.");
+            }
+
+            var questions = attempt.SkillModuleQuiz.SkillModuleQuizQuestions
+                .OrderBy(question => question.OrderIndex)
+                .ToList();
+
+            ValidateSubmitRequest(request, questions);
+
+            var selectedOptionByQuestionId = request.Answers.ToDictionary(
+                answer => answer.SkillModuleQuizQuestionId,
+                answer => answer.SelectedOptionId);
+
+            var answers = new List<SkillModuleQuizAnswer>();
+            var earnedPoints = 0;
+            var totalPoints = questions.Sum(question => question.Points);
+            var now = DateTime.UtcNow;
+
+            foreach (var question in questions)
+            {
+                var selectedOptionId = selectedOptionByQuestionId[question.SkillModuleQuizQuestionId];
+
+                var selectedOption = question.SkillModuleQuizOptions
+                    .First(option => option.SkillModuleQuizOptionId == selectedOptionId);
+
+                var isCorrect = selectedOption.IsCorrect;
+                var questionEarnedPoints = isCorrect ? question.Points : 0;
+
+                earnedPoints += questionEarnedPoints;
+
+                answers.Add(new SkillModuleQuizAnswer
+                {
+                    SkillModuleQuizAnswerId = Guid.NewGuid(),
+                    SkillModuleQuizAttemptId = attempt.SkillModuleQuizAttemptId,
+                    SkillModuleQuizQuestionId = question.SkillModuleQuizQuestionId,
+                    SelectedOptionId = selectedOption.SkillModuleQuizOptionId,
+                    IsCorrect = isCorrect,
+                    EarnedPoints = questionEarnedPoints,
+                    AnsweredAt = now
+                });
+            }
+
+            var scorePercent = totalPoints == 0
+                ? 0
+                : Math.Round((decimal)earnedPoints * 100 / totalPoints, 2);
+
+            attempt.Status = LearningModuleQuizAttemptStatusValues.Submitted;
+            attempt.SubmittedAt = now;
+            attempt.ScorePercent = scorePercent;
+            attempt.EarnedPoints = earnedPoints;
+            attempt.TotalPoints = totalPoints;
+            attempt.Passed = scorePercent >= attempt.SkillModuleQuiz.PassingScorePercent;
+
+            var lessonProgress = ParseLessonProgress(attempt.SkillModuleEnrollment.LessonProgress);
+
+            ApplyEnrollmentProgress(
+                attempt.SkillModuleEnrollment,
+                attempt.SkillModuleQuiz.SkillModule.SkillModuleLessons,
+                lessonProgress,
+                hasQuiz: true,
+                quizPassed: attempt.Passed == true,
+                now);
+
+            _context.SkillModuleQuizAnswers.AddRange(answers);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
-
-        var scorePercent = totalPoints == 0
-            ? 0
-            : Math.Round((decimal)earnedPoints * 100 / totalPoints, 2);
-
-        attempt.Status = LearningModuleQuizAttemptStatusValues.Submitted;
-        attempt.SubmittedAt = now;
-        attempt.ScorePercent = scorePercent;
-        attempt.EarnedPoints = earnedPoints;
-        attempt.TotalPoints = totalPoints;
-        attempt.Passed = scorePercent >= attempt.SkillModuleQuiz.PassingScorePercent;
-
-        var lessonProgress = ParseLessonProgress(attempt.SkillModuleEnrollment.LessonProgress);
-
-        ApplyEnrollmentProgress(
-            attempt.SkillModuleEnrollment,
-            attempt.SkillModuleQuiz.SkillModule.SkillModuleLessons,
-            lessonProgress,
-            hasQuiz: true,
-            quizPassed: attempt.Passed == true,
-            now);
-
-        _context.SkillModuleQuizAnswers.AddRange(answers);
-        await _context.SaveChangesAsync(cancellationToken);
+        catch (DbUpdateException ex) when (IsQuizRequestConflict(ex))
+        {
+            _context.ChangeTracker.Clear();
+            throw new ConflictException("This quiz attempt has already been submitted.");
+        }
 
         return await GetQuizAttemptReviewAsync(
             userId,
@@ -572,6 +593,42 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         }
 
         return MapAttemptReview(attempt);
+    }
+
+    private async Task<SkillModuleQuizAttempt?> GetExistingInProgressAttemptAsync(
+        Guid quizId,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        return await _context.SkillModuleQuizAttempts
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleQuizId == quizId
+                && item.UserId == userId
+                && item.Status == LearningModuleQuizAttemptStatusValues.InProgress,
+                cancellationToken);
+    }
+
+    private static StartQuizAttemptResultDto MapStartQuizAttemptResult(
+        SkillModuleQuizAttempt attempt,
+        SkillModuleQuiz quiz)
+    {
+        return new StartQuizAttemptResultDto
+        {
+            SkillModuleQuizAttemptId = attempt.SkillModuleQuizAttemptId,
+            SkillModuleQuizId = attempt.SkillModuleQuizId,
+            AttemptNo = attempt.AttemptNo,
+            Status = attempt.Status,
+            StartedAt = attempt.StartedAt,
+            Quiz = MapQuizForLearnerAttempt(quiz)
+        };
+    }
+
+    private static bool IsQuizRequestConflict(DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException postgresException
+            && (
+                postgresException.SqlState == PostgresErrorCodes.UniqueViolation
+                || postgresException.SqlState == PostgresErrorCodes.SerializationFailure);
     }
 
     private static void EnsureLearnerCanAccessModule(
