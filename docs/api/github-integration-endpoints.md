@@ -6,32 +6,73 @@ Base route:
 /api/integrations/github
 ```
 
-Source controller: `GitHubIntegrationController`
+Source controller:
 
-All endpoints in this file require authentication.
+```text
+GitHubIntegrationController
+```
 
-Repository insight belongs in this file because it is part of the GitHub repository integration flow. It uses the same base route, controller, repository records, and authentication rules.
+Related services / DTOs:
+
+```text
+IGitHubRepositoryService
+IRepoInsightService
+GitHubRepositoryResponseDto
+RepoInsightResponseDto
+```
+
+## Summary
+
+GitHub integration endpoints manage saved GitHub repositories and AI repository insight generation for the current user.
+
+Repository sync fetches public repository metadata. AI insight generation is separate and runs per repository.
 
 ## Endpoint Summary
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/integrations/github/repositories` | Get saved GitHub repositories |
-| `POST` | `/api/integrations/github/repositories/sync` | Sync public repositories from GitHub |
-| `POST` | `/api/integrations/github/repositories/{repositoryId}/insight` | Generate or refresh an AI repository insight |
+| Method | Endpoint | Auth Required | Rate Limit | Purpose |
+|---|---|---:|---|---|
+| `GET` | `/api/integrations/github/repositories` | Yes | Default | Get saved GitHub repositories |
+| `POST` | `/api/integrations/github/repositories/sync` | Yes | `ExternalApi` | Sync public repositories from GitHub |
+| `POST` | `/api/integrations/github/repositories/{repositoryId}/insight` | Yes | `AiExpensive` | Generate or refresh AI repository insight |
+
+## Authentication
+
+| Requirement | Details |
+|---|---|
+| Auth required | Yes |
+| Auth type | Authenticated `access_token` cookie |
+| User id source | `User.GetUserId()` |
+| GitHub token source | Linked GitHub provider access token when available |
+
+## Common Response Notes
+
+| Topic | Details |
+|---|---|
+| JSON casing | camelCase |
+| Date format | ISO 8601 datetime string |
+| Error format | Shared `ApiErrorResponse` object |
+| External API errors | May include GitHub-specific error code and `retryAfterSeconds` |
 
 ## `GET /api/integrations/github/repositories`
 
 Returns repositories already saved in the local database for the current user.
 
-Repositories may include an `insight` object when an AI summary has already been generated.
+Repositories may include an `insight` object when AI insight has already been generated.
 
 ### Success Response
+
+Status:
+
+```text
+200 OK
+```
+
+Body:
 
 ```json
 [
   {
-    "repositoryId": "guid",
+    "repositoryId": "11111111-1111-1111-1111-111111111111",
     "name": "roadmap-platform",
     "fullName": "khoa/roadmap-platform",
     "htmlUrl": "https://github.com/khoa/roadmap-platform",
@@ -40,26 +81,26 @@ Repositories may include an `insight` object when an AI summary has already been
     "stars": 10,
     "forks": 2,
     "isSelectedForPortfolio": true,
-    "syncedAt": "2026-06-02T10:00:00Z",
+    "syncedAt": "2026-06-16T10:00:00Z",
     "insight": {
-      "insightId": "guid",
-      "repositoryId": "guid",
-      "summary": "A full-stack learning roadmap platform with portfolio, authentication, and roadmap progress features.",
+      "insightId": "22222222-2222-2222-2222-222222222222",
+      "repositoryId": "11111111-1111-1111-1111-111111111111",
+      "summary": "A full-stack learning roadmap platform.",
       "techStack": ["ASP.NET Core", "PostgreSQL", "React"],
-      "detectedSkills": ["REST API", "Authentication", "Database Design"],
+      "detectedSkills": ["REST API", "Authentication"],
       "projectType": "Full Stack Web Application",
       "analysisStatus": "completed",
       "readmeTruncated": false,
       "aiModel": "gemini-2.5-flash",
       "errorMessage": null,
-      "analyzedAt": "2026-06-09T10:00:00Z",
-      "updatedAt": "2026-06-09T10:00:00Z"
+      "analyzedAt": "2026-06-16T10:00:00Z",
+      "updatedAt": "2026-06-16T10:00:00Z"
     }
   }
 ]
 ```
 
-### Response Fields
+### Repository Fields
 
 | Field | Type | Notes |
 |---|---|---|
@@ -67,13 +108,13 @@ Repositories may include an `insight` object when an AI summary has already been
 | `name` | `string` | Repository name |
 | `fullName` | `string` | GitHub owner/name |
 | `htmlUrl` | `string` | GitHub repository URL |
-| `description` | `string/null` | Repository description |
+| `description` | `string/null` | GitHub repository description |
 | `primaryLanguage` | `string/null` | Main GitHub language |
 | `stars` | `number` | Stargazer count |
 | `forks` | `number` | Fork count |
 | `isSelectedForPortfolio` | `boolean` | Whether displayed on portfolio |
 | `syncedAt` | `datetime` | Last local sync time |
-| `insight` | `object/null` | Latest generated repository insight, if available |
+| `insight` | `object/null` | Latest repository insight, if available |
 
 ### Insight Fields
 
@@ -81,14 +122,14 @@ Repositories may include an `insight` object when an AI summary has already been
 |---|---|---|
 | `insightId` | `guid` | Local insight id |
 | `repositoryId` | `guid` | Repository linked to the insight |
-| `summary` | `string/null` | AI-generated repository summary |
-| `techStack` | `array` | Technologies detected from the README |
-| `detectedSkills` | `array` | Skills inferred from the README |
+| `summary` | `string/null` | AI-generated summary |
+| `techStack` | `string[]` | Technologies detected from README |
+| `detectedSkills` | `string[]` | Skills inferred from README |
 | `projectType` | `string/null` | General project category |
 | `analysisStatus` | `string` | `pending`, `completed`, or `failed` |
-| `readmeTruncated` | `boolean` | Whether README content was shortened before analysis |
-| `aiModel` | `string/null` | AI model used for the summary |
-| `errorMessage` | `string/null` | Internal analysis error message, if analysis failed |
+| `readmeTruncated` | `boolean` | Whether README was shortened before analysis |
+| `aiModel` | `string/null` | AI model used |
+| `errorMessage` | `string/null` | Error message when analysis failed |
 | `analyzedAt` | `datetime` | Last analysis time |
 | `updatedAt` | `datetime` | Last insight update time |
 
@@ -96,11 +137,33 @@ Repositories may include an `insight` object when an AI summary has already been
 
 Fetches the user's latest public repositories from GitHub and upserts them into the local database.
 
-This endpoint only syncs repository metadata. It does not generate AI insights.
-
 ### Success Response
 
-Returns the saved repository list after sync.
+Status:
+
+```text
+200 OK
+```
+
+Body:
+
+```json
+[
+  {
+    "repositoryId": "11111111-1111-1111-1111-111111111111",
+    "name": "roadmap-platform",
+    "fullName": "khoa/roadmap-platform",
+    "htmlUrl": "https://github.com/khoa/roadmap-platform",
+    "description": "Learning roadmap platform",
+    "primaryLanguage": "C#",
+    "stars": 10,
+    "forks": 2,
+    "isSelectedForPortfolio": true,
+    "syncedAt": "2026-06-16T10:00:00Z",
+    "insight": null
+  }
+]
+```
 
 ### Rules
 
@@ -108,43 +171,62 @@ Returns the saved repository list after sync.
 |---|---|
 | GitHub account not linked | Error |
 | GitHub username missing | Error |
+| GitHub access token available | Used for API requests |
 | New GitHub repo | Creates local repository row |
 | Existing GitHub repo | Updates local repository fields |
-| Private repos | Stored as `isPrivate = false` because only public repos are synced |
+| Private repos | Not synced by this flow |
 | New synced repo | Defaults `isSelectedForPortfolio = true` |
 | Repository insight | Not generated during sync |
 
 > [!NOTE]
-> Sync does not remove local repositories that are no longer returned by GitHub. It upserts repositories that are returned by the GitHub API.
+> Sync does not remove local repositories that are no longer returned by GitHub. It upserts returned repositories only.
 
 ## `POST /api/integrations/github/repositories/{repositoryId}/insight`
 
-Generates or refreshes an AI insight for one repository.
+Generates or refreshes AI insight for one repository.
 
-The endpoint reads the repository README from GitHub, cleans and hashes the content, then uses AI to generate a portfolio-friendly summary.
+### Path Parameters
+
+| Parameter | Type | Required | Notes |
+|---|---|---:|---|
+| `repositoryId` | `guid` | Yes | Local repository id |
 
 ### Query Parameters
 
-| Parameter | Type | Required | Notes |
-|---|---|---|---|
-| `force` | `boolean` | No | When `true`, regenerates the insight even if the README hash has not changed |
+| Parameter | Type | Required | Default | Notes |
+|---|---|---:|---|---|
+| `force` | `boolean` | No | `false` | Regenerate even if README hash has not changed |
+
+Example:
+
+```text
+POST /api/integrations/github/repositories/11111111-1111-1111-1111-111111111111/insight?force=true
+```
 
 ### Success Response
 
+Status:
+
+```text
+200 OK
+```
+
+Body:
+
 ```json
 {
-  "insightId": "guid",
-  "repositoryId": "guid",
-  "summary": "A full-stack learning roadmap platform with portfolio, authentication, and roadmap progress features.",
+  "insightId": "22222222-2222-2222-2222-222222222222",
+  "repositoryId": "11111111-1111-1111-1111-111111111111",
+  "summary": "A full-stack learning roadmap platform.",
   "techStack": ["ASP.NET Core", "PostgreSQL", "React"],
-  "detectedSkills": ["REST API", "Authentication", "Database Design"],
+  "detectedSkills": ["REST API", "Authentication"],
   "projectType": "Full Stack Web Application",
   "analysisStatus": "completed",
   "readmeTruncated": false,
   "aiModel": "gemini-2.5-flash",
   "errorMessage": null,
-  "analyzedAt": "2026-06-09T10:00:00Z",
-  "updatedAt": "2026-06-09T10:00:00Z"
+  "analyzedAt": "2026-06-16T10:00:00Z",
+  "updatedAt": "2026-06-16T10:00:00Z"
 }
 ```
 
@@ -155,54 +237,35 @@ The endpoint reads the repository README from GitHub, cleans and hashes the cont
 | Repository does not belong to current user | Error |
 | README found | README is cleaned, hashed, and analyzed |
 | README missing | Insight is saved as `failed` with an error message |
-| Existing insight with unchanged README hash | Existing insight is returned without a new AI call |
+| Existing insight with unchanged README hash | Existing insight is returned when `force=false` |
 | `force=true` | AI summary is regenerated even when README hash is unchanged |
 | AI analysis succeeds | Insight is saved as `completed` |
 | AI analysis fails | Insight is saved as `failed` with an error message |
 
-### Backend Flow
+## Backend Flow
 
 1. Load the repository by `repositoryId` and current user id.
 2. Parse `fullName` into GitHub owner and repository name.
-3. Fetch the repository README from GitHub.
-4. Clean and truncate the README if needed.
-5. Generate a SHA-256 hash from the cleaned README.
-6. Compare the hash with the saved `readmeHash`.
-7. Skip the AI call if the hash is unchanged and `force` is not enabled.
-8. Generate the summary with AI.
+3. Fetch README from GitHub.
+4. Clean and truncate README if needed.
+5. Generate a SHA-256 hash from cleaned README.
+6. Compare with saved `readmeHash`.
+7. Skip the AI call if hash is unchanged and `force=false`.
+8. Generate summary with AI.
 9. Upsert the latest row in `repo_insight`.
-10. Return the generated insight.
+10. Return the insight response.
 
-> [!IMPORTANT]
-> Repository sync and repository insight generation are separate. Sync should stay fast and should not trigger AI calls automatically.
+## Frontend Usage
 
-## Portfolio Usage
-
-Repository insight improves the portfolio display, but repositories still work without it.
-
-For owner-facing repository management pages:
-
-- Show `Generate` when no completed insight exists.
-- Show `Regenerate` when a completed insight exists.
-- Show loading state while the insight request is running.
-- Show failed status when analysis fails.
-
-For public portfolio pages:
-
-- Prefer `insight.summary` when `analysisStatus` is `completed`.
-- Fall back to the GitHub repository `description` when no completed insight exists.
-- Show `techStack`, `detectedSkills`, and `projectType` only when available.
-- Do not expose internal fields such as `readmeHash`, `aiModel`, or `errorMessage` publicly unless explicitly needed.
+| Context | Behavior |
+|---|---|
+| Owner repository page | Show `Generate` when no completed insight exists |
+| Owner repository page | Show `Regenerate` when completed insight exists |
+| Loading state | Disable duplicate insight requests while the request is running |
+| Failed insight | Show failed status and allow retry |
+| Public portfolio | Prefer completed `insight.summary`; fall back to GitHub description |
+| Public portfolio | Avoid exposing internal fields unless needed |
 
 ## Summary
 
-Repository insight should be documented inside this GitHub integration endpoint file because it is part of the same repository workflow.
-
-The main flow is:
-
-```text
-Sync repositories
-→ choose portfolio repositories
-→ generate AI insight per repository
-→ display completed insight on the portfolio
-```
+Repository sync and repository insight generation are intentionally separate. Sync stays fast; AI insight generation is explicit and repository-specific.
