@@ -8,7 +8,7 @@ export const ROADMAP_LAYOUT = {
   checkpointGapX: 80,
   centerToGroupGapX: 56,
   groupToOptionGapX: 52,
-  rightCenterToGroupGapX: 56,
+  rightCenterToGroupGapX: 300,
   rightGroupToOptionGapX: 52,
   hiddenColumnGapX: 430,
   minPhaseBlockHeight: 620,
