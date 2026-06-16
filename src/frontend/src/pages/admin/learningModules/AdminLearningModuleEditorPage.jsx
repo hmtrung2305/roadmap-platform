@@ -20,7 +20,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi, getLearningModuleRouteSegment, rememberLearningModuleRoute } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
 import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learningModules/MarkdownRenderer";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
@@ -414,7 +414,6 @@ export default function AdminLearningModuleEditorPage() {
           resolvedModuleIdRef.current = moduleId;
           setResolvedModuleId(moduleId);
           setDetail(data);
-          rememberLearningModuleRoute(data?.module);
         }
       } catch (err) {
         if (!ignore) {
@@ -473,8 +472,6 @@ export default function AdminLearningModuleEditorPage() {
 
     resolvedModuleIdRef.current = updatedModule.skillModuleId;
     setResolvedModuleId(updatedModule.skillModuleId);
-    rememberLearningModuleRoute(updatedModule);
-
     setDetail((current) =>
       current
         ? {
@@ -512,7 +509,6 @@ export default function AdminLearningModuleEditorPage() {
     try {
       const data = await counselorLearningModuleApi.getModule(moduleId);
       setDetail(data);
-      rememberLearningModuleRoute(data?.module);
     } catch {
       // Polling is best-effort. Manual refresh/save actions still surface errors.
     }
