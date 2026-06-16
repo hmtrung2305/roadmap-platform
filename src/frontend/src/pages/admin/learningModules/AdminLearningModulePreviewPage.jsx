@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi, rememberLearningModuleRoute } from "../../../api/learningModuleApi";
+import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
 import MarkdownRenderer from "../../../components/learningModules/MarkdownRenderer";
 import {
   inputClass,
@@ -197,7 +197,6 @@ export default function AdminLearningModulePreviewPage() {
         resolvedModuleIdRef.current = moduleId;
         setResolvedModuleId(moduleId);
         setDetail(data);
-        rememberLearningModuleRoute(data?.module);
         setActiveLessonId(data.lessons?.[0]?.skillModuleLessonId || (data.quiz ? "quiz" : null));
       } catch (err) {
         if (!ignore) {
