@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { resourceApi } from "../api/resourceApi";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 
 export const useResourceStore = create((set, get) => ({
   resources: [],
@@ -25,7 +26,7 @@ export const useResourceStore = create((set, get) => ({
       console.log("Failed to load the resources:", error);
 
       set({
-        error: "Failed to load the resource",
+        error: getFriendlyApiErrorMessage(error, "Failed to load the resources."),
       });
     } finally {
       set({
@@ -51,7 +52,7 @@ export const useResourceStore = create((set, get) => ({
     } catch (error) {
       console.error("Upload resource failed:", error);
 
-      const message = "Upload unsuccessfully resource. Please check again backend site or file .md";
+      const message = getFriendlyApiErrorMessage(error, "Upload failed. Please check the file and try again.");
 
       set({
         error: message,
@@ -80,10 +81,11 @@ export const useResourceStore = create((set, get) => ({
     } catch (error) {
         console.log("Failed to delete resource:", error);
         
-        const message = "Failed to delete resource"
+        const message = getFriendlyApiErrorMessage(error, "Failed to delete resource.")
         set({
             error: message
         })
+        throw error;
     }finally{
         set({
             isDeleting: false

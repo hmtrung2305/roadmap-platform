@@ -27,6 +27,7 @@ import { aiCreditApi } from "../api/aiCreditApi";
 import { learningModuleApi } from "../api/learningModuleApi";
 import DocumentLoading from "../components/document/DocumentLoading";
 import DocumentReader from "../components/document/DocumentReader";
+import { getCreditStatus, getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -1024,15 +1025,17 @@ function StudyRoomChatPanel({
 
       await loadCreditStatus();
     } catch (error) {
-      if (error?.status === 429 && error?.raw?.creditStatus) {
-        setCreditStatus(error.raw.creditStatus);
+      const nextCreditStatus = getCreditStatus(error);
+
+      if (nextCreditStatus) {
+        setCreditStatus(nextCreditStatus);
       }
 
       setMessages((items) => [
         ...items,
         {
           role: "assistant",
-          content: error?.message || "Unable to send this question right now.",
+          content: getFriendlyApiErrorMessage(error, "Unable to send this question right now."),
         },
       ]);
     } finally {

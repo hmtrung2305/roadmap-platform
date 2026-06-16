@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Infrastructure.Data;
@@ -10,39 +9,32 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
     public class GitHubRepositoryService : IGitHubRepositoryService
     {
         private readonly IGitHubApiClient _gitHubApiClient;
+        private readonly IGitHubTokenService _gitHubTokenService;
         private readonly ApplicationDbContext _dbContext;
 
-        public GitHubRepositoryService(IGitHubApiClient gitHubApiClient, ApplicationDbContext dbContext)
+        public GitHubRepositoryService(
+            IGitHubApiClient gitHubApiClient,
+            IGitHubTokenService gitHubTokenService,
+            ApplicationDbContext dbContext)
         {
             _gitHubApiClient = gitHubApiClient;
+            _gitHubTokenService = gitHubTokenService;
             _dbContext = dbContext;
         }
 
-        public async Task<List<GitHubRepositoryResponseDto>> SyncPublicRepositoriesAsync(Guid userId)
+        public async Task<List<GitHubRepositoryResponseDto>> SyncPublicRepositoriesAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
-            var githubProvider = await _dbContext.UserAuthProviders
-                .FirstOrDefaultAsync(x =>
-                x.UserId == userId && x.Provider == AuthProviders.GitHub);
-
-            if (githubProvider == null)
-            {
-                throw new InvalidOperationException("GitHub account is not linked");
-            }
-
-            if (string.IsNullOrWhiteSpace(githubProvider.ProviderUsername))
-            {
-                throw new InvalidOperationException("GitHub username was not found");
-            }
-
-            if (string.IsNullOrWhiteSpace(githubProvider.AccessToken))
-            {
-                throw new InvalidOperationException("GitHub access token was not found. Please reconnect GitHub.");
-            }
+            var githubToken = await _gitHubTokenService.GetRequiredAccessTokenAsync(
+                userId,
+                cancellationToken);
 
             List<GitHubRepositorySyncDto> githubRepos = await _gitHubApiClient
                 .GetPublicRepositoriesAsync(
-                    githubProvider.ProviderUsername,
-                    githubProvider.AccessToken);
+                    githubToken.Username,
+                    githubToken.AccessToken,
+                    cancellationToken);
 
             var githubRepoIds = githubRepos
                 .Select(x => x.GithubRepoId)
@@ -50,7 +42,7 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             var existingRepos = await _dbContext.Repositories
                 .Where(x => x.UserId == userId && githubRepoIds.Contains(x.GithubRepoId))
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             foreach (var githubRepo in githubRepos)
             {
@@ -95,19 +87,21 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 }
 
             }
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return await GetSavedRepositoriesAsync(userId);
+            return await GetSavedRepositoriesAsync(userId, cancellationToken);
         }
 
-        public async Task<List<GitHubRepositoryResponseDto>> GetSavedRepositoriesAsync(Guid userId)
+        public async Task<List<GitHubRepositoryResponseDto>> GetSavedRepositoriesAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
             var repos = await _dbContext.Repositories
                 .AsNoTracking()
                 .Include(x => x.RepoInsight)
                 .Where(x => x.UserId == userId)
                 .OrderByDescending(x => x.GithubUpdatedAt)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             return repos.Select(x => ToRepositoryDto(x, includeAllInsightStatuses: true)).ToList();
         }

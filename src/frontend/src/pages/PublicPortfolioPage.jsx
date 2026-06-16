@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/apiConfig";
+import { normalizeFetchErrorResponse } from "../utils/apiErrorUtils";
 
 function PublicPortfolioPage() {
   const { username } = useParams();
@@ -15,13 +16,8 @@ function PublicPortfolioPage() {
   useEffect(() => { loadPortfolio(); checkAuthStatus(); }, [username]);
 
   async function getErrorMessage(response) {
-    const text = await response.text();
-    if (!text) return "Something went wrong.";
-    try {
-      const data = JSON.parse(text);
-      if (data.errors) return Object.values(data.errors).flat().join(" ");
-      return data.message || data.title || data.error || "Something went wrong.";
-    } catch { return text; }
+    const error = await normalizeFetchErrorResponse(response);
+    return error.message || "Something went wrong.";
   }
 
   async function checkAuthStatus() {

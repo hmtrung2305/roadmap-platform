@@ -98,6 +98,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRepoInsightService, RepoInsightService>();
             services.AddScoped<IRepoSummaryGenerator, AiRepoSummaryGenerator>();
             services.AddScoped<IGitHubApiClient, GitHubApiClient>();
+            services.AddScoped<IGitHubTokenService, GitHubTokenService>();
 
             services.AddScoped<IAiCreditService, AiCreditService>();
 

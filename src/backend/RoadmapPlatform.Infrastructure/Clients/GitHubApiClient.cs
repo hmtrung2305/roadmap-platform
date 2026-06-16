@@ -33,16 +33,10 @@ namespace RoadmapPlatform.Infrastructure.Clients
             AddDefaultGitHubHeaders(request, accessToken);
 
             var response = await client.SendAsync(request, cancellationToken);
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                throw new NotFoundException("GitHub user was not found");
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException("Failed to fetch GitHub repositories");
-            }
+            await EnsureSuccessGitHubResponseAsync(
+                response,
+                "Failed to fetch GitHub repositories.",
+                cancellationToken);
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -101,10 +95,10 @@ namespace RoadmapPlatform.Infrastructure.Clients
                 return null;
             }
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException("Failed to fetch repository README");
-            }
+            await EnsureSuccessGitHubResponseAsync(
+                response,
+                "Failed to fetch repository README.",
+                cancellationToken);
 
             return await response.Content.ReadAsStringAsync(cancellationToken);
         }
@@ -113,7 +107,7 @@ namespace RoadmapPlatform.Infrastructure.Clients
         {
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                throw new InvalidOperationException("GitHub access token was not provided.");
+                throw GitHubIntegrationException.TokenMissing();
             }
 
             request.Headers.UserAgent.ParseAdd("Roadmap-Platform");
@@ -122,6 +116,85 @@ namespace RoadmapPlatform.Infrastructure.Clients
             request.Headers.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
+        }
+
+        private static async Task EnsureSuccessGitHubResponseAsync(
+            HttpResponseMessage response,
+            string fallbackMessage,
+            CancellationToken cancellationToken)
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (IsInvalidTokenResponse(response, responseBody))
+            {
+                throw GitHubIntegrationException.TokenInvalid();
+            }
+
+            if (IsRateLimitedResponse(response, responseBody))
+            {
+                throw GitHubIntegrationException.RateLimited(GetRetryAfterSeconds(response));
+            }
+
+            throw GitHubIntegrationException.ApiFailure(fallbackMessage);
+        }
+
+        private static bool IsInvalidTokenResponse(HttpResponseMessage response, string responseBody)
+        {
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return true;
+            }
+
+            return responseBody.Contains("Bad credentials", StringComparison.OrdinalIgnoreCase) ||
+                   responseBody.Contains("token expired", StringComparison.OrdinalIgnoreCase) ||
+                   responseBody.Contains("invalid token", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsRateLimitedResponse(HttpResponseMessage response, string responseBody)
+        {
+            if (response.Headers.TryGetValues("X-RateLimit-Remaining", out var remainingValues) &&
+                remainingValues.Any(value => value == "0"))
+            {
+                return true;
+            }
+
+            if (response.StatusCode is not HttpStatusCode.Forbidden and not HttpStatusCode.TooManyRequests)
+            {
+                return false;
+            }
+
+            return responseBody.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
+                   responseBody.Contains("secondary rate limit", StringComparison.OrdinalIgnoreCase) ||
+                   responseBody.Contains("abuse detection", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int? GetRetryAfterSeconds(HttpResponseMessage response)
+        {
+            if (response.Headers.RetryAfter?.Delta is { } delta)
+            {
+                return Math.Max(1, (int)Math.Ceiling(delta.TotalSeconds));
+            }
+
+            if (response.Headers.RetryAfter?.Date is { } date)
+            {
+                var seconds = (int)Math.Ceiling((date - DateTimeOffset.UtcNow).TotalSeconds);
+                return seconds > 0 ? seconds : null;
+            }
+
+            if (response.Headers.TryGetValues("X-RateLimit-Reset", out var resetValues) &&
+                long.TryParse(resetValues.FirstOrDefault(), out var resetUnixSeconds))
+            {
+                var resetAt = DateTimeOffset.FromUnixTimeSeconds(resetUnixSeconds);
+                var seconds = (int)Math.Ceiling((resetAt - DateTimeOffset.UtcNow).TotalSeconds);
+                return seconds > 0 ? seconds : null;
+            }
+
+            return null;
         }
 
         private class GitHubRepoApiResponse

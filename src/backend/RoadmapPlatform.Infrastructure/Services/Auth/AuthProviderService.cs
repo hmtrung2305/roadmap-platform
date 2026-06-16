@@ -378,15 +378,45 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 throw new NotFoundException("User was not found");
             }
 
-            var alreadyLinkedToCurrentUser = await _dbContext.UserAuthProviders
-                .AnyAsync(
+            var currentUserProvider = await _dbContext.UserAuthProviders
+                .FirstOrDefaultAsync(
                     x => x.UserId == userId &&
                          x.Provider == provider,
                     cancellationToken);
 
-            if (alreadyLinkedToCurrentUser)
+            var normalizedEmail = NormalizeNullable(email);
+            var normalizedProviderUsername = NormalizeNullable(providerUsername);
+            var normalizedAccessToken = NormalizeNullable(accessToken);
+
+            if (currentUserProvider != null)
             {
-                throw new ConflictException($"This account already has {provider} linked");
+                if (currentUserProvider.ProviderUserId != providerUserId)
+                {
+                    throw new ConflictException($"This account already has a different {provider} account linked. Disconnect it before linking another one.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedEmail))
+                {
+                    currentUserProvider.Email = normalizedEmail;
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedProviderUsername))
+                {
+                    currentUserProvider.ProviderUsername = normalizedProviderUsername;
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedAccessToken))
+                {
+                    currentUserProvider.AccessToken = normalizedAccessToken;
+                }
+
+                if (emailVerifiedAt.HasValue)
+                {
+                    currentUserProvider.EmailVerifiedAt = emailVerifiedAt;
+                }
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return;
             }
 
             var existingProviderAccount = await _dbContext.UserAuthProviders
@@ -407,9 +437,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 UserId = userId,
                 Provider = provider,
                 ProviderUserId = providerUserId,
-                ProviderUsername = NormalizeNullable(providerUsername),
-                Email = NormalizeNullable(email),
-                AccessToken = NormalizeNullable(accessToken),
+                ProviderUsername = normalizedProviderUsername,
+                Email = normalizedEmail,
+                AccessToken = normalizedAccessToken,
                 PendingEmail = null,
                 PasswordHash = null,
                 EmailVerifiedAt = emailVerifiedAt,

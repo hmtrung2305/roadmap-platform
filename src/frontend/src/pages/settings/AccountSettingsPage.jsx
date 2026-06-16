@@ -19,6 +19,7 @@ import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailMod
 import EditUsernameModal from "../../components/settings/EditUsernameModal";
 import ConfirmModal from "../../components/settings/ConfirmModal";
 import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 export default function AccountSettingsPage() {
   const [me, setMe] = useState(null);
@@ -66,10 +67,7 @@ export default function AccountSettingsPage() {
     } catch (error) {
       console.error("Failed to load settings:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message || "Unable to load account settings.";
-
-      setActionError(serverMessage);
+      setActionError(getFriendlyApiErrorMessage(error, "Unable to load account settings."));
     } finally {
       setLoading(false);
     }
@@ -112,14 +110,33 @@ export default function AccountSettingsPage() {
           error.response?.data || error,
         );
 
-        const serverMessage =
-          error.response?.data?.message ||
-          `Unable to disconnect ${providerName}.`;
-
-        setActionError(serverMessage);
+        setActionError(getFriendlyApiErrorMessage(error, `Unable to disconnect ${providerName}.`));
       } finally {
         setConfirmLoading(false);
       }
+    }
+  };
+
+  const handleProviderRedirect = async (provider) => {
+    const providerName = getProviderDisplayName(provider);
+
+    try {
+      setActionError("");
+
+      if (provider === "google") {
+        await redirectToGoogleLink();
+        return;
+      }
+
+      await redirectToGitHubLink();
+    } catch (error) {
+      const message = getFriendlyApiErrorMessage(
+        error,
+        `Unable to start ${providerName} connection.`
+      );
+
+      setActionError(message);
+      toast.error(message);
     }
   };
 
@@ -263,7 +280,7 @@ export default function AccountSettingsPage() {
           onClick={
             googleProvider?.isLinked
               ? () => openDisconnectConfirm("google")
-              : redirectToGoogleLink
+              : () => handleProviderRedirect("google")
           }
         />
 
@@ -282,7 +299,7 @@ export default function AccountSettingsPage() {
           onClick={
             githubProvider?.isLinked
               ? () => openDisconnectConfirm("github")
-              : redirectToGitHubLink
+              : () => handleProviderRedirect("github")
           }
         />
       </SettingsSection>

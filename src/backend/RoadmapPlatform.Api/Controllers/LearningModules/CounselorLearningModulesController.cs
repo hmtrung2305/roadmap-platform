@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -29,6 +31,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateModule(
@@ -66,6 +69,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPatch("{moduleId:guid}")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateModule(
@@ -85,6 +89,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpDelete("{moduleId:guid}")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -103,6 +108,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/publish")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(PublishLearningModuleResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -121,6 +127,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/archive")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

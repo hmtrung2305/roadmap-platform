@@ -3,10 +3,13 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
+using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Interfaces.Auth;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.Auth
 {
@@ -16,6 +19,8 @@ namespace RoadmapPlatform.Api.Controllers.Auth
     {
         private const string ExternalScheme = "External";
         private const string LinkingUserIdProperty = "linking_user_id";
+        private const string ReturnUrlProperty = "frontend_return_url";
+        private const string DefaultAccountSettingsPath = "/settings/account";
 
         private readonly IAuthProviderService _authProviderService;
         private readonly IEmailVerificationService _emailVerificationService;
@@ -43,6 +48,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> LinkLocalLogin(LinkLocalLoginRequestDto request)
         {
@@ -54,6 +60,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/resend-verification")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> ResendLinkedLocalVerification(CancellationToken cancellationToken)
         {
@@ -68,6 +75,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/verify")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> VerifyLinkedLocalEmail(VerifyOtpRequestDto request)
         {
@@ -82,6 +90,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/email/change-request")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> RequestLocalEmailChange(UpdateLocalEmailRequestDto request)
         {
@@ -96,6 +105,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
 
         [HttpPost("local/email/resend-verification")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> ResendLocalEmailChangeVerification(CancellationToken cancellationToken)
         {
@@ -110,6 +120,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/email/verify")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> VerifyLocalEmailChange(VerifyOtpRequestDto request)
         {
@@ -124,6 +135,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPut("local/password")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequestDto request)
         {
@@ -138,8 +150,9 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpGet("github/link")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
-        public IActionResult LinkGitHubLogin()
+        public IActionResult LinkGitHubLogin([FromQuery] string? returnUrl)
         {
             var properties = new AuthenticationProperties
             {
@@ -147,11 +160,13 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             };
 
             properties.Items[LinkingUserIdProperty] = GetCurrentUserId().ToString();
+            properties.Items[ReturnUrlProperty] = NormalizeFrontendReturnUrl(returnUrl);
 
             return Challenge(properties, GitHubAuthenticationDefaults.AuthenticationScheme);
         }
 
         [HttpGet("github/callback")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [AllowAnonymous]
         public async Task<IActionResult> LinkGitHubCallback()
         {
@@ -159,13 +174,21 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("GitHub authentication failed");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_AUTHENTICATION_FAILED",
+                    "GitHub authentication failed"));
             }
 
             if (!TryGetLinkingUserId(result.Properties, out var userId))
             {
                 await HttpContext.SignOutAsync(ExternalScheme);
-                return Unauthorized("GitHub linking session was invalid or expired");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_LINKING_SESSION_INVALID",
+                    "GitHub linking session was invalid or expired"));
             }
 
             var githubAccessToken = result.Properties?.GetTokenValue("access_token");
@@ -177,10 +200,11 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect(BuildFrontendUrl("/settings/account"));
+            return Redirect(BuildFrontendUrl(GetFrontendReturnUrl(result.Properties)));
         }
 
         [HttpGet("google/link")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public IActionResult LinkGoogleLogin()
         {
@@ -195,6 +219,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpGet("google/callback")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [AllowAnonymous]
         public async Task<IActionResult> LinkGoogleCallback()
         {
@@ -202,23 +227,32 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("Google authentication failed");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_AUTHENTICATION_FAILED",
+                    "Google authentication failed"));
             }
 
             if (!TryGetLinkingUserId(result.Properties, out var userId))
             {
                 await HttpContext.SignOutAsync(ExternalScheme);
-                return Unauthorized("Google linking session was invalid or expired");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_LINKING_SESSION_INVALID",
+                    "Google linking session was invalid or expired"));
             }
 
             await _authProviderService.LinkGoogleAsync(userId, result.Principal);
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect(BuildFrontendUrl("/settings/account"));
+            return Redirect(BuildFrontendUrl(DefaultAccountSettingsPath));
         }
 
         [HttpDelete("{provider}")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> UnlinkProvider(string provider)
         {
@@ -234,14 +268,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
         private Guid GetCurrentUserId()
         {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (!Guid.TryParse(currentUserId, out var userId))
-            {
-                throw new InvalidOperationException("Invalid user id");
-            }
-
-            return userId;
+            return User.GetUserId();
         }
 
         private static bool TryGetLinkingUserId(AuthenticationProperties? properties, out Guid userId)
@@ -259,6 +286,36 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             }
 
             return Guid.TryParse(linkingUserIdText, out userId);
+        }
+
+        private static string GetFrontendReturnUrl(AuthenticationProperties? properties)
+        {
+            if (properties?.Items.TryGetValue(ReturnUrlProperty, out var returnUrl) == true)
+            {
+                return NormalizeFrontendReturnUrl(returnUrl);
+            }
+
+            return DefaultAccountSettingsPath;
+        }
+
+        private static string NormalizeFrontendReturnUrl(string? returnUrl)
+        {
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                return DefaultAccountSettingsPath;
+            }
+
+            var trimmed = returnUrl.Trim();
+
+            if (!trimmed.StartsWith("/", StringComparison.Ordinal) ||
+                trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                trimmed.Contains("://", StringComparison.Ordinal) ||
+                trimmed.Contains('\\'))
+            {
+                return DefaultAccountSettingsPath;
+            }
+
+            return trimmed;
         }
 
         private string BuildFrontendUrl(string path)

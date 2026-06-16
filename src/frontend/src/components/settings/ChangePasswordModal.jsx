@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { changeLocalPasswordApi } from "../../api/authProviderApi";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 export default function ChangePasswordModal({ onClose, onSuccess }) {
   const [form, setForm] = useState({
@@ -69,10 +70,7 @@ export default function ChangePasswordModal({ onClose, onSuccess }) {
     } catch (error) {
       console.error("Change password failed:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message || "Unable to change password.";
-
-      setError(serverMessage);
+      setError(getFriendlyApiErrorMessage(error, "Unable to change password."));
     } finally {
       setLoading(false);
     }

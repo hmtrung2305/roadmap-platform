@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.GitHub;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Application.Exceptions;
@@ -24,17 +23,20 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
         private readonly ApplicationDbContext _dbContext;
         private readonly IGitHubApiClient _gitHubApiClient;
+        private readonly IGitHubTokenService _gitHubTokenService;
         private readonly IRepoSummaryGenerator _repoSummaryGenerator;
         private readonly IAiCreditService _aiCreditService;
 
         public RepoInsightService(
             ApplicationDbContext dbContext,
             IGitHubApiClient gitHubApiClient,
+            IGitHubTokenService gitHubTokenService,
             IRepoSummaryGenerator repoSummaryGenerator,
             IAiCreditService aiCreditService)
         {
             _dbContext = dbContext;
             _gitHubApiClient = gitHubApiClient;
+            _gitHubTokenService = gitHubTokenService;
             _repoSummaryGenerator = repoSummaryGenerator;
             _aiCreditService = aiCreditService;
         }
@@ -60,27 +62,14 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             var existingInsight = repository.RepoInsight;
             var (owner, repoName) = ParseRepositoryFullName(repository.FullName);
 
-            var githubProvider = await _dbContext.UserAuthProviders
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x =>
-                    x.UserId == userId &&
-                    x.Provider == AuthProviders.GitHub,
-                    cancellationToken);
-
-            if (githubProvider == null)
-            {
-                throw new InvalidOperationException("GitHub account is not linked.");
-            }
-
-            if (string.IsNullOrWhiteSpace(githubProvider.AccessToken))
-            {
-                throw new InvalidOperationException("GitHub access token was not found. Please reconnect GitHub.");
-            }
+            var githubToken = await _gitHubTokenService.GetRequiredAccessTokenAsync(
+                userId,
+                cancellationToken);
 
             var readme = await _gitHubApiClient.GetRepositoryReadmeAsync(
                 owner,
                 repoName,
-                githubProvider.AccessToken,
+                githubToken.AccessToken,
                 cancellationToken);
 
             if (string.IsNullOrWhiteSpace(readme))
@@ -107,11 +96,12 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             var (limitedReadme, readmeTruncated) = LimitReadme(cleanedReadme);
 
-            await _aiCreditService.EnsureCanSpendAsync(
+            await _aiCreditService.SpendAsync(
                 userId,
                 RepoInsightFeatureName,
                 RepoInsightCreditCost,
-                cancellationToken);
+                repositoryId,
+                cancellationToken: cancellationToken);
 
             GeneratedRepoInsightDto generatedInsight;
 
@@ -152,12 +142,6 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            await _aiCreditService.RecordUsageAsync(
-                userId,
-                RepoInsightFeatureName,
-                RepoInsightCreditCost,
-                insight.InsightId,
-                cancellationToken: cancellationToken);
 
             return ToDto(insight);
         }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-toastify";
 import { updateCurrentUserApi } from "../../api/authApi";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 export default function EditUsernameModal({
   currentUsername,
@@ -58,12 +59,7 @@ export default function EditUsernameModal({
     } catch (error) {
       console.error("Update username failed:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message ||
-        error.response?.data?.Message ||
-        "Unable to update username.";
-
-      setError(serverMessage);
+      setError(getFriendlyApiErrorMessage(error, "Unable to update username."));
     } finally {
       setLoading(false);
     }

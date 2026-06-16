@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { linkLocalLoginApi } from "../../api/authProviderApi";
 import { isValidEmailFormat } from "../../utils/authVerificationFlow";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 export default function AddLocalLoginModal({
   defaultEmail,
@@ -73,11 +74,7 @@ export default function AddLocalLoginModal({
     } catch (error) {
       console.error("Add local login failed:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message ||
-        "Unable to add email and password login.";
-
-      setError(serverMessage);
+      setError(getFriendlyApiErrorMessage(error, "Unable to add email and password login."));
     } finally {
       setLoading(false);
     }

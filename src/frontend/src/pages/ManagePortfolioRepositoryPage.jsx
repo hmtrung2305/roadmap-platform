@@ -18,6 +18,13 @@ import GitHubNotLinkedState from "../components/portfolioRepositories/GitHubNotL
 import RepositoryStatusMessage from "../components/portfolioRepositories/RepositoryStatusMessage";
 import RepositoryEmptyState from "../components/portfolioRepositories/RepositoryEmptyState";
 import RepositorySelectList from "../components/portfolioRepositories/RepositorySelectList";
+import {
+  getGitHubConnectionAction,
+  getGitHubErrorMessage,
+  isGitHubConnectionError,
+} from "../utils/githubErrorUtils";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { getCurrentReturnUrl } from "../utils/navigationUtils";
 
 export default function ManagePortfolioRepositoriesPage() {
   const navigate = useNavigate();
@@ -25,6 +32,7 @@ export default function ManagePortfolioRepositoriesPage() {
   const [repositories, setRepositories] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isGitHubLinked, setIsGitHubLinked] = useState(false);
+  const [githubConnectionAction, setGitHubConnectionAction] = useState("connect");
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -52,13 +60,20 @@ export default function ManagePortfolioRepositoriesPage() {
 
       const linked = githubProvider?.isLinked ?? false;
       setIsGitHubLinked(linked);
+      setGitHubConnectionAction(linked ? "connected" : "connect");
 
       if (linked) {
         await fetchRepositories();
       }
     } catch (err) {
       console.error("Failed to initialize repository page:", err);
-      setError(err.message || "Cannot load GitHub connection status.");
+      const action = getGitHubConnectionAction(err);
+      if (action) {
+        setIsGitHubLinked(false);
+        setGitHubConnectionAction(action);
+      }
+
+      setError(getGitHubErrorMessage(err, "Cannot load GitHub connection status."));
     } finally {
       setLoading(false);
     }
@@ -94,10 +109,15 @@ export default function ManagePortfolioRepositoriesPage() {
       setSuccess("GitHub repositories synced successfully.");
     } catch (err) {
       console.error("Failed to sync repositories:", err);
-      setError(
-        err.message ||
-          "Cannot sync repositories. Please connect GitHub first."
-      );
+      if (isGitHubConnectionError(err)) {
+        setIsGitHubLinked(false);
+        setGitHubConnectionAction(getGitHubConnectionAction(err));
+      }
+
+      setError(getGitHubErrorMessage(
+        err,
+        "Cannot sync repositories. Please connect GitHub first."
+      ));
     } finally {
       setSyncing(false);
     }
@@ -133,9 +153,23 @@ export default function ManagePortfolioRepositoriesPage() {
       setSuccess(force ? "Repository summary regenerated." : "Repository summary generated.");
     } catch (err) {
       console.error("Failed to generate repository insight:", err);
-      setError(err.message || "Cannot generate repository summary.");
+      if (isGitHubConnectionError(err)) {
+        setIsGitHubLinked(false);
+        setGitHubConnectionAction(getGitHubConnectionAction(err));
+      }
+
+      setError(getGitHubErrorMessage(err, "Cannot generate repository summary."));
     } finally {
       setAnalyzingRepositoryId(null);
+    }
+  };
+
+  const handleGitHubRedirect = async () => {
+    try {
+      setError("");
+      await redirectToGitHubLink({ returnUrl: getCurrentReturnUrl() });
+    } catch (err) {
+      setError(getFriendlyApiErrorMessage(err, "Unable to start GitHub connection."));
     }
   };
 
@@ -151,7 +185,7 @@ export default function ManagePortfolioRepositoriesPage() {
       await fetchRepositories();
     } catch (err) {
       console.error("Failed to save repositories:", err);
-      setError(err.message || "Cannot save selected repositories.");
+      setError(getFriendlyApiErrorMessage(err, "Cannot save selected repositories."));
     } finally {
       setSaving(false);
     }
@@ -171,7 +205,8 @@ export default function ManagePortfolioRepositoriesPage() {
     return (
       <GitHubNotLinkedState
         error={error}
-        onConnectGitHub={redirectToGitHubLink}
+        mode={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
+        onConnectGitHub={handleGitHubRedirect}
         onBack={() => navigate("/portfolio")}
       />
     );

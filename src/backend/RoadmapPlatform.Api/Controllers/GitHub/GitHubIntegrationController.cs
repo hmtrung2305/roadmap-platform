@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Interfaces.GitHub;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.GitHub
 {
@@ -22,30 +24,32 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
 
         [HttpGet("repositories")]
         [Authorize]
-        public async Task<IActionResult> GetSavedRepositories()
+        public async Task<IActionResult> GetSavedRepositories(CancellationToken cancellationToken)
         {
             var userId = GetCurrentUserId();
 
             var repositories = await _gitHubRepositoryService
-                .GetSavedRepositoriesAsync(userId);
+                .GetSavedRepositoriesAsync(userId, cancellationToken);
 
             return Ok(repositories);
         }
 
         [HttpPost("repositories/sync")]
         [Authorize]
-        public async Task<IActionResult> SyncRepositories()
+        [EnableRateLimiting(RateLimitPolicyNames.ExternalApi)]
+        public async Task<IActionResult> SyncRepositories(CancellationToken cancellationToken)
         {
             var userId = GetCurrentUserId();
 
             var repositories = await _gitHubRepositoryService
-                .SyncPublicRepositoriesAsync(userId);
+                .SyncPublicRepositoriesAsync(userId, cancellationToken);
 
             return Ok(repositories);
         }
 
         [HttpPost("repositories/{repositoryId:guid}/insight")]
         [Authorize]
+        [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]
         public async Task<IActionResult> GenerateRepositoryInsight(
             Guid repositoryId,
             [FromQuery] bool force = false,
@@ -64,14 +68,7 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
 
         private Guid GetCurrentUserId()
         {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (!Guid.TryParse(currentUserId, out var userId))
-            {
-                throw new InvalidOperationException("Invalid user id");
-            }
-
-            return userId;
+            return User.GetUserId();
         }
     }
 }
