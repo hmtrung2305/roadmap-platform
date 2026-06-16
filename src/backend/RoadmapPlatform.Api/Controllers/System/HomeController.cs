@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Infrastructure.Data;
 
@@ -16,12 +16,12 @@ namespace RoadmapPlatform.Api.Controllers.System
         }
 
         [HttpGet("check-connection")]
-        public async Task<IActionResult> CheckConnection()
+        public async Task<IActionResult> CheckConnection(CancellationToken cancellationToken)
         {
             try
             {
                 // Kiểm tra nhanh xem EF Core có mở được kết nối tới DB không
-                bool canConnect = await _context.Database.CanConnectAsync();
+                bool canConnect = await _context.Database.CanConnectAsync(cancellationToken);
 
                 if (canConnect)
                 {
@@ -36,7 +36,7 @@ namespace RoadmapPlatform.Api.Controllers.System
                         "DATABASE_CONNECTION_FAILED",
                         "Không thể kết nối đến Database."));
             }
-            catch (Exception ex)
+            catch
             {
                 return StatusCode(
                     StatusCodes.Status500InternalServerError,
@@ -44,7 +44,7 @@ namespace RoadmapPlatform.Api.Controllers.System
                         HttpContext,
                         StatusCodes.Status500InternalServerError,
                         "DATABASE_CONNECTION_FAILED",
-                        ex.Message));
+                        "Không thể kết nối đến Database."));
             }
         }
     }

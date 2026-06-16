@@ -27,23 +27,6 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
             return await BuildStatusAsync(userId, cancellationToken);
         }
 
-        public async Task<AiCreditStatusDto> EnsureCanSpendAsync(
-            Guid userId,
-            string featureName,
-            int creditCost,
-            CancellationToken cancellationToken = default)
-        {
-            ValidateCreditRequest(featureName, creditCost);
-
-            var status = await BuildStatusAsync(userId, cancellationToken);
-            if (status.RemainingCreditsToday < creditCost)
-            {
-                throw new AiCreditLimitExceededException(status);
-            }
-
-            return status;
-        }
-
         public async Task<AiCreditStatusDto> SpendAsync(
             Guid userId,
             string featureName,
@@ -80,31 +63,6 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
             await transaction.CommitAsync(cancellationToken);
 
             return await BuildStatusAsync(userId, now, cancellationToken);
-        }
-
-        public async Task<AiCreditStatusDto> RecordUsageAsync(
-            Guid userId,
-            string featureName,
-            int creditCost,
-            Guid? requestRefId = null,
-            string? metadata = null,
-            CancellationToken cancellationToken = default)
-        {
-            ValidateCreditRequest(featureName, creditCost);
-
-            _dbContext.AiCreditUsages.Add(new AiCreditUsage
-            {
-                UserId = userId,
-                FeatureName = featureName.Trim(),
-                CreditCost = creditCost,
-                RequestRefId = requestRefId,
-                Metadata = metadata,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return await BuildStatusAsync(userId, cancellationToken);
         }
 
         private async Task<AiCreditStatusDto> BuildStatusAsync(

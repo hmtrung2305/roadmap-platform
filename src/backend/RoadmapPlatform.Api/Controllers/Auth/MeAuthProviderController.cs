@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Interfaces.Auth;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.Auth
 {
@@ -265,14 +265,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
         private Guid GetCurrentUserId()
         {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (!Guid.TryParse(currentUserId, out var userId))
-            {
-                throw new InvalidOperationException("Invalid user id");
-            }
-
-            return userId;
+            return User.GetUserId();
         }
 
         private static bool TryGetLinkingUserId(AuthenticationProperties? properties, out Guid userId)

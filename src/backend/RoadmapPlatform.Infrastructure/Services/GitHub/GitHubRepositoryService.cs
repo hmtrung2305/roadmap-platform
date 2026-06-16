@@ -22,14 +22,19 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             _dbContext = dbContext;
         }
 
-        public async Task<List<GitHubRepositoryResponseDto>> SyncPublicRepositoriesAsync(Guid userId)
+        public async Task<List<GitHubRepositoryResponseDto>> SyncPublicRepositoriesAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
-            var githubToken = await _gitHubTokenService.GetRequiredAccessTokenAsync(userId);
+            var githubToken = await _gitHubTokenService.GetRequiredAccessTokenAsync(
+                userId,
+                cancellationToken);
 
             List<GitHubRepositorySyncDto> githubRepos = await _gitHubApiClient
                 .GetPublicRepositoriesAsync(
                     githubToken.Username,
-                    githubToken.AccessToken);
+                    githubToken.AccessToken,
+                    cancellationToken);
 
             var githubRepoIds = githubRepos
                 .Select(x => x.GithubRepoId)
@@ -37,7 +42,7 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             var existingRepos = await _dbContext.Repositories
                 .Where(x => x.UserId == userId && githubRepoIds.Contains(x.GithubRepoId))
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             foreach (var githubRepo in githubRepos)
             {
@@ -82,19 +87,21 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 }
 
             }
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return await GetSavedRepositoriesAsync(userId);
+            return await GetSavedRepositoriesAsync(userId, cancellationToken);
         }
 
-        public async Task<List<GitHubRepositoryResponseDto>> GetSavedRepositoriesAsync(Guid userId)
+        public async Task<List<GitHubRepositoryResponseDto>> GetSavedRepositoriesAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
             var repos = await _dbContext.Repositories
                 .AsNoTracking()
                 .Include(x => x.RepoInsight)
                 .Where(x => x.UserId == userId)
                 .OrderByDescending(x => x.GithubUpdatedAt)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             return repos.Select(x => ToRepositoryDto(x, includeAllInsightStatuses: true)).ToList();
         }

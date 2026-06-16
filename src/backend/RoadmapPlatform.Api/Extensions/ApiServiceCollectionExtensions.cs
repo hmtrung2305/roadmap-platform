@@ -98,6 +98,13 @@ namespace RoadmapPlatform.Api.Extensions
                         RateLimitPolicyNames.AdminMutation,
                         permitLimit: 30,
                         window: TimeSpan.FromMinutes(1)));
+
+                options.AddPolicy(RateLimitPolicyNames.ExternalApi, context =>
+                    CreateFixedWindowPartition(
+                        context,
+                        RateLimitPolicyNames.ExternalApi,
+                        permitLimit: 10,
+                        window: TimeSpan.FromMinutes(1)));
             });
 
             services.AddCors(options =>
