@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 using System.Text.Json;
@@ -36,7 +37,11 @@ public sealed class CounselorLearningModuleLessonsController(
 
         if (request == null)
         {
-            return BadRequest("Lesson metadata is required.");
+            return BadRequest(ApiErrorResponseFactory.Create(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "INVALID_REQUEST",
+                "Lesson metadata is required."));
         }
 
         var uploadedFiles = files
@@ -120,7 +125,11 @@ public sealed class CounselorLearningModuleLessonsController(
     {
         if (file.Length == 0)
         {
-            return BadRequest("Markdown file cannot be empty.");
+            return BadRequest(ApiErrorResponseFactory.Create(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "INVALID_REQUEST",
+                "Markdown file cannot be empty."));
         }
 
         var counselorUserId = User.GetUserId();

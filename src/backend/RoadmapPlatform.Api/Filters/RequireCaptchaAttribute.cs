@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.Interfaces.Security;
 using System.Reflection;
 
@@ -34,14 +35,17 @@ public sealed class RequireCaptchaAttribute : Attribute, IAsyncActionFilter
 
         if (!verification.Success)
         {
-            context.Result = new ObjectResult(new
-            {
-                message = verification.Message ?? "CAPTCHA verification failed.",
-                errors = verification.ErrorCodes
-            })
-            {
-                StatusCode = StatusCodes.Status400BadRequest
-            };
+            var response = ApiErrorResponseFactory.Create(
+                context.HttpContext,
+                StatusCodes.Status400BadRequest,
+                "CAPTCHA_VERIFICATION_FAILED",
+                verification.Message ?? "CAPTCHA verification failed.",
+                errors: new Dictionary<string, string[]>
+                {
+                    ["captcha"] = verification.ErrorCodes?.ToArray() ?? []
+                });
+
+            context.Result = new BadRequestObjectResult(response);
 
             return;
         }

@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Responses;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
@@ -23,7 +25,18 @@ namespace RoadmapPlatform.Api.Extensions
 
             services.AddResponseCompression();
 
-            services.AddControllers();
+            services.AddControllers()
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.InvalidModelStateResponseFactory = context =>
+                    {
+                        var response = ApiErrorResponseFactory.FromModelState(
+                            context.HttpContext,
+                            context.ModelState);
+
+                        return new BadRequestObjectResult(response);
+                    };
+                });
 
             services.AddHttpContextAccessor();
 
@@ -42,14 +55,20 @@ namespace RoadmapPlatform.Api.Extensions
                         httpContext.Response.Headers["Retry-After"] = Math.Ceiling(retryAfterValue.TotalSeconds).ToString();
                     }
 
-                    await httpContext.Response.WriteAsJsonAsync(new
-                    {
-                        code = "RATE_LIMIT_EXCEEDED",
-                        message = "Too many requests. Please try again later.",
-                        retryAfterSeconds = retryAfter.HasValue
-                            ? (int)Math.Ceiling(retryAfter.Value.TotalSeconds)
-                            : (int?)null
-                    }, cancellationToken);
+                    var retryAfterSeconds = retryAfter.HasValue
+                        ? (int)Math.Ceiling(retryAfter.Value.TotalSeconds)
+                        : (int?)null;
+
+                    var response = ApiErrorResponseFactory.Create(
+                        httpContext,
+                        StatusCodes.Status429TooManyRequests,
+                        "RATE_LIMIT_EXCEEDED",
+                        "Too many requests. Please try again later.",
+                        retryAfterSeconds: retryAfterSeconds);
+
+                    httpContext.Response.StatusCode = response.Status;
+
+                    await httpContext.Response.WriteAsJsonAsync(response, cancellationToken);
                 };
 
                 options.AddPolicy(RateLimitPolicyNames.AuthStrict, context =>

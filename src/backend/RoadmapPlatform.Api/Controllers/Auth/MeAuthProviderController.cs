@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using System.Security.Claims;
@@ -170,13 +171,21 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("GitHub authentication failed");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_AUTHENTICATION_FAILED",
+                    "GitHub authentication failed"));
             }
 
             if (!TryGetLinkingUserId(result.Properties, out var userId))
             {
                 await HttpContext.SignOutAsync(ExternalScheme);
-                return Unauthorized("GitHub linking session was invalid or expired");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_LINKING_SESSION_INVALID",
+                    "GitHub linking session was invalid or expired"));
             }
 
             var githubAccessToken = result.Properties?.GetTokenValue("access_token");
@@ -215,13 +224,21 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("Google authentication failed");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_AUTHENTICATION_FAILED",
+                    "Google authentication failed"));
             }
 
             if (!TryGetLinkingUserId(result.Properties, out var userId))
             {
                 await HttpContext.SignOutAsync(ExternalScheme);
-                return Unauthorized("Google linking session was invalid or expired");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_LINKING_SESSION_INVALID",
+                    "Google linking session was invalid or expired"));
             }
 
             await _authProviderService.LinkGoogleAsync(userId, result.Principal);

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 
@@ -41,7 +42,11 @@ public sealed class RoadmapEnrollmentsController(
     {
         if (roadmapVersionId == Guid.Empty)
         {
-            return BadRequest("Roadmap version id is required.");
+            return BadRequest(ApiErrorResponseFactory.Create(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "INVALID_REQUEST",
+                "Roadmap version id is required."));
         }
 
         var userId = GetCurrentUserId();

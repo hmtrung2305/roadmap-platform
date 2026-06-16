@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Filters;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.Interfaces.Auth;
 
@@ -98,7 +99,11 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("Google authentication failed");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_AUTHENTICATION_FAILED",
+                    "Google authentication failed"));
             }
 
             try
@@ -137,7 +142,11 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             if (!result.Succeeded || result.Principal == null)
             {
-                return Unauthorized("GitHub authentication failed");
+                return Unauthorized(ApiErrorResponseFactory.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "OAUTH_AUTHENTICATION_FAILED",
+                    "GitHub authentication failed"));
             }
 
             try

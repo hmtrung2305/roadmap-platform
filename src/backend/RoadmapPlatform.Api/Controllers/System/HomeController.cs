@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Infrastructure.Data;
 
 namespace RoadmapPlatform.Api.Controllers.System
@@ -27,11 +28,23 @@ namespace RoadmapPlatform.Api.Controllers.System
                     return Ok(new { status = "Success", message = "Kết nối Database thành công!" });
                 }
 
-                return StatusCode(500, new { status = "Error", message = "Không thể kết nối đến Database." });  
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ApiErrorResponseFactory.Create(
+                        HttpContext,
+                        StatusCodes.Status500InternalServerError,
+                        "DATABASE_CONNECTION_FAILED",
+                        "Không thể kết nối đến Database."));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { status = "Exception", message = ex.Message });
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ApiErrorResponseFactory.Create(
+                        HttpContext,
+                        StatusCodes.Status500InternalServerError,
+                        "DATABASE_CONNECTION_FAILED",
+                        ex.Message));
             }
         }
     }

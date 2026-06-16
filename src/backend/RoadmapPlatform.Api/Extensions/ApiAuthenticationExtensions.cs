@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using RoadmapPlatform.Api.Responses;
 
 namespace RoadmapPlatform.Api.Extensions
 {
@@ -45,6 +46,44 @@ namespace RoadmapPlatform.Api.Extensions
                         {
                             context.Token = context.Request.Cookies["access_token"];
                             return Task.CompletedTask;
+                        },
+                        OnChallenge = async context =>
+                        {
+                            if (context.Response.HasStarted)
+                            {
+                                return;
+                            }
+
+                            context.HandleResponse();
+
+                            var response = ApiErrorResponseFactory.Create(
+                                context.HttpContext,
+                                StatusCodes.Status401Unauthorized,
+                                "UNAUTHORIZED",
+                                "Authentication is required.");
+
+                            context.Response.StatusCode = response.Status;
+                            context.Response.ContentType = "application/json";
+
+                            await context.Response.WriteAsJsonAsync(response);
+                        },
+                        OnForbidden = async context =>
+                        {
+                            if (context.Response.HasStarted)
+                            {
+                                return;
+                            }
+
+                            var response = ApiErrorResponseFactory.Create(
+                                context.HttpContext,
+                                StatusCodes.Status403Forbidden,
+                                "FORBIDDEN",
+                                "You do not have permission to access this resource.");
+
+                            context.Response.StatusCode = response.Status;
+                            context.Response.ContentType = "application/json";
+
+                            await context.Response.WriteAsJsonAsync(response);
                         }
                     };
                 })
