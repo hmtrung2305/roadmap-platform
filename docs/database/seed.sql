@@ -50,4 +50,13 @@
 \echo 'Seeding Mobile Developer roadmap...'
 \i docs/database/seeds/roadmaps/mobile-developer-roadmap.seed.sql
 
+\echo 'Seeding Data Scientist roadmap...'
+\i docs/database/seeds/roadmaps/data-scientist-roadmap.seed.sql
+
+\echo 'Seeding Database Engineer roadmap...'
+\i docs/database/seeds/roadmaps/database-engineer-roadmap.seed.sql
+
+\echo 'Seeding Site Reliability Engineer roadmap...'
+\i docs/database/seeds/roadmaps/site-reliability-engineer-roadmap.seed.sql
+
 \echo 'Roadmap seed completed.'
