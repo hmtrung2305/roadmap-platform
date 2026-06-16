@@ -16,9 +16,13 @@ namespace RoadmapPlatform.Api.Extensions
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+            app.UseRouting();
+
             app.UseCors("DefaultCorsPolicy");
 
             app.UseAuthentication();
+
+            app.UseRateLimiter();
 
             app.UseAuthorization();
 

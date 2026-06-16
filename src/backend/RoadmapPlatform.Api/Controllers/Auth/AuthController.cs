@@ -2,7 +2,9 @@ using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
+using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Filters;
 using RoadmapPlatform.Application.DTOs.Auth;
 using RoadmapPlatform.Application.Interfaces.Auth;
@@ -11,6 +13,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 {
     [Route("api/auth")]
     [ApiController]
+    [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
     public class AuthController : ControllerBase
     {
         private const string ExternalScheme = "External";

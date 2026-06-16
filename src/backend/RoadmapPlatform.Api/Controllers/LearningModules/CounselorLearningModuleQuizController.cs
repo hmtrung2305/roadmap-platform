@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -8,6 +10,7 @@ namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
 [Authorize]
+[EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
 [Route("api/counselor/learning-modules/{moduleId:guid}/quiz")]
 public sealed class CounselorLearningModuleQuizController(
     ILearningModuleQuizService quizService) : ControllerBase

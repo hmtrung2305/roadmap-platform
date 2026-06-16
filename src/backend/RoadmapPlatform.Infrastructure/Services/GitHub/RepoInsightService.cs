@@ -107,11 +107,12 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             var (limitedReadme, readmeTruncated) = LimitReadme(cleanedReadme);
 
-            await _aiCreditService.EnsureCanSpendAsync(
+            await _aiCreditService.SpendAsync(
                 userId,
                 RepoInsightFeatureName,
                 RepoInsightCreditCost,
-                cancellationToken);
+                repositoryId,
+                cancellationToken: cancellationToken);
 
             GeneratedRepoInsightDto generatedInsight;
 
@@ -152,12 +153,6 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            await _aiCreditService.RecordUsageAsync(
-                userId,
-                RepoInsightFeatureName,
-                RepoInsightCreditCost,
-                insight.InsightId,
-                cancellationToken: cancellationToken);
 
             return ToDto(insight);
         }

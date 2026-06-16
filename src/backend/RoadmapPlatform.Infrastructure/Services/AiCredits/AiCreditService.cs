@@ -11,6 +11,7 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
     {
         private const string DefaultPlanCode = "free";
         private const int DefaultDailyLimit = 5;
+        private const string CreditLockNamespace = "roadmap-platform-ai-credit";
 
         private readonly ApplicationDbContext _dbContext;
 
@@ -43,6 +44,44 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
             return status;
         }
 
+        public async Task<AiCreditStatusDto> SpendAsync(
+            Guid userId,
+            string featureName,
+            int creditCost,
+            Guid? requestRefId = null,
+            string? metadata = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateCreditRequest(featureName, creditCost);
+
+            var now = DateTime.UtcNow;
+
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            await AcquireUserCreditLockAsync(userId, cancellationToken);
+
+            var status = await BuildStatusAsync(userId, now, cancellationToken);
+            if (status.RemainingCreditsToday < creditCost)
+            {
+                throw new AiCreditLimitExceededException(status);
+            }
+
+            _dbContext.AiCreditUsages.Add(new AiCreditUsage
+            {
+                UserId = userId,
+                FeatureName = featureName.Trim(),
+                CreditCost = creditCost,
+                RequestRefId = requestRefId,
+                Metadata = metadata,
+                CreatedAt = now
+            });
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return await BuildStatusAsync(userId, now, cancellationToken);
+        }
+
         public async Task<AiCreditStatusDto> RecordUsageAsync(
             Guid userId,
             string featureName,
@@ -59,7 +98,8 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
                 FeatureName = featureName.Trim(),
                 CreditCost = creditCost,
                 RequestRefId = requestRefId,
-                Metadata = metadata
+                Metadata = metadata,
+                CreatedAt = DateTime.UtcNow
             });
 
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -71,7 +111,14 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
             Guid userId,
             CancellationToken cancellationToken)
         {
-            var now = DateTime.UtcNow;
+            return await BuildStatusAsync(userId, DateTime.UtcNow, cancellationToken);
+        }
+
+        private async Task<AiCreditStatusDto> BuildStatusAsync(
+            Guid userId,
+            DateTime now,
+            CancellationToken cancellationToken)
+        {
             var dayStart = now.Date;
             var resetAt = dayStart.AddDays(1);
 
@@ -125,6 +172,16 @@ namespace RoadmapPlatform.Infrastructure.Services.AiCredits
                 DailyCreditLimit = DefaultDailyLimit,
                 Description = "Fallback free plan"
             };
+        }
+
+        private async Task AcquireUserCreditLockAsync(
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock(hashtext({0}), hashtext({1}))",
+                new object[] { CreditLockNamespace, userId.ToString("N") },
+                cancellationToken);
         }
 
         private static void ValidateCreditRequest(string featureName, int creditCost)

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -14,6 +16,7 @@ public sealed class CounselorLearningModuleLessonsController(
     ILearningModuleLessonService lessonService) : ControllerBase
 {
     [HttpPost("bulk")]
+    [EnableRateLimiting(RateLimitPolicyNames.UploadExpensive)]
     [RequestSizeLimit(100_000_000)]
     [ProducesResponseType(typeof(BulkUploadLessonsResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -59,6 +62,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPatch("reorder")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(IReadOnlyList<LearningModuleLessonDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -79,6 +83,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPatch("{lessonId:guid}")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -101,6 +106,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPut("{lessonId:guid}/content")]
+    [EnableRateLimiting(RateLimitPolicyNames.UploadExpensive)]
     [RequestSizeLimit(50_000_000)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -140,6 +146,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPost("{lessonId:guid}/reindex")]
+    [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -179,6 +186,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpDelete("{lessonId:guid}")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

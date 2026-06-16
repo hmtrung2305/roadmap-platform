@@ -27,6 +27,7 @@ namespace RoadmapPlatform.Api.Middleware
                     UnauthorizedException => StatusCodes.Status401Unauthorized,
                     ForbiddenException => StatusCodes.Status403Forbidden,
                     EmailNotVerifiedException => StatusCodes.Status403Forbidden,
+                    AiCreditLimitExceededException => StatusCodes.Status429TooManyRequests,
                     NotFoundException => StatusCodes.Status404NotFound,
                     ArgumentException => StatusCodes.Status400BadRequest,
                     InvalidOperationException => StatusCodes.Status400BadRequest,
@@ -43,6 +44,13 @@ namespace RoadmapPlatform.Api.Middleware
                         requiresEmailVerification = true,
                         verificationPurpose = emailEx.VerificationPurpose,
                         canResendVerification = emailEx.CanResendVerification
+                    },
+
+                    AiCreditLimitExceededException aiCreditEx => new
+                    {
+                        code = "AI_CREDIT_LIMIT_EXCEEDED",
+                        message = aiCreditEx.Message,
+                        status = aiCreditEx.Status
                     },
 
                     _ => new

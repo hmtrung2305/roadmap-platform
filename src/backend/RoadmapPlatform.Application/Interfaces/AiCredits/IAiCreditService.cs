@@ -12,6 +12,14 @@ namespace RoadmapPlatform.Application.Interfaces.AiCredits
             int creditCost,
             CancellationToken cancellationToken = default);
 
+        Task<AiCreditStatusDto> SpendAsync(
+            Guid userId,
+            string featureName,
+            int creditCost,
+            Guid? requestRefId = null,
+            string? metadata = null,
+            CancellationToken cancellationToken = default);
+
         Task<AiCreditStatusDto> RecordUsageAsync(
             Guid userId,
             string featureName,

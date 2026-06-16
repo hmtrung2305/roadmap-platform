@@ -142,23 +142,17 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
             };
         }
 
-        await _aiCreditService.EnsureCanSpendAsync(
-            userId,
-            LearningModuleChatFeatureName,
-            LearningModuleChatCreditCost,
-            cancellationToken);
-
-        var answer = await GenerateAnswerAsync(
-            request,
-            orderedChunks,
-            cancellationToken);
-
-        await _aiCreditService.RecordUsageAsync(
+        await _aiCreditService.SpendAsync(
             userId,
             LearningModuleChatFeatureName,
             LearningModuleChatCreditCost,
             skillModuleId,
             cancellationToken: cancellationToken);
+
+        var answer = await GenerateAnswerAsync(
+            request,
+            orderedChunks,
+            cancellationToken);
 
         return new LearningModuleChatResponseDto
         {

@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using System.Security.Claims;
 
@@ -46,6 +48,7 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
 
         [HttpPost("repositories/{repositoryId:guid}/insight")]
         [Authorize]
+        [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]
         public async Task<IActionResult> GenerateRepositoryInsight(
             Guid repositoryId,
             [FromQuery] bool force = false,

@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
+using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Application.DTOs.AuthProviders;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using System.Security.Claims;
@@ -43,6 +45,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> LinkLocalLogin(LinkLocalLoginRequestDto request)
         {
@@ -54,6 +57,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/resend-verification")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> ResendLinkedLocalVerification(CancellationToken cancellationToken)
         {
@@ -68,6 +72,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/verify")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> VerifyLinkedLocalEmail(VerifyOtpRequestDto request)
         {
@@ -82,6 +87,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/email/change-request")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> RequestLocalEmailChange(UpdateLocalEmailRequestDto request)
         {
@@ -96,6 +102,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
 
         [HttpPost("local/email/resend-verification")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> ResendLocalEmailChangeVerification(CancellationToken cancellationToken)
         {
@@ -110,6 +117,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPost("local/email/verify")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> VerifyLocalEmailChange(VerifyOtpRequestDto request)
         {
@@ -124,6 +132,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpPut("local/password")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequestDto request)
         {
@@ -138,6 +147,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpGet("github/link")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public IActionResult LinkGitHubLogin()
         {
@@ -152,6 +162,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpGet("github/callback")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [AllowAnonymous]
         public async Task<IActionResult> LinkGitHubCallback()
         {
@@ -181,6 +192,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpGet("google/link")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public IActionResult LinkGoogleLogin()
         {
@@ -195,6 +207,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpGet("google/callback")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [AllowAnonymous]
         public async Task<IActionResult> LinkGoogleCallback()
         {
@@ -219,6 +232,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         }
 
         [HttpDelete("{provider}")]
+        [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
         public async Task<IActionResult> UnlinkProvider(string provider)
         {
