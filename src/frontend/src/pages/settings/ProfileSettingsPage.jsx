@@ -4,6 +4,7 @@ import { Eye, Globe, Mail, MapPin, Save, UserRound } from "lucide-react";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { getMyProfileApi, updateMyProfileApi } from "../../api/profileApi";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 const initialForm = {
   displayName: "",
@@ -43,10 +44,7 @@ export default function ProfileSettingsPage() {
     } catch (error) {
       console.error("Failed to load profile:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message || "Unable to load profile.";
-
-      setError(serverMessage);
+      setError(getFriendlyApiErrorMessage(error, "Unable to load profile."));
     } finally {
       setLoading(false);
     }
@@ -88,10 +86,7 @@ export default function ProfileSettingsPage() {
     } catch (error) {
       console.error("Failed to update profile:", error.response?.data || error);
 
-      const serverMessage =
-        error.response?.data?.message || "Unable to update profile.";
-
-      setError(serverMessage);
+      setError(getFriendlyApiErrorMessage(error, "Unable to update profile."));
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Globe2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import { getMyProfileApi, updateMyProfileApi } from "../../api/profileApi";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 const initialProfile = {
   displayName: "",
@@ -34,7 +35,7 @@ export default function PrivacySettingsPage() {
       setProfile({ ...initialProfile, ...data });
     } catch (error) {
       console.error("Failed to load privacy settings:", error.response?.data || error);
-      setError(error.response?.data?.message || "Unable to load privacy settings.");
+      setError(getFriendlyApiErrorMessage(error, "Unable to load privacy settings."));
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ export default function PrivacySettingsPage() {
     } catch (error) {
       console.error("Failed to update portfolio privacy:", error.response?.data || error);
       setProfile(previousProfile);
-      setError(error.response?.data?.message || "Unable to update portfolio privacy.");
+      setError(getFriendlyApiErrorMessage(error, "Unable to update portfolio privacy."));
     } finally {
       setSaving(false);
     }

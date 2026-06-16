@@ -1,12 +1,13 @@
 import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GITHUB_AUTH_URL, GOOGLE_AUTH_URL } from "../api/authApi";
+import { startGitHubLogin, startGoogleLogin } from "../api/authApi";
 import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import { useAuthStore } from "../stores/useAuthStore";
 import AuthLogo from "../components/auth/AuthLogo";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import MotionWrapper from "../components/auth/MotionWrapper";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 import {
@@ -57,6 +58,7 @@ export default function RegisterPage() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [oauthLoadingProvider, setOauthLoadingProvider] = useState("");
 
   const displayError = error || authError;
 
@@ -178,12 +180,32 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    window.location.href = GOOGLE_AUTH_URL;
+  const handleGoogleLogin = async () => {
+    if (oauthLoadingProvider) return;
+
+    try {
+      setError("");
+      setOauthLoadingProvider("google");
+      await startGoogleLogin();
+    } catch (error) {
+      setError(getFriendlyApiErrorMessage(error, "Unable to start Google sign up."));
+    } finally {
+      setOauthLoadingProvider("");
+    }
   };
 
-  const handleGithubLogin = () => {
-    window.location.href = GITHUB_AUTH_URL;
+  const handleGithubLogin = async () => {
+    if (oauthLoadingProvider) return;
+
+    try {
+      setError("");
+      setOauthLoadingProvider("github");
+      await startGitHubLogin();
+    } catch (error) {
+      setError(getFriendlyApiErrorMessage(error, "Unable to start GitHub sign up."));
+    } finally {
+      setOauthLoadingProvider("");
+    }
   };
 
   return (
@@ -359,19 +381,21 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
+                disabled={authLoading || Boolean(oauthLoadingProvider)}
                 className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-[#dadce0] bg-white text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-[#f8fafd] hover:shadow-md"
               >
                 <FcGoogle className="text-lg" />
-                Google
+                {oauthLoadingProvider === "google" ? "Starting..." : "Google"}
               </button>
 
               <button
                 type="button"
                 onClick={handleGithubLogin}
+                disabled={authLoading || Boolean(oauthLoadingProvider)}
                 className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-slate-900 bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-black"
               >
                 <FaGithub className="text-lg text-white" />
-                GitHub
+                {oauthLoadingProvider === "github" ? "Starting..." : "GitHub"}
               </button>
             </div>
 

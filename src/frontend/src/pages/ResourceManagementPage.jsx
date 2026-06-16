@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import UploadResourceForm from "../components/resource/UploadResourceForm";
 import ResourceGrid from "../components/resource/ResourceGrid";
 import { useResourceStore } from "../stores/useResourceStore";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 
 export default function ResourceManagementPage() {
   const navigate = useNavigate();
@@ -32,11 +33,7 @@ export default function ResourceManagementPage() {
       });
       toast.success("Resource uploaded successfully!");
     } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        "Upload failed. Please try again.";
-
-      toast.error(message);
+      toast.error(getFriendlyApiErrorMessage(err, "Upload failed. Please try again."));
     }
   };
 
@@ -51,8 +48,7 @@ export default function ResourceManagementPage() {
       await deleteResource(resourceId);
       toast.success("Resource deleted successfully.");
     } catch (error) {
-      const message = error?.response?.data.message;
-      toast.error(message);
+      toast.error(getFriendlyApiErrorMessage(error, "Delete failed. Please try again."));
     }
   };
 

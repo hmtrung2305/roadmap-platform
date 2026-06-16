@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { chatApi } from "../api/chatApi";
+import { getCreditStatus, getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 
 const createUserMessage = (content) => ({
   id: crypto.randomUUID(),
@@ -86,14 +87,12 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       console.log("Send chat message failed:", error);
 
-      const limitMessage =
-        error.status === 429
-          ? "You have used all AI credits for today. Your credits reset tomorrow."
-          : "The service is currently experiencing high demand. Please try again in a few moments.";
-
       set({
-        error: limitMessage,
-        creditStatus: error.raw?.credits || get().creditStatus,
+        error: getFriendlyApiErrorMessage(
+          error,
+          "The service is currently experiencing high demand. Please try again in a few moments."
+        ),
+        creditStatus: getCreditStatus(error) || get().creditStatus,
       });
     } finally {
       set({

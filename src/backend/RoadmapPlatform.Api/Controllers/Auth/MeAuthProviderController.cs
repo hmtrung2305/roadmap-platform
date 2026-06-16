@@ -19,6 +19,8 @@ namespace RoadmapPlatform.Api.Controllers.Auth
     {
         private const string ExternalScheme = "External";
         private const string LinkingUserIdProperty = "linking_user_id";
+        private const string ReturnUrlProperty = "frontend_return_url";
+        private const string DefaultAccountSettingsPath = "/settings/account";
 
         private readonly IAuthProviderService _authProviderService;
         private readonly IEmailVerificationService _emailVerificationService;
@@ -150,7 +152,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
         [HttpGet("github/link")]
         [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
-        public IActionResult LinkGitHubLogin()
+        public IActionResult LinkGitHubLogin([FromQuery] string? returnUrl)
         {
             var properties = new AuthenticationProperties
             {
@@ -158,6 +160,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             };
 
             properties.Items[LinkingUserIdProperty] = GetCurrentUserId().ToString();
+            properties.Items[ReturnUrlProperty] = NormalizeFrontendReturnUrl(returnUrl);
 
             return Challenge(properties, GitHubAuthenticationDefaults.AuthenticationScheme);
         }
@@ -197,7 +200,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect(BuildFrontendUrl("/settings/account"));
+            return Redirect(BuildFrontendUrl(GetFrontendReturnUrl(result.Properties)));
         }
 
         [HttpGet("google/link")]
@@ -245,7 +248,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
 
             await HttpContext.SignOutAsync(ExternalScheme);
 
-            return Redirect(BuildFrontendUrl("/settings/account"));
+            return Redirect(BuildFrontendUrl(DefaultAccountSettingsPath));
         }
 
         [HttpDelete("{provider}")]
@@ -283,6 +286,36 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             }
 
             return Guid.TryParse(linkingUserIdText, out userId);
+        }
+
+        private static string GetFrontendReturnUrl(AuthenticationProperties? properties)
+        {
+            if (properties?.Items.TryGetValue(ReturnUrlProperty, out var returnUrl) == true)
+            {
+                return NormalizeFrontendReturnUrl(returnUrl);
+            }
+
+            return DefaultAccountSettingsPath;
+        }
+
+        private static string NormalizeFrontendReturnUrl(string? returnUrl)
+        {
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                return DefaultAccountSettingsPath;
+            }
+
+            var trimmed = returnUrl.Trim();
+
+            if (!trimmed.StartsWith("/", StringComparison.Ordinal) ||
+                trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                trimmed.Contains("://", StringComparison.Ordinal) ||
+                trimmed.Contains('\\'))
+            {
+                return DefaultAccountSettingsPath;
+            }
+
+            return trimmed;
         }
 
         private string BuildFrontendUrl(string path)

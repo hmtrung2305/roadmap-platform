@@ -6,6 +6,7 @@ import {
   registerApi,
 } from "../api/authApi";
 import { useStreakStore } from "./useStreakStore";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 
 const SESSION_CACHE_MS = 5 * 60 * 1000;
 
@@ -71,7 +72,7 @@ export const useAuthStore = create((set, get) => ({
     } catch (error) {
       set({
         user: null,
-        authError: error?.message || "Login failed. Please try again.",
+        authError: getFriendlyApiErrorMessage(error, "Login failed. Please try again."),
         authInitialized: true,
         lastCheckedAt: 0,
       });
@@ -90,7 +91,7 @@ export const useAuthStore = create((set, get) => ({
       set({ authLoading: true, authError: "" });
       return await registerApi(payload);
     } catch (error) {
-      set({ authError: error.message || "Register failed. Please try again." });
+      set({ authError: getFriendlyApiErrorMessage(error, "Register failed. Please try again.") });
       throw error;
     } finally {
       set({ authLoading: false });
@@ -138,12 +139,19 @@ export const useAuthStore = create((set, get) => ({
 
         return currentUser;
       } catch (error) {
-        if (error?.status !== 401) {
-          console.log("Load current user failed:", error);
+        if (error?.status === 401 || error?.status === 403) {
+          get().clearAuth();
+          return null;
         }
 
-        get().clearAuth();
-        return null;
+        console.log("Load current user failed:", error);
+
+        set({
+          authError: getFriendlyApiErrorMessage(error, "Unable to verify your session right now."),
+          authInitialized: true,
+        });
+
+        return get().user || null;
       } finally {
         currentUserPromise = null;
         set({ authLoading: false, authInitialized: true });

@@ -1,5 +1,6 @@
 import { BACKEND_BASE_URL } from "./apiConfig";
 import axiosClient from "./axiosClient";
+import { startBackendRedirect } from "../utils/backendRedirect";
 
 export async function getAuthProvidersApi(){
     const res = await axiosClient("/me/auth-providers");
@@ -55,10 +56,24 @@ export const unlinkAuthProviderApi = async (provider) => {
   return response.data;
 };
 
-export const redirectToGoogleLink = () => {
-  window.location.href = `${BACKEND_BASE_URL}/api/me/auth-providers/google/link`;
-};
+export const GOOGLE_LINK_URL = `${BACKEND_BASE_URL}/api/me/auth-providers/google/link`;
+export const GITHUB_LINK_URL = `${BACKEND_BASE_URL}/api/me/auth-providers/github/link`;
 
-export const redirectToGitHubLink = () => {
-  window.location.href = `${BACKEND_BASE_URL}/api/me/auth-providers/github/link`;
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim()) {
+      query.set(key, value);
+    }
+  });
+
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
+export const redirectToGoogleLink = () => startBackendRedirect(GOOGLE_LINK_URL);
+
+export const redirectToGitHubLink = ({ returnUrl } = {}) => {
+  return startBackendRedirect(`${GITHUB_LINK_URL}${buildQuery({ returnUrl })}`);
 };

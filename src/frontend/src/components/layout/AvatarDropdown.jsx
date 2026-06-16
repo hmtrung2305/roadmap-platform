@@ -12,6 +12,8 @@ import {
   redirectToGitHubLink,
 } from "../../api/authProviderApi";
 import { FaGithub } from "react-icons/fa";
+import { toast } from "react-toastify";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 export default function AvatarDropdown({ user, profile, onLogout }) {
   const navigate = useNavigate();
@@ -65,9 +67,14 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
     fetchProviders();
   }, [open]);
 
-  const handleConnectGitHub = () => {
+  const handleConnectGitHub = async () => {
     setOpen(false);
-    redirectToGitHubLink();
+
+    try {
+      await redirectToGitHubLink();
+    } catch (error) {
+      toast.error(getFriendlyApiErrorMessage(error, "Unable to start GitHub connection."));
+    }
   };
 
   const handleGoToEditPortfolio = () => {

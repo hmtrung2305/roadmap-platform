@@ -10,6 +10,7 @@ import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
 import AddLocalLoginModal from "../../components/settings/AddLocalLoginModal";
 import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailModal";
 import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
 export default function AdminSettingsPage() {
   const [me, setMe] = useState(null);
@@ -41,7 +42,7 @@ export default function AdminSettingsPage() {
       setProviders(providersData);
     } catch (error) {
       console.error("Failed to load admin settings:", error.response?.data || error);
-      setActionError(error.response?.data?.message || "Unable to load admin settings.");
+      setActionError(getFriendlyApiErrorMessage(error, "Unable to load admin settings."));
     } finally {
       setIsLoading(false);
     }

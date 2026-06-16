@@ -1,10 +1,14 @@
 import { BACKEND_BASE_URL } from "./apiConfig";
-import axiosClient from "./axiosClient"
+import axiosClient from "./axiosClient";
+import { startBackendRedirect } from "../utils/backendRedirect";
 
 export const GOOGLE_AUTH_URL = `${BACKEND_BASE_URL}/api/auth/google/login`;
 
 export const GITHUB_AUTH_URL = `${BACKEND_BASE_URL}/api/auth/github/login`;
 
+export const startGoogleLogin = () => startBackendRedirect(GOOGLE_AUTH_URL);
+
+export const startGitHubLogin = () => startBackendRedirect(GITHUB_AUTH_URL);
 
 export const loginApi =  async (payload) => {
     const response = await axiosClient.post("/auth/login", payload);

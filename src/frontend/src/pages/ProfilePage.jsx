@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { getMyProfileApi } from "../api/profileApi";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -30,10 +31,7 @@ export default function ProfilePage() {
       } catch (error) {
         console.error("Failed to load profile:", error.response?.data || error);
 
-        const serverMessage =
-          error.response?.data?.message || "Unable to load profile.";
-
-        setError(serverMessage);
+        setError(getFriendlyApiErrorMessage(error, "Unable to load profile."));
       } finally {
         setLoading(false);
       }

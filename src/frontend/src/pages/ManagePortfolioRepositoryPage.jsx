@@ -23,6 +23,8 @@ import {
   getGitHubErrorMessage,
   isGitHubConnectionError,
 } from "../utils/githubErrorUtils";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { getCurrentReturnUrl } from "../utils/navigationUtils";
 
 export default function ManagePortfolioRepositoriesPage() {
   const navigate = useNavigate();
@@ -162,6 +164,15 @@ export default function ManagePortfolioRepositoriesPage() {
     }
   };
 
+  const handleGitHubRedirect = async () => {
+    try {
+      setError("");
+      await redirectToGitHubLink({ returnUrl: getCurrentReturnUrl() });
+    } catch (err) {
+      setError(getFriendlyApiErrorMessage(err, "Unable to start GitHub connection."));
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -174,7 +185,7 @@ export default function ManagePortfolioRepositoriesPage() {
       await fetchRepositories();
     } catch (err) {
       console.error("Failed to save repositories:", err);
-      setError(err.message || "Cannot save selected repositories.");
+      setError(getFriendlyApiErrorMessage(err, "Cannot save selected repositories."));
     } finally {
       setSaving(false);
     }
@@ -195,7 +206,7 @@ export default function ManagePortfolioRepositoriesPage() {
       <GitHubNotLinkedState
         error={error}
         mode={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-        onConnectGitHub={redirectToGitHubLink}
+        onConnectGitHub={handleGitHubRedirect}
         onBack={() => navigate("/portfolio")}
       />
     );

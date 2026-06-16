@@ -28,6 +28,8 @@ import {
   getGitHubErrorMessage,
   isGitHubConnectionError,
 } from "../utils/githubErrorUtils";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { getCurrentReturnUrl } from "../utils/navigationUtils";
 
 export default function EditPortfolioPage() {
   const user = useAuthStore((state) => state.user);
@@ -129,7 +131,7 @@ export default function EditPortfolioPage() {
       }
     } catch (error) {
       console.error("Load portfolio editor failed:", error);
-      setPortfolioError(error?.message || "Could not load your portfolio editor.");
+      setPortfolioError(getFriendlyApiErrorMessage(error, "Could not load your portfolio editor."));
     } finally {
       setPortfolioLoading(false);
       setRepositoryLoading(false);
@@ -225,6 +227,15 @@ export default function EditPortfolioPage() {
     }
   };
 
+  const handleGitHubRedirect = async () => {
+    try {
+      setRepoError("");
+      await redirectToGitHubLink({ returnUrl: getCurrentReturnUrl() });
+    } catch (error) {
+      setRepoError(getFriendlyApiErrorMessage(error, "Unable to start GitHub connection."));
+    }
+  };
+
   const handleCopyPublicLink = async () => {
     if (!publicLink) return;
 
@@ -249,7 +260,7 @@ export default function EditPortfolioPage() {
       await fetchRepositories();
     } catch (error) {
       console.error("Failed to save selected repositories:", error);
-      setRepoError(error?.message || "Cannot save selected repositories.");
+      setRepoError(getFriendlyApiErrorMessage(error, "Cannot save selected repositories."));
     } finally {
       setSaving(false);
     }
@@ -327,7 +338,7 @@ export default function EditPortfolioPage() {
               onSync={handleSync}
               onReloadSelection={handleReloadSavedSelection}
               connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-              onConnectGitHub={redirectToGitHubLink}
+              onConnectGitHub={handleGitHubRedirect}
             />
           </aside>
 
@@ -348,7 +359,7 @@ export default function EditPortfolioPage() {
             onToggleRepository={handleToggleRepository}
             onGenerateInsight={handleGenerateInsight}
             connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-            onConnectGitHub={redirectToGitHubLink}
+            onConnectGitHub={handleGitHubRedirect}
             managerHeight={managerHeight}
           />
         </section>

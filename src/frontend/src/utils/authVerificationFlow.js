@@ -1,3 +1,5 @@
+import { getApiErrorData, getFriendlyApiErrorMessage } from "./apiErrorUtils";
+
 export const VERIFICATION_PURPOSES = {
   REGISTER: "register",
   LINK_LOCAL: "link_local",
@@ -18,23 +20,11 @@ export function normalizeVerificationPurpose(value) {
 }
 
 export function getErrorData(error) {
-  return error?.raw || error?.response?.data || error || null;
+  return getApiErrorData(error);
 }
 
 export function getErrorMessage(errorOrData, fallback = "Something went wrong. Please try again.") {
-  const data = getErrorData(errorOrData);
-
-  if (!data) return fallback;
-  if (typeof data === "string") return data;
-
-  return (
-    data.message ||
-    data.Message ||
-    data.error ||
-    data.title ||
-    errorOrData?.message ||
-    fallback
-  );
+  return getFriendlyApiErrorMessage(errorOrData, fallback);
 }
 
 export function isEmailVerificationRequired(errorOrData) {
@@ -92,6 +82,19 @@ export function goToVerificationPage(
   });
 }
 
+export async function readResponseBody(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
 
 export function isValidEmailFormat(value) {
   const email = String(value || "").trim();
