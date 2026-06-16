@@ -22,10 +22,12 @@ export default function EditPortfolioRepositoryManager({
   onSave,
   onToggleRepository,
   onGenerateInsight,
+  connectionAction = "connect",
   onConnectGitHub,
   managerHeight,
 }) {
   const lockedHeight = managerHeight || null;
+  const isReconnect = connectionAction === "reconnect";
 
   return (
     <section
@@ -57,7 +59,7 @@ export default function EditPortfolioRepositoryManager({
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#18332D] px-3 py-1.5 !text-[14px] font-bold text-white transition-colors hover:bg-[#1F6F5F]"
           >
             <FaGithub size={16} />
-            Connect GitHub
+            {isReconnect ? "Reconnect GitHub" : "Connect GitHub"}
           </button>
         )}
       </div>
@@ -81,9 +83,13 @@ export default function EditPortfolioRepositoryManager({
       {!isGitHubLinked ? (
         <div className="mt-4 flex min-h-0 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 p-6 text-center">
           <FaGithub className="mx-auto text-[#1F6F5F]" size={30} />
-          <p className="mt-3 text-lg font-bold text-[#18332D]">Connect GitHub to manage repositories</p>
+          <p className="mt-3 text-lg font-bold text-[#18332D]">
+            {isReconnect ? "Reconnect GitHub to manage repositories" : "Connect GitHub to manage repositories"}
+          </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#667A73]">
-            After connecting, your repositories will appear here for selection and saving.
+            {isReconnect
+              ? "Your GitHub connection needs to be refreshed before repository sync and summaries can continue."
+              : "After connecting, your repositories will appear here for selection and saving."}
           </p>
         </div>
       ) : repositoryLoading ? (

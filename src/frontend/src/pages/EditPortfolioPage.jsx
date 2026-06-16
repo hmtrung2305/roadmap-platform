@@ -23,6 +23,11 @@ import EditPortfolioRepositoryManager from "../components/portfolioEdit/EditPort
 import EditPortfolioStatsGrid from "../components/portfolioEdit/EditPortfolioStatsGrid";
 import EditPortfolioStatusBar from "../components/portfolioEdit/EditPortfolioStatusBar";
 import { getInitiallySelectedIds } from "../components/portfolioEdit/portfolioEditUtils";
+import {
+  getGitHubConnectionAction,
+  getGitHubErrorMessage,
+  isGitHubConnectionError,
+} from "../utils/githubErrorUtils";
 
 export default function EditPortfolioPage() {
   const user = useAuthStore((state) => state.user);
@@ -34,6 +39,7 @@ export default function EditPortfolioPage() {
   const [repositories, setRepositories] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isGitHubLinked, setIsGitHubLinked] = useState(false);
+  const [githubConnectionAction, setGitHubConnectionAction] = useState("connect");
   const [repositoryLoading, setRepositoryLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [reloadingSelection, setReloadingSelection] = useState(false);
@@ -116,6 +122,7 @@ export default function EditPortfolioPage() {
       const githubProvider = providers.find((provider) => provider.provider === "github");
       const linked = githubProvider?.isLinked ?? false;
       setIsGitHubLinked(linked);
+      setGitHubConnectionAction(linked ? "connected" : "connect");
 
       if (linked) {
         await fetchRepositories();
@@ -147,7 +154,15 @@ export default function EditPortfolioPage() {
       setRepoSuccess("Repositories synced. Choose the projects you want to show, then save.");
     } catch (error) {
       console.error("Failed to sync repositories:", error);
-      setRepoError(error?.message || "Cannot sync repositories. Please connect GitHub first.");
+      if (isGitHubConnectionError(error)) {
+        setIsGitHubLinked(false);
+        setGitHubConnectionAction(getGitHubConnectionAction(error));
+      }
+
+      setRepoError(getGitHubErrorMessage(
+        error,
+        "Cannot sync repositories. Please connect GitHub first."
+      ));
     } finally {
       setSyncing(false);
     }
@@ -163,7 +178,7 @@ export default function EditPortfolioPage() {
       setRepoSuccess("Saved repository selection reloaded.");
     } catch (error) {
       console.error("Failed to reload saved selection:", error);
-      setRepoError(error?.message || "Cannot reload saved repository selection.");
+      setRepoError(getGitHubErrorMessage(error, "Cannot reload saved repository selection."));
     } finally {
       setReloadingSelection(false);
     }
@@ -199,7 +214,12 @@ export default function EditPortfolioPage() {
       setRepoSuccess(force ? "Repository AI summary regenerated." : "Repository AI summary generated.");
     } catch (error) {
       console.error("Failed to generate repository insight:", error);
-      setRepoError(error?.message || "Cannot generate repository AI summary.");
+      if (isGitHubConnectionError(error)) {
+        setIsGitHubLinked(false);
+        setGitHubConnectionAction(getGitHubConnectionAction(error));
+      }
+
+      setRepoError(getGitHubErrorMessage(error, "Cannot generate repository AI summary."));
     } finally {
       setAnalyzingRepositoryId(null);
     }
@@ -306,6 +326,7 @@ export default function EditPortfolioPage() {
               saving={saving}
               onSync={handleSync}
               onReloadSelection={handleReloadSavedSelection}
+              connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
               onConnectGitHub={redirectToGitHubLink}
             />
           </aside>
@@ -326,6 +347,7 @@ export default function EditPortfolioPage() {
             onSave={handleSave}
             onToggleRepository={handleToggleRepository}
             onGenerateInsight={handleGenerateInsight}
+            connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
             onConnectGitHub={redirectToGitHubLink}
             managerHeight={managerHeight}
           />

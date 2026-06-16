@@ -79,6 +79,13 @@ public static class ApiErrorResponseFactory
                 aiCreditException.Message,
                 creditStatus: aiCreditException.CreditStatus),
 
+            GitHubIntegrationException githubException => Create(
+                httpContext,
+                githubException.StatusCode,
+                githubException.Code,
+                githubException.Message,
+                retryAfterSeconds: githubException.RetryAfterSeconds),
+
             _ => Create(httpContext, status, code, message)
         };
     }
@@ -93,6 +100,7 @@ public static class ApiErrorResponseFactory
             ForbiddenException => StatusCodes.Status403Forbidden,
             EmailNotVerifiedException => StatusCodes.Status403Forbidden,
             AiCreditLimitExceededException => StatusCodes.Status429TooManyRequests,
+            GitHubIntegrationException githubException => githubException.StatusCode,
             NotFoundException => StatusCodes.Status404NotFound,
             KeyNotFoundException => StatusCodes.Status404NotFound,
             FileNotFoundException => StatusCodes.Status404NotFound,
@@ -112,6 +120,7 @@ public static class ApiErrorResponseFactory
             ForbiddenException => "FORBIDDEN",
             EmailNotVerifiedException => "EMAIL_NOT_VERIFIED",
             AiCreditLimitExceededException => "AI_CREDIT_LIMIT_EXCEEDED",
+            GitHubIntegrationException githubException => githubException.Code,
             NotFoundException => "NOT_FOUND",
             KeyNotFoundException => "NOT_FOUND",
             FileNotFoundException => "NOT_FOUND",

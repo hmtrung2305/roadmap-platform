@@ -8,8 +8,10 @@ export default function EditPortfolioGitHubSource({
   saving,
   onSync,
   onReloadSelection,
+  connectionAction = "connect",
   onConnectGitHub,
 }) {
+  const isReconnect = connectionAction === "reconnect";
   return (
     <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_18px_45px_rgba(31,111,95,0.08)]">
       <div className="flex items-start gap-3">
@@ -19,13 +21,17 @@ export default function EditPortfolioGitHubSource({
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2FA084]">GitHub source</p>
           <h2 className="mt-1 text-xl font-bold text-[#18332D]">
-            {isGitHubLinked ? "Connected" : "Not connected"}
+            {isGitHubLinked ? "Connected" : isReconnect ? "Reconnect needed" : "Not connected"}
           </h2>
         </div>
       </div>
 
       <p className="mt-4 text-sm leading-6 text-[#667A73]">
-        Sync repositories, or reload your saved selection.
+        {isGitHubLinked
+          ? "Sync repositories, or reload your saved selection."
+          : isReconnect
+            ? "Refresh your GitHub connection to continue using repository sync and AI summaries."
+            : "Connect GitHub to sync repositories and choose portfolio projects."}
       </p>
 
       {isGitHubLinked ? (
@@ -53,7 +59,7 @@ export default function EditPortfolioGitHubSource({
       ) : (
         <button type="button" onClick={onConnectGitHub} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-3 py-2 !text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-[#1F6F5F]">
           <FaGithub size={14} />
-          Connect GitHub
+          {isReconnect ? "Reconnect GitHub" : "Connect GitHub"}
         </button>
       )}
     </section>

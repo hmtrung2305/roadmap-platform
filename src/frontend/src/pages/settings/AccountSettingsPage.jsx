@@ -285,6 +285,17 @@ export default function AccountSettingsPage() {
               : redirectToGitHubLink
           }
         />
+
+        {githubProvider?.isLinked && (
+          <SettingsRow
+            icon={FaGithub}
+            title="Reconnect GitHub"
+            value="Refresh repository access"
+            actionLabel="Reconnect"
+            actionClassName="bg-[#6FCF97]/15 text-[#1F6F5F]"
+            onClick={redirectToGitHubLink}
+          />
+        )}
       </SettingsSection>
 
       <SettingsSection
