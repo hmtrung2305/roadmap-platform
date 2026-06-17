@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, Globe2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
-import { getMyProfileApi, updateMyProfileApi } from "../../api/profileApi";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import { useProfileStore } from "../../stores/useProfileStore";
 
 const initialProfile = {
   displayName: "",
@@ -21,6 +21,9 @@ const initialProfile = {
 };
 
 export default function PrivacySettingsPage() {
+  const loadProfile = useProfileStore((state) => state.loadProfile);
+  const updateProfile = useProfileStore((state) => state.updateProfile);
+
   const [profile, setProfile] = useState(initialProfile);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,7 +34,7 @@ export default function PrivacySettingsPage() {
       setLoading(true);
       setError("");
 
-      const data = await getMyProfileApi();
+      const data = await loadProfile();
       setProfile({ ...initialProfile, ...data });
     } catch (error) {
       console.error("Failed to load privacy settings:", error.response?.data || error);
@@ -54,7 +57,7 @@ export default function PrivacySettingsPage() {
       setError("");
       setProfile((current) => ({ ...current, isPublic: nextIsPublic }));
 
-      await updateMyProfileApi({
+      await updateProfile({
         ...profile,
         isPublic: nextIsPublic,
       });

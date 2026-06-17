@@ -10,8 +10,8 @@ import {
 
 import AuthLogo from "../components/auth/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
-import { getMyProfileApi } from "../api/profileApi";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useProfileStore } from "../stores/useProfileStore";
 
 const adminNavGroups = [
   {
@@ -78,28 +78,20 @@ export default function AdminLayout() {
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const profile = useProfileStore((state) => state.profile);
+  const loadProfile = useProfileStore((state) => state.loadProfile);
 
   const userMenuRef = useRef(null);
 
-  const [profile, setProfile] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
-    async function fetchProfile() {
-      try {
-        const data = await getMyProfileApi();
-        setProfile(data);
-      } catch (error) {
-        console.error("Failed to load profile:", error);
-      }
-    }
-
-    fetchProfile();
-  }, [user]);
+    loadProfile().catch((error) => {
+      console.error("Failed to load profile:", error);
+    });
+  }, [loadProfile, user?.userId, user?.id, user?.email, user?.username]);
 
   useEffect(() => {
     function handleClickOutside(event) {

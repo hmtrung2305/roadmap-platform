@@ -9,11 +9,9 @@ import {
   getSavedGitHubRepositoriesApi,
   syncGitHubRepositoriesApi,
 } from "../api/githubRepositoryApi";
-import {
-  getAuthProvidersApi,
-  redirectToGitHubLink,
-} from "../api/authProviderApi";
+import { redirectToGitHubLink } from "../api/authProviderApi";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useAuthProviderStore } from "../stores/useAuthProviderStore";
 import EditPortfolioErrorState from "../components/portfolioEdit/EditPortfolioErrorState";
 import EditPortfolioGitHubSource from "../components/portfolioEdit/EditPortfolioGitHubSource";
 import EditPortfolioHero from "../components/portfolioEdit/EditPortfolioHero";
@@ -33,6 +31,11 @@ import { getCurrentReturnUrl } from "../utils/navigationUtils";
 
 export default function EditPortfolioPage() {
   const user = useAuthStore((state) => state.user);
+  const providerActionLoading = useAuthProviderStore((state) => state.actionLoading);
+  const connectingProvider = useAuthProviderStore((state) => state.connectingProvider);
+  const providerError = useAuthProviderStore((state) => state.error);
+  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
+  const startConnectingProvider = useAuthProviderStore((state) => state.startConnectingProvider);
 
   const [portfolio, setPortfolio] = useState(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
@@ -72,6 +75,12 @@ export default function EditPortfolioPage() {
 
   const selectedCount = selectedIds.length;
   const availableCount = repositories.length;
+  const isConnectingGitHub = connectingProvider === "github";
+  const isSocialProviderActionLocked = Boolean(connectingProvider);
+  const disableGitHubConnect =
+    isGitHubLinked ||
+    providerActionLoading ||
+    isSocialProviderActionLocked;
   const totalStars = repositories.reduce(
     (sum, repo) => sum + Number(repo?.stars ?? repo?.starCount ?? 0),
     0,
@@ -84,6 +93,7 @@ export default function EditPortfolioPage() {
   useEffect(() => {
     initEditor();
   }, []);
+
   useLayoutEffect(() => {
     if (!leftColumnRef.current) return;
 
@@ -116,12 +126,14 @@ export default function EditPortfolioPage() {
 
       const [portfolioData, providers] = await Promise.all([
         getMyPortfolioApi(),
-        getAuthProvidersApi(),
+        loadProviders(),
       ]);
 
       setPortfolio(portfolioData);
 
-      const githubProvider = providers.find((provider) => provider.provider === "github");
+      const githubProvider = providers.find(
+        (provider) => provider.provider?.toLowerCase() === "github",
+      );
       const linked = githubProvider?.isLinked ?? false;
       setIsGitHubLinked(linked);
       setGitHubConnectionAction(linked ? "connected" : "connect");
@@ -131,7 +143,10 @@ export default function EditPortfolioPage() {
       }
     } catch (error) {
       console.error("Load portfolio editor failed:", error);
-      setPortfolioError(getFriendlyApiErrorMessage(error, "Could not load your portfolio editor."));
+      setPortfolioError(
+        useAuthProviderStore.getState().error ||
+          getFriendlyApiErrorMessage(error, "Could not load your portfolio editor."),
+      );
     } finally {
       setPortfolioLoading(false);
       setRepositoryLoading(false);
@@ -227,13 +242,22 @@ export default function EditPortfolioPage() {
     }
   };
 
-  const handleGitHubRedirect = async () => {
-    try {
-      setRepoError("");
-      await redirectToGitHubLink({ returnUrl: getCurrentReturnUrl() });
-    } catch (error) {
-      setRepoError(getFriendlyApiErrorMessage(error, "Unable to start GitHub connection."));
+  const handleGitHubRedirect = () => {
+    if (disableGitHubConnect) return;
+
+    setRepoError("");
+
+    const startedProvider = startConnectingProvider("github");
+
+    if (!startedProvider) {
+      setRepoError(
+        providerError ||
+          "Another account connection is already in progress. Please try again shortly.",
+      );
+      return;
     }
+
+    redirectToGitHubLink({ returnUrl: getCurrentReturnUrl() });
   };
 
   const handleCopyPublicLink = async () => {
@@ -338,7 +362,9 @@ export default function EditPortfolioPage() {
               onSync={handleSync}
               onReloadSelection={handleReloadSavedSelection}
               connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-              onConnectGitHub={handleGitHubRedirect}
+              connectingGitHub={isConnectingGitHub}
+              connectDisabled={disableGitHubConnect}
+                      onConnectGitHub={handleGitHubRedirect}
             />
           </aside>
 
@@ -359,7 +385,9 @@ export default function EditPortfolioPage() {
             onToggleRepository={handleToggleRepository}
             onGenerateInsight={handleGenerateInsight}
             connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-            onConnectGitHub={handleGitHubRedirect}
+            connectingGitHub={isConnectingGitHub}
+            connectDisabled={disableGitHubConnect}
+                  onConnectGitHub={handleGitHubRedirect}
             managerHeight={managerHeight}
           />
         </section>

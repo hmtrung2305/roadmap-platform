@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaFireAlt } from "react-icons/fa";
 
 import AuthLogo from "../auth/AuthLogo";
 import { useStreakStore } from "../../stores/useStreakStore";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { getMyProfileApi } from "../../api/profileApi";
+import { useProfileStore } from "../../stores/useProfileStore";
 import AvatarDropdown from "./AvatarDropdown";
-
-let cachedProfile = null;
-let cachedProfileUserId = null;
-let cachedProfilePromise = null;
 
 export default function TopNavbar() {
   const navigate = useNavigate();
@@ -20,8 +16,8 @@ export default function TopNavbar() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const streak = useStreakStore((state) => state.streak);
-
-  const [profile, setProfile] = useState(null);
+  const profile = useProfileStore((state) => state.profile);
+  const loadProfile = useProfileStore((state) => state.loadProfile);
 
   const currentStreak = streak?.currentStreak ?? 0;
   const isCompletedStreakToday = streak?.isCompletedStreakToday ?? false;
@@ -43,45 +39,12 @@ export default function TopNavbar() {
   ];
 
   useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      return;
-    }
+    if (!user) return;
 
-    const userKey = user.userId || user.id || user.email || user.username;
-
-    if (cachedProfile && cachedProfileUserId === userKey) {
-      setProfile(cachedProfile);
-      return;
-    }
-
-    let isMounted = true;
-
-    async function fetchProfile() {
-      try {
-        if (!cachedProfilePromise || cachedProfileUserId !== userKey) {
-          cachedProfileUserId = userKey;
-          cachedProfilePromise = getMyProfileApi();
-        }
-
-        const data = await cachedProfilePromise;
-        cachedProfile = data;
-
-        if (isMounted) {
-          setProfile(data);
-        }
-      } catch (error) {
-        cachedProfilePromise = null;
-        console.error("Failed to load profile:", error);
-      }
-    }
-
-    fetchProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.userId, user?.id, user?.email, user?.username]);
+    loadProfile().catch((error) => {
+      console.error("Failed to load profile:", error);
+    });
+  }, [loadProfile, user?.userId, user?.id, user?.email, user?.username]);
 
   const handleLogout = async () => {
     await logout();

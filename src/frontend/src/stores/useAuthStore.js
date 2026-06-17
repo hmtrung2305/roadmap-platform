@@ -6,6 +6,8 @@ import {
   registerApi,
 } from "../api/authApi";
 import { useStreakStore } from "./useStreakStore";
+import { useProfileStore } from "./useProfileStore";
+import { useAuthProviderStore } from "./useAuthProviderStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
@@ -32,11 +34,14 @@ export const useAuthStore = create((set, get) => ({
       user: null,
       authLoading: false,
       authInitialized: true,
+      authError: "",
       lastCheckedAt: 0,
     });
 
     localStorage.removeItem("isLoggedIn");
     useStreakStore.getState().resetStreakState();
+    useProfileStore.getState().resetProfile();
+    useAuthProviderStore.getState().resetProviders();
   },
 
   setAuthenticatedUser: (user) => {
@@ -81,6 +86,8 @@ export const useAuthStore = create((set, get) => ({
 
       localStorage.removeItem("isLoggedIn");
       useStreakStore.getState().resetStreakState();
+      useProfileStore.getState().resetProfile();
+      useAuthProviderStore.getState().resetProviders();
 
       throw error;
     } finally {
