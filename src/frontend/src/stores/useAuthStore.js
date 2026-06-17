@@ -7,6 +7,7 @@ import {
 } from "../api/authApi";
 import { useStreakStore } from "./useStreakStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { clearRequestCache } from "../utils/requestCacheUtils";
 
 const SESSION_CACHE_MS = 5 * 60 * 1000;
 
@@ -25,6 +26,7 @@ export const useAuthStore = create((set, get) => ({
 
   clearAuth: () => {
     currentUserPromise = null;
+    clearRequestCache();
 
     set({
       user: null,

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
@@ -10,6 +10,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
+import { subscribeToUnauthorizedEvent } from "./utils/authEventUtils";
 import StudyRoomPage from "./pages/StudyRoomPage";
 import EditPortfolioPage from "./pages/EditPortfolioPage";
 import { ToastContainer } from "react-toastify";
@@ -50,11 +51,25 @@ function isPublicPath(pathname) {
 
 function AuthBootstrap({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const bootstrappedRef = useRef(false);
 
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const user = useAuthStore((state) => state.user);
   const authInitialized = useAuthStore((state) => state.authInitialized);
+
+  useEffect(() => {
+    return subscribeToUnauthorizedEvent(() => {
+      const pathname = window.location.pathname;
+
+      clearAuth();
+
+      if (!isPublicPath(pathname)) {
+        navigate("/login", { replace: true });
+      }
+    });
+  }, [clearAuth, navigate]);
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -140,6 +155,7 @@ export default function App() {
 
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/portfolio/edit" element={<EditPortfolioPage />} />
+            <Route path="/portfolio/repositories" element={<Navigate to="/portfolio/edit" replace />} />
 
             <Route path="/learning-modules" element={<LearningModulesPage />} />
             <Route path="/learning-modules/browse" element={<BrowseLearningModulesPage />} />
