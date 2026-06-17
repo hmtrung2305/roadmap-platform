@@ -8,6 +8,7 @@ import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
 import StudyRoomPage from "./pages/StudyRoomPage";
@@ -33,6 +34,11 @@ import AdminLearningModuleCreatePage from "./pages/admin/learningModules/AdminLe
 import AdminLearningModuleEditorPage from "./pages/admin/learningModules/AdminLearningModuleEditorPage";
 import AdminLearningModulePreviewPage from "./pages/admin/learningModules/AdminLearningModulePreviewPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import {
+  COUNSELOR_SURFACE_PERMISSIONS,
+  LEARNER_SURFACE_PERMISSIONS,
+} from "./constants/permissions";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -133,9 +139,9 @@ export default function App() {
 
           <Route
             element={
-              <ProtectedRoute>
+              <RequirePermission anyPermissions={LEARNER_SURFACE_PERMISSIONS}>
                 <MainLayout />
-              </ProtectedRoute>
+              </RequirePermission>
             }
           >
             <Route path="/home" element={<Navigate to="/roadmaps" replace />} />
@@ -165,9 +171,9 @@ export default function App() {
 
           <Route
             element={
-              <ProtectedRoute>
+              <RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
                 <AdminLayout />
-              </ProtectedRoute>
+              </RequirePermission>
             }
           >
             <Route path="/admin/learning-modules" element={<AdminLearningModulesPage />} />
@@ -191,6 +197,8 @@ export default function App() {
             <Route path="points" element={<PointsSettingsPage />} />
             <Route path="profile" element={<ProfileSettingsPage />} />
           </Route>
+
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AnimatePresence>
     </AuthBootstrap>

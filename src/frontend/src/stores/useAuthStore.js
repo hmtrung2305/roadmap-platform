@@ -61,13 +61,16 @@ export const useAuthStore = create((set, get) => ({
         throw new Error("Login response does not contain user.");
       }
 
+      localStorage.setItem("isLoggedIn", "true");
+
+      const currentUser = await getCurrentUserApi();
+
       set({
-        user: data.user,
+        user: currentUser,
         authInitialized: true,
         lastCheckedAt: Date.now(),
       });
 
-      localStorage.setItem("isLoggedIn", "true");
       await useStreakStore.getState().fetchStreak({ force: true });
     } catch (error) {
       set({

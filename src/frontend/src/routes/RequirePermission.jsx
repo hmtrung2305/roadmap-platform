@@ -4,7 +4,7 @@ import NotFoundPage from "../pages/NotFoundPage";
 import { useAuthStore } from "../stores/useAuthStore";
 import { canAccessRoute } from "../utils/authorizationUtils";
 
-function ProtectedRoute({
+export default function RequirePermission({
   children,
   anyPermissions = [],
   allPermissions = [],
@@ -17,19 +17,17 @@ function ProtectedRoute({
   const authLoading = useAuthStore((state) => state.authLoading);
   const authInitialized = useAuthStore((state) => state.authInitialized);
 
-  const isAuthenticated = !!user;
-
   if (authLoading || !authInitialized) {
     return (
       <AppLoading
-        title="Checking your session"
-        message="TechMap is verifying your login before opening this page."
+        title="Checking your access"
+        message="TechMap is verifying your permissions before opening this page."
         fullScreen
       />
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
@@ -39,5 +37,3 @@ function ProtectedRoute({
 
   return children;
 }
-
-export default ProtectedRoute;
