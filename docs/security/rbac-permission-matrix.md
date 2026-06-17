@@ -6,15 +6,15 @@ The first RBAC version defines three built-in roles:
 
 ```text
 learner
-counselor
+content manager
 admin
 ```
 
-Counselor and admin do not automatically inherit learner workflow permissions. Shared account permissions are intentionally assigned to all roles because every authenticated account needs basic account management.
+Content Manager and admin do not automatically inherit learner workflow permissions. Shared account permissions are intentionally assigned to all roles because every authenticated account needs basic account management.
 
 ## Shared authenticated account permissions
 
-Assigned to: `learner`, `counselor`, `admin`
+Assigned to: `learner`, `content_manager`, `admin`
 
 | Permission | Purpose |
 |---|---|
@@ -89,9 +89,9 @@ Assigned to: `learner`
 | `market_pulse.view.catalog` | View authenticated market pulse catalog data |
 | `skill.view.catalog` | Search/view skills for authenticated app use |
 
-## Counselor permissions
+## Content Manager permissions
 
-Assigned to: `counselor`
+Assigned to: `content_manager`
 
 ### Catalog lookup
 
@@ -99,7 +99,7 @@ Assigned to: `counselor`
 |---|---|
 | `skill.view.catalog` | Search/view skills when creating or editing modules |
 
-Counselor receives catalog skill lookup only. Counselor should not receive `skill.view.any` because that is platform governance scope.
+Content Manager receives catalog skill lookup only. Content Manager should not receive `skill.view.any` because that is platform governance scope.
 
 ### Module ownership
 
@@ -192,7 +192,7 @@ Assigned to: `admin`
 
 | Role | Not granted by default |
 |---|---|
-| `counselor` | Learner enrollment, learner progress, learner portfolio editing, platform user/role/permission governance |
-| `admin` | Learner enrollment, learner progress, counselor module ownership actions, learner portfolio editing |
+| `content_manager` | Learner enrollment, learner progress, learner portfolio editing, platform user/role/permission governance |
+| `admin` | Learner enrollment, learner progress, content manager module ownership actions, learner portfolio editing |
 
 If a real user must operate in multiple product personas, assign multiple roles explicitly.

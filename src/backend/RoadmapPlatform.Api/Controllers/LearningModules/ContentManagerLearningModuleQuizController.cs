@@ -11,8 +11,8 @@ namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
 [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
-[Route("api/counselor/learning-modules/{moduleId:guid}/quiz")]
-public sealed class CounselorLearningModuleQuizController(
+[Route("api/content/learning-modules/{moduleId:guid}/quiz")]
+public sealed class ContentManagerLearningModuleQuizController(
     ILearningModuleQuizService quizService) : ControllerBase
 {
     [HttpPut]
@@ -25,10 +25,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] UpsertQuizRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.UpsertQuizAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -46,10 +46,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] UpsertQuizQuestionRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.AddQuestionAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -71,10 +71,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] UpsertQuizQuestionRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.UpdateQuestionAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             questionId,
             request,
@@ -93,10 +93,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] ReorderQuizQuestionsRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.ReorderQuestionsAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -114,10 +114,10 @@ public sealed class CounselorLearningModuleQuizController(
         Guid questionId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         await quizService.DeleteQuestionAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             questionId,
             cancellationToken);

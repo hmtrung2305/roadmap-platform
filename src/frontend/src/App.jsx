@@ -7,7 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import CounselorLayout from "./layouts/CounselorLayout";
+import ContentManagerLayout from "./layouts/ContentManagerLayout";
 import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -29,17 +29,17 @@ import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
-import CounselorLearningModulesPage from "./pages/counselor/learningModules/CounselorLearningModulesPage";
-import CounselorLearningModuleCreatePage from "./pages/counselor/learningModules/CounselorLearningModuleCreatePage";
-import CounselorLearningModuleEditorPage from "./pages/counselor/learningModules/CounselorLearningModuleEditorPage";
-import CounselorLearningModulePreviewPage from "./pages/counselor/learningModules/CounselorLearningModulePreviewPage";
-import CounselorSettingsPage from "./pages/counselor/CounselorSettingsPage";
+import ContentManagerLearningModulesPage from "./pages/content/learningModules/ContentManagerLearningModulesPage";
+import ContentManagerLearningModuleCreatePage from "./pages/content/learningModules/ContentManagerLearningModuleCreatePage";
+import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
+import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
+import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
   ADMIN_SURFACE_PERMISSIONS,
-  COUNSELOR_SURFACE_PERMISSIONS,
+  CONTENT_MANAGER_SURFACE_PERMISSIONS,
   LEARNER_SURFACE_PERMISSIONS,
 } from "./constants/permissions";
 
@@ -183,17 +183,17 @@ export default function App() {
 
           <Route
             element={
-              <RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
-                <CounselorLayout />
+              <RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
+                <ContentManagerLayout />
               </RequirePermission>
             }
           >
-            <Route path="/counselor" element={<Navigate to="/counselor/learning-modules" replace />} />
-            <Route path="/counselor/learning-modules" element={<CounselorLearningModulesPage />} />
-            <Route path="/counselor/learning-modules/create" element={<CounselorLearningModuleCreatePage />} />
-            <Route path="/counselor/learning-modules/:moduleSlug/edit" element={<CounselorLearningModuleEditorPage />} />
-            <Route path="/counselor/learning-modules/:moduleSlug/preview" element={<CounselorLearningModulePreviewPage />} />
-            <Route path="/counselor/settings" element={<CounselorSettingsPage />} />
+            <Route path="/content" element={<Navigate to="/content/learning-modules" replace />} />
+            <Route path="/content/learning-modules" element={<ContentManagerLearningModulesPage />} />
+            <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
+            <Route path="/content/learning-modules/:moduleSlug/edit" element={<ContentManagerLearningModuleEditorPage />} />
+            <Route path="/content/learning-modules/:moduleSlug/preview" element={<ContentManagerLearningModulePreviewPage />} />
+            <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
           </Route>
 
           <Route

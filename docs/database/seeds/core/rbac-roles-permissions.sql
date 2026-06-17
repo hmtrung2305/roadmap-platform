@@ -6,11 +6,11 @@
 --
 -- Model:
 --   - learner   = learning participant
---   - counselor = learning content operator
+--   - content_manager = learning content operator
 --   - admin     = platform operator
 --
 -- Important product rule:
---   Roles are separate product personas. Counselor and admin do not
+--   Roles are separate product personas. Content Manager and admin do not
 --   automatically inherit learner workflow permissions.
 --
 -- Permission naming convention:
@@ -34,7 +34,7 @@ BEGIN;
 INSERT INTO public.role (role_name)
 VALUES
     ('learner'),
-    ('counselor'),
+    ('content_manager'),
     ('admin')
 ON CONFLICT (role_name) DO NOTHING;
 
@@ -96,7 +96,7 @@ VALUES
     -- Admin skill governance permissions
     ('skill.view.any'),
 
-    -- Counselor learning module ownership permissions
+    -- Content Manager learning module ownership permissions
     ('learning_module.view.own'),
     ('learning_module.create.own'),
     ('learning_module.update.own'),
@@ -105,14 +105,14 @@ VALUES
     ('learning_module.archive.own'),
     ('learning_module.preview.own'),
 
-    -- Counselor lesson ownership permissions
+    -- Content Manager lesson ownership permissions
     ('learning_module_lesson.create.own'),
     ('learning_module_lesson.update.own'),
     ('learning_module_lesson.delete.own'),
     ('learning_module_lesson.reorder.own'),
     ('learning_module_lesson.reindex.own'),
 
-    -- Counselor quiz ownership permissions
+    -- Content Manager quiz ownership permissions
     ('learning_module_quiz.view.own'),
     ('learning_module_quiz.upsert.own'),
     ('learning_module_quiz_question.create.own'),
@@ -161,12 +161,12 @@ ON CONFLICT (permission_name) DO NOTHING;
 -- ---------------------------------------------------------------------
 -- This seed owns the baseline permissions for the built-in roles below.
 -- Re-running it should converge the database back to this canonical v1
--- mapping, including removing outdated mappings such as counselor ->
+-- mapping, including removing outdated mappings such as content_manager ->
 -- skill.view.any from earlier draft seeds.
 WITH managed_roles(role_name) AS (
     VALUES
         ('learner'),
-        ('counselor'),
+        ('content_manager'),
         ('admin')
 ),
 managed_permissions(permission_name) AS (
@@ -221,7 +221,7 @@ managed_permissions(permission_name) AS (
         ('market_pulse.view.catalog'),
         ('skill.view.catalog'),
 
-        -- Counselor learning module ownership permissions
+        -- Content Manager learning module ownership permissions
         ('learning_module.view.own'),
         ('learning_module.create.own'),
         ('learning_module.update.own'),
@@ -286,14 +286,14 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'profile.view.self'),
         ('learner', 'profile.update.self'),
 
-        ('counselor', 'account.view.self'),
-        ('counselor', 'account.update.self'),
-        ('counselor', 'auth_provider.view.self'),
-        ('counselor', 'auth_provider.link.self'),
-        ('counselor', 'auth_provider.unlink.self'),
-        ('counselor', 'auth_provider.update.self'),
-        ('counselor', 'profile.view.self'),
-        ('counselor', 'profile.update.self'),
+        ('content_manager', 'account.view.self'),
+        ('content_manager', 'account.update.self'),
+        ('content_manager', 'auth_provider.view.self'),
+        ('content_manager', 'auth_provider.link.self'),
+        ('content_manager', 'auth_provider.unlink.self'),
+        ('content_manager', 'auth_provider.update.self'),
+        ('content_manager', 'profile.view.self'),
+        ('content_manager', 'profile.update.self'),
 
         ('admin', 'account.view.self'),
         ('admin', 'account.update.self'),
@@ -344,26 +344,26 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'market_pulse.view.catalog'),
         ('learner', 'skill.view.catalog'),
 
-        -- Counselor catalog lookup and content management permissions
-        ('counselor', 'skill.view.catalog'),
-        ('counselor', 'learning_module.view.own'),
-        ('counselor', 'learning_module.create.own'),
-        ('counselor', 'learning_module.update.own'),
-        ('counselor', 'learning_module.delete.own'),
-        ('counselor', 'learning_module.publish.own'),
-        ('counselor', 'learning_module.archive.own'),
-        ('counselor', 'learning_module.preview.own'),
-        ('counselor', 'learning_module_lesson.create.own'),
-        ('counselor', 'learning_module_lesson.update.own'),
-        ('counselor', 'learning_module_lesson.delete.own'),
-        ('counselor', 'learning_module_lesson.reorder.own'),
-        ('counselor', 'learning_module_lesson.reindex.own'),
-        ('counselor', 'learning_module_quiz.view.own'),
-        ('counselor', 'learning_module_quiz.upsert.own'),
-        ('counselor', 'learning_module_quiz_question.create.own'),
-        ('counselor', 'learning_module_quiz_question.update.own'),
-        ('counselor', 'learning_module_quiz_question.delete.own'),
-        ('counselor', 'learning_module_quiz_question.reorder.own'),
+        -- Content Manager catalog lookup and content management permissions
+        ('content_manager', 'skill.view.catalog'),
+        ('content_manager', 'learning_module.view.own'),
+        ('content_manager', 'learning_module.create.own'),
+        ('content_manager', 'learning_module.update.own'),
+        ('content_manager', 'learning_module.delete.own'),
+        ('content_manager', 'learning_module.publish.own'),
+        ('content_manager', 'learning_module.archive.own'),
+        ('content_manager', 'learning_module.preview.own'),
+        ('content_manager', 'learning_module_lesson.create.own'),
+        ('content_manager', 'learning_module_lesson.update.own'),
+        ('content_manager', 'learning_module_lesson.delete.own'),
+        ('content_manager', 'learning_module_lesson.reorder.own'),
+        ('content_manager', 'learning_module_lesson.reindex.own'),
+        ('content_manager', 'learning_module_quiz.view.own'),
+        ('content_manager', 'learning_module_quiz.upsert.own'),
+        ('content_manager', 'learning_module_quiz_question.create.own'),
+        ('content_manager', 'learning_module_quiz_question.update.own'),
+        ('content_manager', 'learning_module_quiz_question.delete.own'),
+        ('content_manager', 'learning_module_quiz_question.reorder.own'),
 
         -- Admin platform governance permissions
         ('admin', 'user.view.any'),

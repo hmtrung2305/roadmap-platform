@@ -10,21 +10,21 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Route("api/counselor/learning-modules")]
-public sealed class CounselorLearningModulesController(
-    ICounselorLearningModuleService moduleService) : ControllerBase
+[Route("api/content/learning-modules")]
+public sealed class ContentManagerLearningModulesController(
+    IContentManagerLearningModuleService moduleService) : ControllerBase
 {
     [HttpGet]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
-    [ProducesResponseType(typeof(IReadOnlyList<CounselorLearningModuleSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<ContentManagerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModules(
         [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModulesAsync(
-            counselorUserId,
+            contentManagerUserId,
             status,
             cancellationToken);
 
@@ -40,10 +40,10 @@ public sealed class CounselorLearningModulesController(
         [FromBody] CreateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.CreateModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             request,
             cancellationToken);
 
@@ -55,16 +55,16 @@ public sealed class CounselorLearningModulesController(
 
     [HttpGet("{moduleId:guid}")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
-    [ProducesResponseType(typeof(CounselorLearningModuleDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ContentManagerLearningModuleDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetModuleDetail(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModuleDetailAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -81,10 +81,10 @@ public sealed class CounselorLearningModulesController(
         [FromBody] UpdateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.UpdateModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -102,10 +102,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         await moduleService.DeleteDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -122,10 +122,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.PublishModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -142,10 +142,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.ArchiveModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -160,10 +160,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetPreviewAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 

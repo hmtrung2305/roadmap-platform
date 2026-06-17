@@ -12,8 +12,8 @@ using System.Text.Json;
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Route("api/counselor/learning-modules/{moduleId:guid}/lessons")]
-public sealed class CounselorLearningModuleLessonsController(
+[Route("api/content/learning-modules/{moduleId:guid}/lessons")]
+public sealed class ContentManagerLearningModuleLessonsController(
     ILearningModuleLessonService lessonService) : ControllerBase
 {
     [HttpPost("bulk")]
@@ -30,7 +30,7 @@ public sealed class CounselorLearningModuleLessonsController(
         [FromForm] List<IFormFile> files,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var request = JsonSerializer.Deserialize<BulkUploadLessonsRequestDto>(
             lessonsJson,
@@ -58,7 +58,7 @@ public sealed class CounselorLearningModuleLessonsController(
             .ToList();
 
         var result = await lessonService.BulkUploadLessonsAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             uploadedFiles,
@@ -78,10 +78,10 @@ public sealed class CounselorLearningModuleLessonsController(
         [FromBody] ReorderLessonsRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.ReorderLessonsAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -101,10 +101,10 @@ public sealed class CounselorLearningModuleLessonsController(
         [FromBody] UpdateLearningModuleLessonRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.UpdateLessonAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             request,
@@ -136,7 +136,7 @@ public sealed class CounselorLearningModuleLessonsController(
                 "Markdown file cannot be empty."));
         }
 
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var uploadedFile = new LearningModuleUploadedFileDto
         {
@@ -149,7 +149,7 @@ public sealed class CounselorLearningModuleLessonsController(
         };
 
         var result = await lessonService.ReplaceLessonContentAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             uploadedFile,
@@ -169,10 +169,10 @@ public sealed class CounselorLearningModuleLessonsController(
         Guid lessonId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.ReindexLessonAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             cancellationToken);
@@ -189,10 +189,10 @@ public sealed class CounselorLearningModuleLessonsController(
         Guid lessonId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.GetLessonPreviewAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             cancellationToken);
@@ -211,10 +211,10 @@ public sealed class CounselorLearningModuleLessonsController(
         Guid lessonId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         await lessonService.DeleteDraftLessonAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             cancellationToken);

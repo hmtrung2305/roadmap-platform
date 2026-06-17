@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi } from "../../../api/learningModuleApi";
+import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
 import MarkdownRenderer from "../../../components/learningModules/MarkdownRenderer";
 import {
   inputClass,
@@ -170,7 +170,7 @@ function QuizPreviewPanel({ quiz }) {
 }
 
 
-export default function CounselorLearningModulePreviewPage() {
+export default function ContentManagerLearningModulePreviewPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -189,8 +189,8 @@ export default function CounselorLearningModulePreviewPage() {
       try {
         setIsLoading(true);
         const knownModuleId = routeStateModuleId || resolvedModuleIdRef.current;
-        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
-        const data = await counselorLearningModuleApi.getModule(moduleId);
+        const moduleId = await contentManagerLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
+        const data = await contentManagerLearningModuleApi.getModule(moduleId);
 
         if (ignore) return;
 
@@ -230,7 +230,7 @@ export default function CounselorLearningModulePreviewPage() {
       }
 
       try {
-        const data = await counselorLearningModuleApi.getLessonPreview(resolvedModuleId, activeLessonId);
+        const data = await contentManagerLearningModuleApi.getLessonPreview(resolvedModuleId, activeLessonId);
         if (!ignore) setLessonPreview(data);
       } catch {
         if (!ignore) setLessonPreview(null);
@@ -268,7 +268,7 @@ export default function CounselorLearningModulePreviewPage() {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => navigate("/counselor/learning-modules")}
+          onClick={() => navigate("/content/learning-modules")}
           className="inline-flex items-center gap-2 text-sm font-bold text-[#1F6F5F]"
         >
           <ArrowLeft size={16} /> Back to management

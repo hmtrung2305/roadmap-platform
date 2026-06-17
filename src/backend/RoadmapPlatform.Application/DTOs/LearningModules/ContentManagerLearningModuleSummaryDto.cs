@@ -1,6 +1,6 @@
 namespace RoadmapPlatform.Application.DTOs.LearningModules;
 
-public sealed class CounselorLearningModuleSummaryDto
+public sealed class ContentManagerLearningModuleSummaryDto
 {
     public Guid SkillModuleId { get; set; }
     public Guid SkillId { get; set; }

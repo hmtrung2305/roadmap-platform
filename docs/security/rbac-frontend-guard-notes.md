@@ -49,7 +49,7 @@ Examples:
 
 ```jsx
 <RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
-  <CounselorLayout />
+  <Content ManagerLayout />
 </RequirePermission>
 ```
 
@@ -68,7 +68,7 @@ Examples:
 | Link | Show when |
 |---|---|
 | Learner app links | user has any learner surface permission |
-| Counselor console link | user has any counselor surface permission |
+| Content Manager console link | user has any content manager surface permission |
 | Admin console link | user has any admin surface permission |
 
 Do not rely on hidden links as security. The route guard and backend permission checks are still required.
@@ -80,14 +80,14 @@ After login, the frontend must fetch `/api/me` before resolving the redirect bec
 Default redirect priority:
 
 ```text
-admin -> counselor -> learner
+admin -> content manager -> learner
 ```
 
 Current defaults:
 
 ```text
 admin     = /admin
-counselor = /counselor/learning-modules
+content manager = /content/learning-modules
 learner   = /roadmaps
 ```
 

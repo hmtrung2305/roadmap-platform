@@ -13,22 +13,22 @@ import StreakAnimation from "../components/streak/StreakAnimation";
 import { getMyProfileApi } from "../api/profileApi";
 import { useAuthStore } from "../stores/useAuthStore";
 
-const counselorNavGroups = [
+const contentManagerNavGroups = [
   {
     label: "Content",
     items: [
       {
         label: "Learning Modules",
-        path: "/counselor/learning-modules",
+        path: "/content/learning-modules",
         icon: LibraryBig,
-        match: (pathname) => pathname.startsWith("/counselor/learning-modules"),
+        match: (pathname) => pathname.startsWith("/content/learning-modules"),
       },
     ],
   },
 ];
 
-function getCounselorPageTitle(pathname) {
-  if (pathname === "/counselor/learning-modules/create") {
+function getContentManagerPageTitle(pathname) {
+  if (pathname === "/content/learning-modules/create") {
     return "Create Module";
   }
 
@@ -40,15 +40,15 @@ function getCounselorPageTitle(pathname) {
     return "Module Preview";
   }
 
-  if (pathname.startsWith("/counselor/learning-modules")) {
+  if (pathname.startsWith("/content/learning-modules")) {
     return "Learning Modules";
   }
 
-  if (pathname === "/counselor/settings") {
+  if (pathname === "/content/settings") {
     return "Settings";
   }
 
-  return "Counselor";
+  return "Content Manager";
 }
 
 function getDisplayName(user, profile) {
@@ -60,7 +60,7 @@ function getDisplayName(user, profile) {
     || user?.displayName
     || user?.name
     || user?.username
-    || "Counselor"
+    || "Content Manager"
   );
 }
 
@@ -72,7 +72,7 @@ function getEmail(user, profile) {
   );
 }
 
-export default function CounselorLayout() {
+export default function ContentManagerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -116,7 +116,7 @@ export default function CounselorLayout() {
   }, []);
 
   const pageTitle = useMemo(
-    () => getCounselorPageTitle(location.pathname),
+    () => getContentManagerPageTitle(location.pathname),
     [location.pathname],
   );
 
@@ -125,7 +125,7 @@ export default function CounselorLayout() {
 
   const goToSettings = () => {
     setIsUserMenuOpen(false);
-    navigate("/counselor/settings");
+    navigate("/content/settings");
   };
 
   const handleLogout = async () => {
@@ -140,7 +140,7 @@ export default function CounselorLayout() {
         <div className="border-b border-[#B9D8CC] px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate("/counselor/learning-modules")}
+            onClick={() => navigate("/content/learning-modules")}
             className="block"
           >
             <AuthLogo compact showTagline={false} />
@@ -148,7 +148,7 @@ export default function CounselorLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-5">
-          {counselorNavGroups.flatMap((group) => group.items).map((item) => {
+          {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
             const Icon = item.icon;
             const isActive = item.match(location.pathname);
 
@@ -199,7 +199,7 @@ export default function CounselorLayout() {
             type="button"
             onClick={() => setIsUserMenuOpen((current) => !current)}
             className={`flex w-full min-w-0 items-center gap-3 rounded-lg border px-2 py-1.5 text-left transition ${
-              location.pathname === "/counselor/settings" || isUserMenuOpen
+              location.pathname === "/content/settings" || isUserMenuOpen
                 ? "border-[#6FCF97] bg-[#6FCF97]/18"
                 : "border-transparent hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
             }`}
@@ -232,7 +232,7 @@ export default function CounselorLayout() {
               <div className="flex items-center gap-3 lg:hidden">
                 <button
                   type="button"
-                  onClick={() => navigate("/counselor/learning-modules")}
+                  onClick={() => navigate("/content/learning-modules")}
                   className="shrink-0"
                 >
                   <AuthLogo compact showTagline={false} />
@@ -240,7 +240,7 @@ export default function CounselorLayout() {
 
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
-                    Counselor
+                    Content Manager
                   </p>
                   <h1 className="truncate text-sm font-extrabold text-[#18332D]">
                     {pageTitle}
@@ -250,7 +250,7 @@ export default function CounselorLayout() {
 
               <div className="hidden lg:block">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
-                  Counselor
+                  Content Manager
                 </p>
                 <h1 className="truncate text-lg font-extrabold text-[#18332D]">
                   {pageTitle}
@@ -259,7 +259,7 @@ export default function CounselorLayout() {
             </div>
 
             <div className="hidden items-center gap-2 md:flex lg:hidden">
-              {counselorNavGroups.flatMap((group) => group.items).map((item) => {
+              {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
                 const Icon = item.icon;
                 const isActive = item.match(location.pathname);
 
@@ -320,7 +320,7 @@ export default function CounselorLayout() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto border-t border-[#B9D8CC]/70 px-4 py-2 md:hidden">
-            {counselorNavGroups.flatMap((group) => group.items).map((item) => {
+            {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
               const Icon = item.icon;
               const isActive = item.match(location.pathname);
 

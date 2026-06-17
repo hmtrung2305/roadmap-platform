@@ -25,14 +25,14 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task<BulkUploadLessonsResultDto> BulkUploadLessonsAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         BulkUploadLessonsRequestDto request,
         IReadOnlyList<LearningModuleUploadedFileDto> files,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -162,13 +162,13 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task<IReadOnlyList<LearningModuleLessonDto>> ReorderLessonsAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         ReorderLessonsRequestDto request,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -222,14 +222,14 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task<LearningModuleLessonDto> UpdateLessonAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         UpdateLearningModuleLessonRequestDto request,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -287,14 +287,14 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task<LearningModuleLessonDto> ReplaceLessonContentAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         LearningModuleUploadedFileDto file,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -359,13 +359,13 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task<LearningModuleLessonDto> ReindexLessonAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -390,13 +390,13 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task<LearningModuleLessonContentDto> GetLessonPreviewAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         CancellationToken cancellationToken)
     {
         await EnsureOwnedModuleExistsAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -432,13 +432,13 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     public async Task DeleteDraftLessonAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -472,14 +472,14 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     private async Task<SkillModule> GetOwnedDraftModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
         var module = await _context.SkillModules
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.CreatedByUserId == counselorUserId,
+                && item.CreatedByUserId == contentManagerUserId,
                 cancellationToken);
 
         if (module == null)
@@ -496,7 +496,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
     }
 
     private async Task EnsureOwnedModuleExistsAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
@@ -504,7 +504,7 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             .AsNoTracking()
             .AnyAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.CreatedByUserId == counselorUserId,
+                && item.CreatedByUserId == contentManagerUserId,
                 cancellationToken);
 
         if (!exists)

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, ChevronDown } from "lucide-react";
 import { toast } from "react-toastify";
 import {
-  counselorLearningModuleApi,
+  contentManagerLearningModuleApi,
   getLearningModuleNavigationState,
   getLearningModuleRouteSegment,
 } from "../../../api/learningModuleApi";
@@ -66,7 +66,7 @@ function CustomSelect({ value, onChange, options, placeholder = "Select an optio
   );
 }
 
-export default function CounselorLearningModuleCreatePage() {
+export default function ContentManagerLearningModuleCreatePage() {
   const navigate = useNavigate();
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [form, setForm] = useState({
@@ -103,7 +103,7 @@ export default function CounselorLearningModuleCreatePage() {
     try {
       setIsSaving(true);
 
-      const created = await counselorLearningModuleApi.createModule({
+      const created = await contentManagerLearningModuleApi.createModule({
         skillId: form.skillId.trim(),
         title: form.title.trim(),
         slug: null,
@@ -114,7 +114,7 @@ export default function CounselorLearningModuleCreatePage() {
 
       toast.success("Module draft created.");
       navigate(
-        `/counselor/learning-modules/${getLearningModuleRouteSegment(created)}/edit`,
+        `/content/learning-modules/${getLearningModuleRouteSegment(created)}/edit`,
         getLearningModuleNavigationState(created),
       );
     } catch (err) {
@@ -129,7 +129,7 @@ export default function CounselorLearningModuleCreatePage() {
       <div className="space-y-5">
         <button
           type="button"
-          onClick={() => navigate("/counselor/learning-modules")}
+          onClick={() => navigate("/content/learning-modules")}
           className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-[#1F6F5F]"
         >
           <ArrowLeft size={16} /> Back to module management
@@ -201,7 +201,7 @@ export default function CounselorLearningModuleCreatePage() {
               <ModuleButton
                 type="button"
                 variant="secondary"
-                onClick={() => navigate("/counselor/learning-modules")}
+                onClick={() => navigate("/content/learning-modules")}
               >
                 Cancel
               </ModuleButton>

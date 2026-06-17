@@ -35,18 +35,18 @@ Guard: `RequirePermission(anyPermissions={LEARNER_SURFACE_PERMISSIONS})`
 | `/skill-gap-analysis` | Skill gap analysis alias |
 | `/settings/*` | Learner account/settings pages |
 
-### Counselor surface
+### Content Manager surface
 
 Guard: `RequirePermission(anyPermissions={COUNSELOR_SURFACE_PERMISSIONS})`
 
 | Route | Purpose |
 |---|---|
-| `/counselor` | Redirects to `/counselor/learning-modules` |
-| `/counselor/learning-modules` | Own module management list |
-| `/counselor/learning-modules/create` | Create module draft |
-| `/counselor/learning-modules/:moduleSlug/edit` | Edit own module |
-| `/counselor/learning-modules/:moduleSlug/preview` | Preview own module as learner-facing content without learner progress |
-| `/counselor/settings` | Counselor console settings |
+| `/content` | Redirects to `/content/learning-modules` |
+| `/content/learning-modules` | Own module management list |
+| `/content/learning-modules/create` | Create module draft |
+| `/content/learning-modules/:moduleSlug/edit` | Edit own module |
+| `/content/learning-modules/:moduleSlug/preview` | Preview own module as learner-facing content without learner progress |
+| `/content/settings` | Content Manager console settings |
 
 ### Admin surface
 
@@ -71,12 +71,12 @@ Future admin pages should be added under `/admin/*`, for example:
 | User type | Example route | Result |
 |---|---|---|
 | Anonymous | `/roadmaps` | Redirect to `/login` |
-| Learner | `/counselor/learning-modules` | Not-found page |
+| Learner | `/content/learning-modules` | Not-found page |
 | Learner | `/admin` | Not-found page |
-| Counselor | `/roadmaps` | Not-found page |
-| Counselor | `/admin` | Not-found page |
+| Content Manager | `/roadmaps` | Not-found page |
+| Content Manager | `/admin` | Not-found page |
 | Admin | `/roadmaps` | Not-found page |
-| Admin | `/counselor/learning-modules` | Not-found page |
+| Admin | `/content/learning-modules` | Not-found page |
 | Multi-role test account | Any granted surface | Allowed |
 
 ## Backend route access
@@ -115,7 +115,7 @@ Future admin pages should be added under `/admin/*`, for example:
 | Streaks | `streak.*.self` |
 | Market/discovery | `career_role.view.catalog`, `market_pulse.view.catalog`, `skill.view.catalog`, `skill_gap_analysis.create.self` |
 
-### Counselor API areas
+### Content Manager API areas
 
 | Area | Main permissions |
 |---|---|
@@ -141,15 +141,15 @@ Ownership is still enforced in the service layer.
 
 ## Legacy route cleanup status
 
-Legacy module-management routes under `/admin/learning-modules` should not exist after the counselor/admin split.
+Legacy module-management routes under `/admin/learning-modules` should not exist after the content manager/admin split.
 
 Expected current routes:
 
 ```text
-/counselor/learning-modules
-/counselor/learning-modules/create
-/counselor/learning-modules/:moduleSlug/edit
-/counselor/learning-modules/:moduleSlug/preview
+/content/learning-modules
+/content/learning-modules/create
+/content/learning-modules/:moduleSlug/edit
+/content/learning-modules/:moduleSlug/preview
 ```
 
 Do not reintroduce `AdminLearningModule*` component names unless they are truly admin governance pages.

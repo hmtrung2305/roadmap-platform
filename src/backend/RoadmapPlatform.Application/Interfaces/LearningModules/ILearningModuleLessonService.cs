@@ -5,46 +5,46 @@ namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 public interface ILearningModuleLessonService
 {
     Task<BulkUploadLessonsResultDto> BulkUploadLessonsAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         BulkUploadLessonsRequestDto request,
         IReadOnlyList<LearningModuleUploadedFileDto> files,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<LearningModuleLessonDto>> ReorderLessonsAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         ReorderLessonsRequestDto request,
         CancellationToken cancellationToken);
 
     Task<LearningModuleLessonDto> UpdateLessonAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         UpdateLearningModuleLessonRequestDto request,
         CancellationToken cancellationToken);
 
     Task<LearningModuleLessonDto> ReplaceLessonContentAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         LearningModuleUploadedFileDto file,
         CancellationToken cancellationToken);
 
     Task<LearningModuleLessonDto> ReindexLessonAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         CancellationToken cancellationToken);
 
     Task<LearningModuleLessonContentDto> GetLessonPreviewAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         CancellationToken cancellationToken);
 
     Task DeleteDraftLessonAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid lessonId,
         CancellationToken cancellationToken);

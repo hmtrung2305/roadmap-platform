@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import {
   ADMIN_SURFACE_PERMISSIONS,
-  COUNSELOR_SURFACE_PERMISSIONS,
+  CONTENT_MANAGER_SURFACE_PERMISSIONS,
 } from "../../constants/permissions";
 import { hasAnyPermission } from "../../utils/authorizationUtils";
 
@@ -41,7 +41,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
   );
 
   const isGitHubLinked = githubProvider?.isLinked ?? false;
-  const canAccessCounselorConsole = hasAnyPermission(user, COUNSELOR_SURFACE_PERMISSIONS);
+  const canAccessContentManagerConsole = hasAnyPermission(user, CONTENT_MANAGER_SURFACE_PERMISSIONS);
   const canAccessAdminConsole = hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS);
 
   useEffect(() => {
@@ -96,9 +96,9 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
     navigate("/settings");
   };
 
-  const handleGoToCounselorConsole = () => {
+  const handleGoToContentManagerConsole = () => {
     setOpen(false);
-    navigate("/counselor");
+    navigate("/content");
   };
 
   const handleGoToAdminConsole = () => {
@@ -163,11 +163,11 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               onClick={handleGoToSettings}
             />
 
-            {canAccessCounselorConsole && (
+            {canAccessContentManagerConsole && (
               <DropdownItem
                 icon={<LibraryBig size={18} />}
-                label="Counselor Console"
-                onClick={handleGoToCounselorConsole}
+                label="Content Manager Console"
+                onClick={handleGoToContentManagerConsole}
               />
             )}
 

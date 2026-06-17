@@ -28,7 +28,7 @@ The platform uses separate personas, not automatic role inheritance.
 | Persona | Surface | Purpose |
 |---|---|---|
 | `learner` | Learner app | Uses learning workflows |
-| `counselor` | Counselor console | Manages authored learning content |
+| `content_manager` | Content Manager console | Manages authored learning content |
 | `admin` | Admin console | Manages platform governance |
 
 A user can hold multiple roles, but one role does not automatically inherit another role's feature domain.
@@ -36,13 +36,13 @@ A user can hold multiple roles, but one role does not automatically inherit anot
 Incorrect assumption:
 
 ```text
-admin includes counselor includes learner
+admin includes content manager includes learner
 ```
 
 Correct assumption:
 
 ```text
-learner, counselor, and admin are separate permission domains
+learner, content manager, and admin are separate permission domains
 ```
 
 ## Permission naming convention
@@ -174,7 +174,7 @@ Does the user have learning_module.update.own?
 Service ownership check:
 
 ```text
-Does this module belong to the current counselor?
+Does this module belong to the current content manager?
 ```
 
 Example rule:
@@ -192,7 +192,7 @@ Some features only need one scope.
 Example:
 
 ```text
-Counselor edits own module only -> learning_module.update.own
+Content Manager edits own module only -> learning_module.update.own
 ```
 
 Some features need both own-scope and admin-scope behavior.
@@ -200,11 +200,11 @@ Some features need both own-scope and admin-scope behavior.
 Example:
 
 ```text
-Counselor archives own module -> learning_module.archive.own
+Content Manager archives own module -> learning_module.archive.own
 Admin moderates any module -> learning_module.archive.any
 ```
 
-Do not grant `*.any` to counselor just to avoid writing ownership logic.
+Do not grant `*.any` to content manager just to avoid writing ownership logic.
 
 ### 5. Preserve correct API status semantics
 
@@ -238,11 +238,11 @@ Use surface-level route guards for major route groups.
 
 ```jsx
 <RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
-  <CounselorLayout />
+  <Content ManagerLayout />
 </RequirePermission>
 ```
 
-Surface guards decide whether a user can enter a whole area, such as learner app, counselor console, or admin console.
+Surface guards decide whether a user can enter a whole area, such as learner app, content manager console, or admin console.
 
 ### 3. Guard sensitive actions by action permission
 
@@ -260,14 +260,14 @@ Use action-level checks for buttons, tabs, destructive actions, and management l
 
 ### 4. Hide navigation for unavailable surfaces
 
-Do not render counselor/admin navigation links for users without matching permissions.
+Do not render content manager/admin navigation links for users without matching permissions.
 
 Expected behavior:
 
 ```text
-learner -> no counselor/admin nav
-counselor -> no learner/admin nav unless also granted those permissions
-admin -> no learner/counselor nav unless also granted those permissions
+learner -> no content manager/admin nav
+content manager -> no learner/admin nav unless also granted those permissions
+admin -> no learner/content nav unless also granted those permissions
 ```
 
 ### 5. Use neutral not-found for wrong-surface routes
@@ -349,9 +349,9 @@ Frontend:
 Show bookmark UI only inside learner surface.
 ```
 
-### Counselor feature
+### Content Manager feature
 
-Example: counselor reviews generated module chunks for one of their modules.
+Example: content manager reviews generated module chunks for one of their modules.
 
 Permissions:
 
@@ -363,14 +363,14 @@ learning_module_chunk.update.own
 Role mapping:
 
 ```text
-counselor -> learning_module_chunk.view.own
-counselor -> learning_module_chunk.update.own
+content manager -> learning_module_chunk.view.own
+content manager -> learning_module_chunk.update.own
 ```
 
 Service check:
 
 ```text
-Module created_by_user_id must equal current counselor user id.
+Module created_by_user_id must equal current content manager user id.
 ```
 
 Do not grant:
@@ -406,7 +406,7 @@ Frontend:
 ```text
 Route under /admin/*
 Guard with ADMIN_SURFACE_PERMISSIONS
-Hide from learner/counselor users
+Hide from learner/content users
 ```
 
 ## Pre-merge checklist for new features
@@ -433,7 +433,7 @@ Use these questions during code review:
 
 ```text
 Could a user without this role discover or call the endpoint?
-Could a counselor act on another counselor's resource?
+Could a content manager act on another content manager's resource?
 Could an admin accidentally participate in learner workflows?
 Does any endpoint rely on frontend hiding instead of backend enforcement?
 Does the permission name describe the actual business action?
