@@ -61,10 +61,10 @@ public static class PermissionConstant
     // =====================================================
     // LEARNER DISCOVERY AND ANALYSIS PERMISSIONS
     // =====================================================
-    public const string CAREER_ROLE_VIEW_PUBLIC = "career_role.view.public";
+    public const string CAREER_ROLE_VIEW_CATALOG = "career_role.view.catalog";
     public const string SKILL_GAP_ANALYSIS_CREATE_SELF = "skill_gap_analysis.create.self";
-    public const string MARKET_PULSE_VIEW_PUBLIC = "market_pulse.view.public";
-    public const string SKILL_VIEW_PUBLIC = "skill.view.public";
+    public const string MARKET_PULSE_VIEW_CATALOG = "market_pulse.view.catalog";
+    public const string SKILL_VIEW_CATALOG = "skill.view.catalog";
 
     // =====================================================
     // COUNSELOR LEARNING MODULE OWNERSHIP PERMISSIONS
@@ -132,6 +132,11 @@ public static class PermissionConstant
     public const string USER_ROLE_REVOKE_ANY = "user_role.revoke.any";
 
     // =====================================================
+    // ADMIN SYSTEM GOVERNANCE PERMISSIONS
+    // =====================================================
+    public const string SYSTEM_HEALTH_VIEW_ANY = "system_health.view.any";
+
+    // =====================================================
     // SKILL PERMISSIONS
     // =====================================================
     public const string SKILL_VIEW_ANY = "skill.view.any";
@@ -173,10 +178,10 @@ public static class PermissionConstant
         LEARNING_MODULE_QUIZ_ATTEMPT_CREATE_SELF,
         LEARNING_MODULE_QUIZ_ATTEMPT_SUBMIT_SELF,
         LEARNING_MODULE_CHAT_USE_ENROLLED,
-        CAREER_ROLE_VIEW_PUBLIC,
+        CAREER_ROLE_VIEW_CATALOG,
         SKILL_GAP_ANALYSIS_CREATE_SELF,
-        MARKET_PULSE_VIEW_PUBLIC,
-        SKILL_VIEW_PUBLIC,
+        MARKET_PULSE_VIEW_CATALOG,
+        SKILL_VIEW_CATALOG,
         SKILL_VIEW_ANY,
         LEARNING_MODULE_VIEW_OWN,
         LEARNING_MODULE_CREATE_OWN,
@@ -215,6 +220,7 @@ public static class PermissionConstant
         USER_ROLE_VIEW_ANY,
         USER_ROLE_ASSIGN_ANY,
         USER_ROLE_REVOKE_ANY,
+        SYSTEM_HEALTH_VIEW_ANY,
         SKILL_CREATE_ANY,
         SKILL_UPDATE_ANY,
         SKILL_DELETE_ANY

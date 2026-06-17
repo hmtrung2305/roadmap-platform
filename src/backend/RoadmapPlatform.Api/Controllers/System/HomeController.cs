@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Responses;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Infrastructure.Data;
 
 namespace RoadmapPlatform.Api.Controllers.System
@@ -16,6 +18,7 @@ namespace RoadmapPlatform.Api.Controllers.System
         }
 
         [HttpGet("check-connection")]
+        [RequirePermission(PermissionConstant.SYSTEM_HEALTH_VIEW_ANY)]
         public async Task<IActionResult> CheckConnection(CancellationToken cancellationToken)
         {
             try

@@ -20,18 +20,10 @@
 --   - self      = the authenticated user's own account/activity
 --   - own       = resource owned by the authenticated user, usually author-owned content
 --   - any       = platform-level access across users/owners
---   - published = published public catalog content
---   - enrolled = content available through an existing learner enrollment
---   - public    = public read-only catalog/analysis data
---
--- Safety:
---   This seed is idempotent and non-destructive. It inserts missing roles,
---   permissions, and role-permission mappings. It does not delete existing
---   permissions or remove mappings.
---
--- Database limits considered:
---   public.role.role_name is varchar(15)
---   public.permission.permission_name is varchar(50)
+--   - published = published content visible inside the authenticated learner app
+--   - enrolled  = content available through an existing learner enrollment
+--   - catalog   = authenticated read-only catalog/discovery data
+
 -- =====================================================================
 
 BEGIN;
@@ -96,10 +88,10 @@ VALUES
     ('learning_module_chat.use.enrolled'),
 
     -- Learner discovery and analysis permissions
-    ('career_role.view.public'),
+    ('career_role.view.catalog'),
     ('skill_gap_analysis.create.self'),
-    ('market_pulse.view.public'),
-    ('skill.view.public'),
+    ('market_pulse.view.catalog'),
+    ('skill.view.catalog'),
 
     -- Counselor skill lookup permissions
     ('skill.view.any'),
@@ -154,6 +146,9 @@ VALUES
     ('user_role.view.any'),
     ('user_role.assign.any'),
     ('user_role.revoke.any'),
+
+    -- Admin system governance permissions
+    ('system_health.view.any'),
 
     -- Admin skill governance permissions
     ('skill.create.any'),
@@ -229,10 +224,10 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'learning_module_chat.use.enrolled'),
 
         -- Learner discovery and analysis permissions
-        ('learner', 'career_role.view.public'),
+        ('learner', 'career_role.view.catalog'),
         ('learner', 'skill_gap_analysis.create.self'),
-        ('learner', 'market_pulse.view.public'),
-        ('learner', 'skill.view.public'),
+        ('learner', 'market_pulse.view.catalog'),
+        ('learner', 'skill.view.catalog'),
 
         -- Counselor content management permissions
         ('counselor', 'skill.view.any'),
@@ -275,6 +270,7 @@ WITH role_permissions(role_name, permission_name) AS (
         ('admin', 'user_role.view.any'),
         ('admin', 'user_role.assign.any'),
         ('admin', 'user_role.revoke.any'),
+        ('admin', 'system_health.view.any'),
         ('admin', 'skill.view.any'),
         ('admin', 'skill.create.any'),
         ('admin', 'skill.update.any'),
