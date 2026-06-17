@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
+  Code2,
+  LibraryBig,
   LogOut,
   Settings,
-  Code2,
+  Shield,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,6 +16,11 @@ import {
 import { FaGithub } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import {
+  ADMIN_SURFACE_PERMISSIONS,
+  COUNSELOR_SURFACE_PERMISSIONS,
+} from "../../constants/permissions";
+import { hasAnyPermission } from "../../utils/authorizationUtils";
 
 export default function AvatarDropdown({ user, profile, onLogout }) {
   const navigate = useNavigate();
@@ -34,6 +41,8 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
   );
 
   const isGitHubLinked = githubProvider?.isLinked ?? false;
+  const canAccessCounselorConsole = hasAnyPermission(user, COUNSELOR_SURFACE_PERMISSIONS);
+  const canAccessAdminConsole = hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -85,6 +94,16 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
   const handleGoToSettings = () => {
     setOpen(false);
     navigate("/settings");
+  };
+
+  const handleGoToCounselorConsole = () => {
+    setOpen(false);
+    navigate("/counselor");
+  };
+
+  const handleGoToAdminConsole = () => {
+    setOpen(false);
+    navigate("/admin");
   };
 
   const handleLogout = () => {
@@ -143,6 +162,22 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               label="Settings"
               onClick={handleGoToSettings}
             />
+
+            {canAccessCounselorConsole && (
+              <DropdownItem
+                icon={<LibraryBig size={18} />}
+                label="Counselor Console"
+                onClick={handleGoToCounselorConsole}
+              />
+            )}
+
+            {canAccessAdminConsole && (
+              <DropdownItem
+                icon={<Shield size={18} />}
+                label="Admin Console"
+                onClick={handleGoToAdminConsole}
+              />
+            )}
 
             {isGitHubLinked ? (
               <DropdownItem

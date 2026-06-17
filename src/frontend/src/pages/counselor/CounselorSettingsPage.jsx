@@ -12,7 +12,7 @@ import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailMod
 import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 
-export default function AdminSettingsPage() {
+export default function CounselorSettingsPage() {
   const [me, setMe] = useState(null);
   const [providers, setProviders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,8 +41,8 @@ export default function AdminSettingsPage() {
       setMe(meData);
       setProviders(providersData);
     } catch (error) {
-      console.error("Failed to load admin settings:", error.response?.data || error);
-      setActionError(getFriendlyApiErrorMessage(error, "Unable to load admin settings."));
+      console.error("Failed to load counselor settings:", error.response?.data || error);
+      setActionError(getFriendlyApiErrorMessage(error, "Unable to load counselor settings."));
     } finally {
       setIsLoading(false);
     }
@@ -69,10 +69,10 @@ export default function AdminSettingsPage() {
           Account
         </p>
         <h1 className="mt-1 text-3xl font-black tracking-[-0.035em] text-[#18332D]">
-          Admin Settings
+          Counselor Settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-          Keep your admin login details up to date.
+          Keep your counselor login details up to date.
         </p>
       </div>
 
@@ -84,7 +84,7 @@ export default function AdminSettingsPage() {
 
       <SettingsSection
         title="Login details"
-        description="Update the email and password used to sign in to this admin account."
+        description="Update the email and password used to sign in to this counselor account."
       >
         <SettingsRow
           icon={Mail}

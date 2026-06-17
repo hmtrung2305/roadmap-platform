@@ -66,7 +66,7 @@ function CustomSelect({ value, onChange, options, placeholder = "Select an optio
   );
 }
 
-export default function AdminLearningModuleCreatePage() {
+export default function CounselorLearningModuleCreatePage() {
   const navigate = useNavigate();
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [form, setForm] = useState({
@@ -114,7 +114,7 @@ export default function AdminLearningModuleCreatePage() {
 
       toast.success("Module draft created.");
       navigate(
-        `/admin/learning-modules/${getLearningModuleRouteSegment(created)}/edit`,
+        `/counselor/learning-modules/${getLearningModuleRouteSegment(created)}/edit`,
         getLearningModuleNavigationState(created),
       );
     } catch (err) {
@@ -129,7 +129,7 @@ export default function AdminLearningModuleCreatePage() {
       <div className="space-y-5">
         <button
           type="button"
-          onClick={() => navigate("/admin/learning-modules")}
+          onClick={() => navigate("/counselor/learning-modules")}
           className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-[#1F6F5F]"
         >
           <ArrowLeft size={16} /> Back to module management
@@ -201,7 +201,7 @@ export default function AdminLearningModuleCreatePage() {
               <ModuleButton
                 type="button"
                 variant="secondary"
-                onClick={() => navigate("/admin/learning-modules")}
+                onClick={() => navigate("/counselor/learning-modules")}
               >
                 Cancel
               </ModuleButton>

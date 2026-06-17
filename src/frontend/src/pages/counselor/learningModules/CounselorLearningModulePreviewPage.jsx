@@ -170,7 +170,7 @@ function QuizPreviewPanel({ quiz }) {
 }
 
 
-export default function AdminLearningModulePreviewPage() {
+export default function CounselorLearningModulePreviewPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -268,7 +268,7 @@ export default function AdminLearningModulePreviewPage() {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => navigate("/admin/learning-modules")}
+          onClick={() => navigate("/counselor/learning-modules")}
           className="inline-flex items-center gap-2 text-sm font-bold text-[#1F6F5F]"
         >
           <ArrowLeft size={16} /> Back to management

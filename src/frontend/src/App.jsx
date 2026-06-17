@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import CounselorLayout from "./layouts/CounselorLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
@@ -29,13 +30,15 @@ import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
-import AdminLearningModulesPage from "./pages/admin/learningModules/AdminLearningModulesPage";
-import AdminLearningModuleCreatePage from "./pages/admin/learningModules/AdminLearningModuleCreatePage";
-import AdminLearningModuleEditorPage from "./pages/admin/learningModules/AdminLearningModuleEditorPage";
-import AdminLearningModulePreviewPage from "./pages/admin/learningModules/AdminLearningModulePreviewPage";
-import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import CounselorLearningModulesPage from "./pages/counselor/learningModules/CounselorLearningModulesPage";
+import CounselorLearningModuleCreatePage from "./pages/counselor/learningModules/CounselorLearningModuleCreatePage";
+import CounselorLearningModuleEditorPage from "./pages/counselor/learningModules/CounselorLearningModuleEditorPage";
+import CounselorLearningModulePreviewPage from "./pages/counselor/learningModules/CounselorLearningModulePreviewPage";
+import CounselorSettingsPage from "./pages/counselor/CounselorSettingsPage";
+import AdminHomePage from "./pages/admin/AdminHomePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
+  ADMIN_SURFACE_PERMISSIONS,
   COUNSELOR_SURFACE_PERMISSIONS,
   LEARNER_SURFACE_PERMISSIONS,
 } from "./constants/permissions";
@@ -172,15 +175,26 @@ export default function App() {
           <Route
             element={
               <RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
+                <CounselorLayout />
+              </RequirePermission>
+            }
+          >
+            <Route path="/counselor" element={<Navigate to="/counselor/learning-modules" replace />} />
+            <Route path="/counselor/learning-modules" element={<CounselorLearningModulesPage />} />
+            <Route path="/counselor/learning-modules/create" element={<CounselorLearningModuleCreatePage />} />
+            <Route path="/counselor/learning-modules/:moduleSlug/edit" element={<CounselorLearningModuleEditorPage />} />
+            <Route path="/counselor/learning-modules/:moduleSlug/preview" element={<CounselorLearningModulePreviewPage />} />
+            <Route path="/counselor/settings" element={<CounselorSettingsPage />} />
+          </Route>
+
+          <Route
+            element={
+              <RequirePermission anyPermissions={ADMIN_SURFACE_PERMISSIONS}>
                 <AdminLayout />
               </RequirePermission>
             }
           >
-            <Route path="/admin/learning-modules" element={<AdminLearningModulesPage />} />
-            <Route path="/admin/learning-modules/create" element={<AdminLearningModuleCreatePage />} />
-            <Route path="/admin/learning-modules/:moduleSlug/edit" element={<AdminLearningModuleEditorPage />} />
-            <Route path="/admin/learning-modules/:moduleSlug/preview" element={<AdminLearningModulePreviewPage />} />
-            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin" element={<AdminHomePage />} />
           </Route>
 
           <Route

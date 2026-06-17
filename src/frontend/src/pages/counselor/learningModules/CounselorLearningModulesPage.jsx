@@ -26,7 +26,7 @@ import {
 
 const statuses = ["draft", "published", "archived"];
 
-export default function AdminLearningModulesPage() {
+export default function CounselorLearningModulesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeStatus = searchParams.get("status") || "draft";
@@ -180,7 +180,7 @@ export default function AdminLearningModulesPage() {
             })}
           </div>
 
-          <ModuleButton onClick={() => navigate("/admin/learning-modules/create")}>
+          <ModuleButton onClick={() => navigate("/counselor/learning-modules/create")}>
             <Plus size={15} /> Add module
           </ModuleButton>
         </div>
@@ -192,7 +192,7 @@ export default function AdminLearningModulesPage() {
         ) : visibleModules.length === 0 ? (
           <ModuleEmptyState
             title={`No ${prettyModuleStatus[activeStatus].toLowerCase()} modules`}
-            action={<ModuleButton onClick={() => navigate("/admin/learning-modules/create")}>Add module</ModuleButton>}
+            action={<ModuleButton onClick={() => navigate("/counselor/learning-modules/create")}>Add module</ModuleButton>}
           >
             Modules will appear here after they are created.
           </ModuleEmptyState>
@@ -238,14 +238,14 @@ export default function AdminLearningModulesPage() {
                 <div className="relative flex justify-start gap-2 xl:justify-end">
                   {module.status === "draft" ? (
                     <ModuleActionButton onClick={() => navigate(
-                      `/admin/learning-modules/${getLearningModuleRouteSegment(module)}/edit`,
+                      `/counselor/learning-modules/${getLearningModuleRouteSegment(module)}/edit`,
                       getLearningModuleNavigationState(module),
                     )}>
                       <Edit3 size={14} strokeWidth={2.25} /> Edit
                     </ModuleActionButton>
                   ) : (
                     <ModuleActionButton onClick={() => navigate(
-                      `/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
+                      `/counselor/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
                       getLearningModuleNavigationState(module),
                     )}>
                       <Eye size={14} strokeWidth={2.25} /> Preview
@@ -270,7 +270,7 @@ export default function AdminLearningModulesPage() {
                           <OverflowAction onClick={() => {
                             setOpenMenuId(null);
                             navigate(
-                              `/admin/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
+                              `/counselor/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
                               getLearningModuleNavigationState(module),
                             );
                           }}>

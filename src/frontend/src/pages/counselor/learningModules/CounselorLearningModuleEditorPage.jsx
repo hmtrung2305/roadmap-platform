@@ -339,7 +339,7 @@ function isEditorTabComplete(tab, detail) {
   return false;
 }
 
-export default function AdminLearningModuleEditorPage() {
+export default function CounselorLearningModuleEditorPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -382,7 +382,7 @@ export default function AdminLearningModuleEditorPage() {
       return;
     }
 
-    navigate("/admin/learning-modules");
+    navigate("/counselor/learning-modules");
   };
 
   const discardQuizDraftsAndLeave = () => {
@@ -390,7 +390,7 @@ export default function AdminLearningModuleEditorPage() {
     removeSessionValue(getEditorStorageKey(activeModuleId, "activeQuizQuestionId"));
     setHasUnsavedQuizDrafts(false);
     setIsDiscardDialogOpen(false);
-    navigate("/admin/learning-modules");
+    navigate("/counselor/learning-modules");
   };
 
   useEffect(() => {
@@ -490,7 +490,7 @@ export default function AdminLearningModuleEditorPage() {
       const queryString = searchParams.toString();
 
       navigate(
-        `/admin/learning-modules/${nextRouteSegment}/edit${queryString ? `?${queryString}` : ""}`,
+        `/counselor/learning-modules/${nextRouteSegment}/edit${queryString ? `?${queryString}` : ""}`,
         {
           replace: true,
           state: { moduleId: updatedModule.skillModuleId },
@@ -535,7 +535,7 @@ export default function AdminLearningModuleEditorPage() {
 
       setIsPublishDialogOpen(false);
       toast.success("Module published.");
-      navigate("/admin/learning-modules?status=published");
+      navigate("/counselor/learning-modules?status=published");
     } catch (err) {
       toast.error(err?.message || "Unable to publish module.");
     } finally {
