@@ -1,16 +1,17 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Skills;
 using RoadmapPlatform.Application.Interfaces.Skills;
 
 namespace RoadmapPlatform.Api.Controllers.Skills;
 
 [ApiController]
-[AllowAnonymous]
 [Route("api/skills")]
 public sealed class SkillsController(ISkillLookupService skillLookupService) : ControllerBase
 {
     [HttpGet]
+    [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
     [ProducesResponseType(typeof(SkillSearchResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchSkills(
         [FromQuery] string? search,
@@ -30,6 +31,7 @@ public sealed class SkillsController(ISkillLookupService skillLookupService) : C
     }
 
     [HttpGet("categories")]
+    [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
     [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCategories(CancellationToken cancellationToken)
     {

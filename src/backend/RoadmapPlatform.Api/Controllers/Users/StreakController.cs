@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.Users
 {
-    [Authorize]
     [ApiController]
     [Route("api/streak")]
     public class StreakController : ControllerBase
@@ -17,6 +17,7 @@ namespace RoadmapPlatform.Api.Controllers.Users
             _streakService = streakService;
         }
         [HttpGet]
+        [RequirePermission(PermissionConstant.STREAK_VIEW_SELF)]
         public async Task<IActionResult> GetStreak()
         {
             var userId = GetCurrentUserId();
@@ -27,6 +28,7 @@ namespace RoadmapPlatform.Api.Controllers.Users
         }
 
         [HttpPost("track")]
+        [RequirePermission(PermissionConstant.STREAK_TRACK_SELF)]
         public async Task<IActionResult> TrackStreak()
         {
             var userId = GetCurrentUserId();

@@ -1,18 +1,19 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
 [ApiController]
-[Authorize]
 [Route("api/roadmap-enrollments/{roadmapEnrollmentId:guid}/nodes")]
 public sealed class RoadmapProgressController(
     IRoadmapProgressService roadmapProgressService) : ControllerBase
 {
     [HttpPatch("{roadmapNodeId:guid}/progress")]
+    [RequirePermission(PermissionConstant.ROADMAP_PROGRESS_UPDATE_SELF)]
     [ProducesResponseType(typeof(UpdateNodeProgressResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

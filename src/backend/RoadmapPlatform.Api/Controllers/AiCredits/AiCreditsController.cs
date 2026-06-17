@@ -1,12 +1,12 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 
 namespace RoadmapPlatform.Api.Controllers.AiCredits
 {
     [ApiController]
-    [Authorize]
     [Route("api/ai-credits")]
     public class AiCreditsController : ControllerBase
     {
@@ -18,6 +18,7 @@ namespace RoadmapPlatform.Api.Controllers.AiCredits
         }
 
         [HttpGet("status")]
+        [RequirePermission(PermissionConstant.AI_CREDIT_VIEW_SELF)]
         public async Task<IActionResult> GetStatus(CancellationToken cancellationToken)
         {
             var userId = User.GetUserId();

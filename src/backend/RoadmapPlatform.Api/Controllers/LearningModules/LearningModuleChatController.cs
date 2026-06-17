@@ -1,15 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Authorize]
+[RequirePermission(PermissionConstant.LEARNING_MODULE_CHAT_USE_ENROLLED)]
 [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]
 [Route("api/learning-modules/{moduleId:guid}/assistant/chat")]
 public sealed class LearningModuleChatController(
