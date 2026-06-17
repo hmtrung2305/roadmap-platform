@@ -3,7 +3,7 @@ using System.Security.Claims;
 
 namespace RoadmapPlatform.Infrastructure.Security;
 
-public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
+public sealed class PermissionHandler : AuthorizationHandler<PermissionRequirement>
 {
     private readonly IPermissionCache _permissionCache;
 
@@ -13,20 +13,32 @@ public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
     }
 
     protected override async Task HandleRequirementAsync(
-        AuthorizationHandlerContext context, 
+        AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        if (!roles.Any())
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        var roleNames = context.User
+            .FindAll(ClaimTypes.Role)
+            .Select(claim => claim.Value)
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Select(role => role.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (roleNames.Count == 0)
         {
             return;
         }
 
         var permissionsMap = await _permissionCache.GetPermissionsMapAsync();
 
-        foreach (var role in roles)
+        foreach (var roleName in roleNames)
         {
-            if (permissionsMap.TryGetValue(role, out var permissions) && 
+            if (permissionsMap.TryGetValue(roleName, out var permissions) &&
                 permissions.Contains(requirement.Permission))
             {
                 context.Succeed(requirement);

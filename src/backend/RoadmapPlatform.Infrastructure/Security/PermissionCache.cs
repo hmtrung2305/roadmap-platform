@@ -1,14 +1,21 @@
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using RoadmapPlatform.Infrastructure.Data;
 
 namespace RoadmapPlatform.Infrastructure.Security;
 
-public class PermissionCache : IPermissionCache
+public sealed class PermissionCache : IPermissionCache
 {
+    private const string CacheKey = "rbac:role-permissions:v1";
+
+    private static readonly MemoryCacheEntryOptions CacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15),
+        SlidingExpiration = TimeSpan.FromMinutes(5)
+    };
+
     private readonly IMemoryCache _cache;
     private readonly ApplicationDbContext _dbContext;
-    private const string CacheKey = "RolePermissionsMap";
 
     public PermissionCache(IMemoryCache cache, ApplicationDbContext dbContext)
     {
@@ -16,25 +23,31 @@ public class PermissionCache : IPermissionCache
         _dbContext = dbContext;
     }
 
-    public async Task<Dictionary<string, HashSet<string>>> GetPermissionsMapAsync()
+    public async Task<IReadOnlyDictionary<string, IReadOnlySet<string>>> GetPermissionsMapAsync(
+        CancellationToken cancellationToken = default)
     {
-        return await _cache.GetOrCreateAsync(CacheKey, async entry =>
+        if (_cache.TryGetValue(CacheKey, out IReadOnlyDictionary<string, IReadOnlySet<string>>? cached) &&
+            cached is not null)
         {
-            entry.SlidingExpiration = TimeSpan.FromHours(24);
-            
-            var rolesWithPermissions = await _dbContext.Roles
-                .Include(r => r.PermissionRoles)
-                    .ThenInclude(pr => pr.Permission)
-                .ToListAsync();
+            return cached;
+        }
 
-            return rolesWithPermissions.ToDictionary(
-                r => r.RoleName,
-                r => r.PermissionRoles
-                    .Where(pr => pr.Permission != null)
-                    .Select(pr => pr.Permission.PermissionName)
-                    .ToHashSet()
-            );
-        }) ?? new Dictionary<string, HashSet<string>>();
+        var rolesWithPermissions = await _dbContext.Roles
+            .AsNoTracking()
+            .Include(role => role.PermissionRoles)
+                .ThenInclude(permissionRole => permissionRole.Permission)
+            .ToListAsync(cancellationToken);
+
+        var permissionsMap = rolesWithPermissions.ToDictionary(
+            role => role.RoleName.ToLowerInvariant(),
+            role => (IReadOnlySet<string>)role.PermissionRoles
+                .Where(permissionRole => permissionRole.Permission is not null)
+                .Select(permissionRole => permissionRole.Permission!.PermissionName)
+                .ToHashSet(StringComparer.Ordinal));
+
+        _cache.Set(CacheKey, permissionsMap, CacheOptions);
+
+        return permissionsMap;
     }
 
     public void Invalidate()
