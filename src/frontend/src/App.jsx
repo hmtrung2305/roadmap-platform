@@ -59,6 +59,10 @@ function isPublicPath(pathname) {
   return publicPaths.includes(pathname) || isPublicPortfolioPath(pathname);
 }
 
+function shouldLoadSessionOnPublicPath(pathname) {
+  return publicPaths.includes(pathname) && localStorage.getItem("isLoggedIn") === "true";
+}
+
 function AuthBootstrap({ children }) {
   const location = useLocation();
   const bootstrappedRef = useRef(false);
@@ -71,6 +75,11 @@ function AuthBootstrap({ children }) {
     const pathname = location.pathname;
 
     if (isPublicPath(pathname)) {
+      if (shouldLoadSessionOnPublicPath(pathname) && !user) {
+        loadCurrentUser();
+        return;
+      }
+
       useAuthStore.setState({ authInitialized: true });
       return;
     }

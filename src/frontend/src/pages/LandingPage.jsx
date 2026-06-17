@@ -21,6 +21,7 @@ import { Link } from "react-router-dom";
 import { CgListTree } from "react-icons/cg";
 import Footer from "../components/layout/Footer";
 import { useAuthStore } from "../stores/useAuthStore";
+import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
 
 const navItems = [
   { label: "AI Mentor", target: "mentor" },
@@ -193,8 +194,8 @@ export default function LandingPage() {
   const lastScrollYRef = useRef(0);
 
   const user = useAuthStore((state) => state.user);
-  const primaryPath = user ? "/roadmaps" : "/register";
-  const primaryLabel = user ? "Open roadmaps" : "Start building";
+  const primaryPath = user ? getDefaultAuthenticatedRoute(user) : "/register";
+  const primaryLabel = user ? "Open workspace" : "Start building";
 
   const activeCapability = useMemo(
     () => capabilityTabs.find((item) => item.id === activeCapabilityId) || capabilityTabs[0],
