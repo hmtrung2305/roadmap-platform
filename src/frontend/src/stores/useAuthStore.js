@@ -8,6 +8,7 @@ import {
 import { useStreakStore } from "./useStreakStore";
 import { useProfileStore } from "./useProfileStore";
 import { useAuthProviderStore } from "./useAuthProviderStore";
+import { useRoadmapStore } from "./useRoadmapStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
@@ -42,6 +43,7 @@ export const useAuthStore = create((set, get) => ({
     useStreakStore.getState().resetStreakState();
     useProfileStore.getState().resetProfile();
     useAuthProviderStore.getState().resetProviders();
+    useRoadmapStore.getState().resetRoadmaps();
   },
 
   setAuthenticatedUser: (user) => {
@@ -88,6 +90,7 @@ export const useAuthStore = create((set, get) => ({
       useStreakStore.getState().resetStreakState();
       useProfileStore.getState().resetProfile();
       useAuthProviderStore.getState().resetProviders();
+      useRoadmapStore.getState().resetRoadmaps();
 
       throw error;
     } finally {
