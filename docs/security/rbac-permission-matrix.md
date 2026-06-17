@@ -6,7 +6,7 @@ The first RBAC version defines three built-in roles:
 
 ```text
 learner
-content manager
+content_manager
 admin
 ```
 

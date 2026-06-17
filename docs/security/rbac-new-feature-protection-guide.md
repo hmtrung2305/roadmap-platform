@@ -237,8 +237,8 @@ Frontend constants must match backend constants and seed values exactly.
 Use surface-level route guards for major route groups.
 
 ```jsx
-<RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
-  <Content ManagerLayout />
+<RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
+  <ContentManagerLayout />
 </RequirePermission>
 ```
 
@@ -363,8 +363,8 @@ learning_module_chunk.update.own
 Role mapping:
 
 ```text
-content manager -> learning_module_chunk.view.own
-content manager -> learning_module_chunk.update.own
+content_manager -> learning_module_chunk.view.own
+content_manager -> learning_module_chunk.update.own
 ```
 
 Service check:
@@ -406,7 +406,7 @@ Frontend:
 ```text
 Route under /admin/*
 Guard with ADMIN_SURFACE_PERMISSIONS
-Hide from learner/content users
+Hide from learner/content manager users
 ```
 
 ## Pre-merge checklist for new features

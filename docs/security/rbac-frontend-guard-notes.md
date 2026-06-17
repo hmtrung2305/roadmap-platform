@@ -33,7 +33,7 @@ Surface sets are broad entry checks:
 
 ```text
 LEARNER_SURFACE_PERMISSIONS
-COUNSELOR_SURFACE_PERMISSIONS
+CONTENT_MANAGER_SURFACE_PERMISSIONS
 ADMIN_SURFACE_PERMISSIONS
 ```
 
@@ -48,8 +48,8 @@ Examples:
 ```
 
 ```jsx
-<RequirePermission anyPermissions={COUNSELOR_SURFACE_PERMISSIONS}>
-  <Content ManagerLayout />
+<RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
+  <ContentManagerLayout />
 </RequirePermission>
 ```
 

@@ -37,7 +37,7 @@ Guard: `RequirePermission(anyPermissions={LEARNER_SURFACE_PERMISSIONS})`
 
 ### Content Manager surface
 
-Guard: `RequirePermission(anyPermissions={COUNSELOR_SURFACE_PERMISSIONS})`
+Guard: `RequirePermission(anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS})`
 
 | Route | Purpose |
 |---|---|
