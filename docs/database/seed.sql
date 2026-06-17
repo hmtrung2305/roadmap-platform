@@ -5,6 +5,9 @@
 \echo 'Seeding shared/core skills...'
 \i docs/database/seeds/core/shared-skills.seed.sql
 
+\echo 'Seeding roles and permissions...'
+\i docs/database/seeds/core/rbac-roles-permissions.sql
+
 \echo 'Seeding AI Engineer roadmap...'
 \i docs/database/seeds/roadmaps/ai-engineer-roadmap.seed.sql
 
