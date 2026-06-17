@@ -24,6 +24,7 @@ import ProfilePage from "./pages/ProfilePage";
 import RoadmapSelectionPage from "./pages/RoadmapSelectionPage";
 import RoadmapViewerPage from "./pages/RoadmapViewerPage";
 import MarketPulsePage from "./pages/MarketPulsePage";
+import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
@@ -158,6 +159,8 @@ export default function App() {
             <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
             <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
             <Route path="/market-pulse" element={<MarketPulsePage />} />
+            <Route path="/skill-gap" element={<SkillGapAnalysisPage />} />
+            <Route path="/skill-gap-analysis" element={<SkillGapAnalysisPage />} />
           </Route>
 
           <Route
