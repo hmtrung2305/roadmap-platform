@@ -134,7 +134,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
           <div className="p-2">
             <DropdownItem
               icon={<Code2 size={18} />}
-              label="Profile"
+              label="Edit Portfolio"
               onClick={handleGoToEditPortfolio}
             />
 
@@ -148,10 +148,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               <DropdownItem
                 icon={<CheckCircle2 size={18} />}
                 label="GitHub Connected"
-                onClick={() => {
-                  setOpen(false);
-                  navigate("/portfolio/repositories");
-                }}
+                onClick={handleGoToEditPortfolio}
                 active
               />
             ) : (

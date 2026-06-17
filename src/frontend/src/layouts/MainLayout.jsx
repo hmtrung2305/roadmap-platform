@@ -22,9 +22,7 @@ function isLearningModuleStudyRoom(pathname) {
 export default function MainLayout() {
   const location = useLocation();
 
-  const isStudyRoom =
-    location.pathname.startsWith("/study")
-    || isLearningModuleStudyRoom(location.pathname);
+  const isStudyRoom = isLearningModuleStudyRoom(location.pathname);
 
   const isRoadmapCanvas = /^\/roadmaps\/[^/]+/.test(location.pathname);
 
