@@ -1,17 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import {
-  getMyPortfolioApi,
-  updatePortfolioRepositoriesApi,
-} from "../api/portfolioApi";
-import {
-  generateRepositoryInsightApi,
-  getSavedGitHubRepositoriesApi,
-  syncGitHubRepositoriesApi,
-} from "../api/githubRepositoryApi";
 import { redirectToGitHubLink } from "../api/authProviderApi";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useAuthProviderStore } from "../stores/useAuthProviderStore";
+import { usePortfolioEditorStore } from "../stores/usePortfolioEditorStore";
 import EditPortfolioErrorState from "../components/portfolioEdit/EditPortfolioErrorState";
 import EditPortfolioGitHubSource from "../components/portfolioEdit/EditPortfolioGitHubSource";
 import EditPortfolioHero from "../components/portfolioEdit/EditPortfolioHero";
@@ -20,13 +12,6 @@ import EditPortfolioProfileDetails from "../components/portfolioEdit/EditPortfol
 import EditPortfolioRepositoryManager from "../components/portfolioEdit/EditPortfolioRepositoryManager";
 import EditPortfolioStatsGrid from "../components/portfolioEdit/EditPortfolioStatsGrid";
 import EditPortfolioStatusBar from "../components/portfolioEdit/EditPortfolioStatusBar";
-import { getInitiallySelectedIds } from "../components/portfolioEdit/portfolioEditUtils";
-import {
-  getGitHubConnectionAction,
-  getGitHubErrorMessage,
-  isGitHubConnectionError,
-} from "../utils/githubErrorUtils";
-import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { getCurrentReturnUrl } from "../utils/navigationUtils";
 
 export default function EditPortfolioPage() {
@@ -34,24 +19,31 @@ export default function EditPortfolioPage() {
   const providerActionLoading = useAuthProviderStore((state) => state.actionLoading);
   const connectingProvider = useAuthProviderStore((state) => state.connectingProvider);
   const providerError = useAuthProviderStore((state) => state.error);
-  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
   const startConnectingProvider = useAuthProviderStore((state) => state.startConnectingProvider);
 
-  const [portfolio, setPortfolio] = useState(null);
-  const [portfolioLoading, setPortfolioLoading] = useState(true);
-  const [portfolioError, setPortfolioError] = useState("");
+  const portfolio = usePortfolioEditorStore((state) => state.portfolio);
+  const portfolioLoading = usePortfolioEditorStore((state) => state.portfolioLoading);
+  const portfolioError = usePortfolioEditorStore((state) => state.portfolioError);
+  const repositories = usePortfolioEditorStore((state) => state.repositories);
+  const selectedIds = usePortfolioEditorStore((state) => state.selectedIds);
+  const isGitHubLinked = usePortfolioEditorStore((state) => state.isGitHubLinked);
+  const githubConnectionAction = usePortfolioEditorStore((state) => state.githubConnectionAction);
+  const repositoryLoading = usePortfolioEditorStore((state) => state.repositoryLoading);
+  const syncing = usePortfolioEditorStore((state) => state.syncing);
+  const reloadingSelection = usePortfolioEditorStore((state) => state.reloadingSelection);
+  const saving = usePortfolioEditorStore((state) => state.saving);
+  const analyzingRepositoryIds = usePortfolioEditorStore((state) => state.analyzingRepositoryIds);
+  const repoError = usePortfolioEditorStore((state) => state.repoError);
+  const repoSuccess = usePortfolioEditorStore((state) => state.repoSuccess);
+  const initEditor = usePortfolioEditorStore((state) => state.initEditor);
+  const syncRepositories = usePortfolioEditorStore((state) => state.syncRepositories);
+  const reloadSavedSelection = usePortfolioEditorStore((state) => state.reloadSavedSelection);
+  const toggleRepository = usePortfolioEditorStore((state) => state.toggleRepository);
+  const generateInsight = usePortfolioEditorStore((state) => state.generateInsight);
+  const saveSelection = usePortfolioEditorStore((state) => state.saveSelection);
+  const setRepositoryError = usePortfolioEditorStore((state) => state.setRepositoryError);
+  const clearRepositoryMessages = usePortfolioEditorStore((state) => state.clearRepositoryMessages);
 
-  const [repositories, setRepositories] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [isGitHubLinked, setIsGitHubLinked] = useState(false);
-  const [githubConnectionAction, setGitHubConnectionAction] = useState("connect");
-  const [repositoryLoading, setRepositoryLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [reloadingSelection, setReloadingSelection] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [analyzingRepositoryId, setAnalyzingRepositoryId] = useState(null);
-  const [repoError, setRepoError] = useState("");
-  const [repoSuccess, setRepoSuccess] = useState("");
   const [copied, setCopied] = useState(false);
   const leftColumnRef = useRef(null);
   const [managerHeight, setManagerHeight] = useState(null);
@@ -91,8 +83,8 @@ export default function EditPortfolioPage() {
     : "";
 
   useEffect(() => {
-    initEditor();
-  }, []);
+    initEditor().catch(() => {});
+  }, [initEditor]);
 
   useLayoutEffect(() => {
     if (!leftColumnRef.current) return;
@@ -116,141 +108,39 @@ export default function EditPortfolioPage() {
     };
   }, [portfolio, isGitHubLinked, repositories.length, syncing, reloadingSelection, saving]);
 
+  const handleSync = () => {
+    if (repositoryLoading || syncing || reloadingSelection || saving) return;
 
-  async function initEditor() {
-    try {
-      setPortfolioLoading(true);
-      setRepositoryLoading(true);
-      setPortfolioError("");
-      setRepoError("");
-
-      const [portfolioData, providers] = await Promise.all([
-        getMyPortfolioApi(),
-        loadProviders(),
-      ]);
-
-      setPortfolio(portfolioData);
-
-      const githubProvider = providers.find(
-        (provider) => provider.provider?.toLowerCase() === "github",
-      );
-      const linked = githubProvider?.isLinked ?? false;
-      setIsGitHubLinked(linked);
-      setGitHubConnectionAction(linked ? "connected" : "connect");
-
-      if (linked) {
-        await fetchRepositories();
-      }
-    } catch (error) {
-      console.error("Load portfolio editor failed:", error);
-      setPortfolioError(
-        useAuthProviderStore.getState().error ||
-          getFriendlyApiErrorMessage(error, "Could not load your portfolio editor."),
-      );
-    } finally {
-      setPortfolioLoading(false);
-      setRepositoryLoading(false);
-    }
-  }
-
-  async function fetchRepositories() {
-    const data = await getSavedGitHubRepositoriesApi();
-    setRepositories(data || []);
-    setSelectedIds(getInitiallySelectedIds(data || []));
-  }
-
-  const handleSync = async () => {
-    try {
-      setSyncing(true);
-      setRepoError("");
-      setRepoSuccess("");
-
-      const data = await syncGitHubRepositoriesApi();
-      setRepositories(data || []);
-      setSelectedIds(getInitiallySelectedIds(data || []));
-      setRepoSuccess("Repositories synced. Choose the projects you want to show, then save.");
-    } catch (error) {
-      console.error("Failed to sync repositories:", error);
-      if (isGitHubConnectionError(error)) {
-        setIsGitHubLinked(false);
-        setGitHubConnectionAction(getGitHubConnectionAction(error));
-      }
-
-      setRepoError(getGitHubErrorMessage(
-        error,
-        "Cannot sync repositories. Please connect GitHub first."
-      ));
-    } finally {
-      setSyncing(false);
-    }
+    syncRepositories().catch(() => {});
   };
 
-  const handleReloadSavedSelection = async () => {
-    try {
-      setReloadingSelection(true);
-      setRepoError("");
-      setRepoSuccess("");
+  const handleReloadSavedSelection = () => {
+    if (repositoryLoading || syncing || reloadingSelection || saving) return;
 
-      await fetchRepositories();
-      setRepoSuccess("Saved repository selection reloaded.");
-    } catch (error) {
-      console.error("Failed to reload saved selection:", error);
-      setRepoError(getGitHubErrorMessage(error, "Cannot reload saved repository selection."));
-    } finally {
-      setReloadingSelection(false);
-    }
+    reloadSavedSelection().catch(() => {});
   };
 
   const handleToggleRepository = (repositoryId) => {
-    setRepoSuccess("");
-    setSelectedIds((current) => {
-      if (current.includes(repositoryId)) {
-        return current.filter((id) => id !== repositoryId);
-      }
-      return [...current, repositoryId];
-    });
+    if (repositoryLoading || syncing || reloadingSelection || saving) return;
+
+    toggleRepository(repositoryId);
   };
 
+  const handleGenerateInsight = (repositoryId, force = false) => {
+    if (repositoryLoading || syncing || reloadingSelection || saving) return;
 
-  const handleGenerateInsight = async (repositoryId, force = false) => {
-    try {
-      setAnalyzingRepositoryId(repositoryId);
-      setRepoError("");
-      setRepoSuccess("");
-
-      const insight = await generateRepositoryInsightApi(repositoryId, { force });
-
-      setRepositories((current) =>
-        current.map((repo) =>
-          repo.repositoryId === repositoryId
-            ? { ...repo, insight }
-            : repo
-        )
-      );
-
-      setRepoSuccess(force ? "Repository AI summary regenerated." : "Repository AI summary generated.");
-    } catch (error) {
-      console.error("Failed to generate repository insight:", error);
-      if (isGitHubConnectionError(error)) {
-        setIsGitHubLinked(false);
-        setGitHubConnectionAction(getGitHubConnectionAction(error));
-      }
-
-      setRepoError(getGitHubErrorMessage(error, "Cannot generate repository AI summary."));
-    } finally {
-      setAnalyzingRepositoryId(null);
-    }
+    generateInsight(repositoryId, { force }).catch(() => {});
   };
 
   const handleGitHubRedirect = () => {
     if (disableGitHubConnect) return;
 
-    setRepoError("");
+    clearRepositoryMessages();
 
     const startedProvider = startConnectingProvider("github");
 
     if (!startedProvider) {
-      setRepoError(
+      setRepositoryError(
         providerError ||
           "Another account connection is already in progress. Please try again shortly.",
       );
@@ -269,25 +159,12 @@ export default function EditPortfolioPage() {
       setTimeout(() => setCopied(false), 1800);
     } catch (error) {
       console.error("Copy public portfolio link failed:", error);
-      setRepoError("Could not copy the public portfolio link.");
+      setRepositoryError("Could not copy the public portfolio link.");
     }
   };
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      setRepoError("");
-      setRepoSuccess("");
-
-      await updatePortfolioRepositoriesApi(selectedIds);
-      setRepoSuccess("Portfolio projects saved successfully.");
-      await fetchRepositories();
-    } catch (error) {
-      console.error("Failed to save selected repositories:", error);
-      setRepoError(getFriendlyApiErrorMessage(error, "Cannot save selected repositories."));
-    } finally {
-      setSaving(false);
-    }
+  const handleSave = () => {
+    saveSelection().catch(() => {});
   };
 
   if (portfolioLoading) {
@@ -359,12 +236,13 @@ export default function EditPortfolioPage() {
               syncing={syncing}
               reloadingSelection={reloadingSelection}
               saving={saving}
+              repositoryLoading={repositoryLoading}
               onSync={handleSync}
               onReloadSelection={handleReloadSavedSelection}
               connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
               connectingGitHub={isConnectingGitHub}
               connectDisabled={disableGitHubConnect}
-                      onConnectGitHub={handleGitHubRedirect}
+              onConnectGitHub={handleGitHubRedirect}
             />
           </aside>
 
@@ -375,8 +253,9 @@ export default function EditPortfolioPage() {
             isGitHubLinked={isGitHubLinked}
             repositoryLoading={repositoryLoading}
             syncing={syncing}
+            reloadingSelection={reloadingSelection}
             saving={saving}
-            analyzingRepositoryId={analyzingRepositoryId}
+            analyzingRepositoryIds={analyzingRepositoryIds}
             error={repoError}
             success={repoSuccess}
             username={username}
@@ -387,7 +266,7 @@ export default function EditPortfolioPage() {
             connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
             connectingGitHub={isConnectingGitHub}
             connectDisabled={disableGitHubConnect}
-                  onConnectGitHub={handleGitHubRedirect}
+            onConnectGitHub={handleGitHubRedirect}
             managerHeight={managerHeight}
           />
         </section>

@@ -13,8 +13,9 @@ export default function EditPortfolioRepositoryManager({
   isGitHubLinked,
   repositoryLoading,
   syncing,
+  reloadingSelection,
   saving,
-  analyzingRepositoryId,
+  analyzingRepositoryIds = {},
   error,
   success,
   username,
@@ -29,6 +30,7 @@ export default function EditPortfolioRepositoryManager({
   managerHeight,
 }) {
   const lockedHeight = managerHeight || null;
+  const repositoryActionLocked = Boolean(repositoryLoading || syncing || reloadingSelection || saving);
   const isReconnect = connectionAction === "reconnect";
   const connectLabel = connectingGitHub
     ? isReconnect
@@ -55,7 +57,7 @@ export default function EditPortfolioRepositoryManager({
           <button
             type="button"
             onClick={onSave}
-            disabled={saving || syncing}
+            disabled={repositoryActionLocked}
             className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#2FA084] px-3 py-1.5 !text-[14px] font-bold text-white shadow-sm shadow-emerald-900/20 transition-colors hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? <Loader2 className="animate-spin" size={13} /> : <CheckCircle2 size={13} />}
@@ -128,7 +130,8 @@ export default function EditPortfolioRepositoryManager({
                   repository={repo}
                   username={username}
                   isSelected={selectedIds.includes(repositoryId)}
-                  isAnalyzing={analyzingRepositoryId === repositoryId}
+                  isAnalyzing={Boolean(analyzingRepositoryIds?.[repositoryId])}
+                  actionDisabled={repositoryActionLocked}
                   onToggle={() => onToggleRepository(repositoryId)}
                   onGenerateInsight={onGenerateInsight}
                 />

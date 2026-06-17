@@ -6,6 +6,7 @@ export default function EditPortfolioGitHubSource({
   syncing,
   reloadingSelection,
   saving,
+  repositoryLoading,
   onSync,
   onReloadSelection,
   connectionAction = "connect",
@@ -13,6 +14,7 @@ export default function EditPortfolioGitHubSource({
   connectDisabled = false,
   onConnectGitHub,
 }) {
+  const actionLocked = Boolean(syncing || reloadingSelection || saving || repositoryLoading);
   const isReconnect = connectionAction === "reconnect";
   const connectLabel = connectingGitHub
     ? isReconnect
@@ -48,7 +50,7 @@ export default function EditPortfolioGitHubSource({
           <button
             type="button"
             onClick={onSync}
-            disabled={syncing || reloadingSelection || saving}
+            disabled={actionLocked}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-3 py-2 !text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {syncing ? <Loader2 className="animate-spin" size={14} /> : <RefreshCcw size={14} />}
@@ -58,7 +60,7 @@ export default function EditPortfolioGitHubSource({
           <button
             type="button"
             onClick={onReloadSelection}
-            disabled={syncing || reloadingSelection || saving}
+            disabled={actionLocked}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-3 py-2 !text-[14px] font-bold text-[#1F6F5F] shadow-sm transition-colors hover:bg-[#6FCF97]/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {reloadingSelection ? <Loader2 className="animate-spin" size={14} /> : <ShieldCheck size={14} />}

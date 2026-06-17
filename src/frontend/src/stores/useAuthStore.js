@@ -9,6 +9,8 @@ import { useStreakStore } from "./useStreakStore";
 import { useProfileStore } from "./useProfileStore";
 import { useAuthProviderStore } from "./useAuthProviderStore";
 import { useRoadmapStore } from "./useRoadmapStore";
+import { usePortfolioEditorStore } from "./usePortfolioEditorStore";
+import { usePortfolioStore } from "./usePortfolioStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
@@ -44,6 +46,8 @@ export const useAuthStore = create((set, get) => ({
     useProfileStore.getState().resetProfile();
     useAuthProviderStore.getState().resetProviders();
     useRoadmapStore.getState().resetRoadmaps();
+    usePortfolioEditorStore.getState().resetPortfolioEditor();
+    usePortfolioStore.getState().resetPortfolioView();
   },
 
   setAuthenticatedUser: (user) => {
@@ -91,6 +95,8 @@ export const useAuthStore = create((set, get) => ({
       useProfileStore.getState().resetProfile();
       useAuthProviderStore.getState().resetProviders();
       useRoadmapStore.getState().resetRoadmaps();
+      usePortfolioEditorStore.getState().resetPortfolioEditor();
+      usePortfolioStore.getState().resetPortfolioView();
 
       throw error;
     } finally {

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 
-import { getMyPortfolioApi, getPortfolioByUsernameApi } from "../api/portfolioApi";
 import { useAuthStore } from "../stores/useAuthStore";
+import { usePortfolioStore } from "../stores/usePortfolioStore";
 import PortfolioHeader from "../components/portfolio/PortfolioHeader";
 import PortfolioStats from "../components/portfolio/PortfolioStats";
 import PortfolioAbout from "../components/portfolio/PortfolioAbout";
@@ -13,10 +13,6 @@ import PortfolioSkillGroups from "../components/portfolio/PortfolioSkillGroups";
 export default function PortfolioPage() {
   const { username: routeUsername } = useParams();
   const user = useAuthStore((state) => state.user);
-
-  const [portfolio, setPortfolio] = useState(null);
-  const [portfolioLoading, setPortfolioLoading] = useState(true);
-  const [portfolioError, setPortfolioError] = useState("");
 
   const isOwnPortfolio = !routeUsername;
 
@@ -30,35 +26,29 @@ export default function PortfolioPage() {
     );
   }, [routeUsername, user]);
 
+  const portfolio = usePortfolioStore((state) =>
+    state.getPortfolioSnapshot({ username, isOwnPortfolio }),
+  );
+  const portfolioLoading = usePortfolioStore((state) =>
+    state.getPortfolioLoading({ username, isOwnPortfolio }),
+  );
+  const portfolioLoaded = usePortfolioStore((state) =>
+    state.getPortfolioLoaded({ username, isOwnPortfolio }),
+  );
+  const portfolioError = usePortfolioStore((state) =>
+    state.getPortfolioError({ username, isOwnPortfolio }),
+  );
+  const loadPortfolio = usePortfolioStore((state) => state.loadPortfolio);
+
   useEffect(() => {
-    const fetchPortfolio = async () => {
-      if (!isOwnPortfolio && !username) {
-        setPortfolioLoading(false);
-        setPortfolioError("Username was not found.");
-        return;
-      }
+    loadPortfolio({ username, isOwnPortfolio }).catch((error) => {
+      console.error("Load portfolio failed:", error);
+    });
+  }, [isOwnPortfolio, loadPortfolio, username]);
 
-      try {
-        setPortfolioLoading(true);
-        setPortfolioError("");
+  const shouldShowInitialLoading = portfolioLoading || (!portfolioLoaded && !portfolioError);
 
-        const data = isOwnPortfolio
-          ? await getMyPortfolioApi()
-          : await getPortfolioByUsernameApi(username);
-
-        setPortfolio(data);
-      } catch (error) {
-        console.error("Load portfolio failed:", error);
-        setPortfolioError(error?.message || "Could not load this portfolio.");
-      } finally {
-        setPortfolioLoading(false);
-      }
-    };
-
-    fetchPortfolio();
-  }, [username, isOwnPortfolio]);
-
-  if (portfolioLoading) {
+  if (shouldShowInitialLoading) {
     return (
       <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
         <div className="mx-auto max-w-7xl rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
