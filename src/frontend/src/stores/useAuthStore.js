@@ -11,6 +11,7 @@ import { useAuthProviderStore } from "./useAuthProviderStore";
 import { useRoadmapStore } from "./useRoadmapStore";
 import { usePortfolioEditorStore } from "./usePortfolioEditorStore";
 import { usePortfolioStore } from "./usePortfolioStore";
+import { useSkillGapStore } from "./useSkillGapStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
@@ -48,6 +49,7 @@ export const useAuthStore = create((set, get) => ({
     useRoadmapStore.getState().resetRoadmaps();
     usePortfolioEditorStore.getState().resetPortfolioEditor();
     usePortfolioStore.getState().resetPortfolioView();
+    useSkillGapStore.getState().resetSkillGap();
   },
 
   setAuthenticatedUser: (user) => {
@@ -97,6 +99,7 @@ export const useAuthStore = create((set, get) => ({
       useRoadmapStore.getState().resetRoadmaps();
       usePortfolioEditorStore.getState().resetPortfolioEditor();
       usePortfolioStore.getState().resetPortfolioView();
+    useSkillGapStore.getState().resetSkillGap();
 
       throw error;
     } finally {
