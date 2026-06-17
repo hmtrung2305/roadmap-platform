@@ -87,6 +87,7 @@ export const PERMISSIONS = Object.freeze({
   PERMISSION_UPDATE_ANY: "permission.update.any",
   PERMISSION_DELETE_ANY: "permission.delete.any",
 
+  SKILL_VIEW_ANY: "skill.view.any",
   SKILL_CREATE_ANY: "skill.create.any",
   SKILL_UPDATE_ANY: "skill.update.any",
   SKILL_DELETE_ANY: "skill.delete.any",
@@ -109,5 +110,7 @@ export const ADMIN_SURFACE_PERMISSIONS = Object.freeze([
   PERMISSIONS.USER_VIEW_ANY,
   PERMISSIONS.ROLE_VIEW_ANY,
   PERMISSIONS.PERMISSION_VIEW_ANY,
+  PERMISSIONS.SKILL_VIEW_ANY,
   PERMISSIONS.SKILL_CREATE_ANY,
+  PERMISSIONS.SYSTEM_HEALTH_VIEW_ANY,
 ]);

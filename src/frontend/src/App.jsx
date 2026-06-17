@@ -8,7 +8,6 @@ import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import CounselorLayout from "./layouts/CounselorLayout";
-import ProtectedRoute from "./routes/ProtectedRoute";
 import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -36,6 +35,7 @@ import CounselorLearningModuleEditorPage from "./pages/counselor/learningModules
 import CounselorLearningModulePreviewPage from "./pages/counselor/learningModules/CounselorLearningModulePreviewPage";
 import CounselorSettingsPage from "./pages/counselor/CounselorSettingsPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
   ADMIN_SURFACE_PERMISSIONS,
@@ -195,14 +195,15 @@ export default function App() {
             }
           >
             <Route path="/admin" element={<AdminHomePage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 
           <Route
             path="/settings"
             element={
-              <ProtectedRoute>
+              <RequirePermission anyPermissions={LEARNER_SURFACE_PERMISSIONS}>
                 <SettingsLayout />
-              </ProtectedRoute>
+              </RequirePermission>
             }
           >
             <Route index element={<Navigate to="/settings/account" replace />} />

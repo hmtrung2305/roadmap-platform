@@ -20,11 +20,21 @@ const adminNavItems = [
     icon: LayoutDashboard,
     match: (pathname) => pathname === "/admin",
   },
+  {
+    label: "Settings",
+    path: "/admin/settings",
+    icon: Settings,
+    match: (pathname) => pathname === "/admin/settings",
+  },
 ];
 
 function getAdminPageTitle(pathname) {
   if (pathname === "/admin") {
     return "Overview";
+  }
+
+  if (pathname === "/admin/settings") {
+    return "Settings";
   }
 
   return "Admin";
@@ -104,7 +114,7 @@ export default function AdminLayout() {
 
   const goToSettings = () => {
     setIsUserMenuOpen(false);
-    navigate("/settings/account");
+    navigate("/admin/settings");
   };
 
   const handleLogout = async () => {
@@ -178,7 +188,7 @@ export default function AdminLayout() {
             type="button"
             onClick={() => setIsUserMenuOpen((current) => !current)}
             className={`flex w-full min-w-0 items-center gap-3 rounded-lg border px-2 py-1.5 text-left transition ${
-              isUserMenuOpen
+              location.pathname === "/admin/settings" || isUserMenuOpen
                 ? "border-[#6FCF97] bg-[#6FCF97]/18"
                 : "border-transparent hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
             }`}
