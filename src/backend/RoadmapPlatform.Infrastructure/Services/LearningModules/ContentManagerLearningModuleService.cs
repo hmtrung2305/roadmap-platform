@@ -12,6 +12,9 @@ namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 
 public sealed class ContentManagerLearningModuleService : IContentManagerLearningModuleService
 {
+    private const int MinimumLessonCount = 3;
+    private const int MinimumQuizQuestionCount = 10;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ApplicationDbContext _context;
@@ -383,95 +386,174 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
 
     private static PublishLearningModuleReadinessDto ValidatePublishReadiness(SkillModule module)
     {
-        var errors = new List<string>();
-
-        if (module.SkillId == Guid.Empty)
-        {
-            errors.Add("Skill is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(module.Title))
-        {
-            errors.Add("Title is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(module.Slug))
-        {
-            errors.Add("Slug is required.");
-        }
-
         var lessons = module.SkillModuleLessons
             .OrderBy(lesson => lesson.OrderIndex)
             .ToList();
 
-        if (lessons.Count == 0)
+        var overviewMissing = new List<string>();
+
+        if (module.SkillId == Guid.Empty)
         {
-            errors.Add("At least one lesson is required.");
+            overviewMissing.Add("skill");
         }
 
-        if (lessons.Any(lesson => lesson.OrderIndex <= 0))
+        if (string.IsNullOrWhiteSpace(module.Title))
         {
-            errors.Add("Lesson order values must be positive.");
+            overviewMissing.Add("title");
         }
 
-        if (lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() != lessons.Count)
+        if (string.IsNullOrWhiteSpace(module.Slug))
         {
-            errors.Add("Lesson order values must be unique.");
+            overviewMissing.Add("module URL");
         }
 
-        if (lessons.Any(lesson => string.IsNullOrWhiteSpace(lesson.MarkdownFileKey)))
-        {
-            errors.Add("Every lesson must have a Markdown file.");
-        }
+        var overviewComplete = overviewMissing.Count == 0;
 
-        if (lessons.Any(lesson => lesson.IndexingStatus != LearningModuleLessonIndexingStatusValues.Indexed))
-        {
-            errors.Add("Every lesson must finish indexing before publishing.");
-        }
+        var lessonsComplete = lessons.Count >= MinimumLessonCount
+            && lessons.All(lesson => lesson.OrderIndex > 0)
+            && lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() == lessons.Count
+            && lessons.All(lesson => !string.IsNullOrWhiteSpace(lesson.MarkdownFileKey));
 
-        if (lessons.Any(lesson => lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexed
-            && lesson.SkillModuleChunks.Count == 0))
-        {
-            errors.Add("Every indexed lesson must have generated chunks.");
-        }
+        var preparedLessonCount = lessons.Count(lesson =>
+            lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexed
+            && lesson.SkillModuleChunks.Count > 0);
+
+        var lessonIndexingComplete = lessons.Count >= MinimumLessonCount
+            && preparedLessonCount == lessons.Count;
 
         var quiz = module.SkillModuleQuiz;
+        var questions = quiz?.SkillModuleQuizQuestions.ToList()
+            ?? new List<SkillModuleQuizQuestion>();
 
-        if (quiz == null)
+        var quizComplete = quiz != null
+            && questions.Count >= MinimumQuizQuestionCount
+            && questions.All(question => question.SkillModuleQuizOptions.Count >= 2)
+            && questions
+                .Where(question => question.QuestionType == LearningModuleQuestionTypeValues.SingleChoice)
+                .All(question => question.SkillModuleQuizOptions.Count(option => option.IsCorrect) == 1);
+
+        var checks = new List<PublishLearningModuleReadinessCheckDto>
         {
-            errors.Add("Quiz is required.");
-        }
-        else
-        {
-            var questions = quiz.SkillModuleQuizQuestions.ToList();
-
-            if (questions.Count == 0)
+            new()
             {
-                errors.Add("Quiz must have at least one question.");
-            }
-
-            foreach (var question in questions)
+                Key = "overview",
+                Label = "Module overview",
+                Description = overviewComplete
+                    ? "Module details are ready."
+                    : $"Add {FormatList(overviewMissing)}.",
+                IsComplete = overviewComplete
+            },
+            new()
             {
-                if (question.SkillModuleQuizOptions.Count < 2)
-                {
-                    errors.Add("Each quiz question must have at least two options.");
-                    break;
-                }
-
-                if (question.QuestionType == LearningModuleQuestionTypeValues.SingleChoice
-                    && question.SkillModuleQuizOptions.Count(option => option.IsCorrect) != 1)
-                {
-                    errors.Add("Each single-choice question must have exactly one correct option.");
-                    break;
-                }
+                Key = "lessons",
+                Label = "Lessons",
+                Description = GetLessonReadinessDescription(lessons, lessonsComplete),
+                IsComplete = lessonsComplete
+            },
+            new()
+            {
+                Key = "lesson_indexing",
+                Label = "Learning assistant",
+                Description = lessons.Count < MinimumLessonCount
+                    ? $"Add at least {MinimumLessonCount} lessons."
+                    : lessonIndexingComplete
+                        ? "All lessons are ready for the learning assistant."
+                        : $"{preparedLessonCount}/{lessons.Count} lessons ready for the learning assistant.",
+                IsComplete = lessonIndexingComplete
+            },
+            new()
+            {
+                Key = "quiz",
+                Label = "Quiz",
+                Description = GetQuizReadinessDescription(quiz, questions, quizComplete),
+                IsComplete = quizComplete
             }
-        }
+        };
+
+        var errors = checks
+            .Where(check => !check.IsComplete)
+            .Select(check => check.Description)
+            .ToList();
 
         return new PublishLearningModuleReadinessDto
         {
             CanPublish = errors.Count == 0,
+            Checks = checks,
             Errors = errors
         };
+    }
+
+    private static string GetLessonReadinessDescription(
+        IReadOnlyCollection<SkillModuleLesson> lessons,
+        bool isComplete)
+    {
+        if (lessons.Count < MinimumLessonCount)
+        {
+            return $"Add at least {MinimumLessonCount} lessons ({lessons.Count}/{MinimumLessonCount}).";
+        }
+
+        if (lessons.Any(lesson => lesson.OrderIndex <= 0)
+            || lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() != lessons.Count)
+        {
+            return "Fix the lesson order.";
+        }
+
+        if (lessons.Any(lesson => string.IsNullOrWhiteSpace(lesson.MarkdownFileKey)))
+        {
+            return "Add content to every lesson.";
+        }
+
+        return isComplete
+            ? $"{lessons.Count} {Pluralize(lessons.Count, "lesson", "lessons")} ready."
+            : "Finish preparing the lessons.";
+    }
+
+    private static string GetQuizReadinessDescription(
+        SkillModuleQuiz? quiz,
+        IReadOnlyCollection<SkillModuleQuizQuestion> questions,
+        bool isComplete)
+    {
+        if (quiz == null)
+        {
+            return "Create a quiz.";
+        }
+
+        if (questions.Count < MinimumQuizQuestionCount)
+        {
+            return $"Add at least {MinimumQuizQuestionCount} quiz questions ({questions.Count}/{MinimumQuizQuestionCount}).";
+        }
+
+        if (questions.Any(question => question.SkillModuleQuizOptions.Count < 2))
+        {
+            return "Add at least two options to every question.";
+        }
+
+        if (questions
+            .Where(question => question.QuestionType == LearningModuleQuestionTypeValues.SingleChoice)
+            .Any(question => question.SkillModuleQuizOptions.Count(option => option.IsCorrect) != 1))
+        {
+            return "Set one correct answer for every single-choice question.";
+        }
+
+        return isComplete
+            ? $"{questions.Count} quiz {Pluralize(questions.Count, "question", "questions")} ready."
+            : "Finish the quiz.";
+    }
+
+    private static string FormatList(IReadOnlyList<string> values)
+    {
+        return values.Count switch
+        {
+            0 => string.Empty,
+            1 => values[0],
+            2 => $"{values[0]} and {values[1]}",
+            _ => $"{string.Join(", ", values.Take(values.Count - 1))}, and {values[^1]}"
+        };
+    }
+
+    private static string Pluralize(int count, string singular, string plural)
+    {
+        return count == 1 ? singular : plural;
     }
 
     private async Task TryDeleteStoredFileAsync(string? fileKey)

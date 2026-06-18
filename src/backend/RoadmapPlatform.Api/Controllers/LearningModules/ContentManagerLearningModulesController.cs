@@ -112,6 +112,24 @@ public sealed class ContentManagerLearningModulesController(
         return NoContent();
     }
 
+    [HttpGet("{moduleId:guid}/publish-readiness")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(PublishLearningModuleReadinessDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublishReadiness(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var contentManagerUserId = User.GetUserId();
+
+        var result = await moduleService.GetPublishReadinessAsync(
+            contentManagerUserId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPost("{moduleId:guid}/publish")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_PUBLISH_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]

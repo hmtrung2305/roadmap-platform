@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  AlertCircle,
   ArrowLeft,
   Eye,
   FileUp,
@@ -164,14 +163,6 @@ function getLessonIndexingMeta(lesson) {
   return lessonIndexingMeta[getLessonIndexingStatus(lesson)] || lessonIndexingMeta.pending;
 }
 
-function isLessonIndexed(lesson) {
-  return getLessonIndexingStatus(lesson) === "indexed";
-}
-
-function getIndexedLessonCount(lessons = []) {
-  return lessons.filter(isLessonIndexed).length;
-}
-
 function shouldPollLessonIndexing(lessons = []) {
   return lessons.some((lesson) =>
     ["pending", "indexing", "needs_reindex"].includes(getLessonIndexingStatus(lesson)),
@@ -299,41 +290,39 @@ function showBulkUploadResultToast(result) {
   toast.success(`Uploaded ${uploadedLessons.length} ${pluralizeLesson(uploadedLessons.length)}.`);
 }
 
-function areLessonsIndexed(lessons = []) {
-  return lessons.length > 0 && lessons.every(isLessonIndexed);
+function getReadinessCheck(detail, key) {
+  return detail?.publishReadiness?.checks?.find((check) => check.key === key) || null;
+}
+
+function isReadinessCheckComplete(detail, key) {
+  return Boolean(getReadinessCheck(detail, key)?.isComplete);
 }
 
 function isEditorTabComplete(tab, detail) {
-  const module = detail?.module;
-  const lessons = detail?.lessons || [];
-  const lessonCount = lessons.length;
-  const questionCount = detail?.quiz?.questions?.length || 0;
-  const lessonsIndexed = areLessonsIndexed(lessons);
-
   if (tab === "overview") {
-    return Boolean(module?.title && module?.skillId && module?.description);
+    return isReadinessCheckComplete(detail, "overview");
   }
 
   if (tab === "lessons") {
-    return lessonCount >= 3 && lessonsIndexed;
+    return (
+      isReadinessCheckComplete(detail, "lessons")
+      && isReadinessCheckComplete(detail, "lesson_indexing")
+    );
   }
 
   if (tab === "quiz") {
-    return Boolean(detail?.quiz) && questionCount >= 10;
+    return isReadinessCheckComplete(detail, "quiz");
   }
 
   if (tab === "preview") {
-    return Boolean(module?.title && lessonCount > 0);
+    return (
+      isReadinessCheckComplete(detail, "overview")
+      && isReadinessCheckComplete(detail, "lessons")
+    );
   }
 
   if (tab === "publish") {
-    return (
-      Boolean(module?.title && module?.skillId && module?.description)
-      && lessonCount >= 3
-      && lessonsIndexed
-      && Boolean(detail?.quiz)
-      && questionCount >= 10
-    );
+    return Boolean(detail?.publishReadiness?.canPublish);
   }
 
   return false;
@@ -462,6 +451,27 @@ export default function ContentManagerLearningModuleEditorPage() {
   const module = detail?.module;
   const activeModuleId = module?.skillModuleId || resolvedModuleId;
 
+  const refreshPublishReadiness = async (moduleId = activeModuleId) => {
+    if (!moduleId) return null;
+
+    try {
+      const readiness = await contentManagerLearningModuleApi.getPublishReadiness(moduleId);
+
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              publishReadiness: readiness,
+            }
+          : current,
+      );
+
+      return readiness;
+    } catch {
+      return null;
+    }
+  };
+
   const handleOverviewSaved = (result) => {
     const updatedModule = getModuleFromMutationResult(result);
 
@@ -483,6 +493,8 @@ export default function ContentManagerLearningModuleEditorPage() {
           }
         : current,
     );
+
+    void refreshPublishReadiness(updatedModule.skillModuleId);
 
     const nextRouteSegment = getLearningModuleRouteSegment(updatedModule);
 
@@ -2624,65 +2636,8 @@ function PreviewShell({ moduleId, detail }) {
 
 function PublishPanel({ detail, isPublishing, onPublish }) {
   const module = detail.module;
-  const lessons = detail.lessons || [];
-  const lessonCount = lessons.length;
-  const indexedLessonCount = getIndexedLessonCount(lessons);
-  const lessonsIndexed = areLessonsIndexed(lessons);
-  const questionCount = detail.quiz?.questions?.length || 0;
-  const requiredLessons = 3;
-  const requiredQuestions = 10;
-
-  const checks = useMemo(
-    () => [
-      {
-        label: "Module overview",
-        description: "Title, skill, and description are ready.",
-        complete: Boolean(module.title && module.skillId && module.description),
-      },
-      {
-        label: "Lessons",
-        description:
-          lessonCount >= requiredLessons
-            ? `${lessonCount} lessons added.`
-            : `${lessonCount}/${requiredLessons} lessons added.`,
-        complete: lessonCount >= requiredLessons,
-      },
-      {
-        label: "Lesson indexing",
-        description:
-          lessonCount === 0
-            ? "Upload lessons before indexing."
-            : lessonsIndexed
-              ? "All lessons are indexed for module chat."
-              : `${indexedLessonCount}/${lessonCount} lessons indexed.`,
-        complete: lessonCount > 0 && lessonsIndexed,
-      },
-      {
-        label: "Quiz",
-        description: !detail.quiz
-          ? "Create a quiz for this module."
-          : questionCount >= requiredQuestions
-            ? `${questionCount} questions ready.`
-            : `${questionCount}/${requiredQuestions} questions added.`,
-        complete: Boolean(detail.quiz) && questionCount >= requiredQuestions,
-      },
-    ],
-    [
-      detail.quiz,
-      indexedLessonCount,
-      lessonCount,
-      lessonsIndexed,
-      module.description,
-      module.skillId,
-      module.title,
-      questionCount,
-    ],
-  );
-
-  const frontendReady = checks.every((check) => check.complete);
-  const backendReady = detail.publishReadiness?.canPublish ?? true;
-  const canPublish = frontendReady && backendReady;
-  const backendErrors = detail.publishReadiness?.errors || [];
+  const checks = detail.publishReadiness?.checks || [];
+  const canPublish = Boolean(detail.publishReadiness?.canPublish);
 
   if (module.status !== "draft") {
     return (
@@ -2715,12 +2670,12 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
           <div
             key={check.label}
             className={`flex items-start gap-3 rounded-xl border p-4 ${
-              check.complete
+              check.isComplete
                 ? "border-[#B9D8CC] bg-[#6FCF97]/10"
                 : "border-rose-200 bg-rose-50"
             }`}
           >
-            {check.complete ? (
+            {check.isComplete ? (
               <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-[#1F6F5F]" />
             ) : (
               <Circle size={20} className="mt-0.5 shrink-0 text-rose-600" />
@@ -2733,18 +2688,6 @@ function PublishPanel({ detail, isPublishing, onPublish }) {
         ))}
       </div>
 
-      {backendErrors.length > 0 && (
-        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-extrabold text-rose-700">
-            <AlertCircle size={16} /> Needs attention
-          </div>
-          <ul className="mt-2 space-y-1 text-sm font-semibold text-rose-700">
-            {backendErrors.map((error) => (
-              <li key={error}>• {error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="mt-5 flex justify-end">
         <ModuleButton onClick={onPublish} disabled={!canPublish || isPublishing}>

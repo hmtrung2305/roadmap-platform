@@ -147,6 +147,13 @@ export const contentManagerLearningModuleApi = {
     return response.data;
   },
 
+  getPublishReadiness: async (moduleId) => {
+    const response = await axiosClient.get(
+      `/content/learning-modules/${moduleId}/publish-readiness`,
+    );
+    return response.data;
+  },
+
   updateModule: async (moduleId, payload) => {
     const response = await axiosClient.patch(`/content/learning-modules/${moduleId}`, payload);
     return response.data;
