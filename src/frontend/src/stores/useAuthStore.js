@@ -17,7 +17,6 @@ import { usePortfolioStore } from "./usePortfolioStore";
 import { useSkillGapStore } from "./useSkillGapStore";
 import { useLearningModuleStore } from "./useLearningModuleStore";
 import { useAiCreditStore } from "./useAiCreditStore";
-import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
 const SESSION_CACHE_MS = 5 * 60 * 1000;
