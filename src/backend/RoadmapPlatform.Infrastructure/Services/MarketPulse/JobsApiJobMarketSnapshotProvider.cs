@@ -12,8 +12,9 @@ public sealed class JobsApiJobMarketSnapshotProvider(
     public async Task<JobMarketSnapshot> GetCurrentSnapshotAsync(CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        var activeTask = jobsApiClient.FetchAsync(settings.ActiveJobsApiUrl, cancellationToken);
-        var todayTask = jobsApiClient.FetchAsync(settings.TodayJobsApiUrl, cancellationToken);
+        var fetchOptions = BuildFetchOptions(settings);
+        var activeTask = jobsApiClient.FetchAsync(settings.ActiveJobsApiUrl, fetchOptions, cancellationToken);
+        var todayTask = jobsApiClient.FetchAsync(settings.TodayJobsApiUrl, fetchOptions, cancellationToken);
 
         await Task.WhenAll(activeTask, todayTask);
 
@@ -28,4 +29,10 @@ public sealed class JobsApiJobMarketSnapshotProvider(
             TodayJobs = today.Jobs
         };
     }
+
+    private static JobsApiFetchOptions BuildFetchOptions(MarketPulseSettings settings) =>
+        new(
+            Math.Max(1, settings.MaxPostingsPerSource),
+            Math.Max(1, settings.JobsApiPageSize),
+            Math.Max(1, settings.JobsApiMaxPages));
 }

@@ -40,15 +40,18 @@ public sealed class MarketPulseService(
         {
             var snapshot = await jobMarketSnapshotProvider.GetCurrentSnapshotAsync(cancellationToken);
 
-            return overviewBuilder.Build(
-                snapshot,
-                new JobMarketOverviewOptions
-                {
-                    Days = normalizedDays,
-                    SelectedSkillSlugs = skillSlugs,
-                    TrackedKeywordSpecs = options.Value.TrackedKeywords,
-                    ReferenceDate = DateOnly.FromDateTime(DateTime.UtcNow)
-                });
+            if (HasAnyLiveJobs(snapshot))
+            {
+                return overviewBuilder.Build(
+                    snapshot,
+                    new JobMarketOverviewOptions
+                    {
+                        Days = normalizedDays,
+                        SelectedSkillSlugs = skillSlugs,
+                        TrackedKeywordSpecs = options.Value.TrackedKeywords,
+                        ReferenceDate = DateOnly.FromDateTime(DateTime.UtcNow)
+                    });
+            }
         }
 
         var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-(normalizedDays - 1)));
@@ -152,6 +155,14 @@ public sealed class MarketPulseService(
     {
         return !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl) &&
             !string.IsNullOrWhiteSpace(settings.TodayJobsApiUrl);
+    }
+
+    private static bool HasAnyLiveJobs(JobMarketSnapshot snapshot)
+    {
+        return snapshot.ActiveTotal > 0 ||
+            snapshot.TodayTotal > 0 ||
+            snapshot.ActiveJobs.Count > 0 ||
+            snapshot.TodayJobs.Count > 0;
     }
     
     public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
@@ -560,6 +571,7 @@ public sealed class MarketPulseService(
             SerializeStringList(posting.Requirements),
             SerializeStringList(posting.Specialties),
             SerializeStringList(posting.Benefits),
+            SerializeStringList(posting.Skills),
             expiresAt?.ToString("O") ?? string.Empty);
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));

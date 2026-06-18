@@ -64,8 +64,14 @@ public sealed class JobPortalScraper(
         MarketPulseSettings settings,
         CancellationToken cancellationToken)
     {
-        var result = await jobsApiClient.FetchAsync(source.SearchUrlTemplate, cancellationToken);
         var maxPostings = Math.Max(1, settings.MaxPostingsPerSource);
+        var result = await jobsApiClient.FetchAsync(
+            source.SearchUrlTemplate,
+            new JobsApiFetchOptions(
+                maxPostings,
+                Math.Max(1, settings.JobsApiPageSize),
+                Math.Max(1, settings.JobsApiMaxPages)),
+            cancellationToken);
 
         return result.Jobs
             .Where(x => x.IsActive && !string.IsNullOrWhiteSpace(x.Url))
@@ -89,7 +95,8 @@ public sealed class JobPortalScraper(
                 x.UpdatedAt,
                 x.Requirements,
                 x.Specialties,
-                x.Benefits))
+                x.Benefits,
+                x.Skills))
             .ToList();
     }
 
@@ -287,6 +294,7 @@ public sealed class JobPortalScraper(
             job.Salary,
             job.Experience,
             job.Location,
+            string.Join(' ', job.Skills),
             string.Join(' ', job.Requirements),
             string.Join(' ', job.Specialties),
             string.Join(' ', job.Benefits)
@@ -313,4 +321,5 @@ public sealed record ScrapedJobPosting(
     DateTime? SourceUpdatedAt = null,
     IReadOnlyList<string>? Requirements = null,
     IReadOnlyList<string>? Specialties = null,
-    IReadOnlyList<string>? Benefits = null);
+    IReadOnlyList<string>? Benefits = null,
+    IReadOnlyList<string>? Skills = null);

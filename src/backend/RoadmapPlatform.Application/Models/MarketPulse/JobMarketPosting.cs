@@ -31,4 +31,6 @@ public sealed class JobMarketPosting
     public IReadOnlyList<string> Specialties { get; init; } = [];
 
     public IReadOnlyList<string> Benefits { get; init; } = [];
+
+    public IReadOnlyList<string> Skills { get; init; } = [];
 }

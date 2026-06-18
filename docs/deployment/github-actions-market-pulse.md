@@ -82,6 +82,8 @@ MARKET_PULSE_ACTIVE_JOBS_API_URL
 MARKET_PULSE_TODAY_JOBS_API_URL
 MARKET_PULSE_JOBS_API_BASE_URL
 MARKET_PULSE_MAX_POSTINGS
+MARKET_PULSE_JOBS_API_PAGE_SIZE
+MARKET_PULSE_JOBS_API_MAX_PAGES
 MARKET_PULSE_REQUEST_TIMEOUT_SECONDS
 ```
 
@@ -126,6 +128,7 @@ GET /api/market-pulse/overview
 - Public repositories can use standard GitHub-hosted runners without extra setup.
 - If the ngrok URL changes, update the repository variables instead of editing source code.
 - `MaxPostingsPerSource` caps how many Jobs API postings are persisted by the scheduled refresh.
+- Prefer `MARKET_PULSE_ACTIVE_JOBS_API_URL=https://<crawler-host>/api/jobs?active=true&sort=post_date_desc` so the adapter can use pagination.
 
 ## Quick Debug
 

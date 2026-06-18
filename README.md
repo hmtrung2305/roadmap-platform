@@ -15,6 +15,7 @@ Use it to find the right guide, API endpoint docs, database scripts, and seed fi
 | `docs/naming-conventions.md` | Defines naming rules used across the project. |
 | `docs/captcha.md` | Explains CAPTCHA setup and integration behavior. |
 | `docs/market-pulse-topcv.md` | Explains the Market Pulse Jobs API pipeline, configuration, and smoke tests. |
+| `docs/market-pulse-phase12-ingestion.md` | Explains the phase 12 paginated Jobs API ingestion path from crawler API into Market Pulse. |
 | `docs/supabase-storage.md` | Explains Supabase storage setup for uploaded resources. |
 | `docs/ai-credit-limits.md` | Explains AI credit limit rules and implementation behavior. |
 
