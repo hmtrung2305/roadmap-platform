@@ -61,6 +61,13 @@ export const learningModuleApi = {
     return response.data;
   },
 
+  getQuizAttemptSession: async (moduleId, attemptId) => {
+    const response = await axiosClient.get(
+      `/learning-modules/${moduleId}/quiz/attempts/${attemptId}/session`,
+    );
+    return response.data;
+  },
+
   submitQuizAttempt: async (moduleId, attemptId, answers) => {
     const response = await axiosClient.post(
       `/learning-modules/${moduleId}/quiz/attempts/${attemptId}/submit`,

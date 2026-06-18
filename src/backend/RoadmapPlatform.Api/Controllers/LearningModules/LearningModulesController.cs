@@ -155,6 +155,27 @@ public sealed class LearningModulesController(
         return Ok(result);
     }
 
+    [HttpGet("{moduleId:guid}/quiz/attempts/{attemptId:guid}/session")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_VIEW_SELF)]
+    [ProducesResponseType(typeof(StartQuizAttemptResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetQuizAttemptSession(
+        Guid moduleId,
+        Guid attemptId,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+
+        var result = await moduleService.GetQuizAttemptSessionAsync(
+            userId,
+            moduleId,
+            attemptId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPost("{moduleId:guid}/quiz/attempts/{attemptId:guid}/submit")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_SUBMIT_SELF)]
     [ProducesResponseType(typeof(QuizAttemptReviewDto), StatusCodes.Status200OK)]
@@ -182,6 +203,7 @@ public sealed class LearningModulesController(
     [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_VIEW_SELF)]
     [ProducesResponseType(typeof(QuizAttemptReviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> GetQuizAttemptReview(
         Guid moduleId,
         Guid attemptId,
