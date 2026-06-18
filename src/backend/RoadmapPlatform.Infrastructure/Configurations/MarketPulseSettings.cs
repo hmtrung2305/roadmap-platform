@@ -14,6 +14,10 @@ public sealed class MarketPulseSettings
 
     public int MaxPostingsPerSource { get; set; } = 160;
 
+    public int JobsApiPageSize { get; set; } = 100;
+
+    public int JobsApiMaxPages { get; set; } = 10;
+
     public int ActivePostingLookbackDays { get; set; } = 14;
 
     public int MissingScansBeforeStale { get; set; } = 3;
@@ -24,9 +28,9 @@ public sealed class MarketPulseSettings
 
     public int RequestTimeoutSeconds { get; set; } = 30;
 
-    public string ActiveJobsApiUrl { get; set; } = "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active";
+    public string ActiveJobsApiUrl { get; set; } = "http://localhost:8000/api/jobs?active=true&sort=post_date_desc";
 
-    public string TodayJobsApiUrl { get; set; } = "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today";
+    public string TodayJobsApiUrl { get; set; } = "http://localhost:8000/api/jobs/today";
     
     public string[] TrackedKeywords { get; set; } = [];
 

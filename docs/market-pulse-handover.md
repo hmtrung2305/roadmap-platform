@@ -4,8 +4,8 @@
 
 Job Market thay phan Market Pulse cu bang nguon Jobs API hien tai:
 
-- Active jobs: `https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active`
-- Jobs posted today: `https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today`
+- Active jobs: `http://localhost:8000/api/jobs?active=true&sort=post_date_desc`
+- Jobs posted today: `http://localhost:8000/api/jobs/today`
 
 Chuc nang dap ung:
 
@@ -22,7 +22,7 @@ Frontend /market-pulse
       -> IMarketPulseService
         -> IJobMarketSnapshotProvider
           -> JobsApiClient
-            -> /api/jobs/active
+            -> /api/jobs?active=true&sort=post_date_desc
             -> /api/jobs/today
         -> JobMarketOverviewBuilder
           -> JobMarketKeywordAnalyzer
@@ -56,7 +56,7 @@ Phan con giu co chu y:
 
 - `MarketPulseService.RefreshAsync` va cac entity DB cu van duoc giu de job theo lich co the persist snapshot vao database.
 - HTML scraper fallback van duoc giu nhu mot source adapter tong quat, khong phai backend Python noi bo.
-- Khi `ActiveJobsApiUrl` va `TodayJobsApiUrl` duoc cau hinh, overview se doc live Jobs API. Neu hai URL nay bi bo trong, service fallback ve DB snapshots cu.
+- Khi `ActiveJobsApiUrl` va `TodayJobsApiUrl` duoc cau hinh, overview se doc live Jobs API. Neu live API tra rong do loi tam thoi, service fallback ve DB snapshots cu.
 - Khong giu project test rieng trong `src/backend` vi docs cua team dang chuan hoa backend solution quanh `Api`, `Application`, `Infrastructure` va job runner san co.
 
 ## Du lieu dau vao
@@ -114,7 +114,7 @@ Job Market tiep tuc dung cac table san co de khong pha database cua team:
 Migration moi:
 
 ```text
-docs/database/migrations/009-job-market-jobs-api-fields.sql
+database/migrations/010-job-market-jobs-api-fields.sql
 ```
 
 Migration nay them cac cot typed vao `job_posting`:
@@ -199,8 +199,10 @@ Thong so quan trong:
 | `MarketPulse:Enabled` | Bat/tat hosted scheduler trong Web API. Nen `false` tren web runtime neu dung GitHub Actions/cron rieng. |
 | `MarketPulse:RunOnStartup` | Cho phep refresh ngay khi app start. Nen `false` de tranh cham startup. |
 | `MarketPulse:DailyRunTime` | Gio chay scheduler theo config hien tai cua app. |
-| `MarketPulse:ActiveJobsApiUrl` | Endpoint active jobs dung cho live overview. |
+| `MarketPulse:ActiveJobsApiUrl` | Endpoint active jobs dung cho live overview. Nen dung `/api/jobs?active=true&sort=post_date_desc` de adapter phan trang. |
 | `MarketPulse:TodayJobsApiUrl` | Endpoint jobs posted today dung cho live overview. |
+| `MarketPulse:JobsApiPageSize` | So job moi page khi goi Jobs API co pagination. |
+| `MarketPulse:JobsApiMaxPages` | Gioi han so page toi da moi lan goi live API. |
 | `MarketPulse:TrackedKeywords` | Danh sach keyword specs. Dung `|` de khai bao alias, vi du `React|React.js|ReactJS`. |
 | `MarketPulse:Sources[].Kind` | `JobsApi` cho source Jobs API, `Html` cho fallback generic HTML scraper. |
 | `MarketPulse:Sources[].SearchUrlTemplate` | URL de scheduled refresh doc data source. |

@@ -55,7 +55,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
         {
             LastUpdatedAt = GetLatestUpdatedAt(activeJobs.Concat(todayJobs)),
             TotalPostings = Math.Max(snapshot.ActiveTotal, activeJobs.Count),
-            ActivePostings = activeJobs.Count,
+            ActivePostings = Math.Max(snapshot.ActiveTotal, activeJobs.Count),
             TodayPostings = Math.Max(snapshot.TodayTotal, todayJobs.Count),
             StalePostings = 0,
             ExpiredPostings = snapshot.ActiveJobs.Count(x => !x.IsActive),
@@ -252,6 +252,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             job.Salary,
             job.Experience,
             job.Location,
+            string.Join(' ', job.Skills),
             string.Join(' ', job.Requirements),
             string.Join(' ', job.Specialties),
             string.Join(' ', job.Benefits)

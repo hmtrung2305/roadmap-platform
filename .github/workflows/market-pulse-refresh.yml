@@ -28,14 +28,16 @@ jobs:
       ConnectionStrings__DefaultConnection: ${{ secrets.MARKET_PULSE_DB_CONNECTION_STRING }}
       MarketPulse__Enabled: "true"
       MarketPulse__RunOnStartup: "false"
-      MarketPulse__ActiveJobsApiUrl: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active' }}
+      MarketPulse__ActiveJobsApiUrl: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs?active=true&sort=post_date_desc' }}
       MarketPulse__TodayJobsApiUrl: ${{ vars.MARKET_PULSE_TODAY_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today' }}
       MarketPulse__Sources__0__Name: "Jobs API"
       MarketPulse__Sources__0__Kind: "JobsApi"
       MarketPulse__Sources__0__BaseUrl: ${{ vars.MARKET_PULSE_JOBS_API_BASE_URL || 'https://nickname-sadness-capitol.ngrok-free.dev' }}
-      MarketPulse__Sources__0__SearchUrlTemplate: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active' }}
+      MarketPulse__Sources__0__SearchUrlTemplate: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL || 'https://nickname-sadness-capitol.ngrok-free.dev/api/jobs?active=true&sort=post_date_desc' }}
       MarketPulse__Sources__0__Enabled: "true"
-      MarketPulse__MaxPostingsPerSource: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_MAX_POSTINGS || '160' }}
+      MarketPulse__MaxPostingsPerSource: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_MAX_POSTINGS || '500' }}
+      MarketPulse__JobsApiPageSize: ${{ vars.MARKET_PULSE_JOBS_API_PAGE_SIZE || '100' }}
+      MarketPulse__JobsApiMaxPages: ${{ vars.MARKET_PULSE_JOBS_API_MAX_PAGES || '10' }}
       MarketPulse__RequestTimeoutSeconds: ${{ vars.MARKET_PULSE_REQUEST_TIMEOUT_SECONDS || '30' }}
 
     steps:

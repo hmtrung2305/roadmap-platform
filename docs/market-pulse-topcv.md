@@ -4,8 +4,8 @@ Market Pulse reads IT hiring signals from the Jobs API and presents them as Job 
 
 ## Sources
 
-- Active jobs: `https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active`
-- Jobs posted today: `https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today`
+- Active jobs: `http://localhost:8000/api/jobs?active=true&sort=post_date_desc`
+- Jobs posted today: `http://localhost:8000/api/jobs/today`
 
 ## Runtime Flow
 
@@ -33,7 +33,7 @@ The persistent Job Market tables stay compatible with the existing database:
 - `job_posting_daily_snapshot`
 - `skill_trend_snapshot`
 
-`docs/database/migrations/009-job-market-jobs-api-fields.sql` adds typed Jobs API fields to `job_posting` so scaffolded entities and SQL queries do not need to parse `description`:
+`database/migrations/010-job-market-jobs-api-fields.sql` adds typed Jobs API fields to `job_posting` so scaffolded entities and SQL queries do not need to parse `description`:
 
 - `source_job_id`
 - `category`
@@ -53,8 +53,10 @@ The persistent Job Market tables stay compatible with the existing database:
 {
   "MarketPulse": {
     "Enabled": false,
-    "ActiveJobsApiUrl": "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active",
-    "TodayJobsApiUrl": "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today",
+    "ActiveJobsApiUrl": "http://localhost:8000/api/jobs?active=true&sort=post_date_desc",
+    "TodayJobsApiUrl": "http://localhost:8000/api/jobs/today",
+    "JobsApiPageSize": 100,
+    "JobsApiMaxPages": 10,
     "RequestTimeoutSeconds": 30,
     "MaxPostingsPerSource": 160,
     "TrackedKeywords": [
@@ -66,8 +68,8 @@ The persistent Job Market tables stay compatible with the existing database:
       {
         "Name": "TopCV Jobs API",
         "Kind": "JobsApi",
-        "BaseUrl": "https://nickname-sadness-capitol.ngrok-free.dev",
-        "SearchUrlTemplate": "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active",
+        "BaseUrl": "http://localhost:8000",
+        "SearchUrlTemplate": "http://localhost:8000/api/jobs?active=true&sort=post_date_desc",
         "Enabled": true,
         "DetailUrlContains": []
       }
