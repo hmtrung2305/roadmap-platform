@@ -4,9 +4,9 @@ namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 
 public interface IContentManagerLearningModuleService
 {
-    Task<IReadOnlyList<ContentManagerLearningModuleSummaryDto>> GetModulesAsync(
+    Task<ContentManagerLearningModuleListResultDto> GetModulesAsync(
         Guid contentManagerUserId,
-        string? status,
+        ContentManagerLearningModuleListQueryDto query,
         CancellationToken cancellationToken);
 
     Task<ContentManagerLearningModuleDetailDto> GetModuleDetailAsync(

@@ -2,7 +2,6 @@ import axiosClient from "./axiosClient";
 
 const encode = (value) => encodeURIComponent(value);
 
-const contentManagerModuleStatuses = ["draft", "published", "archived"];
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function getLearningModuleNavigationState(module) {
@@ -97,12 +96,54 @@ export const contentManagerLearningModuleApi = {
     return [];
   },
 
-  getModules: async (status) => {
+  getModules: async ({
+    status,
+    search,
+    difficulty,
+    sort = "updated_desc",
+    page = 1,
+    pageSize = 20,
+    signal,
+  } = {}) => {
     const response = await axiosClient.get("/content/learning-modules", {
-      params: status && status !== "all" ? { status } : undefined,
+      params: {
+        status: status && status !== "all" ? status : undefined,
+        search: search?.trim() || undefined,
+        difficulty: difficulty && difficulty !== "all" ? difficulty : undefined,
+        sort,
+        page,
+        pageSize,
+      },
+      signal,
     });
 
-    return Array.isArray(response.data) ? response.data : [];
+    if (Array.isArray(response.data)) {
+      return {
+        items: response.data,
+        totalCount: response.data.length,
+        page: 1,
+        pageSize: response.data.length,
+        totalPages: response.data.length > 0 ? 1 : 0,
+        statusCounts: {
+          draft: response.data.filter((module) => module.status === "draft").length,
+          published: response.data.filter((module) => module.status === "published").length,
+          archived: response.data.filter((module) => module.status === "archived").length,
+        },
+      };
+    }
+
+    return {
+      items: Array.isArray(response.data?.items) ? response.data.items : [],
+      totalCount: response.data?.totalCount ?? 0,
+      page: response.data?.page ?? 1,
+      pageSize: response.data?.pageSize ?? pageSize,
+      totalPages: response.data?.totalPages ?? 0,
+      statusCounts: {
+        draft: response.data?.statusCounts?.draft ?? 0,
+        published: response.data?.statusCounts?.published ?? 0,
+        archived: response.data?.statusCounts?.archived ?? 0,
+      },
+    };
   },
 
   resolveModuleIdFromRoute: async (moduleSlugOrId, knownModuleId = null) => {
@@ -122,13 +163,14 @@ export const contentManagerLearningModuleApi = {
       throw new Error("Learning module route is missing.");
     }
 
-    const moduleLists = await Promise.all(
-      contentManagerModuleStatuses.map((status) => contentManagerLearningModuleApi.getModules(status)),
-    );
+    const result = await contentManagerLearningModuleApi.getModules({
+      search: normalizedSlug,
+      pageSize: 100,
+    });
 
-    const module = moduleLists
-      .flat()
-      .find((item) => normalizeRouteSegment(item.slug || item.Slug) === normalizedSlug);
+    const module = result.items.find(
+      (item) => normalizeRouteSegment(item.slug || item.Slug) === normalizedSlug,
+    );
 
     if (!module?.skillModuleId && !module?.SkillModuleId) {
       throw new Error("Learning module was not found.");

@@ -16,16 +16,16 @@ public sealed class ContentManagerLearningModulesController(
 {
     [HttpGet]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
-    [ProducesResponseType(typeof(IReadOnlyList<ContentManagerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ContentManagerLearningModuleListResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModules(
-        [FromQuery] string? status,
+        [FromQuery] ContentManagerLearningModuleListQueryDto query,
         CancellationToken cancellationToken)
     {
         var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModulesAsync(
             contentManagerUserId,
-            status,
+            query,
             cancellationToken);
 
         return Ok(result);

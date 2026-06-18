@@ -28,31 +28,135 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         _fileStorage = fileStorage;
     }
 
-    public async Task<IReadOnlyList<ContentManagerLearningModuleSummaryDto>> GetModulesAsync(
+    public async Task<ContentManagerLearningModuleListResultDto> GetModulesAsync(
         Guid contentManagerUserId,
-        string? status,
+        ContentManagerLearningModuleListQueryDto query,
         CancellationToken cancellationToken)
     {
-        var query = _context.SkillModules
-            .AsNoTracking()
-            .Include(module => module.Skill)
-            .Include(module => module.SkillModuleLessons)
-            .Include(module => module.SkillModuleQuiz)
-                .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
-            .Where(module => module.CreatedByUserId == contentManagerUserId);
+        var status = NormalizeOptionalText(query.Status)?.ToLowerInvariant();
+        var sort = NormalizeOptionalText(query.Sort)?.ToLowerInvariant() ?? "updated_desc";
+        var safePage = Math.Max(query.Page, 1);
+        var safePageSize = Math.Clamp(query.PageSize, 1, 100);
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (status != null
+            && status != LearningModuleStatusValues.Draft
+            && status != LearningModuleStatusValues.Published
+            && status != LearningModuleStatusValues.Archived)
         {
-            query = query.Where(module => module.Status == status);
+            throw new ArgumentException("Unsupported learning module status.", nameof(query.Status));
         }
 
-        var modules = await query.ToListAsync(cancellationToken);
+        if (sort is not ("updated_desc" or "created_desc" or "title_asc" or "title_desc"))
+        {
+            throw new ArgumentException("Unsupported learning module sort value.", nameof(query.Sort));
+        }
 
-        return modules
-            .OrderBy(module => GetStatusSortOrder(module.Status))
-            .ThenByDescending(module => GetStatusTime(module))
-            .Select(MapSummary)
-            .ToList();
+        var filteredQuery = _context.SkillModules
+            .AsNoTracking()
+            .Where(module => module.CreatedByUserId == contentManagerUserId);
+
+        var search = NormalizeOptionalText(query.Search);
+        if (search != null)
+        {
+            var pattern = BuildContainsPattern(search);
+
+            filteredQuery = filteredQuery.Where(module =>
+                EF.Functions.ILike(module.Title, pattern, "\\")
+                || EF.Functions.ILike(module.Slug, pattern, "\\")
+                || (module.Description != null
+                    && EF.Functions.ILike(module.Description, pattern, "\\"))
+                || EF.Functions.ILike(module.Skill.Name, pattern, "\\")
+                || EF.Functions.ILike(module.Skill.Slug, pattern, "\\"));
+        }
+
+        var difficulty = NormalizeOptionalText(query.Difficulty)?.ToLowerInvariant();
+        if (difficulty != null)
+        {
+            filteredQuery = filteredQuery.Where(module =>
+                module.DifficultyLevel != null
+                && module.DifficultyLevel.ToLower() == difficulty);
+        }
+
+        var statusRows = await filteredQuery
+            .GroupBy(module => module.Status)
+            .Select(group => new
+            {
+                Status = group.Key,
+                Count = group.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var statusCounts = new ContentManagerLearningModuleStatusCountsDto
+        {
+            Draft = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Draft)?.Count ?? 0,
+            Published = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Published)?.Count ?? 0,
+            Archived = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Archived)?.Count ?? 0
+        };
+
+        var pageQuery = status == null
+            ? filteredQuery
+            : filteredQuery.Where(module => module.Status == status);
+
+        var totalCount = await pageQuery.CountAsync(cancellationToken);
+        var totalPages = totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)safePageSize);
+        var effectivePage = totalPages == 0
+            ? 1
+            : Math.Min(safePage, totalPages);
+
+        var orderedQuery = sort switch
+        {
+            "created_desc" => pageQuery
+                .OrderByDescending(module => module.CreatedAt)
+                .ThenBy(module => module.Title),
+            "title_asc" => pageQuery
+                .OrderBy(module => module.Title)
+                .ThenByDescending(module => module.UpdatedAt),
+            "title_desc" => pageQuery
+                .OrderByDescending(module => module.Title)
+                .ThenByDescending(module => module.UpdatedAt),
+            _ => pageQuery
+                .OrderByDescending(module => module.UpdatedAt)
+                .ThenBy(module => module.Title)
+        };
+
+        var rows = await orderedQuery
+            .Skip((effectivePage - 1) * safePageSize)
+            .Take(safePageSize)
+            .Select(module => new ContentManagerLearningModuleSummaryProjection
+            {
+                SkillModuleId = module.SkillModuleId,
+                SkillId = module.SkillId,
+                SkillName = module.Skill.Name,
+                SkillSlug = module.Skill.Slug,
+                Title = module.Title,
+                Slug = module.Slug,
+                Description = module.Description,
+                DifficultyLevel = module.DifficultyLevel,
+                EstimatedHours = module.EstimatedHours,
+                Status = module.Status,
+                LessonCount = module.SkillModuleLessons.Count,
+                HasQuiz = module.SkillModuleQuiz != null,
+                QuestionCount = module.SkillModuleQuiz == null
+                    ? 0
+                    : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+                PublishedAt = module.PublishedAt,
+                ArchivedAt = module.ArchivedAt,
+                CreatedAt = module.CreatedAt,
+                UpdatedAt = module.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return new ContentManagerLearningModuleListResultDto
+        {
+            Items = rows.Select(MapSummary).ToList(),
+            TotalCount = totalCount,
+            Page = effectivePage,
+            PageSize = safePageSize,
+            TotalPages = totalPages,
+            StatusCounts = statusCounts
+        };
     }
 
     public async Task<ContentManagerLearningModuleDetailDto> GetModuleDetailAsync(
@@ -620,25 +724,14 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             : value.Trim();
     }
 
-    private static int GetStatusSortOrder(string status)
+    private static string BuildContainsPattern(string value)
     {
-        return status switch
-        {
-            LearningModuleStatusValues.Draft => 1,
-            LearningModuleStatusValues.Published => 2,
-            LearningModuleStatusValues.Archived => 3,
-            _ => 4
-        };
-    }
+        var escaped = value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 
-    private static DateTime GetStatusTime(SkillModule module)
-    {
-        return module.Status switch
-        {
-            LearningModuleStatusValues.Published => module.PublishedAt ?? module.UpdatedAt,
-            LearningModuleStatusValues.Archived => module.ArchivedAt ?? module.UpdatedAt,
-            _ => module.UpdatedAt
-        };
+        return $"%{escaped}%";
     }
 
     private static SkillModuleDto MapModule(SkillModule module)
@@ -663,23 +756,24 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         };
     }
 
-    private static ContentManagerLearningModuleSummaryDto MapSummary(SkillModule module)
+    private static ContentManagerLearningModuleSummaryDto MapSummary(
+        ContentManagerLearningModuleSummaryProjection module)
     {
         return new ContentManagerLearningModuleSummaryDto
         {
             SkillModuleId = module.SkillModuleId,
             SkillId = module.SkillId,
-            SkillName = module.Skill.Name,
-            SkillSlug = module.Skill.Slug,
+            SkillName = module.SkillName,
+            SkillSlug = module.SkillSlug,
             Title = module.Title,
             Slug = module.Slug,
             Description = module.Description,
             DifficultyLevel = module.DifficultyLevel,
             EstimatedHours = module.EstimatedHours,
             Status = module.Status,
-            LessonCount = module.SkillModuleLessons.Count,
-            HasQuiz = module.SkillModuleQuiz != null,
-            QuestionCount = module.SkillModuleQuiz?.SkillModuleQuizQuestions.Count ?? 0,
+            LessonCount = module.LessonCount,
+            HasQuiz = module.HasQuiz,
+            QuestionCount = module.QuestionCount,
             PublishedAt = module.PublishedAt,
             ArchivedAt = module.ArchivedAt,
             CreatedAt = module.CreatedAt,
@@ -798,4 +892,25 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
                 }
         };
     }
+    private sealed class ContentManagerLearningModuleSummaryProjection
+    {
+        public Guid SkillModuleId { get; set; }
+        public Guid SkillId { get; set; }
+        public string SkillName { get; set; } = string.Empty;
+        public string SkillSlug { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? DifficultyLevel { get; set; }
+        public decimal? EstimatedHours { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public int LessonCount { get; set; }
+        public int QuestionCount { get; set; }
+        public bool HasQuiz { get; set; }
+        public DateTime? PublishedAt { get; set; }
+        public DateTime? ArchivedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
 }
