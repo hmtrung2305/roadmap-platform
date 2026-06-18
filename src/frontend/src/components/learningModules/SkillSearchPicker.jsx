@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { counselorLearningModuleApi } from "../../api/learningModuleApi";
+import { contentManagerLearningModuleApi } from "../../api/learningModuleApi";
 import { inputClass } from "./learningModuleUi";
 
 export default function SkillSearchPicker({
@@ -43,7 +43,7 @@ export default function SkillSearchPicker({
     async function searchSkills() {
       try {
         setIsLoading(true);
-        const data = await counselorLearningModuleApi.searchSkills(term);
+        const data = await contentManagerLearningModuleApi.searchSkills(term);
         if (!ignore) setResults(data);
       } catch {
         if (!ignore) setResults([]);

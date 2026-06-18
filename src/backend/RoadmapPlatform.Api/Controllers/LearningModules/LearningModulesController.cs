@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 
@@ -12,7 +13,7 @@ public sealed class LearningModulesController(
     ILearnerLearningModuleService moduleService) : ControllerBase
 {
     [HttpGet]
-    [AllowAnonymous]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_PUBLISHED)]
     [ProducesResponseType(typeof(IReadOnlyList<LearnerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPublishedModules(CancellationToken cancellationToken)
     {
@@ -22,7 +23,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpGet("enrolled")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_ENROLLMENT_VIEW_SELF)]
     [ProducesResponseType(typeof(IReadOnlyList<LearnerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetEnrolledModules(CancellationToken cancellationToken)
     {
@@ -36,7 +37,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpGet("{slug}")]
-    [AllowAnonymous]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_PUBLISHED)]
     [ProducesResponseType(typeof(LearnerLearningModuleOverviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPublishedModuleBySlug(
@@ -54,7 +55,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/enroll")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_ENROLLMENT_CREATE_SELF)]
     [ProducesResponseType(typeof(LearningModuleEnrollmentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Enroll(
@@ -72,7 +73,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpGet("{moduleId:guid}/lessons/{lessonId:guid}")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_VIEW_ENROLLED)]
     [ProducesResponseType(typeof(LearningModuleLessonContentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -93,7 +94,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpPatch("{moduleId:guid}/lessons/{lessonId:guid}/progress")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_PROGRESS_UPDATE_SELF)]
     [ProducesResponseType(typeof(UpdateLessonProgressResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -117,7 +118,7 @@ public sealed class LearningModulesController(
 
 
     [HttpGet("{moduleId:guid}/quiz/attempts")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_VIEW_SELF)]
     [ProducesResponseType(typeof(IReadOnlyList<QuizAttemptSummaryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -136,7 +137,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/quiz/attempts")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_CREATE_SELF)]
     [ProducesResponseType(typeof(StartQuizAttemptResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -155,7 +156,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/quiz/attempts/{attemptId:guid}/submit")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_SUBMIT_SELF)]
     [ProducesResponseType(typeof(QuizAttemptReviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -178,7 +179,7 @@ public sealed class LearningModulesController(
     }
 
     [HttpGet("{moduleId:guid}/quiz/attempts/{attemptId:guid}")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_VIEW_SELF)]
     [ProducesResponseType(typeof(QuizAttemptReviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetQuizAttemptReview(

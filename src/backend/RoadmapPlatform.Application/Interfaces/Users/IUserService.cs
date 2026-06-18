@@ -4,7 +4,7 @@ namespace RoadmapPlatform.Application.Interfaces.Users;
 
 public interface IUserService
 {
-    Task<UserResponseDto> GetCurrentUserAsync(Guid userId);
+    Task<CurrentUserResponseDto> GetCurrentUserAsync(Guid userId);
 
     Task<UserResponseDto> UpdateCurrentUserAsync(Guid userId, UpdateCurrentUserRequestDto request);
 

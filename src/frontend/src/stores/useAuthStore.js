@@ -6,6 +6,9 @@ import {
   registerApi,
 } from "../api/authApi";
 import { useStreakStore } from "./useStreakStore";
+import { PERMISSIONS } from "../constants/permissions";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { hasPermission } from "../utils/authorizationUtils";
 import { useProfileStore } from "./useProfileStore";
 import { useAuthProviderStore } from "./useAuthProviderStore";
 import { useRoadmapStore } from "./useRoadmapStore";
@@ -18,6 +21,15 @@ import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
 const SESSION_CACHE_MS = 5 * 60 * 1000;
+
+async function loadStreakIfAllowed(user, options = {}) {
+  if (!hasPermission(user, PERMISSIONS.STREAK_VIEW_SELF)) {
+    useStreakStore.getState().resetStreakState();
+    return null;
+  }
+
+  return useStreakStore.getState().fetchStreak(options);
+}
 
 let currentUserPromise = null;
 
@@ -80,14 +92,19 @@ export const useAuthStore = create((set, get) => ({
         throw new Error("Login response does not contain user.");
       }
 
+      localStorage.setItem("isLoggedIn", "true");
+
+      const currentUser = await getCurrentUserApi();
+
       set({
-        user: data.user,
+        user: currentUser,
         authInitialized: true,
         lastCheckedAt: Date.now(),
       });
 
-      localStorage.setItem("isLoggedIn", "true");
-      await useStreakStore.getState().fetchStreak({ force: true });
+      await loadStreakIfAllowed(currentUser, { force: true });
+
+      return currentUser;
     } catch (error) {
       set({
         user: null,
@@ -162,7 +179,7 @@ export const useAuthStore = create((set, get) => ({
         });
 
         localStorage.setItem("isLoggedIn", "true");
-        await useStreakStore.getState().fetchStreak();
+        await loadStreakIfAllowed(currentUser);
 
         return currentUser;
       } catch (error) {

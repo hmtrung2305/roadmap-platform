@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronUp,
-  LibraryBig,
+  LayoutDashboard,
   LogOut,
   Settings,
   Shield,
@@ -13,35 +13,24 @@ import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useProfileStore } from "../stores/useProfileStore";
 
-const adminNavGroups = [
+const adminNavItems = [
   {
-    label: "Content",
-    items: [
-      {
-        label: "Learning Modules",
-        path: "/admin/learning-modules",
-        icon: LibraryBig,
-        match: (pathname) => pathname.startsWith("/admin/learning-modules"),
-      },
-    ],
+    label: "Overview",
+    path: "/admin",
+    icon: LayoutDashboard,
+    match: (pathname) => pathname === "/admin",
+  },
+  {
+    label: "Settings",
+    path: "/admin/settings",
+    icon: Settings,
+    match: (pathname) => pathname === "/admin/settings",
   },
 ];
 
 function getAdminPageTitle(pathname) {
-  if (pathname === "/admin/learning-modules/create") {
-    return "Create Module";
-  }
-
-  if (pathname.endsWith("/edit")) {
-    return "Module Editor";
-  }
-
-  if (pathname.endsWith("/preview")) {
-    return "Module Preview";
-  }
-
-  if (pathname.startsWith("/admin/learning-modules")) {
-    return "Learning Modules";
+  if (pathname === "/admin") {
+    return "Overview";
   }
 
   if (pathname === "/admin/settings") {
@@ -60,7 +49,7 @@ function getDisplayName(user, profile) {
     || user?.displayName
     || user?.name
     || user?.username
-    || "Counselor"
+    || "Admin"
   );
 }
 
@@ -132,7 +121,7 @@ export default function AdminLayout() {
         <div className="border-b border-[#B9D8CC] px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate("/admin/learning-modules")}
+            onClick={() => navigate("/admin")}
             className="block"
           >
             <AuthLogo compact showTagline={false} />
@@ -140,7 +129,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-5">
-          {adminNavGroups.flatMap((group) => group.items).map((item) => {
+          {adminNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.match(location.pathname);
 
@@ -224,7 +213,7 @@ export default function AdminLayout() {
               <div className="flex items-center gap-3 lg:hidden">
                 <button
                   type="button"
-                  onClick={() => navigate("/admin/learning-modules")}
+                  onClick={() => navigate("/admin")}
                   className="shrink-0"
                 >
                   <AuthLogo compact showTagline={false} />
@@ -232,7 +221,7 @@ export default function AdminLayout() {
 
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
-                    Management
+                    Admin
                   </p>
                   <h1 className="truncate text-sm font-extrabold text-[#18332D]">
                     {pageTitle}
@@ -242,96 +231,13 @@ export default function AdminLayout() {
 
               <div className="hidden lg:block">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
-                  Management
+                  Admin
                 </p>
                 <h1 className="truncate text-lg font-extrabold text-[#18332D]">
                   {pageTitle}
                 </h1>
               </div>
             </div>
-
-            <div className="hidden items-center gap-2 md:flex lg:hidden">
-              {adminNavGroups.flatMap((group) => group.items).map((item) => {
-                const Icon = item.icon;
-                const isActive = item.match(location.pathname);
-
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => navigate(item.path)}
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-extrabold transition ${
-                      isActive
-                        ? "border-[#6FCF97] bg-[#6FCF97]/24 text-[#1F6F5F]"
-                        : "border-transparent text-slate-600 hover:border-[#B9D8CC] hover:bg-white hover:text-[#1F6F5F]"
-                    }`}
-                  >
-                    <Icon size={15} />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="relative hidden sm:block lg:hidden">
-              <button
-                type="button"
-                onClick={() => setIsUserMenuOpen((current) => !current)}
-                className="min-w-0 rounded-lg border border-transparent px-2 py-1 text-right transition hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
-              >
-                <div className="truncate text-xs font-extrabold text-[#18332D]">
-                  {displayName}
-                </div>
-                <div className="truncate text-[11px] font-semibold text-slate-500">
-                  {email}
-                </div>
-              </button>
-
-              {isUserMenuOpen && (
-                <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 text-left shadow-xl">
-                  <button
-                    type="button"
-                    onClick={goToSettings}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-extrabold text-[#18332D] hover:bg-[#F7F1E8]"
-                  >
-                    <Settings size={15} />
-                    Settings
-                  </button>
-                  <div className="my-1 border-t border-[#B9D8CC]/70" />
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-extrabold text-rose-700 hover:bg-rose-50"
-                  >
-                    <LogOut size={15} />
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto border-t border-[#B9D8CC]/70 px-4 py-2 md:hidden">
-            {adminNavGroups.flatMap((group) => group.items).map((item) => {
-              const Icon = item.icon;
-              const isActive = item.match(location.pathname);
-
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => navigate(item.path)}
-                  className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-extrabold transition ${
-                    isActive
-                      ? "border-[#6FCF97] bg-[#6FCF97]/24 text-[#1F6F5F]"
-                      : "border-[#B9D8CC] bg-white text-slate-600"
-                  }`}
-                >
-                  <Icon size={15} />
-                  {item.label}
-                </button>
-              );
-            })}
           </div>
         </header>
 

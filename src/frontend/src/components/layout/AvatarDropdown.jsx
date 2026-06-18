@@ -2,14 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
+  Code2,
+  LibraryBig,
   LogOut,
   Settings,
-  Code2,
+  Shield,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { redirectToGitHubLink } from "../../api/authProviderApi";
 import { FaGithub } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import {
+  ADMIN_SURFACE_PERMISSIONS,
+  CONTENT_MANAGER_SURFACE_PERMISSIONS,
+} from "../../constants/permissions";
+import { hasAnyPermission } from "../../utils/authorizationUtils";
 import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
 
 export default function AvatarDropdown({ user, profile, onLogout }) {
@@ -36,6 +44,8 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
   );
 
   const isGitHubLinked = githubProvider?.isLinked ?? false;
+  const canAccessContentManagerConsole = hasAnyPermission(user, CONTENT_MANAGER_SURFACE_PERMISSIONS);
+  const canAccessAdminConsole = hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS);
   const isConnectingGitHub = connectingProvider === "github";
   const isSocialProviderActionLocked = Boolean(connectingProvider);
   const disableGitHubConnect =
@@ -94,6 +104,16 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
     navigate("/settings");
   };
 
+  const handleGoToContentManagerConsole = () => {
+    setOpen(false);
+    navigate("/content");
+  };
+
+  const handleGoToAdminConsole = () => {
+    setOpen(false);
+    navigate("/admin");
+  };
+
   const handleLogout = () => {
     setOpen(false);
     onLogout();
@@ -150,6 +170,22 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               label="Settings"
               onClick={handleGoToSettings}
             />
+
+            {canAccessContentManagerConsole && (
+              <DropdownItem
+                icon={<LibraryBig size={18} />}
+                label="Content Manager Console"
+                onClick={handleGoToContentManagerConsole}
+              />
+            )}
+
+            {canAccessAdminConsole && (
+              <DropdownItem
+                icon={<Shield size={18} />}
+                label="Admin Console"
+                onClick={handleGoToAdminConsole}
+              />
+            )}
 
             {isGitHubLinked ? (
               <DropdownItem

@@ -1,5 +1,6 @@
 using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -29,6 +30,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             _frontendBaseUrl = NormalizeFrontendBaseUrl(configuration["Frontend:BaseUrl"]);
         }
 
+        [AllowAnonymous]
         [HttpPost("register")]
         [RequireCaptcha("register")]
         public async Task<IActionResult> Register(RegisterRequestDto request)
@@ -38,6 +40,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             return StatusCode(StatusCodes.Status202Accepted, response);
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         [RequireCaptcha("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)
@@ -53,6 +56,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             });
         }
 
+        [AllowAnonymous]
         [HttpPost("registration/verify-email")]
         public async Task<IActionResult> VerifyRegistrationEmail(
             VerifyRegistrationEmailRequestDto request)
@@ -68,6 +72,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             });
         }
 
+        [AllowAnonymous]
         [HttpPost("registration/resend-verification")]
         [RequireCaptcha("resend-registration-verification")]
         public async Task<IActionResult> ResendRegistrationVerification(
@@ -81,6 +86,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             });
         }
 
+        [AllowAnonymous]
         [HttpGet("google/login")]
         public IActionResult GoogleLogin()
         {
@@ -92,6 +98,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
 
+        [AllowAnonymous]
         [HttpGet("google/callback")]
         public async Task<IActionResult> GoogleCallback()
         {
@@ -124,6 +131,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             }
         }
 
+        [AllowAnonymous]
         [HttpGet("github/login")]
         public IActionResult GitHubLogin()
         {
@@ -135,6 +143,7 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             return Challenge(properties, GitHubAuthenticationDefaults.AuthenticationScheme);
         }
 
+        [AllowAnonymous]
         [HttpGet("github/callback")]
         public async Task<IActionResult> GitHubCallback()
         {

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { startGitHubLogin, startGoogleLogin } from "../api/authApi";
 import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import AuthLogo from "../components/auth/AuthLogo";
@@ -10,6 +10,7 @@ import { FaGithub } from "react-icons/fa";
 import { useAuthStore } from "../stores/useAuthStore";
 import MotionWrapper from "../components/auth/MotionWrapper";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { resolvePostLoginRedirect } from "../utils/navigationUtils";
 
 
 
@@ -22,6 +23,7 @@ import {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const authError = useAuthStore((state) => state.authError);
   const clearAuthError = useAuthStore((state) => state.clearAuthError);
@@ -114,14 +116,16 @@ export default function LoginPage() {
       setError("");
       clearAuthError();
 
-      await login({
+      const currentUser = await login({
         ...form,
         emailOrUsername: form.emailOrUsername.trim(),
         captchaToken,
       });
 
+      const redirectTo = resolvePostLoginRedirect(currentUser, location.state?.from);
+
       setTimeout(() => {
-        navigate("/roadmaps");
+        navigate(redirectTo, { replace: true });
       }, 250);
     } catch (error) {
       console.log("Login failed:", error.response?.data || error);

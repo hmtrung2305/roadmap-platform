@@ -2,7 +2,7 @@ import axiosClient from "./axiosClient";
 
 const encode = (value) => encodeURIComponent(value);
 
-const adminModuleStatuses = ["draft", "published", "archived"];
+const contentManagerModuleStatuses = ["draft", "published", "archived"];
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function getLearningModuleNavigationState(module) {
@@ -81,7 +81,7 @@ export const learningModuleApi = {
   },
 };
 
-export const counselorLearningModuleApi = {
+export const contentManagerLearningModuleApi = {
   searchSkills: async (search) => {
     const response = await axiosClient.get("/skills", {
       params: {
@@ -98,7 +98,7 @@ export const counselorLearningModuleApi = {
   },
 
   getModules: async (status) => {
-    const response = await axiosClient.get("/counselor/learning-modules", {
+    const response = await axiosClient.get("/content/learning-modules", {
       params: status && status !== "all" ? { status } : undefined,
     });
 
@@ -123,7 +123,7 @@ export const counselorLearningModuleApi = {
     }
 
     const moduleLists = await Promise.all(
-      adminModuleStatuses.map((status) => counselorLearningModuleApi.getModules(status)),
+      contentManagerModuleStatuses.map((status) => contentManagerLearningModuleApi.getModules(status)),
     );
 
     const module = moduleLists
@@ -138,37 +138,37 @@ export const counselorLearningModuleApi = {
   },
 
   createModule: async (payload) => {
-    const response = await axiosClient.post("/counselor/learning-modules", payload);
+    const response = await axiosClient.post("/content/learning-modules", payload);
     return response.data;
   },
 
   getModule: async (moduleId) => {
-    const response = await axiosClient.get(`/counselor/learning-modules/${moduleId}`);
+    const response = await axiosClient.get(`/content/learning-modules/${moduleId}`);
     return response.data;
   },
 
   updateModule: async (moduleId, payload) => {
-    const response = await axiosClient.patch(`/counselor/learning-modules/${moduleId}`, payload);
+    const response = await axiosClient.patch(`/content/learning-modules/${moduleId}`, payload);
     return response.data;
   },
 
   deleteDraftModule: async (moduleId) => {
-    const response = await axiosClient.delete(`/counselor/learning-modules/${moduleId}`);
+    const response = await axiosClient.delete(`/content/learning-modules/${moduleId}`);
     return response.data;
   },
 
   publishModule: async (moduleId) => {
-    const response = await axiosClient.post(`/counselor/learning-modules/${moduleId}/publish`);
+    const response = await axiosClient.post(`/content/learning-modules/${moduleId}/publish`);
     return response.data;
   },
 
   archiveModule: async (moduleId) => {
-    const response = await axiosClient.post(`/counselor/learning-modules/${moduleId}/archive`);
+    const response = await axiosClient.post(`/content/learning-modules/${moduleId}/archive`);
     return response.data;
   },
 
   getPreview: async (moduleId) => {
-    const response = await axiosClient.get(`/counselor/learning-modules/${moduleId}/preview`);
+    const response = await axiosClient.get(`/content/learning-modules/${moduleId}/preview`);
     return response.data;
   },
 
@@ -181,7 +181,7 @@ export const counselorLearningModuleApi = {
     });
 
     const response = await axiosClient.post(
-      `/counselor/learning-modules/${moduleId}/lessons/bulk`,
+      `/content/learning-modules/${moduleId}/lessons/bulk`,
       formData,
       {
         headers: {
@@ -195,7 +195,7 @@ export const counselorLearningModuleApi = {
 
   reorderLessons: async (moduleId, lessons) => {
     const response = await axiosClient.patch(
-      `/counselor/learning-modules/${moduleId}/lessons/reorder`,
+      `/content/learning-modules/${moduleId}/lessons/reorder`,
       { lessons },
     );
     return response.data;
@@ -203,7 +203,7 @@ export const counselorLearningModuleApi = {
 
   updateLesson: async (moduleId, lessonId, payload) => {
     const response = await axiosClient.patch(
-      `/counselor/learning-modules/${moduleId}/lessons/${lessonId}`,
+      `/content/learning-modules/${moduleId}/lessons/${lessonId}`,
       payload,
     );
     return response.data;
@@ -214,7 +214,7 @@ export const counselorLearningModuleApi = {
     formData.append("file", file);
 
     const response = await axiosClient.put(
-      `/counselor/learning-modules/${moduleId}/lessons/${lessonId}/content`,
+      `/content/learning-modules/${moduleId}/lessons/${lessonId}/content`,
       formData,
       {
         headers: {
@@ -228,33 +228,33 @@ export const counselorLearningModuleApi = {
 
   getLessonPreview: async (moduleId, lessonId) => {
     const response = await axiosClient.get(
-      `/counselor/learning-modules/${moduleId}/lessons/${lessonId}/preview`,
+      `/content/learning-modules/${moduleId}/lessons/${lessonId}/preview`,
     );
     return response.data;
   },
 
   reindexLesson: async (moduleId, lessonId) => {
     const response = await axiosClient.post(
-      `/counselor/learning-modules/${moduleId}/lessons/${lessonId}/reindex`,
+      `/content/learning-modules/${moduleId}/lessons/${lessonId}/reindex`,
     );
     return response.data;
   },
 
   deleteLesson: async (moduleId, lessonId) => {
     const response = await axiosClient.delete(
-      `/counselor/learning-modules/${moduleId}/lessons/${lessonId}`,
+      `/content/learning-modules/${moduleId}/lessons/${lessonId}`,
     );
     return response.data;
   },
 
   upsertQuiz: async (moduleId, payload) => {
-    const response = await axiosClient.put(`/counselor/learning-modules/${moduleId}/quiz`, payload);
+    const response = await axiosClient.put(`/content/learning-modules/${moduleId}/quiz`, payload);
     return response.data;
   },
 
   addQuestion: async (moduleId, payload) => {
     const response = await axiosClient.post(
-      `/counselor/learning-modules/${moduleId}/quiz/questions`,
+      `/content/learning-modules/${moduleId}/quiz/questions`,
       payload,
     );
     return response.data;
@@ -262,7 +262,7 @@ export const counselorLearningModuleApi = {
 
   updateQuestion: async (moduleId, questionId, payload) => {
     const response = await axiosClient.patch(
-      `/counselor/learning-modules/${moduleId}/quiz/questions/${questionId}`,
+      `/content/learning-modules/${moduleId}/quiz/questions/${questionId}`,
       payload,
     );
     return response.data;
@@ -270,7 +270,7 @@ export const counselorLearningModuleApi = {
 
   reorderQuestions: async (moduleId, questions) => {
     const response = await axiosClient.patch(
-      `/counselor/learning-modules/${moduleId}/quiz/questions/reorder`,
+      `/content/learning-modules/${moduleId}/quiz/questions/reorder`,
       { questions },
     );
     return response.data;
@@ -278,7 +278,7 @@ export const counselorLearningModuleApi = {
 
   deleteQuestion: async (moduleId, questionId) => {
     const response = await axiosClient.delete(
-      `/counselor/learning-modules/${moduleId}/quiz/questions/${questionId}`,
+      `/content/learning-modules/${moduleId}/quiz/questions/${questionId}`,
     );
     return response.data;
   },

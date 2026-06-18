@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 
 namespace RoadmapPlatform.Api.Controllers.GitHub
@@ -23,7 +24,7 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
         }
 
         [HttpGet("repositories")]
-        [Authorize]
+        [RequirePermission(PermissionConstant.REPOSITORY_VIEW_SELF)]
         public async Task<IActionResult> GetSavedRepositories(CancellationToken cancellationToken)
         {
             var userId = GetCurrentUserId();
@@ -35,7 +36,7 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
         }
 
         [HttpPost("repositories/sync")]
-        [Authorize]
+        [RequirePermission(PermissionConstant.REPOSITORY_SYNC_SELF)]
         [EnableRateLimiting(RateLimitPolicyNames.ExternalApi)]
         public async Task<IActionResult> SyncRepositories(CancellationToken cancellationToken)
         {
@@ -48,7 +49,7 @@ namespace RoadmapPlatform.Api.Controllers.GitHub
         }
 
         [HttpPost("repositories/{repositoryId:guid}/insight")]
-        [Authorize]
+        [RequirePermission(PermissionConstant.REPO_INSIGHT_GENERATE_SELF)]
         [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]
         public async Task<IActionResult> GenerateRepositoryInsight(
             Guid repositoryId,

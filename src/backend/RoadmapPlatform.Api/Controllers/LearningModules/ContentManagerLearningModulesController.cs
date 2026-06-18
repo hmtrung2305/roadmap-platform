@@ -1,29 +1,30 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Authorize]
-[Route("api/counselor/learning-modules")]
-public sealed class CounselorLearningModulesController(
-    ICounselorLearningModuleService moduleService) : ControllerBase
+[Route("api/content/learning-modules")]
+public sealed class ContentManagerLearningModulesController(
+    IContentManagerLearningModuleService moduleService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<CounselorLearningModuleSummaryDto>), StatusCodes.Status200OK)]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(IReadOnlyList<ContentManagerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModules(
         [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModulesAsync(
-            counselorUserId,
+            contentManagerUserId,
             status,
             cancellationToken);
 
@@ -31,6 +32,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPost]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_CREATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -38,10 +40,10 @@ public sealed class CounselorLearningModulesController(
         [FromBody] CreateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.CreateModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             request,
             cancellationToken);
 
@@ -52,16 +54,17 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpGet("{moduleId:guid}")]
-    [ProducesResponseType(typeof(CounselorLearningModuleDetailDto), StatusCodes.Status200OK)]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(ContentManagerLearningModuleDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetModuleDetail(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModuleDetailAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -69,6 +72,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPatch("{moduleId:guid}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -77,10 +81,10 @@ public sealed class CounselorLearningModulesController(
         [FromBody] UpdateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.UpdateModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -89,6 +93,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpDelete("{moduleId:guid}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_DELETE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -97,10 +102,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         await moduleService.DeleteDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -108,6 +113,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/publish")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_PUBLISH_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(PublishLearningModuleResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,10 +122,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.PublishModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -127,6 +133,7 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpPost("{moduleId:guid}/archive")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_ARCHIVE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -135,10 +142,10 @@ public sealed class CounselorLearningModulesController(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.ArchiveModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 
@@ -146,16 +153,17 @@ public sealed class CounselorLearningModulesController(
     }
 
     [HttpGet("{moduleId:guid}/preview")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_PREVIEW_OWN)]
     [ProducesResponseType(typeof(LearningModulePreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPreview(
         Guid moduleId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetPreviewAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             cancellationToken);
 

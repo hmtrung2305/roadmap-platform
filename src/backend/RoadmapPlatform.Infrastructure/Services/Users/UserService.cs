@@ -17,18 +17,55 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             _dbContext = dbContext;
         }
 
-        public async Task<UserResponseDto> GetCurrentUserAsync(Guid userId)
+        public async Task<CurrentUserResponseDto> GetCurrentUserAsync(Guid userId)
         {
             var user = await _dbContext.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.UserId == userId);
+                .Where(x => x.UserId == userId)
+                .Select(x => new
+                {
+                    x.UserId,
+                    x.Username,
+                    x.Status,
+                    Email = x.UserAuthProviders
+                        .OrderByDescending(provider => provider.Provider == "local")
+                        .ThenBy(provider => provider.Provider)
+                        .Select(provider => provider.Email)
+                        .FirstOrDefault()
+                })
+                .FirstOrDefaultAsync();
 
             if (user == null)
             {
                 throw new NotFoundException("User was not found");
             }
 
-            return await MapToUserResponseAsync(user.UserId, user.Username, user.Status);
+            var roles = await _dbContext.UserRoles
+                .AsNoTracking()
+                .Where(userRole => userRole.UserId == userId)
+                .Select(userRole => userRole.Role.RoleName)
+                .Distinct()
+                .OrderBy(roleName => roleName)
+                .ToListAsync();
+
+            var permissions = await _dbContext.UserRoles
+                .AsNoTracking()
+                .Where(userRole => userRole.UserId == userId)
+                .SelectMany(userRole => userRole.Role.PermissionRoles
+                    .Select(permissionRole => permissionRole.Permission.PermissionName))
+                .Distinct()
+                .OrderBy(permissionName => permissionName)
+                .ToListAsync();
+
+            return new CurrentUserResponseDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                Email = user.Email,
+                Status = user.Status,
+                Roles = roles,
+                Permissions = permissions
+            };
         }
 
         public async Task<UserResponseDto> UpdateCurrentUserAsync(Guid userId, UpdateCurrentUserRequestDto request)

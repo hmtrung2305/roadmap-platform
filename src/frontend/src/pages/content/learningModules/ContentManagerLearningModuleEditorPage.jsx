@@ -20,7 +20,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { counselorLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
+import { contentManagerLearningModuleApi, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
 import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learningModules/MarkdownRenderer";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
@@ -339,7 +339,7 @@ function isEditorTabComplete(tab, detail) {
   return false;
 }
 
-export default function AdminLearningModuleEditorPage() {
+export default function ContentManagerLearningModuleEditorPage() {
   const { moduleSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -382,7 +382,7 @@ export default function AdminLearningModuleEditorPage() {
       return;
     }
 
-    navigate("/admin/learning-modules");
+    navigate("/content/learning-modules");
   };
 
   const discardQuizDraftsAndLeave = () => {
@@ -390,7 +390,7 @@ export default function AdminLearningModuleEditorPage() {
     removeSessionValue(getEditorStorageKey(activeModuleId, "activeQuizQuestionId"));
     setHasUnsavedQuizDrafts(false);
     setIsDiscardDialogOpen(false);
-    navigate("/admin/learning-modules");
+    navigate("/content/learning-modules");
   };
 
   useEffect(() => {
@@ -407,8 +407,8 @@ export default function AdminLearningModuleEditorPage() {
       try {
         setIsLoading(true);
         const knownModuleId = routeStateModuleId || resolvedModuleIdRef.current;
-        const moduleId = await counselorLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
-        const data = await counselorLearningModuleApi.getModule(moduleId);
+        const moduleId = await contentManagerLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
+        const data = await contentManagerLearningModuleApi.getModule(moduleId);
 
         if (!ignore) {
           resolvedModuleIdRef.current = moduleId;
@@ -490,7 +490,7 @@ export default function AdminLearningModuleEditorPage() {
       const queryString = searchParams.toString();
 
       navigate(
-        `/admin/learning-modules/${nextRouteSegment}/edit${queryString ? `?${queryString}` : ""}`,
+        `/content/learning-modules/${nextRouteSegment}/edit${queryString ? `?${queryString}` : ""}`,
         {
           replace: true,
           state: { moduleId: updatedModule.skillModuleId },
@@ -507,7 +507,7 @@ export default function AdminLearningModuleEditorPage() {
     }
 
     try {
-      const data = await counselorLearningModuleApi.getModule(moduleId);
+      const data = await contentManagerLearningModuleApi.getModule(moduleId);
       setDetail(data);
     } catch {
       // Polling is best-effort. Manual refresh/save actions still surface errors.
@@ -524,7 +524,7 @@ export default function AdminLearningModuleEditorPage() {
         return;
       }
 
-      const result = await counselorLearningModuleApi.publishModule(moduleId);
+      const result = await contentManagerLearningModuleApi.publishModule(moduleId);
 
       if (result?.readiness?.canPublish === false) {
         toast.error(result.readiness.errors?.[0] || "Module is not ready to publish.");
@@ -535,7 +535,7 @@ export default function AdminLearningModuleEditorPage() {
 
       setIsPublishDialogOpen(false);
       toast.success("Module published.");
-      navigate("/admin/learning-modules?status=published");
+      navigate("/content/learning-modules?status=published");
     } catch (err) {
       toast.error(err?.message || "Unable to publish module.");
     } finally {
@@ -801,7 +801,7 @@ function OverviewEditor({ module, onSaved }) {
 
     try {
       setIsSaving(true);
-      const updatedModule = await counselorLearningModuleApi.updateModule(module.skillModuleId, {
+      const updatedModule = await contentManagerLearningModuleApi.updateModule(module.skillModuleId, {
         skillId: form.skillId,
         title: form.title.trim(),
         slug: null,
@@ -992,7 +992,7 @@ function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
         fileName: file.name,
       }));
 
-      const result = await counselorLearningModuleApi.bulkUploadLessons(module.skillModuleId, lessonPayload, selectedFiles);
+      const result = await contentManagerLearningModuleApi.bulkUploadLessons(module.skillModuleId, lessonPayload, selectedFiles);
       const uploadedLessons = getUploadedLessons(result);
       const firstUploadedLessonId = uploadedLessons[0]?.skillModuleLessonId;
 
@@ -1051,7 +1051,7 @@ function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
   const saveOrder = async () => {
     try {
       setIsSavingOrder(true);
-      await counselorLearningModuleApi.reorderLessons(
+      await contentManagerLearningModuleApi.reorderLessons(
         module.skillModuleId,
         orderedLessons.map((lesson, index) => ({
           skillModuleLessonId: lesson.skillModuleLessonId,
@@ -1086,7 +1086,7 @@ function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
 
     try {
       setIsPreviewLoading(true);
-      const data = await counselorLearningModuleApi.getLessonPreview(module.skillModuleId, lesson.skillModuleLessonId);
+      const data = await contentManagerLearningModuleApi.getLessonPreview(module.skillModuleId, lesson.skillModuleLessonId);
       setPreviewData(data);
     } catch (err) {
       toast.error(err?.message || "Unable to load lesson preview.");
@@ -1106,7 +1106,7 @@ function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
 
     try {
       setIsReplacingContent(true);
-      const updated = await counselorLearningModuleApi.replaceLessonContent(
+      const updated = await contentManagerLearningModuleApi.replaceLessonContent(
         module.skillModuleId,
         lessonToReplace.skillModuleLessonId,
         file,
@@ -1127,7 +1127,7 @@ function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
 
     try {
       setReindexingLessonId(lesson.skillModuleLessonId);
-      const updated = await counselorLearningModuleApi.reindexLesson(
+      const updated = await contentManagerLearningModuleApi.reindexLesson(
         module.skillModuleId,
         lesson.skillModuleLessonId,
       );
@@ -1151,7 +1151,7 @@ function LessonsEditor({ module, lessons, onChanged, onIndexingStatusPoll }) {
 
     try {
       setIsDeletingLesson(true);
-      await counselorLearningModuleApi.deleteLesson(module.skillModuleId, lessonToDelete.skillModuleLessonId);
+      await contentManagerLearningModuleApi.deleteLesson(module.skillModuleId, lessonToDelete.skillModuleLessonId);
       toast.success("Lesson deleted.");
       setLessonToDelete(null);
       onChanged();
@@ -1431,7 +1431,7 @@ function LessonMetadataEditor({ module, lesson, onSaved }) {
 
     try {
       setIsSaving(true);
-      const updated = await counselorLearningModuleApi.updateLesson(
+      const updated = await contentManagerLearningModuleApi.updateLesson(
         module.skillModuleId,
         lesson.skillModuleLessonId,
         {
@@ -1743,7 +1743,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
 
     try {
       setIsSavingQuiz(true);
-      await counselorLearningModuleApi.upsertQuiz(module.skillModuleId, {
+      await contentManagerLearningModuleApi.upsertQuiz(module.skillModuleId, {
         title: quizForm.title.trim(),
         description: null,
         passingScorePercent: Number(quizForm.passingScorePercent),
@@ -1770,7 +1770,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
 
     try {
       if (isNewQuestion) {
-        const savedQuestion = await counselorLearningModuleApi.addQuestion(module.skillModuleId, toQuestionPayload(question));
+        const savedQuestion = await contentManagerLearningModuleApi.addQuestion(module.skillModuleId, toQuestionPayload(question));
 
         setQuestions((current) =>
           savedQuestion?.skillModuleQuizQuestionId
@@ -1783,7 +1783,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
         setActiveQuestionId(savedQuestion?.skillModuleQuizQuestionId || null);
         toast.success("Question added.");
       } else {
-        const savedQuestion = await counselorLearningModuleApi.updateQuestion(
+        const savedQuestion = await contentManagerLearningModuleApi.updateQuestion(
           module.skillModuleId,
           question.skillModuleQuizQuestionId,
           toQuestionPayload(question),
@@ -1836,7 +1836,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
     const nextActiveQuestion = orderedQuestions.find((item) => item.skillModuleQuizQuestionId !== questionToDelete.skillModuleQuizQuestionId);
 
     try {
-      await counselorLearningModuleApi.deleteQuestion(module.skillModuleId, questionToDelete.skillModuleQuizQuestionId);
+      await contentManagerLearningModuleApi.deleteQuestion(module.skillModuleId, questionToDelete.skillModuleQuizQuestionId);
       toast.success("Question deleted.");
       setActiveQuestionId(nextActiveQuestion?.skillModuleQuizQuestionId || null);
       setQuestionToDelete(null);
@@ -1899,7 +1899,7 @@ function QuizEditor({ module, quiz, onChanged, onDraftStateChange }) {
   const saveQuestionOrder = async () => {
     try {
       setIsSavingOrder(true);
-      await counselorLearningModuleApi.reorderQuestions(
+      await contentManagerLearningModuleApi.reorderQuestions(
         module.skillModuleId,
         orderedQuestions.map((question, index) => ({
           skillModuleQuizQuestionId: question.skillModuleQuizQuestionId,
@@ -2523,7 +2523,7 @@ function PreviewShell({ moduleId, detail }) {
       }
 
       try {
-        const data = await counselorLearningModuleApi.getLessonPreview(moduleId, activeLessonId);
+        const data = await contentManagerLearningModuleApi.getLessonPreview(moduleId, activeLessonId);
         if (!ignore) setPreview(data);
       } catch {
         if (!ignore) setPreview(null);

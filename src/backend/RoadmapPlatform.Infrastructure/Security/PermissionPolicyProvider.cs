@@ -1,28 +1,31 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using System.Threading.Tasks;
+using RoadmapPlatform.Application.Constants;
 
-namespace RoadmapPlatform.Infrastructure.Security
+namespace RoadmapPlatform.Infrastructure.Security;
+
+public sealed class PermissionPolicyProvider : DefaultAuthorizationPolicyProvider
 {
-    public class PermissionPolicyProvider : DefaultAuthorizationPolicyProvider
+    public PermissionPolicyProvider(IOptions<AuthorizationOptions> options) : base(options)
     {
-        public PermissionPolicyProvider(IOptions<AuthorizationOptions> options) : base(options)
+    }
+
+    public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
+    {
+        var policy = await base.GetPolicyAsync(policyName);
+        if (policy is not null)
         {
+            return policy;
         }
 
-        public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
+        if (!PermissionPolicyNames.TryGetPermission(policyName, out var permission))
         {
-            // Kiểm tra xem policy đã được đăng ký cứng (static) chưa
-            var policy = await base.GetPolicyAsync(policyName);
-            if (policy != null)
-            {
-                return policy;
-            }
-
-            // Nếu chưa có, tự động tạo một policy mới dựa trên tên Permission
-            return new AuthorizationPolicyBuilder()
-                .AddRequirements(new PermissionRequirement(policyName))
-                .Build();
+            return null;
         }
+
+        return new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .AddRequirements(new PermissionRequirement(permission))
+            .Build();
     }
 }

@@ -17,13 +17,13 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
     }
 
     public async Task<LearningModuleQuizDto> UpsertQuizAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         UpsertQuizRequestDto request,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -68,13 +68,13 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
     }
 
     public async Task<LearningModuleQuizQuestionDto> AddQuestionAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         UpsertQuizQuestionRequestDto request,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -135,14 +135,14 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
     }
 
     public async Task<LearningModuleQuizQuestionDto> UpdateQuestionAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid questionId,
         UpsertQuizQuestionRequestDto request,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -223,13 +223,13 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
     }
 
     public async Task<IReadOnlyList<LearningModuleQuizQuestionDto>> ReorderQuestionsAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         ReorderQuizQuestionsRequestDto request,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -290,13 +290,13 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
     }
 
     public async Task DeleteQuestionAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         Guid questionId,
         CancellationToken cancellationToken)
     {
         var module = await GetOwnedDraftModuleAsync(
-            counselorUserId,
+            contentManagerUserId,
             skillModuleId,
             cancellationToken);
 
@@ -327,14 +327,14 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
     }
 
     private async Task<SkillModule> GetOwnedDraftModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
         var module = await _context.SkillModules
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleId == skillModuleId
-                && item.CreatedByUserId == counselorUserId,
+                && item.CreatedByUserId == contentManagerUserId,
                 cancellationToken);
 
         if (module == null)

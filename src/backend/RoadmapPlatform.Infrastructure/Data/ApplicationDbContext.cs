@@ -625,7 +625,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("permission_id");
             entity.Property(e => e.PermissionName)
-                .HasMaxLength(50)
+                .HasMaxLength(100)
                 .HasColumnName("permission_name");
         });
 
@@ -1171,7 +1171,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("role_id");
             entity.Property(e => e.RoleName)
-                .HasMaxLength(15)
+                .HasMaxLength(50)
                 .HasColumnName("role_name");
         });
 

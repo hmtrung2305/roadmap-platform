@@ -10,14 +10,14 @@ using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 
-public sealed class CounselorLearningModuleService : ICounselorLearningModuleService
+public sealed class ContentManagerLearningModuleService : IContentManagerLearningModuleService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ApplicationDbContext _context;
     private readonly IFileStorage _fileStorage;
 
-    public CounselorLearningModuleService(
+    public ContentManagerLearningModuleService(
         ApplicationDbContext context,
         IFileStorage fileStorage)
     {
@@ -25,8 +25,8 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
         _fileStorage = fileStorage;
     }
 
-    public async Task<IReadOnlyList<CounselorLearningModuleSummaryDto>> GetModulesAsync(
-        Guid counselorUserId,
+    public async Task<IReadOnlyList<ContentManagerLearningModuleSummaryDto>> GetModulesAsync(
+        Guid contentManagerUserId,
         string? status,
         CancellationToken cancellationToken)
     {
@@ -36,7 +36,7 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             .Include(module => module.SkillModuleLessons)
             .Include(module => module.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
-            .Where(module => module.CreatedByUserId == counselorUserId);
+            .Where(module => module.CreatedByUserId == contentManagerUserId);
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -52,12 +52,12 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             .ToList();
     }
 
-    public async Task<CounselorLearningModuleDetailDto> GetModuleDetailAsync(
-        Guid counselorUserId,
+    public async Task<ContentManagerLearningModuleDetailDto> GetModuleDetailAsync(
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
-        var module = await GetOwnedModuleQuery(counselorUserId)
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
             .Include(item => item.Skill)
             .Include(item => item.SkillModuleLessons)
                 .ThenInclude(lesson => lesson.SkillModuleChunks)
@@ -71,7 +71,7 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             throw new NotFoundException("Learning module was not found.");
         }
 
-        return new CounselorLearningModuleDetailDto
+        return new ContentManagerLearningModuleDetailDto
         {
             Module = MapModule(module),
             Lessons = module.SkillModuleLessons
@@ -86,7 +86,7 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task<SkillModuleDto> CreateModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         CreateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
@@ -120,7 +120,7 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
             DifficultyLevel = NormalizeOptionalText(request.DifficultyLevel),
             EstimatedHours = request.EstimatedHours,
             Status = LearningModuleStatusValues.Draft,
-            CreatedByUserId = counselorUserId,
+            CreatedByUserId = contentManagerUserId,
             Metadata = "{}",
             CreatedAt = now,
             UpdatedAt = now
@@ -135,12 +135,12 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task<SkillModuleDto> UpdateModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         UpdateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
-        var module = await GetOwnedModuleQuery(counselorUserId)
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
             .Include(item => item.Skill)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
@@ -213,11 +213,11 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task DeleteDraftModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
-        var module = await GetOwnedModuleQuery(counselorUserId)
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
             .Include(item => item.SkillModuleLessons)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
@@ -247,11 +247,11 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task<PublishLearningModuleReadinessDto> GetPublishReadinessAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
-        var module = await GetPublishValidationQuery(counselorUserId)
+        var module = await GetPublishValidationQuery(contentManagerUserId)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
         if (module == null)
@@ -263,11 +263,11 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task<PublishLearningModuleResultDto> PublishModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
-        var module = await GetPublishValidationQuery(counselorUserId)
+        var module = await GetPublishValidationQuery(contentManagerUserId)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
         if (module == null)
@@ -307,11 +307,11 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task<SkillModuleDto> ArchiveModuleAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
-        var module = await GetOwnedModuleQuery(counselorUserId)
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
             .Include(item => item.Skill)
             .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
 
@@ -337,11 +337,11 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
     }
 
     public async Task<LearningModulePreviewDto> GetPreviewAsync(
-        Guid counselorUserId,
+        Guid contentManagerUserId,
         Guid skillModuleId,
         CancellationToken cancellationToken)
     {
-        var module = await GetOwnedModuleQuery(counselorUserId)
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
             .Include(item => item.Skill)
             .Include(item => item.SkillModuleLessons)
             .Include(item => item.SkillModuleQuiz)
@@ -356,15 +356,15 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
         return MapPreview(module);
     }
 
-    private IQueryable<SkillModule> GetOwnedModuleQuery(Guid counselorUserId)
+    private IQueryable<SkillModule> GetOwnedModuleQuery(Guid contentManagerUserId)
     {
         return _context.SkillModules
-            .Where(module => module.CreatedByUserId == counselorUserId);
+            .Where(module => module.CreatedByUserId == contentManagerUserId);
     }
 
-    private IQueryable<SkillModule> GetPublishValidationQuery(Guid counselorUserId)
+    private IQueryable<SkillModule> GetPublishValidationQuery(Guid contentManagerUserId)
     {
-        return GetOwnedModuleQuery(counselorUserId)
+        return GetOwnedModuleQuery(contentManagerUserId)
             .Include(module => module.Skill)
             .Include(module => module.SkillModuleLessons)
                 .ThenInclude(lesson => lesson.SkillModuleChunks)
@@ -579,9 +579,9 @@ public sealed class CounselorLearningModuleService : ICounselorLearningModuleSer
         };
     }
 
-    private static CounselorLearningModuleSummaryDto MapSummary(SkillModule module)
+    private static ContentManagerLearningModuleSummaryDto MapSummary(SkillModule module)
     {
-        return new CounselorLearningModuleSummaryDto
+        return new ContentManagerLearningModuleSummaryDto
         {
             SkillModuleId = module.SkillModuleId,
             SkillId = module.SkillId,

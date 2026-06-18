@@ -1,21 +1,22 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Authorize]
 [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
-[Route("api/counselor/learning-modules/{moduleId:guid}/quiz")]
-public sealed class CounselorLearningModuleQuizController(
+[Route("api/content/learning-modules/{moduleId:guid}/quiz")]
+public sealed class ContentManagerLearningModuleQuizController(
     ILearningModuleQuizService quizService) : ControllerBase
 {
     [HttpPut]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_UPSERT_OWN)]
     [ProducesResponseType(typeof(LearningModuleQuizDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -24,10 +25,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] UpsertQuizRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.UpsertQuizAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -36,6 +37,7 @@ public sealed class CounselorLearningModuleQuizController(
     }
 
     [HttpPost("questions")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_QUESTION_CREATE_OWN)]
     [ProducesResponseType(typeof(LearningModuleQuizQuestionDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -44,10 +46,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] UpsertQuizQuestionRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.AddQuestionAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -59,6 +61,7 @@ public sealed class CounselorLearningModuleQuizController(
     }
 
     [HttpPatch("questions/{questionId:guid}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_QUESTION_UPDATE_OWN)]
     [ProducesResponseType(typeof(LearningModuleQuizQuestionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -68,10 +71,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] UpsertQuizQuestionRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.UpdateQuestionAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             questionId,
             request,
@@ -81,6 +84,7 @@ public sealed class CounselorLearningModuleQuizController(
     }
 
     [HttpPatch("questions/reorder")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_QUESTION_REORDER_OWN)]
     [ProducesResponseType(typeof(IReadOnlyList<LearningModuleQuizQuestionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -89,10 +93,10 @@ public sealed class CounselorLearningModuleQuizController(
         [FromBody] ReorderQuizQuestionsRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await quizService.ReorderQuestionsAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -101,6 +105,7 @@ public sealed class CounselorLearningModuleQuizController(
     }
 
     [HttpDelete("questions/{questionId:guid}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_QUESTION_DELETE_OWN)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -109,10 +114,10 @@ public sealed class CounselorLearningModuleQuizController(
         Guid questionId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         await quizService.DeleteQuestionAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             questionId,
             cancellationToken);

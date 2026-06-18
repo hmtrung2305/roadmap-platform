@@ -7,7 +7,8 @@ import LandingPage from "./pages/LandingPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import ProtectedRoute from "./routes/ProtectedRoute";
+import ContentManagerLayout from "./layouts/ContentManagerLayout";
+import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
 import { subscribeToUnauthorizedEvent } from "./utils/authEventUtils";
@@ -27,11 +28,19 @@ import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
-import AdminLearningModulesPage from "./pages/admin/learningModules/AdminLearningModulesPage";
-import AdminLearningModuleCreatePage from "./pages/admin/learningModules/AdminLearningModuleCreatePage";
-import AdminLearningModuleEditorPage from "./pages/admin/learningModules/AdminLearningModuleEditorPage";
-import AdminLearningModulePreviewPage from "./pages/admin/learningModules/AdminLearningModulePreviewPage";
+import ContentManagerLearningModulesPage from "./pages/content/learningModules/ContentManagerLearningModulesPage";
+import ContentManagerLearningModuleCreatePage from "./pages/content/learningModules/ContentManagerLearningModuleCreatePage";
+import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
+import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
+import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
+import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import {
+  ADMIN_SURFACE_PERMISSIONS,
+  CONTENT_MANAGER_SURFACE_PERMISSIONS,
+  LEARNER_SURFACE_PERMISSIONS,
+} from "./constants/permissions";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -47,6 +56,10 @@ function isPublicPortfolioPath(pathname) {
 
 function isPublicPath(pathname) {
   return publicPaths.includes(pathname) || isPublicPortfolioPath(pathname);
+}
+
+function shouldLoadSessionOnPublicPath(pathname) {
+  return publicPaths.includes(pathname) && localStorage.getItem("isLoggedIn") === "true";
 }
 
 function AuthBootstrap({ children }) {
@@ -75,6 +88,11 @@ function AuthBootstrap({ children }) {
     const pathname = location.pathname;
 
     if (isPublicPath(pathname)) {
+      if (shouldLoadSessionOnPublicPath(pathname) && !user) {
+        loadCurrentUser();
+        return;
+      }
+
       useAuthStore.setState({ authInitialized: true });
       return;
     }
@@ -146,9 +164,9 @@ export default function App() {
 
           <Route
             element={
-              <ProtectedRoute>
+              <RequirePermission anyPermissions={LEARNER_SURFACE_PERMISSIONS}>
                 <MainLayout />
-              </ProtectedRoute>
+              </RequirePermission>
             }
           >
             <Route path="/home" element={<Navigate to="/roadmaps" replace />} />
@@ -175,24 +193,36 @@ export default function App() {
 
           <Route
             element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
+              <RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
+                <ContentManagerLayout />
+              </RequirePermission>
             }
           >
-            <Route path="/admin/learning-modules" element={<AdminLearningModulesPage />} />
-            <Route path="/admin/learning-modules/create" element={<AdminLearningModuleCreatePage />} />
-            <Route path="/admin/learning-modules/:moduleSlug/edit" element={<AdminLearningModuleEditorPage />} />
-            <Route path="/admin/learning-modules/:moduleSlug/preview" element={<AdminLearningModulePreviewPage />} />
+            <Route path="/content" element={<Navigate to="/content/learning-modules" replace />} />
+            <Route path="/content/learning-modules" element={<ContentManagerLearningModulesPage />} />
+            <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
+            <Route path="/content/learning-modules/:moduleSlug/edit" element={<ContentManagerLearningModuleEditorPage />} />
+            <Route path="/content/learning-modules/:moduleSlug/preview" element={<ContentManagerLearningModulePreviewPage />} />
+            <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
+          </Route>
+
+          <Route
+            element={
+              <RequirePermission anyPermissions={ADMIN_SURFACE_PERMISSIONS}>
+                <AdminLayout />
+              </RequirePermission>
+            }
+          >
+            <Route path="/admin" element={<AdminHomePage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 
           <Route
             path="/settings"
             element={
-              <ProtectedRoute>
+              <RequirePermission anyPermissions={LEARNER_SURFACE_PERMISSIONS}>
                 <SettingsLayout />
-              </ProtectedRoute>
+              </RequirePermission>
             }
           >
             <Route index element={<Navigate to="/settings/account" replace />} />
@@ -201,6 +231,8 @@ export default function App() {
             <Route path="points" element={<PointsSettingsPage />} />
             <Route path="profile" element={<ProfileSettingsPage />} />
           </Route>
+
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AnimatePresence>
     </AuthBootstrap>

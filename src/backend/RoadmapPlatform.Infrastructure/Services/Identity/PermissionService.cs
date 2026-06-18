@@ -4,19 +4,19 @@ using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Identity;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using RoadmapPlatform.Infrastructure.Security;
 
 namespace RoadmapPlatform.Infrastructure.Services.Identity
 {
     public class PermissionService : IPermissionService
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IPermissionCache _permissionCache;
 
-        public PermissionService(ApplicationDbContext dbContext)
+        public PermissionService(ApplicationDbContext dbContext, IPermissionCache permissionCache)
         {
             _dbContext = dbContext;
+            _permissionCache = permissionCache;
         }
 
         public async Task<PermissionResponseDto> CreatePermissionAsync(CreatePermissionRequestDto createPermissionRequest)
@@ -34,6 +34,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             _dbContext.Permissions.Add(permission);
 
             await _dbContext.SaveChangesAsync();
+            _permissionCache.Invalidate();
 
             return new PermissionResponseDto
             {
@@ -51,6 +52,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             _dbContext.Permissions.Remove(permission);
 
             await _dbContext.SaveChangesAsync();
+            _permissionCache.Invalidate();
         }
 
         public async Task<PermissionResponseDto> GetPermissionByIdAsync(Guid permissionId)
@@ -97,6 +99,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             permission.PermissionName = updatePermissionRequest.PermissionName;
 
             await _dbContext.SaveChangesAsync();
+            _permissionCache.Invalidate();
 
             return new PermissionResponseDto
             {

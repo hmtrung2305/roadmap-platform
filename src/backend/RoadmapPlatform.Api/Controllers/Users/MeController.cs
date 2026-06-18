@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Portfolio;
 using RoadmapPlatform.Application.DTOs.Users;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
@@ -8,7 +9,6 @@ using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.Users;
 
-[Authorize]
 [ApiController]
 [Route("api/me")]
 public class MeController : ControllerBase
@@ -23,6 +23,7 @@ public class MeController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionConstant.ACCOUNT_VIEW_SELF)]
     public async Task<IActionResult> GetCurrentUser()
     {
         var userId = GetCurrentUserId();
@@ -32,6 +33,7 @@ public class MeController : ControllerBase
     }
 
     [HttpPatch]
+    [RequirePermission(PermissionConstant.ACCOUNT_UPDATE_SELF)]
     public async Task<IActionResult> UpdateCurrentUser(UpdateCurrentUserRequestDto request)
     {
         var userId = GetCurrentUserId();
@@ -41,6 +43,7 @@ public class MeController : ControllerBase
     }
 
     [HttpDelete]
+    [RequirePermission(PermissionConstant.ACCOUNT_DELETE_SELF)]
     public async Task<IActionResult> DeleteAccount()
     {
         var userId = GetCurrentUserId();
@@ -51,6 +54,7 @@ public class MeController : ControllerBase
     }
 
     [HttpGet("profile")]
+    [RequirePermission(PermissionConstant.PROFILE_VIEW_SELF)]
     public async Task<IActionResult> GetMyProfile()
     {
         var userId = GetCurrentUserId();
@@ -60,6 +64,7 @@ public class MeController : ControllerBase
     }
 
     [HttpPatch("profile")]
+    [RequirePermission(PermissionConstant.PROFILE_UPDATE_SELF)]
     public async Task<IActionResult> UpdateMyProfile(UpdateProfileRequestDto request)
     {
         var userId = GetCurrentUserId();
@@ -69,7 +74,7 @@ public class MeController : ControllerBase
     }
 
     [HttpGet("portfolio")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.PORTFOLIO_VIEW_SELF)]
     public async Task<IActionResult> GetMyPortfolio()
     {
         var userId = GetCurrentUserId();
@@ -80,7 +85,7 @@ public class MeController : ControllerBase
     }
 
     [HttpPatch("portfolio/repositories")]
-    [Authorize]
+    [RequirePermission(PermissionConstant.PORTFOLIO_UPDATE_SELF)]
     public async Task<IActionResult> UpdatePortfolioRepositories(UpdatePortfolioRepositoriesRequestDto request)
     {
         var userId = GetCurrentUserId();

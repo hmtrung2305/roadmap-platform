@@ -1,8 +1,16 @@
 import { Navigate, useLocation } from "react-router-dom";
 import AppLoading from "../components/common/AppLoading";
+import NotFoundPage from "../pages/NotFoundPage";
 import { useAuthStore } from "../stores/useAuthStore";
+import { canAccessRoute } from "../utils/authorizationUtils";
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({
+  children,
+  anyPermissions = [],
+  allPermissions = [],
+  anyRoles = [],
+  allRoles = [],
+}) {
   const location = useLocation();
 
   const user = useAuthStore((state) => state.user);
@@ -23,6 +31,10 @@ function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (!canAccessRoute(user, { anyPermissions, allPermissions, anyRoles, allRoles })) {
+    return <NotFoundPage />;
   }
 
   return children;

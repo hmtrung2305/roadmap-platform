@@ -1,10 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.PermissionRole;
 using RoadmapPlatform.Application.DTOs.Role;
 using RoadmapPlatform.Application.Interfaces.Identity;
-using RoadmapPlatform.Infrastructure.Entities;
-using RoadmapPlatform.Infrastructure.Services;
-using System.Data;
 
 namespace RoadmapPlatform.Api.Controllers.Identity
 {
@@ -13,11 +12,13 @@ namespace RoadmapPlatform.Api.Controllers.Identity
     public class RoleController : ControllerBase
     {
         private readonly IRoleService _roleService;
+
         public RoleController(IRoleService roleService)
         {
             _roleService = roleService;
         }
 
+        [RequirePermission(PermissionConstant.ROLE_VIEW_ANY)]
         [HttpGet]
         public async Task<IActionResult> GetAllRole()
         {
@@ -30,6 +31,7 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        [RequirePermission(PermissionConstant.ROLE_VIEW_ANY)]
         [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetRoleById(Guid id)
         {
@@ -42,6 +44,7 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        [RequirePermission(PermissionConstant.ROLE_DELETE_ANY)]
         [HttpDelete("{id:Guid}")]
         public async Task<IActionResult> DeleteRoleById(Guid id)
         {
@@ -49,6 +52,7 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             return NoContent();
         }
 
+        [RequirePermission(PermissionConstant.ROLE_CREATE_ANY)]
         [HttpPost]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequestDto roleRequest)
         {
@@ -56,6 +60,7 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             return CreatedAtAction(nameof(GetRoleById), new { id = role.RoleId }, role);
         }
 
+        [RequirePermission(PermissionConstant.ROLE_UPDATE_ANY)]
         [HttpPut("{id:guid}")]
         public async Task<ActionResult<RoleResponseDto>> UpdateRole(Guid id, [FromBody] UpdateRoleRequestDto request)
         {
@@ -69,6 +74,8 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        [RequirePermission(PermissionConstant.ROLE_PERMISSION_ASSIGN_ANY)]
+        [RequirePermission(PermissionConstant.ROLE_PERMISSION_REVOKE_ANY)]
         [HttpPut("{id:guid}/permissions")]
         public async Task<ActionResult<RoleDetailResponseDto>> AssignPermissions(Guid id, [FromBody] AssignPermissionRoleRequestDto request)
         {
@@ -81,6 +88,5 @@ namespace RoadmapPlatform.Api.Controllers.Identity
                 Data = role
             });
         }
-
     }
 }

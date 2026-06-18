@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import AppLoading from "../components/common/AppLoading";
 import { useAuthStore } from "../stores/useAuthStore";
+import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
 
 export default function PublicRoute({ children }) {
   const user = useAuthStore((state) => state.user);
@@ -20,7 +21,7 @@ export default function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/roadmaps" replace />;
+    return <Navigate to={getDefaultAuthenticatedRoute(user)} replace />;
   }
 
   return children;

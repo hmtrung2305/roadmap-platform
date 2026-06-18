@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Api.Responses;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 using System.Text.Json;
@@ -11,12 +12,12 @@ using System.Text.Json;
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
 [ApiController]
-[Authorize]
-[Route("api/counselor/learning-modules/{moduleId:guid}/lessons")]
-public sealed class CounselorLearningModuleLessonsController(
+[Route("api/content/learning-modules/{moduleId:guid}/lessons")]
+public sealed class ContentManagerLearningModuleLessonsController(
     ILearningModuleLessonService lessonService) : ControllerBase
 {
     [HttpPost("bulk")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_CREATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.UploadExpensive)]
     [RequestSizeLimit(100_000_000)]
     [ProducesResponseType(typeof(BulkUploadLessonsResultDto), StatusCodes.Status200OK)]
@@ -29,7 +30,7 @@ public sealed class CounselorLearningModuleLessonsController(
         [FromForm] List<IFormFile> files,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var request = JsonSerializer.Deserialize<BulkUploadLessonsRequestDto>(
             lessonsJson,
@@ -57,7 +58,7 @@ public sealed class CounselorLearningModuleLessonsController(
             .ToList();
 
         var result = await lessonService.BulkUploadLessonsAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             uploadedFiles,
@@ -67,6 +68,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPatch("reorder")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_REORDER_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(IReadOnlyList<LearningModuleLessonDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -76,10 +78,10 @@ public sealed class CounselorLearningModuleLessonsController(
         [FromBody] ReorderLessonsRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.ReorderLessonsAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             request,
             cancellationToken);
@@ -88,6 +90,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPatch("{lessonId:guid}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -98,10 +101,10 @@ public sealed class CounselorLearningModuleLessonsController(
         [FromBody] UpdateLearningModuleLessonRequestDto request,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.UpdateLessonAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             request,
@@ -111,6 +114,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPut("{lessonId:guid}/content")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.UploadExpensive)]
     [RequestSizeLimit(50_000_000)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
@@ -132,7 +136,7 @@ public sealed class CounselorLearningModuleLessonsController(
                 "Markdown file cannot be empty."));
         }
 
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var uploadedFile = new LearningModuleUploadedFileDto
         {
@@ -145,7 +149,7 @@ public sealed class CounselorLearningModuleLessonsController(
         };
 
         var result = await lessonService.ReplaceLessonContentAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             uploadedFile,
@@ -155,6 +159,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpPost("{lessonId:guid}/reindex")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_REINDEX_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -164,10 +169,10 @@ public sealed class CounselorLearningModuleLessonsController(
         Guid lessonId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.ReindexLessonAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             cancellationToken);
@@ -176,6 +181,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpGet("{lessonId:guid}/preview")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_PREVIEW_OWN)]
     [ProducesResponseType(typeof(LearningModuleLessonContentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetLessonPreview(
@@ -183,10 +189,10 @@ public sealed class CounselorLearningModuleLessonsController(
         Guid lessonId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         var result = await lessonService.GetLessonPreviewAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             cancellationToken);
@@ -195,6 +201,7 @@ public sealed class CounselorLearningModuleLessonsController(
     }
 
     [HttpDelete("{lessonId:guid}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_DELETE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -204,10 +211,10 @@ public sealed class CounselorLearningModuleLessonsController(
         Guid lessonId,
         CancellationToken cancellationToken)
     {
-        var counselorUserId = User.GetUserId();
+        var contentManagerUserId = User.GetUserId();
 
         await lessonService.DeleteDraftLessonAsync(
-            counselorUserId,
+            contentManagerUserId,
             moduleId,
             lessonId,
             cancellationToken);

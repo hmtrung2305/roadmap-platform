@@ -158,7 +158,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             // Learning Module Services
             services.AddScoped<LearningModuleMarkdownChunker>();
             services.AddScoped<ILearningModuleRagIndexingService, LearningModuleRagIndexingService>();
-            services.AddScoped<ICounselorLearningModuleService, CounselorLearningModuleService>();
+            services.AddScoped<IContentManagerLearningModuleService, ContentManagerLearningModuleService>();
             services.AddScoped<ILearningModuleLessonService, LearningModuleLessonService>();
             services.AddScoped<ILearningModuleQuizService, LearningModuleQuizService>();
             services.AddScoped<ILearnerLearningModuleService, LearnerLearningModuleService>();
