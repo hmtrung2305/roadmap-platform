@@ -1,33 +1,35 @@
 import { BACKEND_BASE_URL } from "./apiConfig";
 import axiosClient from "./axiosClient";
-import { startBackendRedirect } from "../utils/backendRedirect";
 
-export async function getAuthProvidersApi(){
-    const res = await axiosClient("/me/auth-providers");
-    return res.data;
+export async function getAuthProvidersApi() {
+  const res = await axiosClient("/me/auth-providers");
+  return res.data;
 }
 
 export const linkLocalLoginApi = async (payload) => {
-    const res = await axiosClient.post("/me/auth-providers/local", payload);
-    return res.data;
-}
-export const verifyLinkedLocalEmailApi = async(payload) => {
-    const res = await axiosClient.post("/me/auth-providers/local/verify", payload);
-    return res.data;
-}
+  const res = await axiosClient.post("/me/auth-providers/local", payload);
+  return res.data;
+};
+
+export const verifyLinkedLocalEmailApi = async (payload) => {
+  const res = await axiosClient.post("/me/auth-providers/local/verify", payload);
+  return res.data;
+};
+
 export const resendLinkedLocalVerificationApi = async () => {
-    const res = await axiosClient.post("/me/auth-providers/local/resend-verification");
-    return res.data;
-}
+  const res = await axiosClient.post("/me/auth-providers/local/resend-verification");
+  return res.data;
+};
+
 export const requestLocalEmailChangeApi = async (payload) => {
-    const res = await axiosClient.post("/me/auth-providers/local/email/change-request", payload);
-    return res.data;
-}
+  const res = await axiosClient.post("/me/auth-providers/local/email/change-request", payload);
+  return res.data;
+};
 
 export const verifyLocalEmailChangeApi = async (payload) => {
   const response = await axiosClient.post(
     "/me/auth-providers/local/email/verify",
-    payload
+    payload,
   );
 
   return response.data;
@@ -35,17 +37,16 @@ export const verifyLocalEmailChangeApi = async (payload) => {
 
 export const resendLocalEmailChangeVerificationApi = async () => {
   const response = await axiosClient.post(
-    "/me/auth-providers/local/email/resend-verification"
+    "/me/auth-providers/local/email/resend-verification",
   );
 
   return response.data;
 };
 
-
 export const changeLocalPasswordApi = async (payload) => {
   const response = await axiosClient.put(
     "/me/auth-providers/local/password",
-    payload
+    payload,
   );
 
   return response.data;
@@ -72,8 +73,10 @@ function buildQuery(params = {}) {
   return queryString ? `?${queryString}` : "";
 }
 
-export const redirectToGoogleLink = () => startBackendRedirect(GOOGLE_LINK_URL);
+export const redirectToGoogleLink = () => {
+  window.location.assign(GOOGLE_LINK_URL);
+};
 
 export const redirectToGitHubLink = ({ returnUrl } = {}) => {
-  return startBackendRedirect(`${GITHUB_LINK_URL}${buildQuery({ returnUrl })}`);
+  window.location.assign(`${GITHUB_LINK_URL}${buildQuery({ returnUrl })}`);
 };

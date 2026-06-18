@@ -129,11 +129,12 @@ export default function SkillGapSkillsStep({
                             key={skill.skillId || skill.slug}
                             type="button"
                             onClick={() => onToggleSkill(skill.slug)}
+                            disabled={isAnalyzing || isLoading}
                             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 ${
                               selected
                                 ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
                                 : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#2FA084] hover:bg-white"
-                            }`}
+                            } disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0`}
                           >
                             {selected && <Check size={12} />}
                             {skill.name}
@@ -153,7 +154,8 @@ export default function SkillGapSkillsStep({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-extrabold text-[#18332D] transition hover:border-[#2FA084] hover:bg-[#F7F1E8]"
+          disabled={isLoading || isAnalyzing}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-extrabold text-[#18332D] transition hover:border-[#2FA084] hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ArrowLeft size={16} /> Back to roles
         </button>

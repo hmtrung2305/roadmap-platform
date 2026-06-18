@@ -106,16 +106,48 @@ export function getRetryAfterSeconds(errorOrData) {
     retryAfterHeader;
 
   const seconds = Number(candidate);
-  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.ceil(seconds);
+  }
+
+  if (typeof candidate === "string") {
+    const retryAt = Date.parse(candidate);
+
+    if (Number.isFinite(retryAt)) {
+      const secondsUntilRetry = Math.ceil((retryAt - Date.now()) / 1000);
+      return secondsUntilRetry > 0 ? secondsUntilRetry : null;
+    }
+  }
+
+  const messageRetryMatch = getErrorText(errorOrData).match(
+    /(?:retry|try again)\s*(?:after|in)?\s*(\d+)\s*(second|seconds|sec|secs|minute|minutes|min|mins)?/i,
+  );
+
+  if (messageRetryMatch) {
+    const value = Number(messageRetryMatch[1]);
+    const unit = messageRetryMatch[2] || "seconds";
+
+    if (Number.isFinite(value) && value > 0) {
+      return /min/i.test(unit) ? Math.ceil(value * 60) : Math.ceil(value);
+    }
+  }
+
+  return null;
 }
 
 export function isRateLimitError(errorOrData) {
   const code = getApiErrorCode(errorOrData);
+  const status = getApiErrorStatus(errorOrData);
+  const text = getErrorText(errorOrData);
 
   return (
     code === "RATE_LIMIT_EXCEEDED" ||
     code === "GITHUB_RATE_LIMITED" ||
-    (!code && getApiErrorStatus(errorOrData) === 429)
+    status === 429 ||
+    text.includes("too many requests") ||
+    text.includes("rate limit") ||
+    text.includes("rate-limit") ||
+    text.includes("status code 429")
   );
 }
 
@@ -163,6 +195,23 @@ function shouldIgnoreClientMessage(message) {
   return /^Request failed with status code \d+$/i.test(message);
 }
 
+function getErrorText(errorOrData) {
+  const data = getApiErrorData(errorOrData);
+  const values = [
+    errorOrData?.message,
+    errorOrData?.statusText,
+    typeof data === "string" ? data : "",
+    data?.message,
+    data?.Message,
+    data?.error,
+    data?.Error,
+    data?.title,
+    data?.Title,
+  ];
+
+  return values.filter(Boolean).join(" ").toLowerCase();
+}
+
 export function getApiErrorMessage(errorOrData, fallback = DEFAULT_ERROR_MESSAGE) {
   const backendMessage = getBackendMessage(errorOrData);
   if (backendMessage) return backendMessage;
@@ -176,6 +225,7 @@ export function getApiErrorMessage(errorOrData, fallback = DEFAULT_ERROR_MESSAGE
   }
 
   const status = getApiErrorStatus(errorOrData);
+  if (status === 429) return "Too many requests. Please slow down.";
   if (status >= 500) return SERVER_ERROR_FALLBACK;
 
   return fallback;

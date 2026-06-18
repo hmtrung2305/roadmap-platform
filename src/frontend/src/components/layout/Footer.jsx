@@ -39,7 +39,7 @@ export default function Footer() {
           title="Support"
           items={[
             ["Settings", "/settings"],
-            ["Profile", "/profile"],
+            ["Profile Settings", "/settings/profile"],
             ["Terms of Service", ""],
           ]}
           navigate={navigate}

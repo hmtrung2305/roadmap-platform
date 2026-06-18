@@ -13,8 +13,9 @@ export default function EditPortfolioRepositoryManager({
   isGitHubLinked,
   repositoryLoading,
   syncing,
+  reloadingSelection,
   saving,
-  analyzingRepositoryId,
+  analyzingRepositoryIds = {},
   error,
   success,
   username,
@@ -23,11 +24,21 @@ export default function EditPortfolioRepositoryManager({
   onToggleRepository,
   onGenerateInsight,
   connectionAction = "connect",
+  connectingGitHub = false,
+  connectDisabled = false,
   onConnectGitHub,
   managerHeight,
 }) {
   const lockedHeight = managerHeight || null;
+  const repositoryActionLocked = Boolean(repositoryLoading || syncing || reloadingSelection || saving);
   const isReconnect = connectionAction === "reconnect";
+  const connectLabel = connectingGitHub
+    ? isReconnect
+      ? "Reconnecting..."
+      : "Connecting..."
+    : isReconnect
+        ? "Reconnect GitHub"
+        : "Connect GitHub";
 
   return (
     <section
@@ -46,7 +57,7 @@ export default function EditPortfolioRepositoryManager({
           <button
             type="button"
             onClick={onSave}
-            disabled={saving || syncing}
+            disabled={repositoryActionLocked}
             className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#2FA084] px-3 py-1.5 !text-[14px] font-bold text-white shadow-sm shadow-emerald-900/20 transition-colors hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? <Loader2 className="animate-spin" size={13} /> : <CheckCircle2 size={13} />}
@@ -56,10 +67,11 @@ export default function EditPortfolioRepositoryManager({
           <button
             type="button"
             onClick={onConnectGitHub}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#18332D] px-3 py-1.5 !text-[14px] font-bold text-white transition-colors hover:bg-[#1F6F5F]"
+            disabled={connectDisabled}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#18332D] px-3 py-1.5 !text-[14px] font-bold text-white transition-colors hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <FaGithub size={16} />
-            {isReconnect ? "Reconnect GitHub" : "Connect GitHub"}
+            {connectingGitHub ? <Loader2 className="animate-spin" size={16} /> : <FaGithub size={16} />}
+            {connectLabel}
           </button>
         )}
       </div>
@@ -84,7 +96,13 @@ export default function EditPortfolioRepositoryManager({
         <div className="mt-4 flex min-h-0 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 p-6 text-center">
           <FaGithub className="mx-auto text-[#1F6F5F]" size={30} />
           <p className="mt-3 text-lg font-bold text-[#18332D]">
-            {isReconnect ? "Reconnect GitHub to manage repositories" : "Connect GitHub to manage repositories"}
+            {connectingGitHub
+              ? isReconnect
+                ? "Reconnecting GitHub..."
+                : "Connecting GitHub..."
+              : isReconnect
+                  ? "Reconnect GitHub to manage repositories"
+                  : "Connect GitHub to manage repositories"}
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#667A73]">
             {isReconnect
@@ -112,7 +130,8 @@ export default function EditPortfolioRepositoryManager({
                   repository={repo}
                   username={username}
                   isSelected={selectedIds.includes(repositoryId)}
-                  isAnalyzing={analyzingRepositoryId === repositoryId}
+                  isAnalyzing={Boolean(analyzingRepositoryIds?.[repositoryId])}
+                  actionDisabled={repositoryActionLocked}
                   onToggle={() => onToggleRepository(repositoryId)}
                   onGenerateInsight={onGenerateInsight}
                 />

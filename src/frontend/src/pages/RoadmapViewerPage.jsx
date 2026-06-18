@@ -17,23 +17,24 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { roadmapApi } from "../api/roadmapApi";
+import {
+  getRoadmapNodeDetailKey,
+  getRoadmapVersionId,
+  useRoadmapStore,
+} from "../stores/useRoadmapStore";
 import BalancedRoadmapEdge from "../components/roadmap/BalancedRoadmapEdge";
 import RoadmapDetailDrawer from "../components/roadmap/RoadmapDetailDrawer";
 import RoadmapFlowNode from "../components/roadmap/RoadmapFlowNode";
 import RoadmapFullScreen from "../components/roadmap/RoadmapFullScreen";
 import RoadmapLegend from "../components/roadmap/RoadmapLegend";
 import {
-  NODE_WIDTH,
   buildRoadmapFlow,
   focusRoadmapStart,
   getMiniMapColor,
   getNodeId,
-  normalizeRoadmap,
   mergeGraphNodeWithDetail,
   patchNodeProgress,
   applyProgressUpdateResult,
-  patchCachedNodeProgress,
   findChangedProgress,
 } from "../components/roadmap/roadmapUtils";
 
@@ -51,7 +52,6 @@ export default function RoadmapViewerPage() {
 
   const [roadmap, setRoadmap] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [nodeDetailCache, setNodeDetailCache] = useState({});
   const [isLoadingNodeDetail, setIsLoadingNodeDetail] = useState(false);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
@@ -62,6 +62,14 @@ export default function RoadmapViewerPage() {
   const [isInitialViewportReady, setIsInitialViewportReady] = useState(false);
   const flowWrapperRef = useRef(null);
   const focusedRoadmapKeyRef = useRef(null);
+  const loadRoadmapGraph = useRoadmapStore((state) => state.loadRoadmapGraph);
+  const loadNodeDetailFromStore = useRoadmapStore((state) => state.loadNodeDetail);
+  const enrollInRoadmap = useRoadmapStore((state) => state.enroll);
+  const updateNodeProgressInStore = useRoadmapStore((state) => state.updateNodeProgress);
+  const nodeDetailByKey = useRoadmapStore((state) => state.nodeDetailByKey);
+  const loadRequestRef = useRef(0);
+  const nodeDetailRequestRef = useRef(0);
+  const roadmapVersionId = getRoadmapVersionId(roadmap);
 
   const { flowNodes, flowEdges, nodeLookup } = useMemo(() => {
     if (!roadmap?.nodes?.length) {
@@ -86,7 +94,7 @@ export default function RoadmapViewerPage() {
     if (!flowInstance || flowNodes.length === 0) return;
 
     const roadmapFocusKey =
-      roadmap?.roadmapVersionId || slug || "current-roadmap";
+      roadmapVersionId || slug || "current-roadmap";
 
     if (focusedRoadmapKeyRef.current === roadmapFocusKey) {
       setIsInitialViewportReady(true);
@@ -96,7 +104,7 @@ export default function RoadmapViewerPage() {
     focusedRoadmapKeyRef.current = roadmapFocusKey;
     focusRoadmapStart(flowInstance, flowNodes, flowWrapperRef.current);
     setIsInitialViewportReady(true);
-  }, [flowInstance, flowNodes, roadmap?.roadmapVersionId, slug]);
+  }, [flowInstance, flowNodes, roadmapVersionId, slug]);
 
   useEffect(() => {
     loadPage();
@@ -121,17 +129,22 @@ export default function RoadmapViewerPage() {
         loadNodeDetail(sourceNode);
       }
     },
-    [nodeLookup, roadmap?.roadmapVersionId, nodeDetailCache],
+    [nodeLookup, roadmapVersionId, nodeDetailByKey],
   );
 
   async function loadNodeDetail(graphNode) {
-    if (!graphNode || !roadmap?.roadmapVersionId) return;
+    if (!graphNode || !roadmapVersionId) return;
+
+    const requestId = nodeDetailRequestRef.current + 1;
+    nodeDetailRequestRef.current = requestId;
 
     const nodeId = getNodeId(graphNode);
-    const cachedNode = nodeDetailCache[nodeId];
+    const detailKey = getRoadmapNodeDetailKey(roadmapVersionId, nodeId);
+    const cachedNode = nodeDetailByKey[detailKey];
 
     if (cachedNode) {
       setSelectedNode(mergeGraphNodeWithDetail(graphNode, cachedNode));
+      setIsLoadingNodeDetail(false);
       return;
     }
 
@@ -140,42 +153,50 @@ export default function RoadmapViewerPage() {
     setMessage("");
 
     try {
-      const detail = await roadmapApi.getNodeDetail(
-        roadmap.roadmapVersionId,
+      const detail = await loadNodeDetailFromStore({
+        roadmapVersionId,
         nodeId,
-      );
+      });
 
-      setNodeDetailCache((current) => ({
-        ...current,
-        [nodeId]: detail,
-      }));
+      if (nodeDetailRequestRef.current !== requestId) return;
 
       setSelectedNode(mergeGraphNodeWithDetail(graphNode, detail));
     } catch (error) {
+      if (nodeDetailRequestRef.current !== requestId) return;
+
       console.error(error);
       setMessage(error?.message || "Failed to load node details.");
     } finally {
-      setIsLoadingNodeDetail(false);
+      if (nodeDetailRequestRef.current === requestId) {
+        setIsLoadingNodeDetail(false);
+      }
     }
   }
 
-  async function loadPage() {
+  async function loadPage({ force = false } = {}) {
     if (!slug) return;
 
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
+
+    nodeDetailRequestRef.current += 1;
+    setIsLoadingNodeDetail(false);
     setStatus("loading");
     setMessage("");
 
     try {
-      const data = await roadmapApi.getRoadmapGraph(slug);
-      const normalizedRoadmap = normalizeRoadmap(data);
+      const normalizedRoadmap = await loadRoadmapGraph(slug, { force });
+
+      if (loadRequestRef.current !== requestId) return;
 
       focusedRoadmapKeyRef.current = null;
       setIsInitialViewportReady(false);
       setRoadmap(normalizedRoadmap);
-      setNodeDetailCache({});
       setSelectedNode(null);
       setStatus("success");
     } catch (error) {
+      if (loadRequestRef.current !== requestId) return;
+
       console.error(error);
       setMessage(
         error?.message ||
@@ -186,14 +207,23 @@ export default function RoadmapViewerPage() {
   }
 
   async function handleEnroll() {
-    if (!roadmap?.roadmapVersionId || isEnrolling) return;
+    if (!roadmapVersionId || isEnrolling) return;
 
     setIsEnrolling(true);
     setMessage("");
 
     try {
-      await roadmapApi.enroll(roadmap.roadmapVersionId);
-      await loadPage();
+      const enrollResult = await enrollInRoadmap(roadmapVersionId, { slug });
+
+      if (enrollResult?.graph) {
+        focusedRoadmapKeyRef.current = null;
+        setIsInitialViewportReady(false);
+        setRoadmap(enrollResult.graph);
+        setSelectedNode(null);
+        setStatus("success");
+      } else {
+        await loadPage({ force: true });
+      }
     } catch (error) {
       console.error(error);
       setMessage(error?.message || "Failed to enroll in roadmap.");
@@ -231,14 +261,15 @@ export default function RoadmapViewerPage() {
     );
 
     try {
-      const result = await roadmapApi.updateNodeProgress({
+      const result = await updateNodeProgressInStore({
         enrollmentId,
         nodeId: selectedNodeId,
         status: nextStatus,
+        slug,
+        roadmapVersionId,
       });
 
       setRoadmap((current) => applyProgressUpdateResult(current, result));
-      setNodeDetailCache((current) => patchCachedNodeProgress(current, result));
 
       setSelectedNode((current) => {
         if (!current) return current;
@@ -293,7 +324,7 @@ export default function RoadmapViewerPage() {
 
               <button
                 type="button"
-                onClick={loadPage}
+                onClick={() => loadPage({ force: true })}
                 className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm"
               >
                 Retry

@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Mail } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { getCurrentUserApi } from "../../api/authApi";
-import { getAuthProvidersApi } from "../../api/authProviderApi";
 import SettingsSection from "../../components/settings/SettingsSection";
 import SettingsRow from "../../components/settings/SettingsRow";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
@@ -11,10 +9,14 @@ import AddLocalLoginModal from "../../components/settings/AddLocalLoginModal";
 import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailModal";
 import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
 
 export default function AdminSettingsPage() {
-  const [me, setMe] = useState(null);
-  const [providers, setProviders] = useState([]);
+  const me = useAuthStore((state) => state.user);
+  const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
+  const providers = useAuthProviderStore((state) => state.providers);
+  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState("");
   const [activeModal, setActiveModal] = useState(null);
@@ -28,18 +30,15 @@ export default function AdminSettingsPage() {
     localProvider?.requiresVerification || localProvider?.RequiresVerification,
   );
 
-  const fetchSettings = async () => {
+  const fetchSettings = async ({ force = false } = {}) => {
     try {
       setIsLoading(true);
       setActionError("");
 
-      const [meData, providersData] = await Promise.all([
-        getCurrentUserApi(),
-        getAuthProvidersApi(),
+      await Promise.all([
+        loadCurrentUser({ force }),
+        loadProviders({ force }),
       ]);
-
-      setMe(meData);
-      setProviders(providersData);
     } catch (error) {
       console.error("Failed to load admin settings:", error.response?.data || error);
       setActionError(getFriendlyApiErrorMessage(error, "Unable to load admin settings."));
@@ -173,7 +172,7 @@ export default function AdminSettingsPage() {
           email={pendingLocalEmail}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Password login added successfully.");
           }}
@@ -184,7 +183,7 @@ export default function AdminSettingsPage() {
         <ChangePasswordModal
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Password changed successfully.");
           }}
@@ -208,7 +207,7 @@ export default function AdminSettingsPage() {
           email={pendingLocalEmail}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Email changed successfully.");
           }}
