@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 
 import SettingsSection from "../../components/settings/SettingsSection";
 import SettingsRow from "../../components/settings/SettingsRow";
+import AccountIdentitySection from "../../components/settings/AccountIdentitySection";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
 import AddLocalLoginModal from "../../components/settings/AddLocalLoginModal";
 import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailModal";
@@ -11,6 +12,7 @@ import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
+import { useAccountProfileStore } from "../../stores/useAccountProfileStore";
 
 export default function ContentManagerSettingsPage() {
   const me = useAuthStore((state) => state.user);
@@ -18,6 +20,19 @@ export default function ContentManagerSettingsPage() {
 
   const providers = useAuthProviderStore((state) => state.providers);
   const loadProviders = useAuthProviderStore((state) => state.loadProviders);
+
+  const accountProfile = useAccountProfileStore(
+    (state) => state.accountProfile,
+  );
+  const accountProfileSaving = useAccountProfileStore(
+    (state) => state.saving,
+  );
+  const loadAccountProfile = useAccountProfileStore(
+    (state) => state.loadAccountProfile,
+  );
+  const updateAccountProfile = useAccountProfileStore(
+    (state) => state.updateAccountProfile,
+  );
 
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -40,6 +55,7 @@ export default function ContentManagerSettingsPage() {
       await Promise.all([
         loadCurrentUser({ force }),
         loadProviders({ force }),
+        loadAccountProfile({ force }),
       ]);
     } catch (error) {
       console.error(
@@ -61,6 +77,25 @@ export default function ContentManagerSettingsPage() {
     fetchSettings();
   }, []);
 
+  const handleIdentitySave = async (payload) => {
+    try {
+      setActionError("");
+      await updateAccountProfile(payload);
+      toast.success("Account identity updated successfully.");
+    } catch (error) {
+      console.error(
+        "Failed to update content manager identity:",
+        error.response?.data || error,
+      );
+      setActionError(
+        getFriendlyApiErrorMessage(
+          error,
+          "Unable to update account identity.",
+        ),
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-8">
@@ -80,9 +115,6 @@ export default function ContentManagerSettingsPage() {
         <h1 className="mt-1 text-3xl font-black tracking-[-0.035em] text-[#18332D]">
           Content Manager Settings
         </h1>
-        <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-          Keep your content manager login details up to date.
-        </p>
       </div>
 
       {actionError && (
@@ -94,10 +126,13 @@ export default function ContentManagerSettingsPage() {
         </div>
       )}
 
-      <SettingsSection
-        title="Login details"
-        description="Update the email and password used to sign in to this content manager account."
-      >
+      <AccountIdentitySection
+        accountProfile={accountProfile}
+        saving={accountProfileSaving}
+        onSave={handleIdentitySave}
+      />
+
+      <SettingsSection title="Login details">
         <SettingsRow
           icon={Mail}
           title="Email"

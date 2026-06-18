@@ -10,8 +10,8 @@ import {
 
 import AuthLogo from "../components/auth/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
-import { getMyProfileApi } from "../api/profileApi";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useAccountProfileStore } from "../stores/useAccountProfileStore";
 
 const contentManagerNavGroups = [
   {
@@ -51,11 +51,9 @@ function getContentManagerPageTitle(pathname) {
   return "Content Manager";
 }
 
-function getDisplayName(user, profile) {
+function getDisplayName(user, accountProfile) {
   return (
-    profile?.fullName
-    || profile?.displayName
-    || profile?.name
+    accountProfile?.displayName
     || user?.fullName
     || user?.displayName
     || user?.name
@@ -64,12 +62,8 @@ function getDisplayName(user, profile) {
   );
 }
 
-function getEmail(user, profile) {
-  return (
-    profile?.email
-    || user?.email
-    || "No email available"
-  );
+function getEmail(user) {
+  return user?.email || "No email available";
 }
 
 export default function ContentManagerLayout() {
@@ -78,10 +72,16 @@ export default function ContentManagerLayout() {
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const accountProfile = useAccountProfileStore(
+    (state) => state.accountProfile,
+  );
+  const loadAccountProfile = useAccountProfileStore(
+    (state) => state.loadAccountProfile,
+  );
 
   const userMenuRef = useRef(null);
 
-  const [profile, setProfile] = useState(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -89,17 +89,14 @@ export default function ContentManagerLayout() {
       return;
     }
 
-    async function fetchProfile() {
-      try {
-        const data = await getMyProfileApi();
-        setProfile(data);
-      } catch (error) {
-        console.error("Failed to load profile:", error);
-      }
-    }
+    loadAccountProfile().catch((error) => {
+      console.error("Failed to load account profile:", error);
+    });
+  }, [user, loadAccountProfile]);
 
-    fetchProfile();
-  }, [user]);
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [accountProfile?.avatarUrl]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -120,8 +117,10 @@ export default function ContentManagerLayout() {
     [location.pathname],
   );
 
-  const displayName = getDisplayName(user, profile);
-  const email = getEmail(user, profile);
+  const displayName = getDisplayName(user, accountProfile);
+  const email = getEmail(user);
+  const avatarUrl = accountProfile?.avatarUrl?.trim();
+  const showAvatar = Boolean(avatarUrl && !avatarFailed);
 
   const goToSettings = () => {
     setIsUserMenuOpen(false);
@@ -204,8 +203,17 @@ export default function ContentManagerLayout() {
                 : "border-transparent hover:border-[#B9D8CC] hover:bg-[#F7F1E8]"
             }`}
           >
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#2FA084] text-white">
-              <Shield size={18} />
+            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#2FA084] text-white">
+              {showAvatar ? (
+                <img
+                  src={avatarUrl}
+                  alt={`${displayName} avatar`}
+                  onError={() => setAvatarFailed(true)}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Shield size={18} />
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
