@@ -8,6 +8,9 @@
 \echo 'Seeding roles and permissions...'
 \i docs/database/seeds/core/rbac-roles-permissions.sql
 
+\echo 'Seeding users...'
+\i docs/database/seeds/core/dev-users.seed.sql
+
 \echo 'Seeding AI Engineer roadmap...'
 \i docs/database/seeds/roadmaps/ai-engineer-roadmap.seed.sql
 
