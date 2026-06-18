@@ -68,6 +68,8 @@ public class OAuthLoginService : IOAuthLoginService
 
             await _dbContext.SaveChangesAsync();
 
+            await EnsureDefaultLearnerRoleIfNoRolesAsync(existingProvider.User);
+
             return ToAuthenticatedUserDto(existingProvider.User, existingProvider.Email);
         }
 
@@ -137,23 +139,53 @@ public class OAuthLoginService : IOAuthLoginService
 
         _dbContext.UserAuthProviders.Add(externalProvider);
 
-        var learnerRole = await _dbContext.Roles
-            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner);
+        var learnerRole = await GetRequiredLearnerRoleAsync();
 
-        if (learnerRole != null)
+        var learnerUserRole = new UserRole
         {
-            var userRole = new UserRole
-            {
-                User = user,
-                RoleId = learnerRole.RoleId,
-                Role = learnerRole
-            };
-            _dbContext.UserRoles.Add(userRole);
-        }
-        
+            User = user,
+            UserId = user.UserId,
+            Role = learnerRole,
+            RoleId = learnerRole.RoleId
+        };
+
+        _dbContext.UserRoles.Add(learnerUserRole);
+        user.UserRoles.Add(learnerUserRole);
+
         await _dbContext.SaveChangesAsync();
 
         return ToAuthenticatedUserDto(user, externalProvider.Email);
+    }
+
+    private async Task EnsureDefaultLearnerRoleIfNoRolesAsync(User user)
+    {
+        if (user.UserRoles.Any())
+        {
+            return;
+        }
+
+        var learnerRole = await GetRequiredLearnerRoleAsync();
+
+        var userRole = new UserRole
+        {
+            User = user,
+            UserId = user.UserId,
+            Role = learnerRole,
+            RoleId = learnerRole.RoleId
+        };
+
+        _dbContext.UserRoles.Add(userRole);
+        user.UserRoles.Add(userRole);
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    private async Task<Role> GetRequiredLearnerRoleAsync()
+    {
+        return await _dbContext.Roles
+            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner)
+            ?? throw new InvalidOperationException(
+                "Default learner role was not found. Run the RBAC role-permission seed before creating or logging in learner accounts.");
     }
 
     private static AuthenticatedUserDto ToAuthenticatedUserDto(User user, string? email)

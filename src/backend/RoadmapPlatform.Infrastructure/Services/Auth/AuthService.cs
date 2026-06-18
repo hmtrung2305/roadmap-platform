@@ -216,6 +216,8 @@ public class AuthService : IAuthService
 
         ValidateAccountStatus(localProvider.User.Status);
 
+        await EnsureDefaultLearnerRoleIfNoRolesAsync(localProvider.User, cancellationToken);
+
         var authenticatedUser = new AuthenticatedUserDto
         {
             UserId = localProvider.User.UserId,
@@ -307,17 +309,18 @@ public class AuthService : IAuthService
         _dbContext.UserProfiles.Add(profile);
         _dbContext.UserAuthProviders.Add(localProvider);
 
-        var learnerRole = await _dbContext.Roles
-            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner, cancellationToken);
+        var learnerRole = await GetRequiredLearnerRoleAsync(cancellationToken);
 
-        if (learnerRole != null)
+        var learnerUserRole = new UserRole
         {
-            _dbContext.UserRoles.Add(new UserRole
-            {
-                User = user,
-                RoleId = learnerRole.RoleId
-            });
-        }
+            User = user,
+            UserId = user.UserId,
+            Role = learnerRole,
+            RoleId = learnerRole.RoleId
+        };
+
+        _dbContext.UserRoles.Add(learnerUserRole);
+        user.UserRoles.Add(learnerUserRole);
 
         var pendingRegistration = await _dbContext.PendingLocalRegistrations
             .FirstOrDefaultAsync(
@@ -456,6 +459,39 @@ public class AuthService : IAuthService
             VerificationPurpose = EmailVerificationPurposes.Register,
             CanResendVerification = true
         };
+    }
+
+    private async Task EnsureDefaultLearnerRoleIfNoRolesAsync(
+        User user,
+        CancellationToken cancellationToken = default)
+    {
+        if (user.UserRoles.Any())
+        {
+            return;
+        }
+
+        var learnerRole = await GetRequiredLearnerRoleAsync(cancellationToken);
+
+        var userRole = new UserRole
+        {
+            User = user,
+            UserId = user.UserId,
+            Role = learnerRole,
+            RoleId = learnerRole.RoleId
+        };
+
+        _dbContext.UserRoles.Add(userRole);
+        user.UserRoles.Add(userRole);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<Role> GetRequiredLearnerRoleAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Roles
+            .FirstOrDefaultAsync(r => r.RoleName == RoleNames.Learner, cancellationToken)
+            ?? throw new InvalidOperationException(
+                "Default learner role was not found. Run the RBAC role-permission seed before creating or logging in learner accounts.");
     }
 
     private LoginResponseDto CreateLoginResponse(AuthenticatedUserDto user)
