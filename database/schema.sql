@@ -7,13 +7,13 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS public.permission
 (
     permission_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    permission_name varchar(50) NOT NULL UNIQUE
+    permission_name varchar(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS public.role
 (
     role_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_name varchar(15) NOT NULL UNIQUE
+    role_name varchar(50) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS public.user
@@ -1331,10 +1331,10 @@ CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_module_id
 CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_lesson_id
     ON public.skill_module_chunk(skill_module_lesson_id);
 
-CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_embedding
-    ON public.skill_module_chunk
-    USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
+-- CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_embedding
+--     ON public.skill_module_chunk
+--     USING ivfflat (embedding vector_cosine_ops)
+--     WITH (lists = 100);
 
 CREATE TABLE IF NOT EXISTS public.user_insight
 (

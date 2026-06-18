@@ -68,3 +68,11 @@
 \i database/seeds/roadmaps/site-reliability-engineer-roadmap.seed.sql
 
 \echo 'Roadmap seed completed.'
+
+\echo 'Seeding draft learning modules...'
+\i database/seeds/learning-modules/draft-learning-modules.seed.sql
+
+\echo 'Seeding published learning modules...'
+\i database/seeds/learning-modules/published-learning-modules.seed.sql
+
+\echo 'Learning module seed completed.'
