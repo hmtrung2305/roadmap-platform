@@ -39,5 +39,7 @@ public partial class UserProfile
 
     public DateTime UpdatedAt { get; set; }
 
+    public string? PhoneNumber { get; set; }
+
     public virtual User User { get; set; } = null!;
 }

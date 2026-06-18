@@ -19,7 +19,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<CareerRole> CareerRoles { get; set; }
 
     public virtual DbSet<CareerRoleSkillGroup> CareerRoleSkillGroups { get; set; }
-    
+
     public virtual DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
 
     public virtual DbSet<Invoice> Invoices { get; set; }
@@ -66,6 +66,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Skill> Skills { get; set; }
 
+    public virtual DbSet<SkillGroup> SkillGroups { get; set; }
+
+    public virtual DbSet<SkillGroupItem> SkillGroupItems { get; set; }
+
     public virtual DbSet<SkillModule> SkillModules { get; set; }
 
     public virtual DbSet<SkillModuleChunk> SkillModuleChunks { get; set; }
@@ -83,10 +87,6 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<SkillModuleQuizOption> SkillModuleQuizOptions { get; set; }
 
     public virtual DbSet<SkillModuleQuizQuestion> SkillModuleQuizQuestions { get; set; }
-    
-    public virtual DbSet<SkillGroup> SkillGroups { get; set; }
-
-    public virtual DbSet<SkillGroupItem> SkillGroupItems { get; set; }
 
     public virtual DbSet<SkillTrendSnapshot> SkillTrendSnapshots { get; set; }
 
@@ -304,7 +304,7 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("job_portal_source");
 
-            entity.HasIndex(e => e.Name, "uq_job_portal_source_name").IsUnique();
+            entity.HasIndex(e => e.Name, "job_portal_source_name_key").IsUnique();
 
             entity.Property(e => e.JobPortalSourceId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -1213,6 +1213,54 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<SkillGroup>(entity =>
+        {
+            entity.HasKey(e => e.SkillGroupId).HasName("skill_group_pkey");
+
+            entity.ToTable("skill_group");
+
+            entity.HasIndex(e => e.Slug, "skill_group_slug_key").IsUnique();
+
+            entity.Property(e => e.SkillGroupId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_group_id");
+            entity.Property(e => e.CompletionRule)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'ANY'::character varying")
+                .HasColumnName("completion_rule");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+            entity.Property(e => e.RequiredSkillCount).HasColumnName("required_skill_count");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(100)
+                .HasColumnName("slug");
+        });
+
+        modelBuilder.Entity<SkillGroupItem>(entity =>
+        {
+            entity.HasKey(e => e.SkillGroupItemId).HasName("skill_group_item_pkey");
+
+            entity.ToTable("skill_group_item");
+
+            entity.HasIndex(e => new { e.SkillGroupId, e.SkillId }, "uq_skill_group_item").IsUnique();
+
+            entity.Property(e => e.SkillGroupItemId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_group_item_id");
+            entity.Property(e => e.SkillGroupId).HasColumnName("skill_group_id");
+            entity.Property(e => e.SkillId).HasColumnName("skill_id");
+
+            entity.HasOne(d => d.SkillGroup).WithMany(p => p.SkillGroupItems)
+                .HasForeignKey(d => d.SkillGroupId)
+                .HasConstraintName("fk_skill_group_item_group");
+
+            entity.HasOne(d => d.Skill).WithMany(p => p.SkillGroupItems)
+                .HasForeignKey(d => d.SkillId)
+                .HasConstraintName("fk_skill_group_item_skill");
+        });
+
         modelBuilder.Entity<SkillModule>(entity =>
         {
             entity.HasKey(e => e.SkillModuleId).HasName("skill_module_pkey");
@@ -1610,53 +1658,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_skill_module_quiz_question_quiz");
         });
 
-        modelBuilder.Entity<SkillGroup>(entity =>
-        {
-            entity.HasKey(e => e.SkillGroupId).HasName("skill_group_pkey");
-
-            entity.ToTable("skill_group");
-
-            entity.HasIndex(e => e.Slug, "skill_group_slug_key").IsUnique();
-
-            entity.Property(e => e.SkillGroupId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("skill_group_id");
-            entity.Property(e => e.CompletionRule)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'ANY'::character varying")
-                .HasColumnName("completion_rule");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
-            entity.Property(e => e.RequiredSkillCount).HasColumnName("required_skill_count");
-            entity.Property(e => e.Slug)
-                .HasMaxLength(100)
-                .HasColumnName("slug");
-        });
-
-        modelBuilder.Entity<SkillGroupItem>(entity =>
-        {
-            entity.HasKey(e => e.SkillGroupItemId).HasName("skill_group_item_pkey");
-
-            entity.ToTable("skill_group_item");
-
-            entity.HasIndex(e => new { e.SkillGroupId, e.SkillId }, "uq_skill_group_item").IsUnique();
-
-            entity.Property(e => e.SkillGroupItemId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("skill_group_item_id");
-            entity.Property(e => e.SkillGroupId).HasColumnName("skill_group_id");
-            entity.Property(e => e.SkillId).HasColumnName("skill_id");
-
-            entity.HasOne(d => d.SkillGroup).WithMany(p => p.SkillGroupItems)
-                .HasForeignKey(d => d.SkillGroupId)
-                .HasConstraintName("fk_skill_group_item_group");
-
-            entity.HasOne(d => d.Skill).WithMany(p => p.SkillGroupItems)
-                .HasForeignKey(d => d.SkillId)
-                .HasConstraintName("fk_skill_group_item_skill");
-        });
         modelBuilder.Entity<SkillTrendSnapshot>(entity =>
         {
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
@@ -1903,6 +1904,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("location");
             entity.Property(e => e.PersonalWebsiteUrl).HasColumnName("personal_website_url");
+            entity.Property(e => e.PhoneNumber)
+                .HasMaxLength(32)
+                .HasColumnName("phone_number");
             entity.Property(e => e.PublicEmail)
                 .HasMaxLength(254)
                 .HasColumnName("public_email");
