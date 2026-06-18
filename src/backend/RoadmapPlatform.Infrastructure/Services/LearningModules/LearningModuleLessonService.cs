@@ -267,12 +267,12 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 cancellationToken);
         }
 
-        if (request.Summary != null)
+        if (request.SummaryIsSpecified)
         {
             lesson.Summary = NormalizeOptionalText(request.Summary);
         }
 
-        if (request.EstimatedHours.HasValue)
+        if (request.EstimatedHoursIsSpecified)
         {
             lesson.EstimatedHours = request.EstimatedHours;
         }

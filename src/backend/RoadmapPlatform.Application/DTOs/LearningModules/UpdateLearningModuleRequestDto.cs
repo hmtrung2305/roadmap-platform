@@ -1,9 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace RoadmapPlatform.Application.DTOs.LearningModules;
 
 public sealed class UpdateLearningModuleRequestDto
 {
+    private string? _description;
+    private string? _difficultyLevel;
+    private decimal? _estimatedHours;
+    private Dictionary<string, object?>? _metadata;
+
     public Guid? SkillId { get; set; }
 
     [MaxLength(200)]
@@ -12,12 +18,56 @@ public sealed class UpdateLearningModuleRequestDto
     [MaxLength(200)]
     public string? Slug { get; set; }
 
-    public string? Description { get; set; }
+    public string? Description
+    {
+        get => _description;
+        set
+        {
+            _description = value;
+            DescriptionIsSpecified = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool DescriptionIsSpecified { get; private set; }
 
     [MaxLength(30)]
-    public string? DifficultyLevel { get; set; }
+    public string? DifficultyLevel
+    {
+        get => _difficultyLevel;
+        set
+        {
+            _difficultyLevel = value;
+            DifficultyLevelIsSpecified = true;
+        }
+    }
 
-    public decimal? EstimatedHours { get; set; }
+    [JsonIgnore]
+    public bool DifficultyLevelIsSpecified { get; private set; }
 
-    public Dictionary<string, object?>? Metadata { get; set; }
+    public decimal? EstimatedHours
+    {
+        get => _estimatedHours;
+        set
+        {
+            _estimatedHours = value;
+            EstimatedHoursIsSpecified = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool EstimatedHoursIsSpecified { get; private set; }
+
+    public Dictionary<string, object?>? Metadata
+    {
+        get => _metadata;
+        set
+        {
+            _metadata = value;
+            MetadataIsSpecified = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool MetadataIsSpecified { get; private set; }
 }

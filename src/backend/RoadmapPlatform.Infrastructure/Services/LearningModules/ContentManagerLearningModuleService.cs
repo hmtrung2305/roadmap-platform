@@ -188,24 +188,26 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
                 cancellationToken);
         }
 
-        if (request.Description != null)
+        if (request.DescriptionIsSpecified)
         {
             module.Description = NormalizeOptionalText(request.Description);
         }
 
-        if (request.DifficultyLevel != null)
+        if (request.DifficultyLevelIsSpecified)
         {
             module.DifficultyLevel = NormalizeOptionalText(request.DifficultyLevel);
         }
 
-        if (request.EstimatedHours.HasValue)
+        if (request.EstimatedHoursIsSpecified)
         {
             module.EstimatedHours = request.EstimatedHours;
         }
 
-        if (request.Metadata != null)
+        if (request.MetadataIsSpecified)
         {
-            module.Metadata = JsonSerializer.Serialize(request.Metadata, JsonOptions);
+            module.Metadata = request.Metadata == null
+                ? "{}"
+                : JsonSerializer.Serialize(request.Metadata, JsonOptions);
         }
 
         module.UpdatedAt = DateTime.UtcNow;
