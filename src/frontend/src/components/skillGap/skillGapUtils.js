@@ -42,6 +42,36 @@ export function isGroupCompleted(group, selectedSkillSlugs) {
   return matchedCount >= 1;
 }
 
+
+export function normalizeCareerRole(role) {
+  if (!role) return null;
+
+  const careerRoleId =
+    getValue(role, "careerRoleId", "CareerRoleId") ??
+    getValue(role, "id", "Id");
+  const name =
+    getValue(role, "name", "Name") ??
+    getValue(role, "roleName", "RoleName") ??
+    getValue(role, "title", "Title", "Unnamed role");
+  const slug =
+    getValue(role, "slug", "Slug") ??
+    getValue(role, "careerRoleSlug", "CareerRoleSlug") ??
+    getValue(role, "roleSlug", "RoleSlug", "");
+
+  return {
+    ...role,
+    careerRoleId,
+    id: getValue(role, "id", "Id", careerRoleId),
+    name,
+    slug: String(slug || "").trim(),
+    description: getValue(role, "description", "Description", ""),
+  };
+}
+
+export function normalizeCareerRoles(response) {
+  return toArray(response).map(normalizeCareerRole).filter(Boolean);
+}
+
 export function normalizeAssessmentGroups(response) {
   return toArray(getValue(response, "skillGroups", "SkillGroups")).map((group) => ({
     skillGroupId: getValue(group, "skillGroupId", "SkillGroupId"),

@@ -1,15 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { roadmapApi } from "../api/roadmapApi";
 import RoadmapCard from "../components/roadmap/RoadmapCard";
 import CareerMentorWidget from "../components/mentor/CareerMentorWidget";
+import { getRoadmapVersionId, useRoadmapStore } from "../stores/useRoadmapStore";
 
 export default function RoadmapSelectionPage() {
   const navigate = useNavigate();
-  const [roadmaps, setRoadmaps] = useState([]);
-  const [status, setStatus] = useState("loading");
-  const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
+
+  const baseRoadmaps = useRoadmapStore((state) => state.roadmaps);
+  const enrollmentByVersionId = useRoadmapStore((state) => state.enrollmentByVersionId);
+  const status = useRoadmapStore((state) => state.roadmapsStatus);
+  const message = useRoadmapStore((state) => state.roadmapsError);
+  const loadRoadmaps = useRoadmapStore((state) => state.loadRoadmaps);
+
+  const roadmaps = useMemo(
+    () =>
+      baseRoadmaps.map((roadmap) => {
+        const roadmapVersionId = getRoadmapVersionId(roadmap);
+        const enrollmentKey = String(roadmapVersionId);
+        const hasEnrollment = Object.prototype.hasOwnProperty.call(
+          enrollmentByVersionId,
+          enrollmentKey,
+        );
+        const enrollment = hasEnrollment
+          ? enrollmentByVersionId[enrollmentKey]
+          : roadmap.enrollment ?? null;
+
+        return {
+          ...roadmap,
+          enrollment,
+          progressPercent: enrollment?.progressPercent ?? roadmap.progressPercent ?? 0,
+        };
+      }),
+    [baseRoadmaps, enrollmentByVersionId],
+  );
 
   const filteredRoadmaps = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -33,72 +58,18 @@ export default function RoadmapSelectionPage() {
   }, [roadmaps, query]);
 
   useEffect(() => {
-    loadPage();
-  }, []);
-
-  async function loadPage() {
-    setStatus("loading");
-    setMessage("");
-
-    try {
-      const baseRoadmaps = await roadmapApi.getRoadmaps();
-
-      setRoadmaps(baseRoadmaps);
-      setStatus("success");
-
-      loadEnrollmentProgress(baseRoadmaps);
-    } catch (error) {
+    loadRoadmaps({ includeEnrollments: true }).catch((error) => {
       console.error(error);
-      setMessage(error?.message || "Failed to load roadmaps. Check that the API is running.");
-      setStatus("error");
-    }
+    });
+  }, [loadRoadmaps]);
+
+  function handleRetry() {
+    loadRoadmaps({ force: true, includeEnrollments: true }).catch((error) => {
+      console.error(error);
+    });
   }
 
-  async function loadEnrollmentProgress(baseRoadmaps) {
-    const roadmapsWithVersion = baseRoadmaps.filter((roadmap) => roadmap.roadmapVersionId);
-
-    if (roadmapsWithVersion.length === 0) return;
-
-    try {
-      const progressResults = await Promise.allSettled(
-        roadmapsWithVersion.map(async (roadmap) => ({
-          roadmapVersionId: roadmap.roadmapVersionId,
-          enrollment: await roadmapApi.getCurrentEnrollment(roadmap.roadmapVersionId),
-        }))
-      );
-
-      const enrollmentByVersionId = new Map();
-
-      progressResults.forEach((result) => {
-        if (result.status !== "fulfilled") return;
-
-        enrollmentByVersionId.set(
-          String(result.value.roadmapVersionId),
-          result.value.enrollment
-        );
-      });
-
-      setRoadmaps((current) =>
-        current.map((roadmap) => {
-          const key = String(roadmap.roadmapVersionId);
-
-          if (!enrollmentByVersionId.has(key)) return roadmap;
-
-          const enrollment = enrollmentByVersionId.get(key);
-
-          return {
-            ...roadmap,
-            enrollment,
-            progressPercent: enrollment?.progressPercent ?? 0,
-          };
-        })
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  if (status === "loading") {
+  if (status === "loading" && roadmaps.length === 0) {
     return (
       <PageShell centered>
         <div className="rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
@@ -111,7 +82,7 @@ export default function RoadmapSelectionPage() {
     );
   }
 
-  if (status === "error") {
+  if (status === "error" && roadmaps.length === 0) {
     return (
       <PageShell centered>
         <div className="max-w-md rounded-lg border border-[#B9D8CC] bg-white p-8 text-center shadow-lg">
@@ -120,7 +91,7 @@ export default function RoadmapSelectionPage() {
 
           <button
             type="button"
-            onClick={loadPage}
+            onClick={handleRetry}
             className="mt-6 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-5 py-2 text-sm font-extrabold text-white shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(31,111,95,0.10)] active:translate-y-0 active:shadow-sm"
           >
             Retry
@@ -184,6 +155,12 @@ export default function RoadmapSelectionPage() {
             />
           </div>
         </section>
+
+        {status === "error" && message && roadmaps.length > 0 && (
+          <section className="mt-7 rounded-lg border border-[#FCA5A5] bg-[#FEE2E2] px-4 py-3 text-sm font-bold text-[#7F1D1D]">
+            {message}
+          </section>
+        )}
 
         {filteredRoadmaps.length === 0 ? (
           <section className="mt-10 rounded-lg border-2 border-dashed border-[#B9D8CC] bg-white p-10 text-center">

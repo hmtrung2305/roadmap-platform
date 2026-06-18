@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
-import { learningModuleApi } from "../../api/learningModuleApi";
+import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -29,11 +29,13 @@ export default function BrowseLearningModulesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialBrowseState = getBrowseStateFromSearchParams(searchParams);
-  const [modules, setModules] = useState([]);
+  const modules = useLearningModuleStore((state) => state.publishedModules);
+  const isLoading = useLearningModuleStore((state) => state.isPublishedModulesLoading);
+  const isLoaded = useLearningModuleStore((state) => state.publishedModulesLoaded);
+  const error = useLearningModuleStore((state) => state.publishedModulesError);
+  const loadPublishedModules = useLearningModuleStore((state) => state.loadPublishedModules);
   const [search, setSearch] = useState(initialBrowseState.search);
   const [difficulty, setDifficulty] = useState(initialBrowseState.difficulty);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const nextState = getBrowseStateFromSearchParams(searchParams);
@@ -67,27 +69,8 @@ export default function BrowseLearningModulesPage() {
   };
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadModules() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await learningModuleApi.getPublishedModules();
-        if (!ignore) setModules(data);
-      } catch (err) {
-        if (!ignore) setError(err?.message || "Unable to load learning modules.");
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
-    }
-
-    loadModules();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    loadPublishedModules().catch(() => {});
+  }, [loadPublishedModules]);
 
   const visibleModules = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -153,7 +136,7 @@ export default function BrowseLearningModulesPage() {
 
         {error && <ModuleCard className="border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</ModuleCard>}
 
-        {isLoading ? (
+        {isLoading || (!isLoaded && !error) ? (
           <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">Loading modules...</ModuleCard>
         ) : visibleModules.length === 0 ? (
           <ModuleEmptyState title="No available modules found">

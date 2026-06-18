@@ -9,6 +9,16 @@ import { useStreakStore } from "./useStreakStore";
 import { PERMISSIONS } from "../constants/permissions";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { hasPermission } from "../utils/authorizationUtils";
+import { useProfileStore } from "./useProfileStore";
+import { useAuthProviderStore } from "./useAuthProviderStore";
+import { useRoadmapStore } from "./useRoadmapStore";
+import { usePortfolioEditorStore } from "./usePortfolioEditorStore";
+import { usePortfolioStore } from "./usePortfolioStore";
+import { useSkillGapStore } from "./useSkillGapStore";
+import { useLearningModuleStore } from "./useLearningModuleStore";
+import { useAiCreditStore } from "./useAiCreditStore";
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { clearRequestCache } from "../utils/requestCacheUtils";
 
 const SESSION_CACHE_MS = 5 * 60 * 1000;
 
@@ -36,16 +46,26 @@ export const useAuthStore = create((set, get) => ({
 
   clearAuth: () => {
     currentUserPromise = null;
+    clearRequestCache();
 
     set({
       user: null,
       authLoading: false,
       authInitialized: true,
+      authError: "",
       lastCheckedAt: 0,
     });
 
     localStorage.removeItem("isLoggedIn");
     useStreakStore.getState().resetStreakState();
+    useProfileStore.getState().resetProfile();
+    useAuthProviderStore.getState().resetProviders();
+    useRoadmapStore.getState().resetRoadmaps();
+    usePortfolioEditorStore.getState().resetPortfolioEditor();
+    usePortfolioStore.getState().resetPortfolioView();
+    useSkillGapStore.getState().resetSkillGap();
+    useLearningModuleStore.getState().resetLearningModules();
+    useAiCreditStore.getState().resetAiCredit();
   },
 
   setAuthenticatedUser: (user) => {
@@ -95,6 +115,14 @@ export const useAuthStore = create((set, get) => ({
 
       localStorage.removeItem("isLoggedIn");
       useStreakStore.getState().resetStreakState();
+      useProfileStore.getState().resetProfile();
+      useAuthProviderStore.getState().resetProviders();
+      useRoadmapStore.getState().resetRoadmaps();
+      usePortfolioEditorStore.getState().resetPortfolioEditor();
+      usePortfolioStore.getState().resetPortfolioView();
+      useSkillGapStore.getState().resetSkillGap();
+      useLearningModuleStore.getState().resetLearningModules();
+      useAiCreditStore.getState().resetAiCredit();
 
       throw error;
     } finally {

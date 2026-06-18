@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
@@ -11,8 +11,8 @@ import ContentManagerLayout from "./layouts/ContentManagerLayout";
 import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
+import { subscribeToUnauthorizedEvent } from "./utils/authEventUtils";
 import StudyRoomPage from "./pages/StudyRoomPage";
-import ManagePortfolioRepositoriesPage from "./pages/ManagePortfolioRepositoryPage";
 import EditPortfolioPage from "./pages/EditPortfolioPage";
 import { ToastContainer } from "react-toastify";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
@@ -21,7 +21,6 @@ import AccountSettingsPage from "./pages/settings/AccountSettingsPage";
 import PrivacySettingsPage from "./pages/settings/PrivacySettingsPage";
 import ProfileSettingsPage from "./pages/settings/ProfileSettingsPage";
 import PointsSettingsPage from "./pages/settings/PointSettingsPage";
-import ProfilePage from "./pages/ProfilePage";
 import RoadmapSelectionPage from "./pages/RoadmapSelectionPage";
 import RoadmapViewerPage from "./pages/RoadmapViewerPage";
 import MarketPulsePage from "./pages/MarketPulsePage";
@@ -65,11 +64,25 @@ function shouldLoadSessionOnPublicPath(pathname) {
 
 function AuthBootstrap({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const bootstrappedRef = useRef(false);
 
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const user = useAuthStore((state) => state.user);
   const authInitialized = useAuthStore((state) => state.authInitialized);
+
+  useEffect(() => {
+    return subscribeToUnauthorizedEvent(() => {
+      const pathname = window.location.pathname;
+
+      clearAuth();
+
+      if (!isPublicPath(pathname)) {
+        navigate("/login", { replace: true });
+      }
+    });
+  }, [clearAuth, navigate]);
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -157,15 +170,10 @@ export default function App() {
             }
           >
             <Route path="/home" element={<Navigate to="/roadmaps" replace />} />
-            <Route path="/profile" element={<ProfilePage />} />
+
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/portfolio/edit" element={<EditPortfolioPage />} />
-            <Route
-              path="/portfolio/repositories"
-              element={<ManagePortfolioRepositoriesPage />}
-            />
-            <Route path="/resources" element={<Navigate to="/learning-modules" replace />} />
-            <Route path="/study/:resourceId" element={<Navigate to="/learning-modules" replace />} />
+            <Route path="/portfolio/repositories" element={<Navigate to="/portfolio/edit" replace />} />
 
             <Route path="/learning-modules" element={<LearningModulesPage />} />
             <Route path="/learning-modules/browse" element={<BrowseLearningModulesPage />} />
@@ -176,7 +184,9 @@ export default function App() {
             <Route path="/roadmaps" element={<RoadmapSelectionPage />} />
             <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
             <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
+
             <Route path="/market-pulse" element={<MarketPulsePage />} />
+
             <Route path="/skill-gap" element={<SkillGapAnalysisPage />} />
             <Route path="/skill-gap-analysis" element={<SkillGapAnalysisPage />} />
           </Route>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { learningModuleApi } from "../../api/learningModuleApi";
+import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
 import {
   getEnrollmentStatus,
   getProgress,
@@ -26,10 +26,12 @@ function getStatusFromSearchParams(searchParams) {
 export default function LearningModulesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [modules, setModules] = useState([]);
+  const modules = useLearningModuleStore((state) => state.enrolledModules);
+  const isLoading = useLearningModuleStore((state) => state.isEnrolledModulesLoading);
+  const isLoaded = useLearningModuleStore((state) => state.enrolledModulesLoaded);
+  const error = useLearningModuleStore((state) => state.enrolledModulesError);
+  const loadEnrolledModules = useLearningModuleStore((state) => state.loadEnrolledModules);
   const [status, setStatus] = useState(() => getStatusFromSearchParams(searchParams));
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const nextStatus = getStatusFromSearchParams(searchParams);
@@ -53,27 +55,8 @@ export default function LearningModulesPage() {
   };
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadModules() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await learningModuleApi.getEnrolledModules();
-        if (!ignore) setModules(data);
-      } catch (err) {
-        if (!ignore) setError(err?.message || "Unable to load your learning modules.");
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
-    }
-
-    loadModules();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    loadEnrolledModules().catch(() => {});
+  }, [loadEnrolledModules]);
 
   const visibleModules = useMemo(() => {
     return modules.filter((module) => getEnrollmentStatus(module) === status);
@@ -121,7 +104,7 @@ export default function LearningModulesPage() {
           </ModuleCard>
         )}
 
-        {isLoading ? (
+        {isLoading || (!isLoaded && !error) ? (
           <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">
             Loading learning modules...
           </ModuleCard>

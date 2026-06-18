@@ -9,10 +9,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {
-  getAuthProvidersApi,
-  redirectToGitHubLink,
-} from "../../api/authProviderApi";
+import { redirectToGitHubLink } from "../../api/authProviderApi";
 import { FaGithub } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
@@ -21,14 +18,20 @@ import {
   CONTENT_MANAGER_SURFACE_PERMISSIONS,
 } from "../../constants/permissions";
 import { hasAnyPermission } from "../../utils/authorizationUtils";
+import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
 
 export default function AvatarDropdown({ user, profile, onLogout }) {
   const navigate = useNavigate();
   const menuRef = useRef(null);
 
   const [open, setOpen] = useState(false);
-  const [providers, setProviders] = useState([]);
-  const [loadingProviders, setLoadingProviders] = useState(false);
+  const providers = useAuthProviderStore((state) => state.providers);
+  const loadingProviders = useAuthProviderStore((state) => state.loading);
+  const actionLoading = useAuthProviderStore((state) => state.actionLoading);
+  const connectingProvider = useAuthProviderStore((state) => state.connectingProvider);
+  const providerError = useAuthProviderStore((state) => state.error);
+  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
+  const startConnectingProvider = useAuthProviderStore((state) => state.startConnectingProvider);
 
   const displayName =
     profile?.displayName || user?.username || user?.email || "User";
@@ -37,12 +40,19 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
   const avatarUrl = profile?.avatarUrl;
 
   const githubProvider = providers.find(
-    (provider) => provider.provider === "github"
+    (provider) => provider.provider?.toLowerCase() === "github"
   );
 
   const isGitHubLinked = githubProvider?.isLinked ?? false;
   const canAccessContentManagerConsole = hasAnyPermission(user, CONTENT_MANAGER_SURFACE_PERMISSIONS);
   const canAccessAdminConsole = hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS);
+  const isConnectingGitHub = connectingProvider === "github";
+  const isSocialProviderActionLocked = Boolean(connectingProvider);
+  const disableGitHubConnect =
+    isGitHubLinked ||
+    loadingProviders ||
+    actionLoading ||
+    isSocialProviderActionLocked;
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -61,29 +71,27 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
   useEffect(() => {
     if (!open) return;
 
-    async function fetchProviders() {
-      try {
-        setLoadingProviders(true);
-        const data = await getAuthProvidersApi();
-        setProviders(data);
-      } catch (error) {
-        console.error("Failed to load auth providers:", error);
-      } finally {
-        setLoadingProviders(false);
-      }
+    loadProviders().catch((error) => {
+      console.error("Failed to load auth providers:", error);
+    });
+  }, [loadProviders, open]);
+
+
+  const handleConnectGitHub = () => {
+    if (disableGitHubConnect) return;
+
+    const startedProvider = startConnectingProvider("github");
+
+    if (!startedProvider) {
+      toast.error(
+        providerError ||
+          "Another account connection is already in progress. Please try again shortly.",
+      );
+      return;
     }
 
-    fetchProviders();
-  }, [open]);
-
-  const handleConnectGitHub = async () => {
     setOpen(false);
-
-    try {
-      await redirectToGitHubLink();
-    } catch (error) {
-      toast.error(getFriendlyApiErrorMessage(error, "Unable to start GitHub connection."));
-    }
+    redirectToGitHubLink();
   };
 
   const handleGoToEditPortfolio = () => {
@@ -153,7 +161,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
           <div className="p-2">
             <DropdownItem
               icon={<Code2 size={18} />}
-              label="Profile"
+              label="Edit Portfolio"
               onClick={handleGoToEditPortfolio}
             />
 
@@ -183,18 +191,21 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
               <DropdownItem
                 icon={<CheckCircle2 size={18} />}
                 label="GitHub Connected"
-                onClick={() => {
-                  setOpen(false);
-                  navigate("/portfolio/repositories");
-                }}
+                onClick={handleGoToEditPortfolio}
                 active
               />
             ) : (
               <DropdownItem
                 icon={<FaGithub size={18} />}
-                label={loadingProviders ? "Checking GitHub..." : "Connect GitHub"}
+                label={
+                  isConnectingGitHub
+                    ? "Connecting GitHub..."
+                    : loadingProviders
+                      ? "Checking GitHub..."
+                      : "Connect GitHub"
+                }
                 onClick={handleConnectGitHub}
-                disabled={loadingProviders}
+                disabled={disableGitHubConnect}
               />
             )}
           </div>

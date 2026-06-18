@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-react";
 import { toast } from "react-toastify";
-import { learningModuleApi } from "../../api/learningModuleApi";
+import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -16,33 +16,17 @@ import {
 export default function LearningModuleOverviewPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [module, setModule] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const module = useLearningModuleStore((state) => state.getModuleSnapshot(slug));
+  const moduleLoaded = useLearningModuleStore((state) => state.getModuleLoaded(slug));
+  const isLoading = useLearningModuleStore((state) => state.getModuleLoading(slug));
+  const error = useLearningModuleStore((state) => state.getModuleError(slug));
+  const loadModuleBySlug = useLearningModuleStore((state) => state.loadModuleBySlug);
+  const enrollModule = useLearningModuleStore((state) => state.enrollModule);
   const [isStarting, setIsStarting] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadModule() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await learningModuleApi.getPublishedModuleBySlug(slug);
-        if (!ignore) setModule(data);
-      } catch (err) {
-        if (!ignore) setError(err?.message || "Unable to load this module.");
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
-    }
-
-    loadModule();
-
-    return () => {
-      ignore = true;
-    };
-  }, [slug]);
+    loadModuleBySlug(slug).catch(() => {});
+  }, [slug, loadModuleBySlug]);
 
   const totalEstimatedHours = useMemo(() => {
     if (!module?.lessons?.length) return module?.estimatedHours;
@@ -51,7 +35,7 @@ export default function LearningModuleOverviewPage() {
   }, [module]);
 
   const handleStart = async () => {
-    if (!module) return;
+    if (!module || isStarting) return;
 
     if (getEnrollmentStatus(module) !== "not_started") {
       navigate(`/learning-modules/${module.slug}/study`);
@@ -60,7 +44,7 @@ export default function LearningModuleOverviewPage() {
 
     try {
       setIsStarting(true);
-      await learningModuleApi.enroll(module.skillModuleId);
+      await enrollModule(module.skillModuleId, { slug });
       toast.success("Module started.");
       navigate(`/learning-modules/${module.slug}/study`);
     } catch (err) {
@@ -70,7 +54,7 @@ export default function LearningModuleOverviewPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || (!moduleLoaded && !error)) {
     return (
       <ModulePageShell>
         <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">

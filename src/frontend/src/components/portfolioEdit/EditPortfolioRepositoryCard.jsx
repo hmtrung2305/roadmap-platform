@@ -1,5 +1,5 @@
 import { Check, ExternalLink, GitFork, Loader2, Sparkles, Star } from "lucide-react";
-import { getRepoDescription, getRepoName } from "./portfolioEditUtils";
+import { getRepoDescription, getRepoName, getRepositoryId } from "./portfolioEditUtils";
 
 function toTagArray(value) {
   if (!value) return [];
@@ -88,9 +88,11 @@ export default function EditPortfolioRepositoryCard({
   repository,
   isSelected,
   isAnalyzing,
+  actionDisabled = false,
   onToggle,
   onGenerateInsight,
 }) {
+  const repositoryId = getRepositoryId(repository);
   const repoName = getRepoName(repository);
   const insight = repository?.insight;
   const hasCompletedInsight = insight?.analysisStatus === "completed" && insight?.summary;
@@ -131,9 +133,10 @@ export default function EditPortfolioRepositoryCard({
         <button
           type="button"
           onClick={onToggle}
+          disabled={actionDisabled}
           aria-label={isSelected ? "Remove from portfolio" : "Select for portfolio"}
-          title={isSelected ? "Selected" : "Choose"}
-          className={`grid size-5 shrink-0 place-items-center rounded-[3px] cursor-pointer transition-colors ${isSelected ? "bg-[#2FA084] text-white" : "bg-white text-[#8BA39B] ring-1 ring-[#B9D8CC] hover:bg-[#EAF8F1] hover:text-[#1F6F5F]"}`}
+          title={actionDisabled ? "Repository actions are temporarily locked." : isSelected ? "Selected" : "Choose"}
+          className={`grid size-5 shrink-0 place-items-center rounded-[3px] cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isSelected ? "bg-[#2FA084] text-white" : "bg-white text-[#8BA39B] ring-1 ring-[#B9D8CC] hover:bg-[#EAF8F1] hover:text-[#1F6F5F]"}`}
         >
           {isSelected ? <Check size={12} strokeWidth={3} /> : null}
         </button>
@@ -161,8 +164,8 @@ export default function EditPortfolioRepositoryCard({
 
           <button
             type="button"
-            onClick={() => onGenerateInsight?.(repository.repositoryId, hasCompletedInsight)}
-            disabled={isAnalyzing}
+            onClick={() => onGenerateInsight?.(repositoryId, hasCompletedInsight)}
+            disabled={actionDisabled || isAnalyzing || !repositoryId}
             className={`ml-auto inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full px-2.5 py-0.5 !text-[14px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${insightStatus.className}`}
             title={hasCompletedInsight ? "Regenerate the AI project summary from repository data." : "Generate a short AI summary for this repository."}
           >

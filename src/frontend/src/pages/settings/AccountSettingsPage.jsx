@@ -3,12 +3,9 @@ import { Trash2 } from "lucide-react";
 import { MdEmail } from "react-icons/md";
 import SettingsSection from "../../components/settings/SettingsSection";
 import SettingsRow from "../../components/settings/SettingsRow";
-import { getCurrentUserApi } from "../../api/authApi";
 import {
-  getAuthProvidersApi,
   redirectToGoogleLink,
   redirectToGitHubLink,
-  unlinkAuthProviderApi,
 } from "../../api/authProviderApi";
 import { FaGithub, FaKey, FaUser } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
@@ -20,10 +17,19 @@ import EditUsernameModal from "../../components/settings/EditUsernameModal";
 import ConfirmModal from "../../components/settings/ConfirmModal";
 import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
 
 export default function AccountSettingsPage() {
-  const [me, setMe] = useState(null);
-  const [providers, setProviders] = useState([]);
+  const me = useAuthStore((state) => state.user);
+  const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
+  const providers = useAuthProviderStore((state) => state.providers);
+  const providerActionLoading = useAuthProviderStore((state) => state.actionLoading);
+  const connectingProvider = useAuthProviderStore((state) => state.connectingProvider);
+  const providerError = useAuthProviderStore((state) => state.error);
+  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
+  const unlinkProvider = useAuthProviderStore((state) => state.unlinkProvider);
+  const startConnectingProvider = useAuthProviderStore((state) => state.startConnectingProvider);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
   const [activeModal, setActiveModal] = useState(null);
@@ -52,22 +58,38 @@ export default function AccountSettingsPage() {
     if (provider === "github") return "GitHub";
     return provider;
   };
-  const fetchSettings = async () => {
+
+  const getProviderActionLabel = (provider, providerInfo) => {
+    if (providerInfo?.isLinked) return "Disconnect";
+    if (connectingProvider === provider) return "Connecting...";
+    return "Connect";
+  };
+
+  const isProviderActionDisabled = (provider, providerInfo) => {
+    const isSocialProviderActionLocked = Boolean(connectingProvider);
+
+    if (providerInfo?.isLinked) {
+      return providerActionLoading || isSocialProviderActionLocked || !providerInfo?.canUnlink;
+    }
+
+    return providerActionLoading || isSocialProviderActionLocked;
+  };
+  const fetchSettings = async ({ force = false } = {}) => {
     try {
       setLoading(true);
       setActionError("");
 
-      const [meData, providersData] = await Promise.all([
-        getCurrentUserApi(),
-        getAuthProvidersApi(),
+      await Promise.all([
+        loadCurrentUser({ force }),
+        loadProviders({ force }),
       ]);
-
-      setMe(meData);
-      setProviders(providersData);
     } catch (error) {
       console.error("Failed to load settings:", error.response?.data || error);
 
-      setActionError(getFriendlyApiErrorMessage(error, "Unable to load account settings."));
+      setActionError(
+        useAuthProviderStore.getState().error ||
+          getFriendlyApiErrorMessage(error, "Unable to load account settings."),
+      );
     } finally {
       setLoading(false);
     }
@@ -76,6 +98,7 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
 
   const openDisconnectConfirm = (provider) => {
     const providerName = getProviderDisplayName(provider);
@@ -99,8 +122,8 @@ export default function AccountSettingsPage() {
         setConfirmLoading(true);
         setActionError("");
 
-        await unlinkAuthProviderApi(provider);
-        await fetchSettings();
+        await unlinkProvider(provider);
+        await loadCurrentUser({ force: true });
 
         toast.success(`${providerName} disconnected successfully.`);
         setConfirmAction(null);
@@ -117,27 +140,31 @@ export default function AccountSettingsPage() {
     }
   };
 
-  const handleProviderRedirect = async (provider) => {
-    const providerName = getProviderDisplayName(provider);
+  const handleProviderRedirect = (provider) => {
+    const providerInfo = provider === "google" ? googleProvider : githubProvider;
 
-    try {
-      setActionError("");
+    if (isProviderActionDisabled(provider, providerInfo)) return;
 
-      if (provider === "google") {
-        await redirectToGoogleLink();
-        return;
-      }
+    setActionError("");
 
-      await redirectToGitHubLink();
-    } catch (error) {
-      const message = getFriendlyApiErrorMessage(
-        error,
-        `Unable to start ${providerName} connection.`
-      );
+    const startedProvider = startConnectingProvider(provider);
+
+    if (!startedProvider) {
+      const message =
+        providerError ||
+        "Another account connection is already in progress. Please try again shortly.";
 
       setActionError(message);
       toast.error(message);
+      return;
     }
+
+    if (provider === "google") {
+      redirectToGoogleLink();
+      return;
+    }
+
+    redirectToGitHubLink();
   };
 
   const handleDeleteAccount = () => {
@@ -269,14 +296,14 @@ export default function AccountSettingsPage() {
           icon={FcGoogle}
           title="Google"
           value={googleProvider?.isLinked ? "Connected" : "Not connected"}
-          actionLabel={googleProvider?.isLinked ? "Disconnect" : "Connect"}
+          actionLabel={getProviderActionLabel("google", googleProvider)}
           actionClassName={
             googleProvider?.isLinked
               ? "bg-red-50 text-red-600"
               : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           isDelete={googleProvider?.isLinked}
-          disabled={googleProvider?.isLinked && !googleProvider?.canUnlink}
+          disabled={isProviderActionDisabled("google", googleProvider)}
           onClick={
             googleProvider?.isLinked
               ? () => openDisconnectConfirm("google")
@@ -288,14 +315,14 @@ export default function AccountSettingsPage() {
           icon={FaGithub}
           title="GitHub"
           value={githubProvider?.isLinked ? "Connected" : "Not connected"}
-          actionLabel={githubProvider?.isLinked ? "Disconnect" : "Connect"}
+          actionLabel={getProviderActionLabel("github", githubProvider)}
           actionClassName={
             githubProvider?.isLinked
               ? "bg-red-50 text-red-600"
               : "bg-[#5A9CB5]/12 text-[#2F7F98]"
           }
           isDelete={githubProvider?.isLinked}
-          disabled={githubProvider?.isLinked && !githubProvider?.canUnlink}
+          disabled={isProviderActionDisabled("github", githubProvider)}
           onClick={
             githubProvider?.isLinked
               ? () => openDisconnectConfirm("github")
@@ -334,7 +361,7 @@ export default function AccountSettingsPage() {
           email={pendingLocalEmail}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Password login added successfully.");
           }}
@@ -345,7 +372,7 @@ export default function AccountSettingsPage() {
         <ChangePasswordModal
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             toast.success("Password changed successfully.");
           }}
         />
@@ -355,7 +382,7 @@ export default function AccountSettingsPage() {
           currentUsername={me?.username}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            fetchSettings();
+            fetchSettings({ force: true });
             toast.success("Username changed successfully.");
           }}
         />
@@ -392,7 +419,7 @@ export default function AccountSettingsPage() {
           email={pendingLocalEmail}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Email changed successfully.");
           }}

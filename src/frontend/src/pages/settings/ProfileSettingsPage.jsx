@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Eye, Globe, Mail, MapPin, Save, UserRound } from "lucide-react";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { getMyProfileApi, updateMyProfileApi } from "../../api/profileApi";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import { useProfileStore } from "../../stores/useProfileStore";
 
 const initialForm = {
   displayName: "",
@@ -25,6 +25,9 @@ const initialForm = {
 export default function ProfileSettingsPage() {
   const navigate = useNavigate();
 
+  const loadProfile = useProfileStore((state) => state.loadProfile);
+  const updateProfile = useProfileStore((state) => state.updateProfile);
+
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,7 +38,7 @@ export default function ProfileSettingsPage() {
       setLoading(true);
       setError("");
 
-      const data = await getMyProfileApi();
+      const data = await loadProfile();
 
       setForm({
         ...initialForm,
@@ -79,7 +82,7 @@ export default function ProfileSettingsPage() {
       setSaving(true);
       setError("");
 
-      await updateMyProfileApi(form);
+      await updateProfile(form);
 
       toast.success("Profile updated successfully.");
       navigate("/portfolio");
