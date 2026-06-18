@@ -1,3 +1,9 @@
+-- ============================================================
+-- Consolidated database schema
+-- Represents the final schema after migrations 002 through 014.
+-- Intended for provisioning a new PostgreSQL database.
+-- ============================================================
+
 -- =========================
 -- User, Role, Permission
 -- =========================
@@ -16,7 +22,7 @@ CREATE TABLE IF NOT EXISTS public.role
     role_name varchar(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS public.user
+CREATE TABLE IF NOT EXISTS public."user"
 (
     user_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     username varchar(50) UNIQUE NOT NULL,
@@ -58,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.user_profile
 
     CONSTRAINT fk_user_profile_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -72,7 +78,7 @@ CREATE TABLE IF NOT EXISTS public.user_activity_stats
 
     CONSTRAINT fk_user_activity_stats_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -247,7 +253,7 @@ CREATE TABLE IF NOT EXISTS public.user_ai_credit_plan
 
     CONSTRAINT fk_user_ai_credit_plan_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_ai_credit_plan_plan_code
@@ -268,7 +274,7 @@ CREATE TABLE IF NOT EXISTS public.ai_credit_usage
 
     CONSTRAINT fk_ai_credit_usage_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT chk_ai_credit_usage_credit_cost
@@ -283,7 +289,8 @@ CREATE INDEX IF NOT EXISTS idx_ai_credit_usage_feature_created_at
 
 CREATE TABLE IF NOT EXISTS public.permission_role
 (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),    permission_id uuid NOT NULL,
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    permission_id uuid NOT NULL,
     role_id uuid NOT NULL,
 
     CONSTRAINT fk_permission_role_permission_id
@@ -308,7 +315,7 @@ CREATE TABLE IF NOT EXISTS public.user_role
 
     CONSTRAINT fk_user_role_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_role_role_id
@@ -336,7 +343,7 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
 
     CONSTRAINT fk_user_auth_provider_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_provider_identity
@@ -346,11 +353,37 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
         UNIQUE (user_id, provider)
 );
 
+CREATE TABLE IF NOT EXISTS public.pending_local_registration
+(
+    pending_local_registration_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    username varchar(50) NOT NULL,
+    username_normalized varchar(50) NOT NULL,
+
+    email varchar(254) NOT NULL,
+    password_hash text NOT NULL,
+
+    expires_at timestamptz NOT NULL,
+    used_at timestamptz,
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_local_registration_email_active
+    ON public.pending_local_registration(email)
+    WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS ix_pending_local_registration_expires_at
+    ON public.pending_local_registration(expires_at)
+    WHERE used_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS public.email_verification_token
 (
     verification_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    user_id uuid NOT NULL,
+    user_id uuid,
+    pending_local_registration_id uuid,
 
     provider varchar(50) NOT NULL,
     email varchar(255) NOT NULL,
@@ -359,7 +392,7 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
     otp_hash text NOT NULL,
 
     expires_at timestamptz NOT NULL,
-    used_at timestamptz NULL,
+    used_at timestamptz,
 
     attempt_count int NOT NULL DEFAULT 0,
     max_attempts int NOT NULL DEFAULT 5,
@@ -368,9 +401,24 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
 
     CONSTRAINT fk_email_verification_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
+        REFERENCES public."user"(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_email_verification_pending_local_registration_id
+        FOREIGN KEY (pending_local_registration_id)
+        REFERENCES public.pending_local_registration(pending_local_registration_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_email_verification_token_single_owner
+        CHECK (
+            (user_id IS NOT NULL AND pending_local_registration_id IS NULL)
+            OR
+            (user_id IS NULL AND pending_local_registration_id IS NOT NULL)
+        )
 );
+
+CREATE INDEX IF NOT EXISTS ix_email_verification_token_pending_local_registration_id
+    ON public.email_verification_token(pending_local_registration_id);
 
 -- =========================
 -- Roadmap
@@ -482,7 +530,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap
 
     CONSTRAINT fk_roadmap_owner_user
         FOREIGN KEY (owner_user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE SET NULL,
 
     CONSTRAINT chk_roadmap_type
@@ -522,7 +570,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
 
     CONSTRAINT fk_roadmap_version_generated_by_user
         FOREIGN KEY (generated_by_user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE SET NULL,
 
     CONSTRAINT uq_roadmap_version_number
@@ -744,7 +792,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_enrollment
 
     CONSTRAINT fk_roadmap_enrollment_user
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_roadmap_enrollment_version
@@ -815,7 +863,7 @@ CREATE TABLE IF NOT EXISTS public.progress_event
 
     CONSTRAINT fk_progress_event_user
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT chk_progress_event_old_status
@@ -1344,7 +1392,7 @@ CREATE TABLE IF NOT EXISTS public.user_insight
 
     CONSTRAINT fk_user_insight_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -1376,7 +1424,7 @@ CREATE TABLE IF NOT EXISTS public.repository
 
     CONSTRAINT fk_repository_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_user_github_repo
@@ -1430,7 +1478,7 @@ CREATE TABLE IF NOT EXISTS public.invoice
 
     CONSTRAINT fk_invoice_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -1516,4 +1564,3 @@ CREATE TABLE IF NOT EXISTS public.career_role_skill_group (
     CONSTRAINT chk_career_role_skill_group_priority
         CHECK (priority BETWEEN 1 AND 4)
 );
-
