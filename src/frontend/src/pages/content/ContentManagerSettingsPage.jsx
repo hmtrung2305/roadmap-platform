@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Mail } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { getCurrentUserApi } from "../../api/authApi";
-import { getAuthProvidersApi } from "../../api/authProviderApi";
 import SettingsSection from "../../components/settings/SettingsSection";
 import SettingsRow from "../../components/settings/SettingsRow";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
@@ -11,10 +9,16 @@ import AddLocalLoginModal from "../../components/settings/AddLocalLoginModal";
 import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailModal";
 import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
 
 export default function ContentManagerSettingsPage() {
-  const [me, setMe] = useState(null);
-  const [providers, setProviders] = useState([]);
+  const me = useAuthStore((state) => state.user);
+  const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser);
+
+  const providers = useAuthProviderStore((state) => state.providers);
+  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
+
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState("");
   const [activeModal, setActiveModal] = useState(null);
@@ -28,21 +32,26 @@ export default function ContentManagerSettingsPage() {
     localProvider?.requiresVerification || localProvider?.RequiresVerification,
   );
 
-  const fetchSettings = async () => {
+  const fetchSettings = async ({ force = false } = {}) => {
     try {
       setIsLoading(true);
       setActionError("");
 
-      const [meData, providersData] = await Promise.all([
-        getCurrentUserApi(),
-        getAuthProvidersApi(),
+      await Promise.all([
+        loadCurrentUser({ force }),
+        loadProviders({ force }),
       ]);
-
-      setMe(meData);
-      setProviders(providersData);
     } catch (error) {
-      console.error("Failed to load content manager settings:", error.response?.data || error);
-      setActionError(getFriendlyApiErrorMessage(error, "Unable to load content manager settings."));
+      console.error(
+        "Failed to load content manager settings:",
+        error.response?.data || error,
+      );
+      setActionError(
+        getFriendlyApiErrorMessage(
+          error,
+          "Unable to load content manager settings.",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +86,10 @@ export default function ContentManagerSettingsPage() {
       </div>
 
       {actionError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700"
+          role="alert"
+        >
           {actionError}
         </div>
       )}
@@ -173,7 +185,7 @@ export default function ContentManagerSettingsPage() {
           email={pendingLocalEmail}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Password login added successfully.");
           }}
@@ -184,7 +196,7 @@ export default function ContentManagerSettingsPage() {
         <ChangePasswordModal
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Password changed successfully.");
           }}
@@ -208,7 +220,7 @@ export default function ContentManagerSettingsPage() {
           email={pendingLocalEmail}
           onClose={() => setActiveModal(null)}
           onSuccess={async () => {
-            await fetchSettings();
+            await fetchSettings({ force: true });
             setActiveModal(null);
             toast.success("Email changed successfully.");
           }}
