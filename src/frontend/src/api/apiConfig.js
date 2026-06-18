@@ -1,4 +1,6 @@
 const DEFAULT_BACKEND_BASE_URL = import.meta.env.DEV ? "https://localhost:7103" : "";
+const CONFIGURED_BACKEND_BASE_URL =
+  import.meta.env.VITE_BACKEND_BASE_URL || import.meta.env.VITE_API_BASE_URL || "";
 
 function normalizeBackendBaseUrl(value) {
   return (value || DEFAULT_BACKEND_BASE_URL)
@@ -6,9 +8,11 @@ function normalizeBackendBaseUrl(value) {
     .replace(/\/$/, "");
 }
 
-export const BACKEND_BASE_URL = normalizeBackendBaseUrl(
-  import.meta.env.VITE_BACKEND_BASE_URL || import.meta.env.VITE_API_BASE_URL
-);
+if (!import.meta.env.DEV && !CONFIGURED_BACKEND_BASE_URL) {
+  throw new Error("VITE_BACKEND_BASE_URL must be set for production builds.");
+}
+
+export const BACKEND_BASE_URL = normalizeBackendBaseUrl(CONFIGURED_BACKEND_BASE_URL);
 
 export const API_BASE_URL = `${BACKEND_BASE_URL}/api`;
 

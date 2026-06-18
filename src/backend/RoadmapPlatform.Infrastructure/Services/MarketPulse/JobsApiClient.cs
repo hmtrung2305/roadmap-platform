@@ -109,10 +109,10 @@ public sealed class JobsApiClient(
                 .ToList() ?? [];
 
             return new JobsApiPageResult(
-                envelope?.Total ?? jobs.Count,
-                envelope?.Page,
-                envelope?.PageSize,
-                envelope?.TotalPages,
+                envelope?.Pagination?.Total ?? envelope?.Total ?? jobs.Count,
+                envelope?.Pagination?.Page ?? envelope?.Page,
+                envelope?.Pagination?.PageSize ?? envelope?.PageSize,
+                envelope?.Pagination?.TotalPages ?? envelope?.TotalPages,
                 jobs);
         }
         catch (JsonException ex)
@@ -131,6 +131,7 @@ public sealed class JobsApiClient(
         return new JobMarketPosting
         {
             Id = Clean(job.Id),
+            SourceJobId = Clean(FirstNonEmpty(job.SourceJobId, StripSourcePrefix(job.Id))),
             Title = Clean(job.Title),
             Company = Clean(job.Company),
             Category = Clean(category),
@@ -175,6 +176,7 @@ public sealed class JobsApiClient(
         var query = ParseQuery(builder.Query);
         query["page"] = page.ToString(CultureInfo.InvariantCulture);
         query["page_size"] = pageSize.ToString(CultureInfo.InvariantCulture);
+        query["pageSize"] = pageSize.ToString(CultureInfo.InvariantCulture);
         builder.Query = string.Join(
             '&',
             query.Select(x =>
@@ -261,6 +263,20 @@ public sealed class JobsApiClient(
     {
         return values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim();
     }
+
+    private static string? StripSourcePrefix(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        var separatorIndex = trimmed.IndexOf(':', StringComparison.Ordinal);
+        return separatorIndex >= 0 && separatorIndex < trimmed.Length - 1
+            ? trimmed[(separatorIndex + 1)..]
+            : trimmed;
+    }
 }
 
 public sealed record JobsApiResult(int Total, IReadOnlyList<JobMarketPosting> Jobs)
@@ -287,6 +303,9 @@ internal sealed record JobsApiPageResult(
 
 internal sealed class JobsApiEnvelope
 {
+    [JsonPropertyName("ok")]
+    public bool? Ok { get; set; }
+
     [JsonPropertyName("total")]
     public int Total { get; set; }
 
@@ -299,8 +318,26 @@ internal sealed class JobsApiEnvelope
     [JsonPropertyName("total_pages")]
     public int? TotalPages { get; set; }
 
+    [JsonPropertyName("pagination")]
+    public JobsApiPagination? Pagination { get; set; }
+
     [JsonPropertyName("data")]
     public List<JobsApiJob> Data { get; set; } = [];
+}
+
+internal sealed class JobsApiPagination
+{
+    [JsonPropertyName("page")]
+    public int? Page { get; set; }
+
+    [JsonPropertyName("pageSize")]
+    public int? PageSize { get; set; }
+
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("totalPages")]
+    public int? TotalPages { get; set; }
 }
 
 internal sealed class JobsApiJob

@@ -4,6 +4,8 @@ public sealed class JobMarketPosting
 {
     public string? Id { get; init; }
 
+    public string? SourceJobId { get; init; }
+
     public string? Title { get; init; }
 
     public string? Company { get; init; }
