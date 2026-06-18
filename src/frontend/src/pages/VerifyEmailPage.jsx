@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import {
+  getCurrentUserApi,
   resendRegistrationVerificationApi,
   verifyRegistrationEmailApi,
 } from "../api/authApi";
@@ -24,6 +25,7 @@ import {
 import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 import { useAuthStore } from "../stores/useAuthStore";
+import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -137,16 +139,29 @@ export default function VerifyEmailPage() {
         Otp: otp,
       });
 
-      if (data?.user) {
-        setAuthenticatedUser(data.user);
-      }
+      const successMessage = data?.message || "Email verified successfully.";
 
-      navigate("/roadmaps", {
-        replace: true,
-        state: {
-          message: data?.message || "Email verified successfully.",
-        },
-      });
+      try {
+        const currentUser = await getCurrentUserApi();
+
+        setAuthenticatedUser(currentUser);
+
+        navigate(getDefaultAuthenticatedRoute(currentUser), {
+          replace: true,
+          state: {
+            message: successMessage,
+          },
+        });
+      } catch (sessionError) {
+        console.error("Load current user after verification failed:", sessionError.response?.data || sessionError);
+
+        navigate("/login?verified=1", {
+          replace: true,
+          state: {
+            message: successMessage,
+          },
+        });
+      }
     } catch (error) {
       console.error("Verify email failed:", error.response?.data || error);
 

@@ -1,8 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import AuthLogo from "../components/auth/AuthLogo";
+import { useAuthStore } from "../stores/useAuthStore";
+import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const homeRoute = user ? getDefaultAuthenticatedRoute(user) : "/";
 
   return (
     <main className="grid min-h-dvh place-items-center bg-[#F7F1E8] px-6 py-10 text-[#18332D]">
@@ -34,7 +38,7 @@ export default function NotFoundPage() {
 
           <button
             type="button"
-            onClick={() => navigate("/", { replace: true })}
+            onClick={() => navigate(homeRoute, { replace: true })}
             className="rounded-lg bg-[#2FA084] px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#1F6F5F]"
           >
             Go home
