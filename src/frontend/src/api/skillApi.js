@@ -20,6 +20,19 @@ export const skillApi = {
     };
   },
 
+  getSuggestions: async ({ limit = 6 } = {}) => {
+    const response = await axiosClient.get("/skills/suggestions", {
+      params: { limit },
+    });
+
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  getSkillById: async (skillId) => {
+    const response = await axiosClient.get(`/skills/${encodeURIComponent(skillId)}`);
+    return response.data;
+  },
+
   getCategories: async () => {
     const response = await axiosClient.get("/skills/categories");
     return Array.isArray(response.data) ? response.data : [];
