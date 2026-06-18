@@ -12,6 +12,8 @@ import { useRoadmapStore } from "./useRoadmapStore";
 import { usePortfolioEditorStore } from "./usePortfolioEditorStore";
 import { usePortfolioStore } from "./usePortfolioStore";
 import { useSkillGapStore } from "./useSkillGapStore";
+import { useLearningModuleStore } from "./useLearningModuleStore";
+import { useAiCreditStore } from "./useAiCreditStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { clearRequestCache } from "../utils/requestCacheUtils";
 
@@ -50,6 +52,8 @@ export const useAuthStore = create((set, get) => ({
     usePortfolioEditorStore.getState().resetPortfolioEditor();
     usePortfolioStore.getState().resetPortfolioView();
     useSkillGapStore.getState().resetSkillGap();
+    useLearningModuleStore.getState().resetLearningModules();
+    useAiCreditStore.getState().resetAiCredit();
   },
 
   setAuthenticatedUser: (user) => {
@@ -99,7 +103,9 @@ export const useAuthStore = create((set, get) => ({
       useRoadmapStore.getState().resetRoadmaps();
       usePortfolioEditorStore.getState().resetPortfolioEditor();
       usePortfolioStore.getState().resetPortfolioView();
-    useSkillGapStore.getState().resetSkillGap();
+      useSkillGapStore.getState().resetSkillGap();
+      useLearningModuleStore.getState().resetLearningModules();
+      useAiCreditStore.getState().resetAiCredit();
 
       throw error;
     } finally {

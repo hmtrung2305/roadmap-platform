@@ -545,17 +545,20 @@ export default function CareerMentorWidget() {
                     const isActive = session.id === activeSessionId;
 
                     return (
-                      <button
+                      <div
                         key={session.id}
-                        type="button"
-                        onClick={() => setActiveSessionId(session.id)}
                         className={`group relative flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${
                           isActive
                             ? "mentor-active-session border-[#2FA084] bg-[#EAF8F1]"
                             : "border-transparent bg-transparent hover:border-[#B9D8CC] hover:bg-[#FDFBF7]"
                         }`}
                       >
-                        <span className="min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSessionId(session.id)}
+                          className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2FA084]/20"
+                          aria-current={isActive ? "true" : undefined}
+                        >
                           <span
                             className="block overflow-hidden !text-[13px] !font-black !leading-snug text-[#18332D]"
                             style={{
@@ -570,7 +573,7 @@ export default function CareerMentorWidget() {
                             <Clock3 size={11} />
                             {session.time}
                           </span>
-                        </span>
+                        </button>
 
                         <span className="flex shrink-0 items-center gap-1">
                           <button
@@ -603,7 +606,7 @@ export default function CareerMentorWidget() {
                             <Trash2 size={12} />
                           </button>
                         </span>
-                      </button>
+                      </div>
                     );
                     })}
                   </div>
