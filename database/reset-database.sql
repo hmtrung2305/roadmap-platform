@@ -8,5 +8,5 @@ CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO public;
 
-\i docs/database/schema.sql
-\i docs/database/seed.sql
+\i database/schema.sql
+\i database/seed.sql
