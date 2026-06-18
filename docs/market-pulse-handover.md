@@ -4,8 +4,8 @@
 
 Job Market thay phan Market Pulse cu bang nguon Jobs API hien tai:
 
-- Active jobs: `http://localhost:8000/api/jobs?active=true&sort=post_date_desc`
-- Jobs posted today: `http://localhost:8000/api/jobs/today`
+- Active jobs: `https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc`
+- Jobs posted today: `https://<jobs-api-domain>/api/v1/jobs/today`
 
 Chuc nang dap ung:
 
@@ -13,7 +13,7 @@ Chuc nang dap ung:
 - FR4.2: Backend phan tich tan suat keyword tren cac truong job summary.
 - FR4.3: UI hien thi chart tuong tac cho nhu cau skill theo ngay dang tin.
 
-## Kien truc sach sau refactor
+## Kien truc hien tai
 
 ```text
 Frontend /market-pulse
@@ -22,8 +22,8 @@ Frontend /market-pulse
       -> IMarketPulseService
         -> IJobMarketSnapshotProvider
           -> JobsApiClient
-            -> /api/jobs?active=true&sort=post_date_desc
-            -> /api/jobs/today
+            -> /api/v1/jobs?active=true&sort=post_date_desc
+            -> /api/v1/jobs/today
         -> JobMarketOverviewBuilder
           -> JobMarketKeywordAnalyzer
           -> MarketPulseOverviewDto
@@ -44,47 +44,108 @@ Design pattern/ap dung:
 - Strategy-friendly source model: `JobPortalScraper` van ho tro `Kind = JobsApi` va `Kind = Html`, nen sau nay co the them portal moi ma khong sua controller/UI.
 - Pure domain analysis: `JobMarketKeywordAnalyzer` khong dung EF/HTTP, de test rieng.
 
-## Phan da xoa hoac thay the
+## Phase 0 baseline da ap dung
 
-- Xoa Jobs API client cu trong Infrastructure va thay bang adapter moi gon hon.
-- Xoa analyzer cu trong Infrastructure va chuyen keyword analysis ve Application.
-- Xoa workflow/runtime phu thuoc backend script noi bo cho Market Pulse.
-- Bo branch scraper Python cu trong job market flow.
-- Khong con config runtime rieng cho backend script noi bo trong Job Market.
+- Khong de production config tro ve `localhost:8000`.
+- Khong hardcode ngrok fallback trong GitHub Actions.
+- Frontend yeu cau `VITE_BACKEND_BASE_URL` khi build/deploy va gui header `ngrok-skip-browser-warning` khi backend base URL la ngrok host.
+- Jobs API production khong co default admin key yeu, crawler startup duoc tat mac dinh, ops/crawl endpoints duoc bao ve bang `X-API-Key`.
+- Runtime SQLite database khong nam trong package source.
 
-Phan con giu co chu y:
+Ngrok chi dung cho dev/demo khi chua co domain. Gia tri tunnel phai nam trong env/user-secrets/repository variables, khong commit vao source.
 
-- `MarketPulseService.RefreshAsync` va cac entity DB cu van duoc giu de job theo lich co the persist snapshot vao database.
-- HTML scraper fallback van duoc giu nhu mot source adapter tong quat, khong phai backend Python noi bo.
-- Khi `ActiveJobsApiUrl` va `TodayJobsApiUrl` duoc cau hinh, overview se doc live Jobs API. Neu live API tra rong do loi tam thoi, service fallback ve DB snapshots cu.
-- Khong giu project test rieng trong `src/backend` vi docs cua team dang chuan hoa backend solution quanh `Api`, `Application`, `Infrastructure` va job runner san co.
+## Phase 1 contract da ap dung
 
-## Du lieu dau vao
+Jobs API co endpoint versioned:
 
-Jobs API response du kien:
+- `GET /api/v1/jobs`
+- `GET /api/v1/jobs/active`
+- `GET /api/v1/jobs/today`
+- `GET /api/v1/jobs/{id}`
+- `GET /api/v1/market/overview`
+- `GET /api/v1/ops/health-summary`
+
+List response dung envelope:
 
 ```json
 {
-  "total": 50,
+  "ok": true,
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "pageSize": 100,
+    "total": 398,
+    "totalPages": 4
+  },
+  "meta": {
+    "source": "topcv",
+    "generatedAt": "2026-06-18T09:00:00Z",
+    "latestSuccessfulCrawlAt": "2026-06-18T08:05:00Z"
+  }
+}
+```
+
+`/api/v1/jobs` ho tro filter:
+
+- `skill`
+- `category`
+- `city`
+- `salary_min`, `salary_max`, `currency`
+- `experience_min`, `experience_max`
+- `post_date_from`, `post_date_to`
+- `detail_status`
+- `updated_since`
+- `source`
+- `active`
+- `search`
+- `sort`
+
+Endpoint legacy `/api/jobs`, `/api/jobs/active`, `/api/jobs/today` van ton tai nhung da co pagination. Tich hop moi nen dung `/api/v1`.
+
+`.NET JobsApiClient` doc duoc ca envelope moi va response legacy, nen co the rollout Jobs API v1 ma khong lam hong moi truong cu.
+
+## Du lieu dau vao
+
+Jobs API v1 response du kien:
+
+```json
+{
+  "ok": true,
   "data": [
     {
-      "id": "2196583",
+      "id": "topcv:2196583",
+      "source": "topcv",
+      "source_job_id": "2196583",
       "title": "Java Backend Developer",
       "company": "Example Company",
       "category": "Backend",
+      "category_normalized": "Backend",
       "post_date": "2026-06-11",
       "post_date_text": "Today",
       "is_active": true,
       "requirements": [],
       "specialties": [],
       "benefits": [],
+      "skills_normalized": [],
       "salary": "20 - 35 trieu",
       "experience": "2 nam",
       "location": "Ha Noi",
+      "primary_city": "Ha Noi",
       "url": "https://www.topcv.vn/...",
       "updated_at": "2026-06-11T01:04:22.795698"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 100,
+    "total": 1,
+    "totalPages": 1
+  },
+  "meta": {
+    "source": "topcv",
+    "generatedAt": "2026-06-18T09:00:00Z",
+    "latestSuccessfulCrawlAt": "2026-06-18T08:05:00Z"
+  }
 }
 ```
 
@@ -99,6 +160,7 @@ Keyword analyzer doc cac truong:
 - `requirements`
 - `specialties`
 - `benefits`
+- `skills`
 
 Luu y khach quan: API hien tai khong tra full job description, nen chart la market pulse dua tren summary fields, khong phai full-text market intelligence.
 
@@ -111,7 +173,7 @@ Job Market tiep tuc dung cac table san co de khong pha database cua team:
 - `job_posting_daily_snapshot`
 - `skill_trend_snapshot`
 
-Migration moi:
+Migration typed field:
 
 ```text
 database/migrations/010-job-market-jobs-api-fields.sql
@@ -131,12 +193,7 @@ Migration nay them cac cot typed vao `job_posting`:
 
 `requirements`, `specialties`, `benefits` la `jsonb` array co check constraint. Entity scaffold hien tai map `jsonb` thanh `string`, nen service serialize list thanh JSON string de nhat quan voi cac entity scaffolded khac trong project.
 
-Da cap nhat:
-
-- `docs/database/schema.sql`
-- `docs/database/migrations/009-job-market-jobs-api-fields.sql`
-- `src/backend/RoadmapPlatform.Infrastructure/Entities/JobPosting.cs`
-- `src/backend/RoadmapPlatform.Infrastructure/Data/ApplicationDbContext.cs`
+Phase 2 analytical schema chua duoc ap dung trong code hien tai. Khong co table `job_posting_version`, `job_skill_mention`, `job_market_daily_snapshot` trong schema hien tai.
 
 Scaffold lai sau khi apply migration:
 
@@ -156,7 +213,7 @@ Neu scaffold bi loi connection string, dat `ConnectionStrings:DefaultConnection`
 
 ## API va tham so UI
 
-Endpoint:
+Endpoint Roadmap Platform:
 
 ```http
 GET /api/market-pulse/overview?days=14&skills=react&skills=node-js
@@ -198,14 +255,13 @@ Thong so quan trong:
 |---|---|
 | `MarketPulse:Enabled` | Bat/tat hosted scheduler trong Web API. Nen `false` tren web runtime neu dung GitHub Actions/cron rieng. |
 | `MarketPulse:RunOnStartup` | Cho phep refresh ngay khi app start. Nen `false` de tranh cham startup. |
-| `MarketPulse:DailyRunTime` | Gio chay scheduler theo config hien tai cua app. |
-| `MarketPulse:ActiveJobsApiUrl` | Endpoint active jobs dung cho live overview. Nen dung `/api/jobs?active=true&sort=post_date_desc` de adapter phan trang. |
-| `MarketPulse:TodayJobsApiUrl` | Endpoint jobs posted today dung cho live overview. |
+| `MarketPulse:ActiveJobsApiUrl` | Endpoint active jobs. Nen dung `/api/v1/jobs?active=true&sort=post_date_desc`. |
+| `MarketPulse:TodayJobsApiUrl` | Endpoint jobs posted today. Nen dung `/api/v1/jobs/today`. |
 | `MarketPulse:JobsApiPageSize` | So job moi page khi goi Jobs API co pagination. |
 | `MarketPulse:JobsApiMaxPages` | Gioi han so page toi da moi lan goi live API. |
 | `MarketPulse:TrackedKeywords` | Danh sach keyword specs. Dung `|` de khai bao alias, vi du `React|React.js|ReactJS`. |
 | `MarketPulse:Sources[].Kind` | `JobsApi` cho source Jobs API, `Html` cho fallback generic HTML scraper. |
-| `MarketPulse:Sources[].SearchUrlTemplate` | URL de scheduled refresh doc data source. |
+| `MarketPulse:Sources[].SearchUrlTemplate` | URL de scheduled refresh doc data source. Nen dung `/api/v1/jobs?active=true&sort=post_date_desc`. |
 | `MarketPulse:MaxPostingsPerSource` | Gioi han so postings persist khi chay scheduled refresh. |
 | `MarketPulse:RequestTimeoutSeconds` | Timeout HTTP client, clamp `5..120` giay. |
 | `MarketPulse:ActivePostingLookbackDays` | Lookback khi tinh active postings trong DB fallback. |
@@ -267,6 +323,8 @@ npx.cmd eslint src/pages/MarketPulsePage.jsx
 
 Checklist special cases can kiem tra khi review Job Market:
 
+- Jobs API v1 envelope co `ok`, `data`, `pagination`, `meta`.
+- Pagination khong tra full dataset vo han.
 - Keyword alias case-insensitive.
 - Word boundary: `JS` khong match trong `JSON`, `SQL` khong match trong `sqlserver`.
 - Alias overlap: `Node.js|Node` khong double count.

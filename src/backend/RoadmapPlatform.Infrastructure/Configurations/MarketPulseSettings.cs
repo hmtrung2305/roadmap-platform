@@ -2,7 +2,7 @@ namespace RoadmapPlatform.Infrastructure.Configurations;
 
 public sealed class MarketPulseSettings
 {
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; }
 
     public bool RunOnStartup { get; set; }
 
@@ -28,9 +28,9 @@ public sealed class MarketPulseSettings
 
     public int RequestTimeoutSeconds { get; set; } = 30;
 
-    public string ActiveJobsApiUrl { get; set; } = "http://localhost:8000/api/jobs?active=true&sort=post_date_desc";
+    public string ActiveJobsApiUrl { get; set; } = string.Empty;
 
-    public string TodayJobsApiUrl { get; set; } = "http://localhost:8000/api/jobs/today";
+    public string TodayJobsApiUrl { get; set; } = string.Empty;
     
     public string[] TrackedKeywords { get; set; } = [];
 
@@ -39,13 +39,13 @@ public sealed class MarketPulseSettings
 
 public sealed class MarketPulseSourceSettings
 {
-    public string Name { get; set; } = null!;
+    public string Name { get; set; } = string.Empty;
 
     public string Kind { get; set; } = "Html";
 
-    public string BaseUrl { get; set; } = null!;
+    public string BaseUrl { get; set; } = string.Empty;
 
-    public string SearchUrlTemplate { get; set; } = null!;
+    public string SearchUrlTemplate { get; set; } = string.Empty;
 
     public bool Enabled { get; set; } = true;
 

@@ -215,7 +215,7 @@ public sealed class MarketPulseService(
                 .Where(x => x.JobPortalSourceId == source.JobPortalSourceId && externalIds.Contains(x.ExternalId))
                 .ToDictionaryAsync(x => x.ExternalId, cancellationToken);
 
-            var observations = new List<JobPostingObservation>();
+            var observations = new List<PostingObservationItem>();
 
             foreach (var rawPosting in uniquePostings)
             {
@@ -264,7 +264,7 @@ public sealed class MarketPulseService(
                         updatedPostings++;
                     }
 
-                    observations.Add(new JobPostingObservation(
+                    observations.Add(new PostingObservationItem(
                         posting,
                         changed ? ObservationUpdated : ObservationSeen,
                         contentHash));
@@ -310,7 +310,7 @@ public sealed class MarketPulseService(
                 };
 
                 dbContext.Set<JobPosting>().Add(newPosting);
-                observations.Add(new JobPostingObservation(newPosting, ObservationNew, contentHash));
+                observations.Add(new PostingObservationItem(newPosting, ObservationNew, contentHash));
                 savedPostings++;
                 newPostings++;
             }
@@ -319,7 +319,13 @@ public sealed class MarketPulseService(
 
             if (uniquePostings.Count >= minimumLifecyclePostings)
             {
-                await MarkMissingPostingsAsync(source.JobPortalSourceId, externalIds, snapshotDate, now, missingThreshold, cancellationToken);
+                await MarkMissingPostingsAsync(
+                    source.JobPortalSourceId,
+                    externalIds,
+                    snapshotDate,
+                    now,
+                    missingThreshold,
+                    cancellationToken);
             }
         }
 
@@ -405,7 +411,7 @@ public sealed class MarketPulseService(
     private async Task UpsertDailyObservationsAsync(
         DateOnly snapshotDate,
         string sourceName,
-        IReadOnlyCollection<JobPostingObservation> observations,
+        IReadOnlyCollection<PostingObservationItem> observations,
         DateTime now,
         CancellationToken cancellationToken)
     {
@@ -551,7 +557,12 @@ public sealed class MarketPulseService(
 
     private static string BuildExternalId(string sourceName, string url)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{sourceName}:{url}".ToLowerInvariant()));
+        return HashIdentity($"{sourceName}:{url.Trim()}");
+    }
+
+    private static string HashIdentity(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value.ToLowerInvariant()));
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
@@ -611,16 +622,20 @@ public sealed class MarketPulseService(
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
-    private static string SerializeStringList(IEnumerable<string>? values)
+    private static IReadOnlyList<string> CleanStringList(IEnumerable<string>? values)
     {
-        var cleanValues = values?
+        return values?
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList() ?? [];
-
-        return JsonSerializer.Serialize(cleanValues);
     }
+
+    private static string SerializeStringList(IEnumerable<string>? values)
+    {
+        return JsonSerializer.Serialize(CleanStringList(values));
+    }
+
 }
 
-internal sealed record JobPostingObservation(JobPosting Posting, string Status, string ContentHash);
+internal sealed record PostingObservationItem(JobPosting Posting, string Status, string ContentHash);
