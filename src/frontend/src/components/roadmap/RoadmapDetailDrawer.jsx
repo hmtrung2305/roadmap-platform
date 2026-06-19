@@ -100,15 +100,29 @@ const REQUIREMENT_TAG_STYLES = {
   optional: "border-[#F1BA88] bg-[#FFF7ED] text-[#9A5A22]",
 };
 
+const NODE_TYPE_LABELS = {
+  phase: "Phase overview",
+  topic: "Topic",
+  project: "Project",
+  checkpoint: "Checkpoint",
+  choice_group: "Choice group",
+  choice_option: "Choice option",
+  resource_group: "Resource group",
+};
+
 export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLoadingDetail, onClose, onProgressChange }) {
   const status = node.progress?.status || "pending";
   const metadata = parseMetadata(node.metadata);
+  const nodeType = getNodeType(node);
   const isManualNode = isManuallyTrackableNode(node);
   const isComputedNode = isComputedNodeType(node.nodeType);
   const canTrack = isEnrolled && isManualNode && node.isTrackable !== false && status !== "locked";
-  const resources = getSortedResources(node.resources || []);
+  const resources = getSortedResources(normalizeArray(node.resources || node.Resources));
   const resourceGroups = groupResourcesByType(resources);
-  const learningModules = node.learningModules || node.LearningModules || [];
+  const learningModules = normalizeArray(node.learningModules || node.LearningModules);
+  const skills = normalizeArray(node.skills || node.Skills);
+  const learningOutcomes = normalizeArray(node.learningOutcomes || node.LearningOutcomes);
+  const completionCriteria = normalizeArray(node.completionCriteria || node.CompletionCriteria);
   const lockedReason = getLockedReason(node);
   const isOptional = node.isRequired === false;
   const description = buildDescription(node, metadata);
@@ -141,7 +155,10 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
       >
         <header className="shrink-0 border-b border-[#A8D3C4] bg-[#EAF8F1] px-3 py-1.5">
           <div className="flex items-center justify-between gap-2">
-            <RequirementTag isOptional={isOptional} />
+            <div className="flex flex-wrap items-center gap-2">
+              <RequirementTag isOptional={isOptional} />
+              <NodeTypeTag nodeType={nodeType} />
+            </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
               <StatusSelect
@@ -190,13 +207,13 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
           )}
 
           {isComputedNode && status !== "locked" && (
-            <CompactNotice>Progress updates automatically from child items.</CompactNotice>
+            <CompactNotice>Progress updates automatically from related roadmap items.</CompactNotice>
           )}
 
-          {node.skills?.length > 0 && (
-            <Section title="Skills covered">
+          {skills.length > 0 && shouldShowSkills(nodeType) && (
+            <Section title={nodeType === "phase" ? "Skill areas" : "Skills covered"}>
               <div className="flex flex-wrap gap-2">
-                {node.skills.map((skill, index) => (
+                {skills.map((skill, index) => (
                   <span
                     key={getDisplayKey(skill, index)}
                     className="rounded-md border border-[#A8D3C4] bg-[#EAF8F1] px-2.5 py-1 text-xs font-black text-[#18332D]"
@@ -208,7 +225,14 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
             </Section>
           )}
 
-          {learningModules.length > 0 && (
+          <NodeSpecificContent
+            node={node}
+            metadata={metadata}
+            nodeType={nodeType}
+            completionCriteria={completionCriteria}
+          />
+
+          {learningModules.length > 0 && shouldShowLearningModules(nodeType) && (
             <Section
               title="Curated learning modules"
               badge={
@@ -219,7 +243,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
               }
             >
               <p className="mb-2 text-xs font-bold leading-5 text-slate-600">
-                Official modules selected for this skill.
+                Internal modules connected to this roadmap item.
               </p>
 
               <div className="grid gap-2.5">
@@ -233,7 +257,7 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
             </Section>
           )}
 
-          {resourceGroups.length > 0 && (
+          {resourceGroups.length > 0 && shouldShowResources(nodeType) && (
             <Section title="Learning resources">
               <div className="grid gap-2.5">
                 {resourceGroups.map((group) => (
@@ -243,13 +267,252 @@ export default function RoadmapDetailDrawer({ node, isEnrolled, isUpdating, isLo
             </Section>
           )}
 
-          <PanelSection title="Learning outcomes" items={node.learningOutcomes} />
+          {learningOutcomes.length > 0 && shouldShowLearningOutcomes(nodeType) && (
+            <PanelSection title={getOutcomeSectionTitle(nodeType)} items={learningOutcomes} />
+          )}
+
+          {completionCriteria.length > 0 && shouldShowGenericCompletionCriteria(nodeType) && (
+            <PanelSection title="Completion criteria" items={completionCriteria} />
+          )}
         </div>
       </aside>
     </div>
   );
 }
 
+function NodeSpecificContent({ node, metadata, nodeType, completionCriteria }) {
+  if (nodeType === "project") {
+    return <ProjectNodeContent node={node} metadata={metadata} completionCriteria={completionCriteria} />;
+  }
+
+  if (nodeType === "checkpoint") {
+    return <CheckpointNodeContent node={node} metadata={metadata} completionCriteria={completionCriteria} />;
+  }
+
+  if (nodeType === "choice_option") {
+    return <ChoiceOptionNodeContent metadata={metadata} completionCriteria={completionCriteria} />;
+  }
+
+  if (nodeType === "choice_group") {
+    return <ChoiceGroupNodeContent metadata={metadata} />;
+  }
+
+  if (nodeType === "phase") {
+    return <PhaseNodeContent metadata={metadata} />;
+  }
+
+  if (nodeType === "resource_group") {
+    return <ResourceGroupNodeContent metadata={metadata} />;
+  }
+
+  return <TopicNodeContent metadata={metadata} />;
+}
+
+function ProjectNodeContent({ node, metadata, completionCriteria }) {
+  const projectPurpose = getFirstMetadataText(metadata, [
+    "projectBrief",
+    "brief",
+    "goal",
+    "objective",
+    "purpose",
+  ]);
+  const suggestedSteps = getFirstMetadataList(metadata, [
+    "suggestedSteps",
+    "buildSteps",
+    "implementationSteps",
+    "steps",
+  ]);
+  const expectedEvidence = getFirstMetadataList(metadata, [
+    "expectedEvidence",
+    "evidence",
+    "deliverables",
+    "artifacts",
+    "outputs",
+  ]);
+  const fallbackPurpose = node.isRequired === false
+    ? "Use this optional project to practice the related skills in a concrete artifact."
+    : "Use this project to connect the related topics into a reviewable artifact.";
+
+  return (
+    <Section
+      title="Project guide"
+      badge={node.isRequired === false ? <SubtleBadge>Optional practice</SubtleBadge> : <SubtleBadge>Milestone</SubtleBadge>}
+    >
+      <TextBlock title="What to build">
+        {projectPurpose || fallbackPurpose}
+      </TextBlock>
+
+      <ListBlock title="Build steps" items={suggestedSteps} />
+      <ListBlock title="Evidence to submit" items={expectedEvidence} />
+      <ListBlock title="Done when" items={completionCriteria} />
+    </Section>
+  );
+}
+
+function CheckpointNodeContent({ metadata, completionCriteria }) {
+  const reviewFocus = getFirstMetadataText(metadata, [
+    "reviewFocus",
+    "checkpointFocus",
+    "focus",
+    "purpose",
+    "reviewPurpose",
+  ]);
+  const expectedEvidence = getFirstMetadataList(metadata, [
+    "expectedEvidence",
+    "evidence",
+    "reviewEvidence",
+    "artifacts",
+  ]);
+  const reviewQuestions = getFirstMetadataList(metadata, [
+    "reviewQuestions",
+    "questions",
+    "reflectionQuestions",
+    "selfCheckQuestions",
+  ]);
+  const nextActions = getFirstMetadataList(metadata, [
+    "nextActions",
+    "followUpActions",
+    "followUps",
+    "nextSteps",
+  ]);
+
+  return (
+    <Section title="Checkpoint guide" badge={<SubtleBadge>Progress review</SubtleBadge>}>
+      <TextBlock title="Review focus">
+        {reviewFocus || "Use this checkpoint to review the current roadmap segment, collect evidence, and decide whether to continue or revisit selected topics."}
+      </TextBlock>
+
+      <ListBlock title="Review criteria" items={completionCriteria} />
+      <ListBlock title="Evidence to prepare" items={expectedEvidence} />
+      <ListBlock title="Reflection prompts" items={reviewQuestions} />
+      <ListBlock title="Next action options" items={nextActions} />
+    </Section>
+  );
+}
+
+function ChoiceOptionNodeContent({ metadata, completionCriteria }) {
+  const optionUse = getFirstMetadataText(metadata, [
+    "whenToChoose",
+    "optionUseCase",
+    "useCase",
+    "purpose",
+    "focus",
+  ]);
+  const suggestedSteps = getFirstMetadataList(metadata, [
+    "suggestedSteps",
+    "steps",
+    "practiceSteps",
+  ]);
+  const expectedEvidence = getFirstMetadataList(metadata, [
+    "expectedEvidence",
+    "evidence",
+    "deliverables",
+    "outputs",
+  ]);
+
+  if (!optionUse && suggestedSteps.length === 0 && expectedEvidence.length === 0 && completionCriteria.length === 0) {
+    return null;
+  }
+
+  return (
+    <Section title="Choice option guide" badge={<SubtleBadge>Selectable path</SubtleBadge>}>
+      {optionUse && <TextBlock title="When to choose this">{optionUse}</TextBlock>}
+      <ListBlock title="Practice steps" items={suggestedSteps} />
+      <ListBlock title="Evidence to submit" items={expectedEvidence} />
+      <ListBlock title="Done when" items={completionCriteria} />
+    </Section>
+  );
+}
+
+function ChoiceGroupNodeContent({ metadata }) {
+  const guidance = getFirstMetadataText(metadata, [
+    "choiceGuidance",
+    "guidance",
+    "purpose",
+    "selectionGuidance",
+  ]);
+  const selectionNotes = getFirstMetadataList(metadata, [
+    "selectionNotes",
+    "options",
+    "considerations",
+  ]);
+
+  if (!guidance && selectionNotes.length === 0) {
+    return (
+      <CompactNotice>Select one or more options from this group based on your goal and the roadmap instructions.</CompactNotice>
+    );
+  }
+
+  return (
+    <Section title="Choice guidance" badge={<SubtleBadge>Decision point</SubtleBadge>}>
+      {guidance && <TextBlock title="How to use this choice">{guidance}</TextBlock>}
+      <ListBlock title="Considerations" items={selectionNotes} />
+    </Section>
+  );
+}
+
+function PhaseNodeContent({ metadata }) {
+  const focus = getFirstMetadataText(metadata, [
+    "phaseFocus",
+    "focus",
+    "purpose",
+    "summary",
+  ]);
+  const milestones = getFirstMetadataList(metadata, [
+    "milestones",
+    "phaseMilestones",
+    "reviewPoints",
+  ]);
+
+  if (!focus && milestones.length === 0) return null;
+
+  return (
+    <Section title="Phase overview" badge={<SubtleBadge>Roadmap segment</SubtleBadge>}>
+      {focus && <TextBlock title="Phase focus">{focus}</TextBlock>}
+      <ListBlock title="Focus areas" items={milestones} />
+    </Section>
+  );
+}
+
+function ResourceGroupNodeContent({ metadata }) {
+  const purpose = getFirstMetadataText(metadata, [
+    "purpose",
+    "summary",
+    "resourcePurpose",
+    "focus",
+  ]);
+
+  if (!purpose) return null;
+
+  return (
+    <Section title="Resource group overview">
+      <TextBlock title="Purpose">{purpose}</TextBlock>
+    </Section>
+  );
+}
+
+function TopicNodeContent({ metadata }) {
+  const focus = getFirstMetadataText(metadata, [
+    "focus",
+    "topicFocus",
+    "purpose",
+    "summary",
+  ]);
+  const practice = getFirstMetadataList(metadata, [
+    "practice",
+    "practiceIdeas",
+    "suggestedPractice",
+  ]);
+
+  if (!focus && practice.length === 0) return null;
+
+  return (
+    <Section title="Topic guide">
+      {focus && <TextBlock title="Focus">{focus}</TextBlock>}
+      <ListBlock title="Suggested practice" items={practice} />
+    </Section>
+  );
+}
 
 function RequirementTag({ isOptional }) {
   const label = isOptional ? "Optional" : "Required";
@@ -257,6 +520,16 @@ function RequirementTag({ isOptional }) {
 
   return (
     <span className={`inline-flex h-8 items-center rounded-md border px-2.5 text-[11px] font-extrabold ${style}`}>
+      {label}
+    </span>
+  );
+}
+
+function NodeTypeTag({ nodeType }) {
+  const label = NODE_TYPE_LABELS[nodeType] || formatLabel(nodeType || "node");
+
+  return (
+    <span className="inline-flex h-8 items-center rounded-md border border-[#D6E4DE] bg-white/75 px-2.5 text-[11px] font-extrabold text-slate-600">
       {label}
     </span>
   );
@@ -357,7 +630,7 @@ function buildDescription(node, metadata) {
   const cleanedReason = reason.replace(/^why\s+this\s+matters:?\s*/i, "").trim();
   const sentence = cleanedReason.endsWith(".") ? cleanedReason : `${cleanedReason}.`;
 
-  if (!description) return `This topic helps you understand ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
+  if (!description) return `This item helps you understand ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
 
   return `${description} In practice, this helps you see where the idea is useful: ${sentence}`;
 }
@@ -365,14 +638,22 @@ function buildDescription(node, metadata) {
 function Section({ title, badge, children }) {
   return (
     <section className="mt-2 rounded-md border border-[#A8D3C4] bg-white px-3 py-2 shadow-sm">
-      <div className="flex items-center gap-2">
-        <h3 className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="min-w-0 text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
           {title}
         </h3>
-        {badge}
+        {badge && <div className="shrink-0">{badge}</div>}
       </div>
       <div className="mt-1.5">{children}</div>
     </section>
+  );
+}
+
+function SubtleBadge({ children }) {
+  return (
+    <span className="inline-flex items-center rounded-md border border-[#D6E4DE] bg-slate-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-600">
+      {children}
+    </span>
   );
 }
 
@@ -384,6 +665,42 @@ function CompactNotice({ children }) {
   );
 }
 
+function TextBlock({ title, children }) {
+  if (!children) return null;
+
+  return (
+    <div>
+      <h4 className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+        {title}
+      </h4>
+      <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function ListBlock({ title, items }) {
+  const normalizedItems = normalizeArray(items).map(getDisplayText).filter(Boolean);
+
+  if (normalizedItems.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <h4 className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+        {title}
+      </h4>
+      <ul className="mt-1 space-y-1.5">
+        {normalizedItems.map((item, index) => (
+          <li key={`${title}-${index}`} className="flex gap-2 text-sm font-semibold leading-6 text-slate-700">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2FA084]" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function LearningModuleRow({ module }) {
   const title = module.title || module.Title || "Learning module";
@@ -426,7 +743,7 @@ function ResourceGroup({ group }) {
       <div className="grid gap-2">
         {group.resources.map((resource, index) => (
           <ResourceRow
-            key={resource.resourceId || resource.url || `${group.type}-${index}`}
+            key={resource.resourceId || resource.learningResourceId || resource.url || `${group.type}-${index}`}
             resource={resource}
             typeStyle={typeStyle}
           />
@@ -438,18 +755,21 @@ function ResourceGroup({ group }) {
 
 function ResourceRow({ resource, typeStyle }) {
   const url = getResourceUrl(resource);
-  const title = resource.title || resource.name || url || "Resource";
-  const provider = resource.provider || resource.source || "Learning resource";
-  const text = `${title} - ${provider}`;
+  const title = resource.title || resource.Title || resource.name || url || "Resource";
+  const provider = resource.provider || resource.Provider || resource.source || "Learning resource";
   const className = `block rounded-md border px-3 py-2 text-sm font-black leading-5 text-[#18332D] shadow-sm transition-colors ${typeStyle.card}`;
 
+  const content = (
+    <div>{title} <span className="font-bold text-slate-500">- {provider}</span></div>
+  );
+
   if (!url) {
-    return <div className={className}>{text}</div>;
+    return <div className={className}>{content}</div>;
   }
 
   return (
     <a href={url} target="_blank" rel="noreferrer" className={className}>
-      {text}
+      {content}
     </a>
   );
 }
@@ -477,4 +797,122 @@ function PanelSection({ title, items }) {
       </ul>
     </Section>
   );
+}
+
+function shouldShowSkills(nodeType) {
+  return nodeType !== "choice_group" && nodeType !== "resource_group";
+}
+
+function shouldShowLearningModules(nodeType) {
+  return nodeType !== "phase" && nodeType !== "choice_group" && nodeType !== "resource_group";
+}
+
+function shouldShowResources(nodeType) {
+  return nodeType !== "phase" && nodeType !== "choice_group" && nodeType !== "resource_group";
+}
+
+function shouldShowLearningOutcomes(nodeType) {
+  return nodeType !== "choice_group" && nodeType !== "resource_group";
+}
+
+function shouldShowGenericCompletionCriteria(nodeType) {
+  return nodeType !== "project" && nodeType !== "checkpoint" && nodeType !== "choice_option";
+}
+
+function getOutcomeSectionTitle(nodeType) {
+  if (nodeType === "project") return "Project outcomes";
+  if (nodeType === "checkpoint") return "Review outcomes";
+  if (nodeType === "choice_option") return "Option outcomes";
+  return "Learning outcomes";
+}
+
+function getNodeType(node) {
+  return node?.nodeType || node?.NodeType || node?.node_type || "topic";
+}
+
+function getFirstMetadataText(metadata, keys) {
+  for (const key of keys) {
+    const value = getMetadataValue(metadata, key);
+    const text = getDisplayText(value);
+
+    if (isDisplayableMetadataText(text)) return text;
+  }
+
+  return "";
+}
+
+function getFirstMetadataList(metadata, keys) {
+  for (const key of keys) {
+    const list = normalizeArray(getMetadataValue(metadata, key))
+      .map(getDisplayText)
+      .filter(isDisplayableMetadataText);
+
+    if (list.length > 0) return list;
+  }
+
+  return [];
+}
+
+function getMetadataValue(metadata, key) {
+  if (!metadata || !key) return undefined;
+
+  if (Object.prototype.hasOwnProperty.call(metadata, key)) {
+    return metadata[key];
+  }
+
+  const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+  if (Object.prototype.hasOwnProperty.call(metadata, pascalKey)) {
+    return metadata[pascalKey];
+  }
+
+  const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  if (Object.prototype.hasOwnProperty.call(metadata, snakeKey)) {
+    return metadata[snakeKey];
+  }
+
+  return undefined;
+}
+
+function isDisplayableMetadataText(value) {
+  const text = String(value || "").trim();
+
+  if (!text) return false;
+
+  const looksLikeInternalToken = /^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(text);
+  if (looksLikeInternalToken) return false;
+
+  return true;
+}
+
+function normalizeArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Fall back to line-based parsing below.
+    }
+
+    return trimmed
+      .split(/\r?\n|\s*;\s*/)
+      .map((item) => item.replace(/^[-*•]\s*/, "").trim())
+      .filter(Boolean);
+  }
+
+  return [value];
+}
+
+function formatLabel(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/-/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
