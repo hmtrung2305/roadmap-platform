@@ -99,6 +99,7 @@ DROP TABLE IF EXISTS seed_skill;
 CREATE TEMP TABLE seed_skill (slug text PRIMARY KEY, name text NOT NULL, category text NOT NULL, description text NOT NULL) ON COMMIT DROP;
 
 INSERT INTO seed_skill VALUES
+
 ('data-scientist-data-analysis', 'Data Science Analysis', 'Data & Analytics', 'Turning raw data into validated findings through framing, preparation, exploration, visualization, and interpretation.'),
 ('data-scientist-fastapi', 'FastAPI for Data Products', 'Backend', 'Building lightweight Python APIs that expose model outputs, analytical services, validation rules, and clear response contracts.'),
 ('data-scientist-forecasting', 'Forecasting for Data Science', 'Data & Analytics', 'Modeling time-dependent patterns, comparing forecast error, and explaining uncertainty in future outcomes.'),
@@ -430,6 +431,7 @@ CREATE TEMP TABLE seed_node_skill (node_key text NOT NULL, skill_slug text NOT N
 
 INSERT INTO seed_node_skill
 VALUES
+
 ('a-b-test-analysis', 'a-b-testing'),
 ('a-b-test-analysis', 'hypothesis-testing'),
 ('analytical-questions-and-success-metrics', 'business-metrics'),

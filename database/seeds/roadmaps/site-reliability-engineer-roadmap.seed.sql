@@ -99,6 +99,7 @@ DROP TABLE IF EXISTS seed_skill;
 CREATE TEMP TABLE seed_skill (slug text PRIMARY KEY, name text NOT NULL, category text NOT NULL, description text NOT NULL) ON COMMIT DROP;
 
 INSERT INTO seed_skill VALUES
+
 ('site-reliability-engineer-alerting-and-runbooks', 'SRE Alerting and Runbooks', 'DevOps & Platform', 'Designing actionable alerts and runbooks that reduce response time, clarify ownership, and support safe recovery.'),
 ('site-reliability-engineer-architecture', 'Reliability Architecture', 'Architecture & System Design', 'Evaluating service dependencies, redundancy, failure modes, scalability, and reliability tradeoffs.'),
 ('site-reliability-engineer-automation', 'Reliability Automation', 'DevOps & Platform', 'Automating operational workflows with safe inputs, logging, rollback behavior, and human review points.'),
@@ -434,6 +435,7 @@ CREATE TEMP TABLE seed_node_skill (node_key text NOT NULL, skill_slug text NOT N
 
 INSERT INTO seed_node_skill
 VALUES
+
 ('alert-design-and-noise-reduction', 'on-call-readiness'),
 ('alert-design-and-noise-reduction', 'site-reliability-engineer-alerting-and-runbooks'),
 ('apis-for-automation', 'api'),

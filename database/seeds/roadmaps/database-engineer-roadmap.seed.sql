@@ -99,6 +99,7 @@ DROP TABLE IF EXISTS seed_skill;
 CREATE TEMP TABLE seed_skill (slug text PRIMARY KEY, name text NOT NULL, category text NOT NULL, description text NOT NULL) ON COMMIT DROP;
 
 INSERT INTO seed_skill VALUES
+
 ('database-engineer-architecture', 'Database Architecture', 'Architecture & System Design', 'Designing database boundaries, dependencies, replication patterns, reliability tradeoffs, and operational responsibilities.'),
 ('database-engineer-backend', 'Backend Data Access Patterns', 'Backend', 'Understanding how service behavior, transactions, query load, and connection patterns affect database design and operations.'),
 ('database-engineer-cybersecurity', 'Database Security Controls', 'Cybersecurity', 'Applying access control, encryption, audit evidence, risk reduction, and operational response for database systems.'),
@@ -432,6 +433,7 @@ CREATE TEMP TABLE seed_node_skill (node_key text NOT NULL, skill_slug text NOT N
 
 INSERT INTO seed_node_skill
 VALUES
+
 ('acid-guarantees', 'database-engineer-transactions-and-isolation'),
 ('acid-guarantees', 'relational-databases'),
 ('advanced-sql-joins-and-subqueries', 'query-optimization'),
