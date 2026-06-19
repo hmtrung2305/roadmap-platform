@@ -4,6 +4,11 @@ import { toast } from "react-toastify";
 import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
 import { ModuleBadge, ModuleButton } from "../learningModules/learningModuleUi";
 import { isSubmittedToday } from "./studyRoomUtils";
+import {
+  clearQuizAttemptDraft,
+  loadQuizAttemptDraft,
+  saveQuizAttemptDraft,
+} from "./quizAttemptDraftStorage";
 
 function getAttemptId(attempt) {
   return (
@@ -32,7 +37,10 @@ function getSelectedOptionId(answer) {
 }
 
 function getInitialAnswers(attempt) {
-  const restoredAnswers = {};
+  const attemptId = getAttemptId(attempt);
+  const restoredAnswers = {
+    ...loadQuizAttemptDraft(attemptId),
+  };
   const answers = attempt?.answers || attempt?.Answers || [];
 
   answers.forEach((answer) => {
@@ -44,7 +52,21 @@ function getInitialAnswers(attempt) {
     }
   });
 
-  return restoredAnswers;
+  const validAnswers = {};
+
+  (attempt?.quiz?.questions || []).forEach((question) => {
+    const questionId = getQuestionId(question);
+    const selectedOptionId = restoredAnswers[questionId];
+    const optionExists = (question.options || []).some(
+      (option) => getOptionId(option) === selectedOptionId,
+    );
+
+    if (questionId && optionExists) {
+      validAnswers[questionId] = selectedOptionId;
+    }
+  });
+
+  return validAnswers;
 }
 
 function hasAttemptQuestions(attempt) {
@@ -54,6 +76,7 @@ function hasAttemptQuestions(attempt) {
 export default function StudyQuiz({ module, canStartQuiz = true, onProgressChanged }) {
   const loadQuizAttempts = useLearningModuleStore((state) => state.loadQuizAttempts);
   const startQuizAttempt = useLearningModuleStore((state) => state.startQuizAttempt);
+  const loadQuizAttemptSession = useLearningModuleStore((state) => state.loadQuizAttemptSession);
   const loadQuizAttemptReview = useLearningModuleStore((state) => state.loadQuizAttemptReview);
   const submitQuizAttempt = useLearningModuleStore((state) => state.submitQuizAttempt);
   const attempts = useLearningModuleStore((state) => state.getQuizAttempts(module?.skillModuleId));
@@ -93,7 +116,7 @@ export default function StudyQuiz({ module, canStartQuiz = true, onProgressChang
   const resumeAttempt = async (attemptId) => {
     if (!attemptId) return false;
 
-    const data = await loadQuizAttemptReview(module.skillModuleId, attemptId, { force: true });
+    const data = await loadQuizAttemptSession(module.skillModuleId, attemptId, { force: true });
 
     if (!hasAttemptQuestions(data)) {
       return false;
@@ -131,6 +154,7 @@ export default function StudyQuiz({ module, canStartQuiz = true, onProgressChang
 
       const data = await startQuizAttempt(module.skillModuleId);
       setAttempt(data);
+      setAnswers(getInitialAnswers(data));
       setViewMode("attempt");
     } catch (error) {
       toast.error(error?.message || "Unable to start quiz.");
@@ -143,6 +167,7 @@ export default function StudyQuiz({ module, canStartQuiz = true, onProgressChang
     try {
       setIsLoadingReview(true);
       const data = await loadQuizAttemptReview(module.skillModuleId, attemptId);
+      clearQuizAttemptDraft(attemptId);
       setReview(data);
       setAttempt(null);
       setAnswers({});
@@ -169,11 +194,7 @@ export default function StudyQuiz({ module, canStartQuiz = true, onProgressChang
 
     try {
       setIsLoadingReview(true);
-      const didResume = await resumeAttempt(attemptId);
-
-      if (!didResume) {
-        toast.info("This quiz attempt cannot be resumed from the current backend response.");
-      }
+      await resumeAttempt(attemptId);
     } catch (error) {
       toast.error(error?.message || "Unable to resume quiz attempt.");
     } finally {
@@ -206,6 +227,7 @@ export default function StudyQuiz({ module, canStartQuiz = true, onProgressChang
         payload,
       );
 
+      clearQuizAttemptDraft(getAttemptId(attempt));
       setReview(data);
       setAttempt(null);
       setAnswers({});
@@ -280,10 +302,15 @@ export default function StudyQuiz({ module, canStartQuiz = true, onProgressChang
                         name={questionId}
                         checked={answers[questionId] === optionId}
                         onChange={() =>
-                          setAnswers((current) => ({
-                            ...current,
-                            [questionId]: optionId,
-                          }))
+                          setAnswers((current) => {
+                            const nextAnswers = {
+                              ...current,
+                              [questionId]: optionId,
+                            };
+
+                            saveQuizAttemptDraft(getAttemptId(attempt), nextAnswers);
+                            return nextAnswers;
+                          })
                         }
                       />
                       {option.optionText}

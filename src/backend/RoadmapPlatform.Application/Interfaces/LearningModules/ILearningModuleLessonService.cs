@@ -4,6 +4,11 @@ namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 
 public interface ILearningModuleLessonService
 {
+
+    Task<IReadOnlyList<LearningModuleLessonDto>> GetLessonsAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken);
     Task<BulkUploadLessonsResultDto> BulkUploadLessonsAsync(
         Guid contentManagerUserId,
         Guid skillModuleId,

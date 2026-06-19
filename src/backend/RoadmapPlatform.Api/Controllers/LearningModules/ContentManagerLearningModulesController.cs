@@ -16,16 +16,16 @@ public sealed class ContentManagerLearningModulesController(
 {
     [HttpGet]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
-    [ProducesResponseType(typeof(IReadOnlyList<ContentManagerLearningModuleSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ContentManagerLearningModuleListResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModules(
-        [FromQuery] string? status,
+        [FromQuery] ContentManagerLearningModuleListQueryDto query,
         CancellationToken cancellationToken)
     {
         var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModulesAsync(
             contentManagerUserId,
-            status,
+            query,
             cancellationToken);
 
         return Ok(result);
@@ -64,6 +64,24 @@ public sealed class ContentManagerLearningModulesController(
         var contentManagerUserId = User.GetUserId();
 
         var result = await moduleService.GetModuleDetailAsync(
+            contentManagerUserId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpGet("{moduleId:guid}/overview")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetModuleOverview(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var contentManagerUserId = User.GetUserId();
+
+        var result = await moduleService.GetModuleOverviewAsync(
             contentManagerUserId,
             moduleId,
             cancellationToken);
@@ -110,6 +128,24 @@ public sealed class ContentManagerLearningModulesController(
             cancellationToken);
 
         return NoContent();
+    }
+
+    [HttpGet("{moduleId:guid}/publish-readiness")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(PublishLearningModuleReadinessDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublishReadiness(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var contentManagerUserId = User.GetUserId();
+
+        var result = await moduleService.GetPublishReadinessAsync(
+            contentManagerUserId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpPost("{moduleId:guid}/publish")]

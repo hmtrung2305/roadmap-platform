@@ -15,6 +15,24 @@ namespace RoadmapPlatform.Api.Controllers.LearningModules;
 public sealed class ContentManagerLearningModuleQuizController(
     ILearningModuleQuizService quizService) : ControllerBase
 {
+    [HttpGet]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_VIEW_OWN)]
+    [ProducesResponseType(typeof(LearningModuleQuizDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetQuiz(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var contentManagerUserId = User.GetUserId();
+
+        var result = await quizService.GetQuizAsync(
+            contentManagerUserId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPut]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_UPSERT_OWN)]
     [ProducesResponseType(typeof(LearningModuleQuizDto), StatusCodes.Status200OK)]

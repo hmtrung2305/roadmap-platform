@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.user_profile
     user_id uuid PRIMARY KEY,
 
     display_name varchar(50),
+    phone_number varchar(32),
     headline varchar(150),
     bio varchar(500),
     location varchar(100),

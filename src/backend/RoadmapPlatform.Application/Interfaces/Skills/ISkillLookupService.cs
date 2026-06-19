@@ -11,6 +11,15 @@ public interface ISkillLookupService
         int? offset,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<SkillLookupDto>> GetSuggestionsAsync(
+        Guid userId,
+        int? limit,
+        CancellationToken cancellationToken);
+
+    Task<SkillLookupDto> GetSkillAsync(
+        Guid skillId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<string>> GetCategoriesAsync(
         CancellationToken cancellationToken);
 }

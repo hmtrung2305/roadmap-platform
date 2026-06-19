@@ -11,4 +11,6 @@ public sealed class SkillLookupDto
     public string? Category { get; set; }
 
     public string? Description { get; set; }
+
+    public IReadOnlyList<string> CareerRoles { get; set; } = [];
 }

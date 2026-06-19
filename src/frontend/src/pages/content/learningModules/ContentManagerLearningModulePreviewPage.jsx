@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
@@ -171,15 +171,12 @@ function QuizPreviewPanel({ quiz }) {
 
 
 export default function ContentManagerLearningModulePreviewPage() {
-  const { moduleSlug } = useParams();
+  const { moduleId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const routeStateModuleId = location.state?.moduleId || null;
-  const resolvedModuleIdRef = useRef(routeStateModuleId);
   const [detail, setDetail] = useState(null);
   const [activeLessonId, setActiveLessonId] = useState(null);
   const [lessonPreview, setLessonPreview] = useState(null);
-  const [resolvedModuleId, setResolvedModuleId] = useState(routeStateModuleId);
+  const [resolvedModuleId, setResolvedModuleId] = useState(moduleId || null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -188,13 +185,14 @@ export default function ContentManagerLearningModulePreviewPage() {
     async function loadDetail() {
       try {
         setIsLoading(true);
-        const knownModuleId = routeStateModuleId || resolvedModuleIdRef.current;
-        const moduleId = await contentManagerLearningModuleApi.resolveModuleIdFromRoute(moduleSlug, knownModuleId);
+        if (!moduleId) {
+          throw new Error("Learning module route is missing.");
+        }
+
         const data = await contentManagerLearningModuleApi.getModule(moduleId);
 
         if (ignore) return;
 
-        resolvedModuleIdRef.current = moduleId;
         setResolvedModuleId(moduleId);
         setDetail(data);
         setActiveLessonId(data.lessons?.[0]?.skillModuleLessonId || (data.quiz ? "quiz" : null));
@@ -213,7 +211,7 @@ export default function ContentManagerLearningModulePreviewPage() {
     return () => {
       ignore = true;
     };
-  }, [moduleSlug, routeStateModuleId]);
+  }, [moduleId]);
 
   useEffect(() => {
     let ignore = false;

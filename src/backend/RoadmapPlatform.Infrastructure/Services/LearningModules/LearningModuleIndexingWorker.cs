@@ -3,10 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RoadmapPlatform.Application.DTOs.LearningModules;
+using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using System.Data;
 using System.Text;
 
 namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
@@ -52,30 +54,86 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
 
     private async Task ProcessPendingLessonsAsync(CancellationToken cancellationToken)
     {
-        List<Guid> lessonIds;
-
-        await using (var scope = _scopeFactory.CreateAsyncScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var staleBefore = DateTime.UtcNow.Subtract(StaleIndexingTimeout);
-
-            lessonIds = await context.SkillModuleLessons
-                .AsNoTracking()
-                .Where(lesson =>
-                    lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Pending
-                    || lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.NeedsReindex
-                    || (
-                        lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexing
-                        && lesson.UpdatedAt < staleBefore))
-                .OrderBy(lesson => lesson.UpdatedAt)
-                .Select(lesson => lesson.SkillModuleLessonId)
-                .Take(BatchSize)
-                .ToListAsync(cancellationToken);
-        }
+        var lessonIds = await ClaimPendingLessonsAsync(cancellationToken);
 
         foreach (var lessonId in lessonIds)
         {
             await ProcessLessonAsync(lessonId, cancellationToken);
+        }
+    }
+
+    private async Task<IReadOnlyList<Guid>> ClaimPendingLessonsAsync(
+        CancellationToken cancellationToken)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var connection = context.Database.GetDbConnection();
+        var shouldCloseConnection = connection.State != ConnectionState.Open;
+
+        if (shouldCloseConnection)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        try
+        {
+            await using var transaction = await connection.BeginTransactionAsync(
+                IsolationLevel.ReadCommitted,
+                cancellationToken);
+            await using var command = connection.CreateCommand();
+
+            command.Transaction = transaction;
+            command.CommandText = """
+                WITH candidates AS (
+                    SELECT lesson.skill_module_lesson_id
+                    FROM public.skill_module_lesson lesson
+                    WHERE lesson.indexing_status = @pending_status
+                       OR lesson.indexing_status = @needs_reindex_status
+                       OR (
+                            lesson.indexing_status = @indexing_status
+                            AND lesson.updated_at < @stale_before
+                       )
+                    ORDER BY lesson.updated_at, lesson.skill_module_lesson_id
+                    LIMIT @batch_size
+                    FOR UPDATE SKIP LOCKED
+                )
+                UPDATE public.skill_module_lesson lesson
+                SET indexing_status = @indexing_status,
+                    indexing_error = NULL,
+                    indexed_at = NULL,
+                    updated_at = @claimed_at
+                FROM candidates
+                WHERE lesson.skill_module_lesson_id = candidates.skill_module_lesson_id
+                RETURNING lesson.skill_module_lesson_id;
+                """;
+
+            AddParameter(command, "pending_status", LearningModuleLessonIndexingStatusValues.Pending);
+            AddParameter(command, "needs_reindex_status", LearningModuleLessonIndexingStatusValues.NeedsReindex);
+            AddParameter(command, "indexing_status", LearningModuleLessonIndexingStatusValues.Indexing);
+            AddParameter(command, "stale_before", DateTime.UtcNow.Subtract(StaleIndexingTimeout));
+            AddParameter(command, "claimed_at", DateTime.UtcNow);
+            AddParameter(command, "batch_size", BatchSize);
+
+            var lessonIds = new List<Guid>(BatchSize);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                lessonIds.Add(reader.GetGuid(0));
+            }
+
+            await reader.DisposeAsync();
+            await transaction.CommitAsync(cancellationToken);
+
+            return lessonIds;
+        }
+        finally
+        {
+            if (shouldCloseConnection)
+            {
+                await connection.CloseAsync();
+            }
         }
     }
 
@@ -91,10 +149,15 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
         var lesson = await context.SkillModuleLessons
             .FirstOrDefaultAsync(item => item.SkillModuleLessonId == lessonId, cancellationToken);
 
-        if (lesson == null)
+        if (lesson == null
+            || lesson.IndexingStatus != LearningModuleLessonIndexingStatusValues.Indexing)
         {
             return;
         }
+
+        var expectedContentVersion = lesson.ContentVersion;
+        var expectedContentHash = lesson.ContentHash;
+        var expectedMarkdownFileKey = lesson.MarkdownFileKey;
 
         ILearningModuleRagIndexingService indexingService;
 
@@ -104,9 +167,12 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            await MarkLessonFailedAsync(
+            await MarkLessonFailedIfCurrentAsync(
                 context,
                 lesson,
+                expectedContentVersion,
+                expectedContentHash,
+                expectedMarkdownFileKey,
                 ex,
                 cancellationToken);
 
@@ -115,18 +181,6 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
 
         try
         {
-            var now = DateTime.UtcNow;
-            var expectedContentVersion = lesson.ContentVersion;
-            var expectedContentHash = lesson.ContentHash;
-            var expectedMarkdownFileKey = lesson.MarkdownFileKey;
-
-            lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Indexing;
-            lesson.IndexingError = null;
-            lesson.IndexedAt = null;
-            lesson.UpdatedAt = now;
-
-            await context.SaveChangesAsync(cancellationToken);
-
             await using var stream = await fileStorage.OpenReadAsync(
                 expectedMarkdownFileKey,
                 cancellationToken);
@@ -144,14 +198,14 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
 
             await context.Entry(lesson).ReloadAsync(cancellationToken);
 
-            if (!IsSameLessonContent(
+            if (!IsCurrentClaim(
                 lesson,
                 expectedContentVersion,
                 expectedContentHash,
                 expectedMarkdownFileKey))
             {
                 _logger.LogInformation(
-                    "Skipped marking lesson {LessonId} as indexed because the lesson file changed while indexing.",
+                    "Skipped marking lesson {LessonId} as indexed because its content or indexing state changed.",
                     lesson.SkillModuleLessonId);
 
                 return;
@@ -164,12 +218,14 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
 
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (LearningModuleIndexingSkippedException ex)
+        catch (LearningModuleIndexingSkippedException)
         {
-            await HandleSkippedIndexingAsync(
+            await RequeueLessonIfCurrentAsync(
                 context,
                 lesson,
-                ex,
+                expectedContentVersion,
+                expectedContentHash,
+                expectedMarkdownFileKey,
                 cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -178,9 +234,12 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            await MarkLessonFailedAsync(
+            await MarkLessonFailedIfCurrentAsync(
                 context,
                 lesson,
+                expectedContentVersion,
+                expectedContentHash,
+                expectedMarkdownFileKey,
                 ex,
                 cancellationToken);
 
@@ -191,32 +250,69 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
         }
     }
 
-    private static async Task HandleSkippedIndexingAsync(
+    private static async Task RequeueLessonIfCurrentAsync(
         ApplicationDbContext context,
         SkillModuleLesson lesson,
-        LearningModuleIndexingSkippedException exception,
+        int expectedContentVersion,
+        string? expectedContentHash,
+        string expectedMarkdownFileKey,
         CancellationToken cancellationToken)
     {
         await context.Entry(lesson).ReloadAsync(cancellationToken);
 
-        if (lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexing)
+        if (!IsCurrentClaim(
+            lesson,
+            expectedContentVersion,
+            expectedContentHash,
+            expectedMarkdownFileKey))
         {
-            lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending;
-            lesson.IndexingError = null;
-            lesson.IndexedAt = null;
-            lesson.UpdatedAt = DateTime.UtcNow;
-
-            await context.SaveChangesAsync(cancellationToken);
+            return;
         }
+
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Pending;
+        lesson.IndexingError = null;
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static bool IsSameLessonContent(
+    private static async Task MarkLessonFailedIfCurrentAsync(
+        ApplicationDbContext context,
+        SkillModuleLesson lesson,
+        int expectedContentVersion,
+        string? expectedContentHash,
+        string expectedMarkdownFileKey,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        await context.Entry(lesson).ReloadAsync(cancellationToken);
+
+        if (!IsCurrentClaim(
+            lesson,
+            expectedContentVersion,
+            expectedContentHash,
+            expectedMarkdownFileKey))
+        {
+            return;
+        }
+
+        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Failed;
+        lesson.IndexingError = CreateErrorMessage(exception);
+        lesson.IndexedAt = null;
+        lesson.UpdatedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static bool IsCurrentClaim(
         SkillModuleLesson lesson,
         int expectedContentVersion,
         string? expectedContentHash,
         string expectedMarkdownFileKey)
     {
-        return lesson.ContentVersion == expectedContentVersion
+        return lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexing
+            && lesson.ContentVersion == expectedContentVersion
             && string.Equals(
                 lesson.ContentHash,
                 expectedContentHash,
@@ -227,20 +323,15 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
                 StringComparison.Ordinal);
     }
 
-    private static async Task MarkLessonFailedAsync(
-        ApplicationDbContext context,
-        SkillModuleLesson lesson,
-        Exception exception,
-        CancellationToken cancellationToken)
+    private static void AddParameter(
+        System.Data.Common.DbCommand command,
+        string name,
+        object value)
     {
-        var now = DateTime.UtcNow;
-
-        lesson.IndexingStatus = LearningModuleLessonIndexingStatusValues.Failed;
-        lesson.IndexingError = CreateErrorMessage(exception);
-        lesson.IndexedAt = null;
-        lesson.UpdatedAt = now;
-
-        await context.SaveChangesAsync(cancellationToken);
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.Value = value;
+        command.Parameters.Add(parameter);
     }
 
     private static string CreateErrorMessage(Exception exception)

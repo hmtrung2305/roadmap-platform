@@ -44,6 +44,12 @@ public interface ILearnerLearningModuleService
         Guid skillModuleId,
         CancellationToken cancellationToken);
 
+    Task<StartQuizAttemptResultDto> GetQuizAttemptSessionAsync(
+        Guid userId,
+        Guid skillModuleId,
+        Guid attemptId,
+        CancellationToken cancellationToken);
+
     Task<QuizAttemptReviewDto> SubmitQuizAttemptAsync(
         Guid userId,
         Guid skillModuleId,
