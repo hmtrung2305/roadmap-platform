@@ -13,6 +13,15 @@ import {
 } from "../editorUtils";
 import useEditorDirtyState from "./useEditorDirtyState";
 
+function createEditorDetail(module = null, publishReadiness = null, current = null) {
+  return {
+    module,
+    lessons: current?.lessons || [],
+    quiz: current?.quiz || null,
+    publishReadiness: publishReadiness || current?.publishReadiness || null,
+  };
+}
+
 export default function useLearningModuleEditor() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
@@ -23,13 +32,15 @@ export default function useLearningModuleEditor() {
     () => getValidEditorTab(searchParams.get("tab")) || "overview",
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isActiveTabLoading, setIsActiveTabLoading] = useState(false);
   const [showLoadingState, setShowLoadingState] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [resolvedModuleId, setResolvedModuleId] = useState(moduleId || null);
   const [pendingNavigation, setPendingNavigation] = useState(null);
-  const loadRequestIdRef = useRef(0);
+  const baseLoadRequestIdRef = useRef(0);
+  const tabLoadRequestIdRef = useRef(0);
 
   const {
     hasUnsavedChanges,
@@ -103,44 +114,114 @@ export default function useLearningModuleEditor() {
 
   useEffect(() => {
     setResolvedModuleId(moduleId || null);
+    setDetail(null);
   }, [moduleId]);
 
   useEffect(() => {
-    const requestId = loadRequestIdRef.current + 1;
-    loadRequestIdRef.current = requestId;
+    const requestId = baseLoadRequestIdRef.current + 1;
+    baseLoadRequestIdRef.current = requestId;
 
-    async function loadDetail() {
+    async function loadBaseEditorData() {
       try {
         setIsLoading(true);
         if (!moduleId) {
           throw new Error("Learning module route is missing.");
         }
 
-        const data = await contentManagerLearningModuleApi.getModule(moduleId, {
-          force: refreshKey > 0,
-        });
+        const force = refreshKey > 0;
+        const [moduleData, readiness] = await Promise.all([
+          contentManagerLearningModuleApi.getModuleOverview(moduleId, { force }),
+          contentManagerLearningModuleApi.getPublishReadiness(moduleId),
+        ]);
 
-        if (loadRequestIdRef.current === requestId) {
+        if (baseLoadRequestIdRef.current === requestId) {
           setResolvedModuleId(moduleId);
-          setDetail(data);
+          setDetail((current) => createEditorDetail(moduleData, readiness, current));
         }
       } catch (error) {
-        if (loadRequestIdRef.current === requestId) {
+        if (baseLoadRequestIdRef.current === requestId) {
           setResolvedModuleId(null);
+          setDetail(null);
           toast.error(error?.message || "Unable to load module.");
         }
       } finally {
-        if (loadRequestIdRef.current === requestId) setIsLoading(false);
+        if (baseLoadRequestIdRef.current === requestId) setIsLoading(false);
       }
     }
 
-    loadDetail();
+    loadBaseEditorData();
   }, [moduleId, refreshKey]);
 
   useEffect(() => {
     const nextTab = getValidEditorTab(searchParams.get("tab")) || "overview";
     setActiveTab((current) => current === nextTab ? current : nextTab);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!detail?.module?.skillModuleId) return undefined;
+
+    const requestId = tabLoadRequestIdRef.current + 1;
+    tabLoadRequestIdRef.current = requestId;
+
+    async function loadActiveTabData() {
+      const force = refreshKey > 0;
+      const currentModuleId = detail.module.skillModuleId;
+
+      try {
+        if (activeTab === "overview" || activeTab === "publish") {
+          return;
+        }
+
+        setIsActiveTabLoading(true);
+
+        if (activeTab === "lessons") {
+          const lessons = await contentManagerLearningModuleApi.getModuleLessons(
+            currentModuleId,
+            { force },
+          );
+
+          if (tabLoadRequestIdRef.current === requestId) {
+            setDetail((current) => current ? { ...current, lessons } : current);
+          }
+          return;
+        }
+
+        if (activeTab === "quiz") {
+          const quiz = await contentManagerLearningModuleApi.getModuleQuiz(
+            currentModuleId,
+            { force },
+          );
+
+          if (tabLoadRequestIdRef.current === requestId) {
+            setDetail((current) => current ? { ...current, quiz } : current);
+          }
+          return;
+        }
+
+        if (activeTab === "preview") {
+          const [lessons, quiz] = await Promise.all([
+            contentManagerLearningModuleApi.getModuleLessons(currentModuleId, { force }),
+            contentManagerLearningModuleApi.getModuleQuiz(currentModuleId, { force }),
+          ]);
+
+          if (tabLoadRequestIdRef.current === requestId) {
+            setDetail((current) => current ? { ...current, lessons, quiz } : current);
+          }
+        }
+      } catch (error) {
+        if (tabLoadRequestIdRef.current === requestId) {
+          toast.error(error?.message || "Unable to load editor data.");
+        }
+      } finally {
+        if (tabLoadRequestIdRef.current === requestId) {
+          setIsActiveTabLoading(false);
+        }
+      }
+    }
+
+    loadActiveTabData();
+    return undefined;
+  }, [activeTab, detail?.module?.skillModuleId, refreshKey]);
 
   useEffect(() => {
     if (!isLoading || detail) {
@@ -204,7 +285,7 @@ export default function useLearningModuleEditor() {
               ...updatedModule,
             },
           }
-        : current,
+        : createEditorDetail(updatedModule),
     );
 
     void refreshPublishReadiness(updatedModule.skillModuleId);
@@ -225,10 +306,20 @@ export default function useLearningModuleEditor() {
     if (!activeModuleId) return;
 
     try {
-      const data = await contentManagerLearningModuleApi.getModule(activeModuleId, {
-        force: true,
-      });
-      setDetail(data);
+      const [lessons, readiness] = await Promise.all([
+        contentManagerLearningModuleApi.getModuleLessons(activeModuleId, { force: true }),
+        contentManagerLearningModuleApi.getPublishReadiness(activeModuleId),
+      ]);
+
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              lessons,
+              publishReadiness: readiness,
+            }
+          : current,
+      );
     } catch {
       // Polling is best-effort.
     }
@@ -268,6 +359,7 @@ export default function useLearningModuleEditor() {
     activeModuleId,
     activeTab,
     isLoading,
+    isActiveTabLoading,
     showLoadingState,
     isPublishing,
     isPublishDialogOpen,

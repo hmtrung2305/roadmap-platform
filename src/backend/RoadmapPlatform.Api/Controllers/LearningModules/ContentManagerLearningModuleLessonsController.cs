@@ -16,10 +16,28 @@ namespace RoadmapPlatform.Api.Controllers.LearningModules;
 public sealed class ContentManagerLearningModuleLessonsController(
     ILearningModuleLessonService lessonService) : ControllerBase
 {
+    [HttpGet]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(IReadOnlyList<LearningModuleLessonDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLessons(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var contentManagerUserId = User.GetUserId();
+
+        var result = await lessonService.GetLessonsAsync(
+            contentManagerUserId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPost("bulk")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_CREATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.UploadExpensive)]
-    [RequestSizeLimit(LearningModuleAuthoringLimits.BulkLessonUploadRequestMaxBytes)]
+    [RequestSizeLimit(100_000_000)]
     [ProducesResponseType(typeof(BulkUploadLessonsResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,7 +134,7 @@ public sealed class ContentManagerLearningModuleLessonsController(
     [HttpPut("{lessonId:guid}/content")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_LESSON_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.UploadExpensive)]
-    [RequestSizeLimit(LearningModuleAuthoringLimits.ReplaceLessonUploadRequestMaxBytes)]
+    [RequestSizeLimit(50_000_000)]
     [ProducesResponseType(typeof(LearningModuleLessonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

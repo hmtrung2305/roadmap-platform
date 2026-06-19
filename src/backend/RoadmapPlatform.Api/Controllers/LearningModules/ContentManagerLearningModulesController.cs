@@ -71,6 +71,24 @@ public sealed class ContentManagerLearningModulesController(
         return Ok(result);
     }
 
+    [HttpGet("{moduleId:guid}/overview")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_OWN)]
+    [ProducesResponseType(typeof(SkillModuleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetModuleOverview(
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var contentManagerUserId = User.GetUserId();
+
+        var result = await moduleService.GetModuleOverviewAsync(
+            contentManagerUserId,
+            moduleId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPatch("{moduleId:guid}")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]

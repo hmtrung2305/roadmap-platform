@@ -19,6 +19,11 @@ public interface IContentManagerLearningModuleService
         Guid skillModuleId,
         CancellationToken cancellationToken);
 
+    Task<SkillModuleDto> GetModuleOverviewAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken);
+
     Task<SkillModuleDto> CreateModuleAsync(
         Guid contentManagerUserId,
         CreateLearningModuleRequestDto request,

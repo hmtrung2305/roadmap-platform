@@ -13,6 +13,16 @@ import ModulePreviewTab from "../../../features/learningModuleEditor/tabs/Module
 import ModuleQuizTab from "../../../features/learningModuleEditor/tabs/ModuleQuizTab";
 import ReviewPublishTab from "../../../features/learningModuleEditor/tabs/ReviewPublishTab";
 
+
+function EditorTabLoadingState({ label }) {
+  return (
+    <ModuleCard className="flex items-center justify-center gap-2 p-10 text-sm font-bold text-slate-600">
+      <Loader2 size={16} className="animate-spin text-[#1F6F5F]" />
+      Loading {label}...
+    </ModuleCard>
+  );
+}
+
 export default function ContentManagerLearningModuleEditorPage() {
   const editor = useLearningModuleEditor();
 
@@ -78,29 +88,41 @@ export default function ContentManagerLearningModuleEditorPage() {
         )}
 
         {editor.activeTab === "lessons" && (
-          <ModuleLessonsTab
-            module={editor.module}
-            lessons={editor.detail.lessons}
-            onChanged={editor.reload}
-            onIndexingStatusPoll={editor.refreshDetailSilently}
-            onDirtyStateChange={editor.setDirtyState}
-          />
+          editor.isActiveTabLoading && editor.detail.lessons.length === 0 ? (
+            <EditorTabLoadingState label="lessons" />
+          ) : (
+            <ModuleLessonsTab
+              module={editor.module}
+              lessons={editor.detail.lessons}
+              onChanged={editor.reload}
+              onIndexingStatusPoll={editor.refreshDetailSilently}
+              onDirtyStateChange={editor.setDirtyState}
+            />
+          )
         )}
 
         {editor.activeTab === "quiz" && (
-          <ModuleQuizTab
-            module={editor.module}
-            quiz={editor.detail.quiz}
-            onChanged={editor.reload}
-            onDirtyStateChange={editor.setDirtyState}
-          />
+          editor.isActiveTabLoading && !editor.detail.quiz ? (
+            <EditorTabLoadingState label="quiz" />
+          ) : (
+            <ModuleQuizTab
+              module={editor.module}
+              quiz={editor.detail.quiz}
+              onChanged={editor.reload}
+              onDirtyStateChange={editor.setDirtyState}
+            />
+          )
         )}
 
         {editor.activeTab === "preview" && (
-          <ModulePreviewTab
-            moduleId={editor.activeModuleId}
-            detail={editor.detail}
-          />
+          editor.isActiveTabLoading && editor.detail.lessons.length === 0 && !editor.detail.quiz ? (
+            <EditorTabLoadingState label="preview" />
+          ) : (
+            <ModulePreviewTab
+              moduleId={editor.activeModuleId}
+              detail={editor.detail}
+            />
+          )
         )}
 
         {editor.activeTab === "publish" && (

@@ -301,6 +301,24 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         };
     }
 
+    public async Task<SkillModuleDto> GetModuleOverviewAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
+            .AsNoTracking()
+            .Include(item => item.Skill)
+            .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
+
+        if (module == null)
+        {
+            throw new NotFoundException("Learning module was not found.");
+        }
+
+        return MapModule(module);
+    }
+
     public async Task<SkillModuleDto> CreateModuleAsync(
         Guid contentManagerUserId,
         CreateLearningModuleRequestDto request,

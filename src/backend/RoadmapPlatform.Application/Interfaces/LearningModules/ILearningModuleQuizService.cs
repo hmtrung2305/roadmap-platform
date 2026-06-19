@@ -4,6 +4,11 @@ namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 
 public interface ILearningModuleQuizService
 {
+
+    Task<LearningModuleQuizDto?> GetQuizAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken);
     Task<LearningModuleQuizDto> UpsertQuizAsync(
         Guid contentManagerUserId,
         Guid skillModuleId,

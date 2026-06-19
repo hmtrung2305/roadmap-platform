@@ -4,10 +4,17 @@ const encode = (value) => encodeURIComponent(value);
 
 
 const MODULE_DETAIL_CACHE_MS = 20000;
+const MODULE_TAB_CACHE_MS = 20000;
 const WORKSPACE_OVERVIEW_CACHE_MS = 60000;
 
 const moduleDetailCache = new Map();
 const moduleDetailInFlight = new Map();
+const moduleOverviewCache = new Map();
+const moduleOverviewInFlight = new Map();
+const moduleLessonsCache = new Map();
+const moduleLessonsInFlight = new Map();
+const moduleQuizCache = new Map();
+const moduleQuizInFlight = new Map();
 let workspaceOverviewCache = null;
 let workspaceOverviewInFlight = null;
 
@@ -28,10 +35,17 @@ function getCachedEntry(cache, key, maxAgeMs) {
 }
 
 function invalidateModuleDetailCache(moduleId) {
-  if (moduleId) {
-    moduleDetailCache.delete(String(moduleId));
-    moduleDetailInFlight.delete(String(moduleId));
-  }
+  if (!moduleId) return;
+
+  const key = String(moduleId);
+  moduleDetailCache.delete(key);
+  moduleDetailInFlight.delete(key);
+  moduleOverviewCache.delete(key);
+  moduleOverviewInFlight.delete(key);
+  moduleLessonsCache.delete(key);
+  moduleLessonsInFlight.delete(key);
+  moduleQuizCache.delete(key);
+  moduleQuizInFlight.delete(key);
 }
 
 function invalidateWorkspaceOverviewCache() {
@@ -42,6 +56,61 @@ function invalidateWorkspaceOverviewCache() {
 function invalidateAuthoringCaches(moduleId) {
   invalidateModuleDetailCache(moduleId);
   invalidateWorkspaceOverviewCache();
+}
+
+function requireModuleId(moduleId) {
+  const key = String(moduleId || "");
+
+  if (!key) {
+    throw new Error("Learning module id is required.");
+  }
+
+  return key;
+}
+
+async function getCachedModuleResource({
+  moduleId,
+  force = false,
+  cache,
+  inFlight,
+  path,
+  normalize = (data) => data,
+}) {
+  const key = requireModuleId(moduleId);
+
+  if (!force) {
+    const entry = cache.get(key);
+
+    if (entry && now() - entry.cachedAt <= MODULE_TAB_CACHE_MS) {
+      return entry.value;
+    }
+
+    if (entry) {
+      cache.delete(key);
+    }
+
+    if (inFlight.has(key)) {
+      return inFlight.get(key);
+    }
+  }
+
+  const request = axiosClient
+    .get(path(key))
+    .then((response) => {
+      const value = normalize(response.data);
+      cache.set(key, {
+        value,
+        cachedAt: now(),
+      });
+
+      return value;
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+
+  inFlight.set(key, request);
+  return request;
 }
 
 export function getLearningModuleRouteSegment(module) {
@@ -221,11 +290,7 @@ export const contentManagerLearningModuleApi = {
   },
 
   getModule: async (moduleId, { force = false } = {}) => {
-    const key = String(moduleId || "");
-
-    if (!key) {
-      throw new Error("Learning module id is required.");
-    }
+    const key = requireModuleId(moduleId);
 
     if (!force) {
       const cached = getCachedEntry(moduleDetailCache, key, MODULE_DETAIL_CACHE_MS);
@@ -253,6 +318,32 @@ export const contentManagerLearningModuleApi = {
     moduleDetailInFlight.set(key, request);
     return request;
   },
+
+  getModuleOverview: async (moduleId, { force = false } = {}) => getCachedModuleResource({
+    moduleId,
+    force,
+    cache: moduleOverviewCache,
+    inFlight: moduleOverviewInFlight,
+    path: (key) => `/content/learning-modules/${encode(key)}/overview`,
+  }),
+
+  getModuleLessons: async (moduleId, { force = false } = {}) => getCachedModuleResource({
+    moduleId,
+    force,
+    cache: moduleLessonsCache,
+    inFlight: moduleLessonsInFlight,
+    path: (key) => `/content/learning-modules/${encode(key)}/lessons`,
+    normalize: (data) => Array.isArray(data) ? data : [],
+  }),
+
+  getModuleQuiz: async (moduleId, { force = false } = {}) => getCachedModuleResource({
+    moduleId,
+    force,
+    cache: moduleQuizCache,
+    inFlight: moduleQuizInFlight,
+    path: (key) => `/content/learning-modules/${encode(key)}/quiz`,
+    normalize: (data) => data || null,
+  }),
 
   getPublishReadiness: async (moduleId) => {
     const response = await axiosClient.get(
