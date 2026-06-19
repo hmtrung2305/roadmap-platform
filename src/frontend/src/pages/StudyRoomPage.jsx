@@ -4,7 +4,7 @@ import { ArrowLeft, Bot, Clock, FileText, PanelLeftOpen } from "lucide-react";
 import { toast } from "react-toastify";
 
 import DocumentLoading from "../components/document/DocumentLoading";
-import DocumentReader from "../components/document/DocumentReader";
+import LearningModuleLessonReader from "../components/learningModules/LearningModuleLessonReader";
 import StudyLessonSidebar from "../components/studyRoom/StudyLessonSidebar";
 import StudyQuiz from "../components/studyRoom/StudyQuiz";
 import StudyRoomChatPanel from "../components/studyRoom/StudyRoomChatPanel";
@@ -321,9 +321,7 @@ export default function StudyRoomPage() {
               {lessonError}
             </div>
           ) : (
-            <DocumentReader
-              markdownContent={lessonContent?.markdown || "# Empty lesson\n\nNo lesson content was found."}
-            />
+            <LearningModuleLessonReader markdown={lessonContent?.markdown} />
           )}
         </section>
       </main>
