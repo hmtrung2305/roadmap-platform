@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
@@ -74,4 +74,10 @@ public partial class JobPosting
     public virtual JobPortalSource JobPortalSource { get; set; } = null!;
 
     public virtual ICollection<JobPostingDailySnapshot> JobPostingDailySnapshots { get; set; } = new List<JobPostingDailySnapshot>();
+
+    public virtual ICollection<JobPostingObservation> JobPostingObservations { get; set; } = new List<JobPostingObservation>();
+
+    public virtual ICollection<JobPostingVersion> JobPostingVersions { get; set; } = new List<JobPostingVersion>();
+
+    public virtual ICollection<JobSkillMention> JobSkillMentions { get; set; } = new List<JobSkillMention>();
 }

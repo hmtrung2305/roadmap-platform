@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Infrastructure.Extensions;
+using RoadmapPlatform.Application.Extensions;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -14,7 +15,9 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
-builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services
+    .AddApplicationServices()
+    .AddInfrastructureServices(builder.Configuration);
 
 using var host = builder.Build();
 
