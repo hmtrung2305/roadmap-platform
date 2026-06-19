@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, Save } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
+import { LEARNING_MODULE_AUTHORING_LIMITS } from "../../../constants/learningModuleAuthoringLimits";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
 import { inputClass, ModuleButton, ModuleCard, ModuleField } from "../../../components/learningModules/learningModuleUi";
 import { CustomSelect, DirtyStateBadge } from "../EditorControls";
@@ -64,7 +65,7 @@ export default function ModuleOverviewTab({ module, onSaved, onDirtyStateChange 
   const adjustEstimatedHours = (delta) => {
     setForm((current) => {
       const currentValue = Number(current.estimatedHours || 0);
-      const nextValue = Math.max(0, currentValue + delta);
+      const nextValue = Math.min(LEARNING_MODULE_AUTHORING_LIMITS.maxEstimatedHours, Math.max(0, currentValue + delta));
       return { ...current, estimatedHours: nextValue };
     });
   };
@@ -85,6 +86,25 @@ export default function ModuleOverviewTab({ module, onSaved, onDirtyStateChange 
       return;
     }
 
+    if (form.title.trim().length > 200) {
+      toast.error("Module title is too long.");
+      return;
+    }
+
+    if (form.description.trim().length > LEARNING_MODULE_AUTHORING_LIMITS.maxModuleDescriptionLength) {
+      toast.error("Module description is too long.");
+      return;
+    }
+
+    const estimatedHours = form.estimatedHours === "" ? null : Number(form.estimatedHours);
+    if (estimatedHours !== null
+      && (!Number.isFinite(estimatedHours)
+        || estimatedHours < 0
+        || estimatedHours > LEARNING_MODULE_AUTHORING_LIMITS.maxEstimatedHours)) {
+      toast.error("Estimated hours is outside the supported range.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       const updatedModule = await contentManagerLearningModuleApi.updateModule(module.skillModuleId, {
@@ -93,7 +113,7 @@ export default function ModuleOverviewTab({ module, onSaved, onDirtyStateChange 
         slug: null,
         description: form.description.trim() || null,
         difficultyLevel: form.difficultyLevel || null,
-        estimatedHours: form.estimatedHours === "" ? null : Number(form.estimatedHours),
+        estimatedHours,
       });
 
       toast.success("Overview saved.");
@@ -136,6 +156,7 @@ export default function ModuleOverviewTab({ module, onSaved, onDirtyStateChange 
         <ModuleField label="Title">
           <input
             value={form.title}
+            maxLength={LEARNING_MODULE_AUTHORING_LIMITS.maxModuleTitleLength}
             onChange={(event) => update("title", event.target.value)}
             className={inputClass}
           />
@@ -167,6 +188,7 @@ export default function ModuleOverviewTab({ module, onSaved, onDirtyStateChange 
               type="number"
               step="0.5"
               min="0"
+              max={LEARNING_MODULE_AUTHORING_LIMITS.maxEstimatedHours}
               value={form.estimatedHours}
               onChange={(event) => update("estimatedHours", event.target.value)}
               className="min-w-0 flex-1 border-0 bg-white px-3 text-center text-sm font-semibold text-[#18332D] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -186,6 +208,7 @@ export default function ModuleOverviewTab({ module, onSaved, onDirtyStateChange 
           <ModuleField label="Description">
             <textarea
               value={form.description}
+              maxLength={LEARNING_MODULE_AUTHORING_LIMITS.maxModuleDescriptionLength}
               onChange={(event) => update("description", event.target.value)}
               className={`${inputClass} min-h-32 resize-none`}
             />

@@ -2,11 +2,67 @@ import { useEffect, useState } from "react";
 import { Eye, FileUp, GripVertical, Loader2, MoreVertical, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
+import { LEARNING_MODULE_AUTHORING_LIMITS, formatFileSize } from "../../../constants/learningModuleAuthoringLimits";
 import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learningModules/MarkdownRenderer";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 import { inputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../../components/learningModules/learningModuleUi";
 import { DirtyStateBadge } from "../EditorControls";
 import { canRetryLessonIndexing, getEditorStorageKey, getLessonIndexingMeta, getUploadedLessons, hasLessonDraftChanges, hasLessonOrderChanges, readSessionValue, removeSessionValue, shouldPollLessonIndexing, showBulkUploadResultToast, writeSessionValue } from "../editorUtils";
+
+const MARKDOWN_EXTENSIONS = [".md", ".markdown"];
+
+function isMarkdownFile(file) {
+  const name = file?.name?.toLowerCase() || "";
+  return MARKDOWN_EXTENSIONS.some((extension) => name.endsWith(extension));
+}
+
+function getSelectedFileErrors(files) {
+  const errors = [];
+
+  if (files.length > LEARNING_MODULE_AUTHORING_LIMITS.maxBulkLessonCount) {
+    errors.push(`Choose up to ${LEARNING_MODULE_AUTHORING_LIMITS.maxBulkLessonCount} files.`);
+  }
+
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalBytes > LEARNING_MODULE_AUTHORING_LIMITS.maxBulkMarkdownUploadBytes) {
+    errors.push(`Total upload must be ${formatFileSize(LEARNING_MODULE_AUTHORING_LIMITS.maxBulkMarkdownUploadBytes)} or less.`);
+  }
+
+  const unsupported = files.filter((file) => !isMarkdownFile(file));
+  if (unsupported.length > 0) {
+    errors.push("Only Markdown files are supported.");
+  }
+
+  const oversized = files.filter((file) => file.size > LEARNING_MODULE_AUTHORING_LIMITS.maxMarkdownFileBytes);
+  if (oversized.length > 0) {
+    errors.push(`Each file must be ${formatFileSize(LEARNING_MODULE_AUTHORING_LIMITS.maxMarkdownFileBytes)} or less.`);
+  }
+
+  const fileNames = new Set();
+  const hasDuplicateNames = files.some((file) => {
+    const normalizedName = file.name.trim().toLowerCase();
+    if (fileNames.has(normalizedName)) return true;
+    fileNames.add(normalizedName);
+    return false;
+  });
+
+  if (hasDuplicateNames) {
+    errors.push("File names must be unique.");
+  }
+
+  return errors;
+}
+
+function validateFilesForSelection(files) {
+  const errors = getSelectedFileErrors(files);
+
+  if (errors.length > 0) {
+    errors.forEach((error) => toast.error(error));
+    return false;
+  }
+
+  return true;
+}
 
 export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexingStatusPoll, onDirtyStateChange }) {
   const activeLessonStorageKey = getEditorStorageKey(module.skillModuleId, "activeLessonId");
@@ -71,6 +127,21 @@ export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexin
   const isOrderDirty = hasLessonOrderChanges(localLessons, lessons);
   const hasLessonDraftWork = selectedFiles.length > 0 || isOrderDirty || isLessonMetadataDirty;
 
+  const handleFileSelection = (fileList) => {
+    const files = Array.from(fileList || []);
+
+    if (files.length === 0) {
+      setSelectedFiles([]);
+      return;
+    }
+
+    if (!validateFilesForSelection(files)) {
+      return;
+    }
+
+    setSelectedFiles(files);
+  };
+
   useEffect(() => {
     onDirtyStateChange?.("lessons", hasLessonDraftWork);
   }, [hasLessonDraftWork, onDirtyStateChange]);
@@ -82,6 +153,10 @@ export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexin
   const upload = async () => {
     if (selectedFiles.length === 0) {
       toast.error("Choose at least one Markdown file.");
+      return;
+    }
+
+    if (!validateFilesForSelection(selectedFiles)) {
       return;
     }
 
@@ -210,6 +285,10 @@ export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexin
   const replaceLessonContent = async (file) => {
     if (!lessonToReplace || !file) return;
 
+    if (!validateFilesForSelection([file])) {
+      return;
+    }
+
     try {
       setIsReplacingContent(true);
       const updated = await contentManagerLearningModuleApi.replaceLessonContent(
@@ -276,21 +355,22 @@ export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexin
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/50 px-4 py-6 text-center hover:bg-[#F7F1E8]">
               <Upload size={22} className="mb-2 text-[#1F6F5F]" />
               <span className="text-sm font-extrabold text-[#18332D]">Choose Markdown files</span>
-              <span className="mt-1 text-xs font-semibold text-slate-600">.md or .markdown</span>
+              <span className="mt-1 text-xs font-semibold text-slate-600">.md or .markdown, 2 MB each</span>
               <input
                 type="file"
                 multiple
                 accept=".md,.markdown,text/markdown,text/plain"
                 className="hidden"
-                onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+                onChange={(event) => handleFileSelection(event.target.files)}
               />
             </label>
 
             {selectedFiles.length > 0 && (
               <div className="mt-3 space-y-1">
                 {selectedFiles.map((file) => (
-                  <div key={file.name} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700">
-                    {file.name}
+                  <div key={file.name} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700">
+                    <span className="min-w-0 truncate">{file.name}</span>
+                    <span className="shrink-0 text-slate-500">{formatFileSize(file.size)}</span>
                   </div>
                 ))}
               </div>
@@ -721,7 +801,7 @@ function ReplaceLessonContentDialog({ isOpen, lesson, isReplacing, onClose, onRe
           <span className="text-sm font-extrabold text-[#18332D]">
             {replacementFile ? replacementFile.name : "Choose replacement file"}
           </span>
-          <span className="mt-1 text-xs font-semibold text-slate-600">.md or .markdown</span>
+          <span className="mt-1 text-xs font-semibold text-slate-600">.md or .markdown, 2 MB max</span>
           <input
             type="file"
             accept=".md,.markdown,text/markdown,text/plain"

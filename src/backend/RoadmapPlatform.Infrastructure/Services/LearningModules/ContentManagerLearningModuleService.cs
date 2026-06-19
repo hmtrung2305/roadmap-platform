@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.ContentWorkspace;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
@@ -305,6 +306,8 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         CreateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
+        ValidateCreateModuleRequest(request);
+
         var skill = await _context.Skills
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.SkillId == request.SkillId, cancellationToken);
@@ -364,6 +367,7 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             throw new NotFoundException("Learning module was not found.");
         }
 
+        ValidateUpdateModuleRequest(request);
         EnsureEditable(module);
 
         if (request.SkillId.HasValue && request.SkillId.Value != module.SkillId)
@@ -588,6 +592,103 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             .Include(module => module.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
                     .ThenInclude(question => question.SkillModuleQuizOptions);
+    }
+
+
+
+    private static ContentWorkspaceModuleItemDto MapWorkspaceModule(SkillModule module)
+    {
+        return new ContentWorkspaceModuleItemDto
+        {
+            SkillModuleId = module.SkillModuleId,
+            SkillId = module.SkillId,
+            SkillName = module.Skill.Name,
+            SkillSlug = module.Skill.Slug,
+            Title = module.Title,
+            Slug = module.Slug,
+            Status = module.Status,
+            DifficultyLevel = module.DifficultyLevel,
+            LessonCount = module.SkillModuleLessons.Count,
+            QuestionCount = module.SkillModuleQuiz == null
+                ? 0
+                : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+            PublishedAt = module.PublishedAt,
+            UpdatedAt = module.UpdatedAt
+        };
+    }
+
+    private static void ValidateCreateModuleRequest(CreateLearningModuleRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            throw new ConflictException("Module title is required.");
+        }
+
+        ValidateModuleTitle(request.Title);
+        ValidateOptionalLength(request.Slug, LearningModuleAuthoringLimits.ModuleSlugMaxLength, "Module slug");
+        ValidateOptionalLength(request.Description, LearningModuleAuthoringLimits.ModuleDescriptionMaxLength, "Module description");
+        ValidateOptionalLength(request.DifficultyLevel, LearningModuleAuthoringLimits.DifficultyLevelMaxLength, "Difficulty");
+        ValidateEstimatedHours(request.EstimatedHours);
+    }
+
+    private static void ValidateUpdateModuleRequest(UpdateLearningModuleRequestDto request)
+    {
+        if (request.Title != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                throw new ConflictException("Module title is required.");
+            }
+
+            ValidateModuleTitle(request.Title);
+        }
+
+        ValidateOptionalLength(request.Slug, LearningModuleAuthoringLimits.ModuleSlugMaxLength, "Module slug");
+
+        if (request.DescriptionIsSpecified)
+        {
+            ValidateOptionalLength(request.Description, LearningModuleAuthoringLimits.ModuleDescriptionMaxLength, "Module description");
+        }
+
+        if (request.DifficultyLevelIsSpecified)
+        {
+            ValidateOptionalLength(request.DifficultyLevel, LearningModuleAuthoringLimits.DifficultyLevelMaxLength, "Difficulty");
+        }
+
+        if (request.EstimatedHoursIsSpecified)
+        {
+            ValidateEstimatedHours(request.EstimatedHours);
+        }
+    }
+
+    private static void ValidateModuleTitle(string title)
+    {
+        if (title.Trim().Length > LearningModuleAuthoringLimits.ModuleTitleMaxLength)
+        {
+            throw new ConflictException($"Module title must be {LearningModuleAuthoringLimits.ModuleTitleMaxLength} characters or fewer.");
+        }
+    }
+
+    private static void ValidateOptionalLength(string? value, int maxLength, string fieldName)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && value.Trim().Length > maxLength)
+        {
+            throw new ConflictException($"{fieldName} must be {maxLength} characters or fewer.");
+        }
+    }
+
+    private static void ValidateEstimatedHours(decimal? estimatedHours)
+    {
+        if (!estimatedHours.HasValue)
+        {
+            return;
+        }
+
+        if (estimatedHours.Value < LearningModuleAuthoringLimits.EstimatedHoursMinValue
+            || estimatedHours.Value > LearningModuleAuthoringLimits.EstimatedHoursMaxValue)
+        {
+            throw new ConflictException("Estimated hours is outside the supported range.");
+        }
     }
 
     private static void EnsureEditable(SkillModule module)
@@ -840,28 +941,6 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             .Replace("_", "\\_", StringComparison.Ordinal);
 
         return $"%{escaped}%";
-    }
-
-
-    private static ContentWorkspaceModuleItemDto MapWorkspaceModule(SkillModule module)
-    {
-        return new ContentWorkspaceModuleItemDto
-        {
-            SkillModuleId = module.SkillModuleId,
-            SkillId = module.SkillId,
-            SkillName = module.Skill?.Name ?? string.Empty,
-            SkillSlug = module.Skill?.Slug ?? string.Empty,
-            Title = module.Title,
-            Slug = module.Slug,
-            Status = module.Status,
-            DifficultyLevel = module.DifficultyLevel,
-            LessonCount = module.SkillModuleLessons.Count,
-            QuestionCount = module.SkillModuleQuiz == null
-                ? 0
-                : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
-            PublishedAt = module.PublishedAt,
-            UpdatedAt = module.UpdatedAt
-        };
     }
 
     private static SkillModuleDto MapModule(SkillModule module)

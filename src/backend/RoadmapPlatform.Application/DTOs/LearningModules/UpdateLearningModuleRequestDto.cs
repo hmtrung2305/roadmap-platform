@@ -1,3 +1,4 @@
+using RoadmapPlatform.Application.Constants;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -12,12 +13,13 @@ public sealed class UpdateLearningModuleRequestDto
 
     public Guid? SkillId { get; set; }
 
-    [MaxLength(200)]
+    [MaxLength(LearningModuleAuthoringLimits.ModuleTitleMaxLength)]
     public string? Title { get; set; }
 
-    [MaxLength(200)]
+    [MaxLength(LearningModuleAuthoringLimits.ModuleSlugMaxLength)]
     public string? Slug { get; set; }
 
+    [MaxLength(LearningModuleAuthoringLimits.ModuleDescriptionMaxLength)]
     public string? Description
     {
         get => _description;
@@ -31,7 +33,7 @@ public sealed class UpdateLearningModuleRequestDto
     [JsonIgnore]
     public bool DescriptionIsSpecified { get; private set; }
 
-    [MaxLength(30)]
+    [MaxLength(LearningModuleAuthoringLimits.DifficultyLevelMaxLength)]
     public string? DifficultyLevel
     {
         get => _difficultyLevel;

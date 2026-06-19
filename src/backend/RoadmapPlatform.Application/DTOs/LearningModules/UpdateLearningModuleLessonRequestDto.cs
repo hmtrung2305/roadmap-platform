@@ -1,3 +1,4 @@
+using RoadmapPlatform.Application.Constants;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -8,12 +9,13 @@ public sealed class UpdateLearningModuleLessonRequestDto
     private string? _summary;
     private decimal? _estimatedHours;
 
-    [MaxLength(200)]
+    [MaxLength(LearningModuleAuthoringLimits.LessonTitleMaxLength)]
     public string? Title { get; set; }
 
-    [MaxLength(200)]
+    [MaxLength(LearningModuleAuthoringLimits.LessonSlugMaxLength)]
     public string? Slug { get; set; }
 
+    [MaxLength(LearningModuleAuthoringLimits.LessonSummaryMaxLength)]
     public string? Summary
     {
         get => _summary;

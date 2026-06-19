@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -244,6 +245,8 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         {
             throw new NotFoundException("Learning module lesson was not found.");
         }
+
+        ValidateUpdateLessonRequest(request);
 
         if (!string.IsNullOrWhiteSpace(request.Title))
         {
@@ -644,14 +647,29 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             throw new ConflictException("At least one lesson is required.");
         }
 
+        if (request.Lessons.Count > LearningModuleAuthoringLimits.BulkUploadMaxLessonCount)
+        {
+            throw new ConflictException($"Upload up to {LearningModuleAuthoringLimits.BulkUploadMaxLessonCount} lessons at a time.");
+        }
+
         if (files.Count == 0)
         {
             throw new ConflictException("At least one Markdown file is required.");
         }
 
+        if (files.Count > LearningModuleAuthoringLimits.BulkUploadMaxLessonCount)
+        {
+            throw new ConflictException($"Upload up to {LearningModuleAuthoringLimits.BulkUploadMaxLessonCount} Markdown files at a time.");
+        }
+
+        if (files.Sum(file => file.Length) > LearningModuleAuthoringLimits.BulkMarkdownUploadMaxBytes)
+        {
+            throw new ConflictException("Total Markdown upload size is too large.");
+        }
+
         var duplicateClientIds = request.Lessons
             .Where(item => !string.IsNullOrWhiteSpace(item.ClientId))
-            .GroupBy(item => item.ClientId)
+            .GroupBy(item => item.ClientId.Trim(), StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
             .ToList();
@@ -659,6 +677,16 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         if (duplicateClientIds.Count > 0)
         {
             throw new ConflictException("Lesson client IDs must be unique.");
+        }
+
+        var duplicateMetadataFileNames = request.Lessons
+            .Where(item => !string.IsNullOrWhiteSpace(item.FileName))
+            .GroupBy(item => item.FileName.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Any(group => group.Count() > 1);
+
+        if (duplicateMetadataFileNames)
+        {
+            throw new ConflictException("Lesson file names must be unique.");
         }
 
         var duplicateFileNames = files
@@ -692,9 +720,43 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
             return false;
         }
 
+        if (item.Title.Trim().Length > LearningModuleAuthoringLimits.LessonTitleMaxLength)
+        {
+            failureReason = $"Lesson title must be {LearningModuleAuthoringLimits.LessonTitleMaxLength} characters or fewer.";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.Slug)
+            && item.Slug.Trim().Length > LearningModuleAuthoringLimits.LessonSlugMaxLength)
+        {
+            failureReason = $"Lesson slug must be {LearningModuleAuthoringLimits.LessonSlugMaxLength} characters or fewer.";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.Summary)
+            && item.Summary.Trim().Length > LearningModuleAuthoringLimits.LessonSummaryMaxLength)
+        {
+            failureReason = $"Lesson summary must be {LearningModuleAuthoringLimits.LessonSummaryMaxLength} characters or fewer.";
+            return false;
+        }
+
+        if (item.EstimatedHours.HasValue
+            && (item.EstimatedHours.Value < LearningModuleAuthoringLimits.EstimatedHoursMinValue
+                || item.EstimatedHours.Value > LearningModuleAuthoringLimits.EstimatedHoursMaxValue))
+        {
+            failureReason = "Estimated hours is outside the supported range.";
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(item.FileName))
         {
             failureReason = "Lesson file name is required.";
+            return false;
+        }
+
+        if (item.FileName.Trim().Length > LearningModuleAuthoringLimits.LessonFileNameMaxLength)
+        {
+            failureReason = $"Lesson file name must be {LearningModuleAuthoringLimits.LessonFileNameMaxLength} characters or fewer.";
             return false;
         }
 
@@ -706,6 +768,44 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
 
         file = matchedFile;
         return true;
+    }
+
+
+    private static void ValidateUpdateLessonRequest(UpdateLearningModuleLessonRequestDto request)
+    {
+        if (request.Title != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                throw new ConflictException("Lesson title is required.");
+            }
+
+            if (request.Title.Trim().Length > LearningModuleAuthoringLimits.LessonTitleMaxLength)
+            {
+                throw new ConflictException($"Lesson title must be {LearningModuleAuthoringLimits.LessonTitleMaxLength} characters or fewer.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Slug)
+            && request.Slug.Trim().Length > LearningModuleAuthoringLimits.LessonSlugMaxLength)
+        {
+            throw new ConflictException($"Lesson slug must be {LearningModuleAuthoringLimits.LessonSlugMaxLength} characters or fewer.");
+        }
+
+        if (request.SummaryIsSpecified
+            && !string.IsNullOrWhiteSpace(request.Summary)
+            && request.Summary.Trim().Length > LearningModuleAuthoringLimits.LessonSummaryMaxLength)
+        {
+            throw new ConflictException($"Lesson summary must be {LearningModuleAuthoringLimits.LessonSummaryMaxLength} characters or fewer.");
+        }
+
+        if (request.EstimatedHoursIsSpecified
+            && request.EstimatedHours.HasValue
+            && (request.EstimatedHours.Value < LearningModuleAuthoringLimits.EstimatedHoursMinValue
+                || request.EstimatedHours.Value > LearningModuleAuthoringLimits.EstimatedHoursMaxValue))
+        {
+            throw new ConflictException("Estimated hours is outside the supported range.");
+        }
     }
 
     private static void ValidateReorderRequest(
@@ -750,6 +850,16 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         if (file.Length <= 0)
         {
             throw new ConflictException("Markdown file cannot be empty.");
+        }
+
+        if (file.Length > LearningModuleAuthoringLimits.MarkdownFileMaxBytes)
+        {
+            throw new ConflictException("Markdown file is too large.");
+        }
+
+        if (Path.GetFileName(file.FileName).Length > LearningModuleAuthoringLimits.LessonFileNameMaxLength)
+        {
+            throw new ConflictException($"Markdown file name must be {LearningModuleAuthoringLimits.LessonFileNameMaxLength} characters or fewer.");
         }
 
         if (string.IsNullOrWhiteSpace(markdown))
