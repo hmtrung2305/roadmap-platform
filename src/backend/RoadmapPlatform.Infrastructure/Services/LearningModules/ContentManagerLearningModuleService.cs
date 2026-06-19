@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.DTOs.ContentWorkspace;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -26,6 +27,113 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
     {
         _context = context;
         _fileStorage = fileStorage;
+    }
+
+
+    public async Task<ContentWorkspaceOverviewDto> GetWorkspaceOverviewAsync(
+        Guid contentManagerUserId,
+        CancellationToken cancellationToken)
+    {
+        var ownedModules = _context.SkillModules
+            .AsNoTracking()
+            .Where(module => module.CreatedByUserId == contentManagerUserId);
+
+        var statusRows = await ownedModules
+            .GroupBy(module => module.Status)
+            .Select(group => new
+            {
+                Status = group.Key,
+                Count = group.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var draftModules = await ownedModules
+            .Where(module => module.Status == LearningModuleStatusValues.Draft)
+            .Include(module => module.Skill)
+            .Include(module => module.SkillModuleLessons)
+                .ThenInclude(lesson => lesson.SkillModuleChunks)
+            .Include(module => module.SkillModuleQuiz)
+                .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
+                    .ThenInclude(question => question.SkillModuleQuizOptions)
+            .OrderByDescending(module => module.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+        var draftReadiness = draftModules
+            .Select(module => new
+            {
+                Module = module,
+                Readiness = ValidatePublishReadiness(module)
+            })
+            .ToList();
+
+        var recentDrafts = draftModules
+            .Take(4)
+            .Select(MapWorkspaceModule)
+            .ToList();
+
+        var readyToPublish = draftReadiness
+            .Where(item => item.Readiness.CanPublish)
+            .Take(4)
+            .Select(item => MapWorkspaceModule(item.Module))
+            .ToList();
+
+        var needsAttention = draftReadiness
+            .Where(item => !item.Readiness.CanPublish)
+            .Take(4)
+            .Select(item =>
+            {
+                var check = item.Readiness.Checks.FirstOrDefault(candidate => !candidate.IsComplete);
+
+                return new ContentWorkspaceAttentionItemDto
+                {
+                    Module = MapWorkspaceModule(item.Module),
+                    CheckKey = check?.Key ?? string.Empty,
+                    Label = check?.Label ?? "Needs attention",
+                    Message = check?.Description ?? "Review this module."
+                };
+            })
+            .ToList();
+
+        var recentlyPublished = await ownedModules
+            .Where(module => module.Status == LearningModuleStatusValues.Published)
+            .OrderByDescending(module => module.PublishedAt ?? module.UpdatedAt)
+            .Take(4)
+            .Select(module => new ContentWorkspaceModuleItemDto
+            {
+                SkillModuleId = module.SkillModuleId,
+                SkillId = module.SkillId,
+                SkillName = module.Skill.Name,
+                SkillSlug = module.Skill.Slug,
+                Title = module.Title,
+                Slug = module.Slug,
+                Status = module.Status,
+                DifficultyLevel = module.DifficultyLevel,
+                LessonCount = module.SkillModuleLessons.Count,
+                QuestionCount = module.SkillModuleQuiz == null
+                    ? 0
+                    : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+                PublishedAt = module.PublishedAt,
+                UpdatedAt = module.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var draftCount = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Draft)?.Count ?? 0;
+        var publishedCount = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Published)?.Count ?? 0;
+
+        return new ContentWorkspaceOverviewDto
+        {
+            Metrics = new ContentWorkspaceMetricsDto
+            {
+                Drafts = draftCount,
+                ReadyToPublish = draftReadiness.Count(item => item.Readiness.CanPublish),
+                NeedsAttention = draftReadiness.Count(item => !item.Readiness.CanPublish),
+                Published = publishedCount
+            },
+            ReadyToPublish = readyToPublish,
+            NeedsAttention = needsAttention,
+            RecentDrafts = recentDrafts,
+            RecentlyPublished = recentlyPublished
+        };
     }
 
     public async Task<ContentManagerLearningModuleListResultDto> GetModulesAsync(
@@ -732,6 +840,28 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             .Replace("_", "\\_", StringComparison.Ordinal);
 
         return $"%{escaped}%";
+    }
+
+
+    private static ContentWorkspaceModuleItemDto MapWorkspaceModule(SkillModule module)
+    {
+        return new ContentWorkspaceModuleItemDto
+        {
+            SkillModuleId = module.SkillModuleId,
+            SkillId = module.SkillId,
+            SkillName = module.Skill?.Name ?? string.Empty,
+            SkillSlug = module.Skill?.Slug ?? string.Empty,
+            Title = module.Title,
+            Slug = module.Slug,
+            Status = module.Status,
+            DifficultyLevel = module.DifficultyLevel,
+            LessonCount = module.SkillModuleLessons.Count,
+            QuestionCount = module.SkillModuleQuiz == null
+                ? 0
+                : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+            PublishedAt = module.PublishedAt,
+            UpdatedAt = module.UpdatedAt
+        };
     }
 
     private static SkillModuleDto MapModule(SkillModule module)

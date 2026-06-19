@@ -1,9 +1,14 @@
+using RoadmapPlatform.Application.DTOs.ContentWorkspace;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 
 namespace RoadmapPlatform.Application.Interfaces.LearningModules;
 
 public interface IContentManagerLearningModuleService
 {
+    Task<ContentWorkspaceOverviewDto> GetWorkspaceOverviewAsync(
+        Guid contentManagerUserId,
+        CancellationToken cancellationToken);
+
     Task<ContentManagerLearningModuleListResultDto> GetModulesAsync(
         Guid contentManagerUserId,
         ContentManagerLearningModuleListQueryDto query,

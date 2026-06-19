@@ -32,6 +32,7 @@ export default function useLearningModuleEditor() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [resolvedModuleId, setResolvedModuleId] = useState(routeStateModuleId);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const loadRequestIdRef = useRef(0);
 
   const {
     hasUnsavedChanges,
@@ -111,7 +112,8 @@ export default function useLearningModuleEditor() {
   }, [routeStateModuleId]);
 
   useEffect(() => {
-    let ignore = false;
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
 
     async function loadDetail() {
       try {
@@ -121,28 +123,26 @@ export default function useLearningModuleEditor() {
           moduleSlug,
           knownModuleId,
         );
-        const data = await contentManagerLearningModuleApi.getModule(moduleId);
+        const data = await contentManagerLearningModuleApi.getModule(moduleId, {
+          force: refreshKey > 0,
+        });
 
-        if (!ignore) {
+        if (loadRequestIdRef.current === requestId) {
           resolvedModuleIdRef.current = moduleId;
           setResolvedModuleId(moduleId);
           setDetail(data);
         }
       } catch (error) {
-        if (!ignore) {
+        if (loadRequestIdRef.current === requestId) {
           setResolvedModuleId(null);
           toast.error(error?.message || "Unable to load module.");
         }
       } finally {
-        if (!ignore) setIsLoading(false);
+        if (loadRequestIdRef.current === requestId) setIsLoading(false);
       }
     }
 
     loadDetail();
-
-    return () => {
-      ignore = true;
-    };
   }, [moduleSlug, refreshKey, routeStateModuleId]);
 
   useEffect(() => {
@@ -237,7 +237,9 @@ export default function useLearningModuleEditor() {
     if (!activeModuleId) return;
 
     try {
-      const data = await contentManagerLearningModuleApi.getModule(activeModuleId);
+      const data = await contentManagerLearningModuleApi.getModule(activeModuleId, {
+        force: true,
+      });
       setDetail(data);
     } catch {
       // Polling is best-effort.

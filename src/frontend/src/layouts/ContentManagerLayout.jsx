@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronUp,
+  LayoutDashboard,
   LibraryBig,
   LogOut,
   Settings,
@@ -18,6 +19,12 @@ const contentManagerNavGroups = [
     label: "Content",
     items: [
       {
+        label: "Overview",
+        path: "/content/overview",
+        icon: LayoutDashboard,
+        match: (pathname) => pathname === "/content" || pathname === "/content/overview",
+      },
+      {
         label: "Learning Modules",
         path: "/content/learning-modules",
         icon: LibraryBig,
@@ -28,6 +35,10 @@ const contentManagerNavGroups = [
 ];
 
 function getContentManagerPageTitle(pathname) {
+  if (pathname === "/content" || pathname === "/content/overview") {
+    return "Overview";
+  }
+
   if (pathname === "/content/learning-modules/create") {
     return "Create Module";
   }
@@ -139,7 +150,7 @@ export default function ContentManagerLayout() {
         <div className="border-b border-[#B9D8CC] px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate("/content/learning-modules")}
+            onClick={() => navigate("/content/overview")}
             className="block"
           >
             <AuthLogo compact showTagline={false} />
@@ -240,7 +251,7 @@ export default function ContentManagerLayout() {
               <div className="flex items-center gap-3 lg:hidden">
                 <button
                   type="button"
-                  onClick={() => navigate("/content/learning-modules")}
+                  onClick={() => navigate("/content/overview")}
                   className="shrink-0"
                 >
                   <AuthLogo compact showTagline={false} />

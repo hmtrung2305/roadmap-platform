@@ -4,6 +4,47 @@ const encode = (value) => encodeURIComponent(value);
 
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const MODULE_DETAIL_CACHE_MS = 20000;
+const WORKSPACE_OVERVIEW_CACHE_MS = 60000;
+
+const moduleDetailCache = new Map();
+const moduleDetailInFlight = new Map();
+let workspaceOverviewCache = null;
+let workspaceOverviewInFlight = null;
+
+function now() {
+  return Date.now();
+}
+
+function getCachedEntry(cache, key, maxAgeMs) {
+  const entry = cache.get(key);
+
+  if (!entry) return null;
+  if (now() - entry.cachedAt > maxAgeMs) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.value;
+}
+
+function invalidateModuleDetailCache(moduleId) {
+  if (moduleId) {
+    moduleDetailCache.delete(String(moduleId));
+    moduleDetailInFlight.delete(String(moduleId));
+  }
+}
+
+function invalidateWorkspaceOverviewCache() {
+  workspaceOverviewCache = null;
+  workspaceOverviewInFlight = null;
+}
+
+function invalidateAuthoringCaches(moduleId) {
+  invalidateModuleDetailCache(moduleId);
+  invalidateWorkspaceOverviewCache();
+}
+
 export function getLearningModuleNavigationState(module) {
   const moduleId = module?.skillModuleId || module?.SkillModuleId || null;
   return moduleId ? { state: { moduleId } } : undefined;
@@ -61,13 +102,6 @@ export const learningModuleApi = {
     return response.data;
   },
 
-  getQuizAttemptSession: async (moduleId, attemptId) => {
-    const response = await axiosClient.get(
-      `/learning-modules/${moduleId}/quiz/attempts/${attemptId}/session`,
-    );
-    return response.data;
-  },
-
   submitQuizAttempt: async (moduleId, attemptId, answers) => {
     const response = await axiosClient.post(
       `/learning-modules/${moduleId}/quiz/attempts/${attemptId}/submit`,
@@ -88,6 +122,35 @@ export const learningModuleApi = {
 };
 
 export const contentManagerLearningModuleApi = {
+  getWorkspaceOverview: async ({ force = false, signal } = {}) => {
+    if (!force && workspaceOverviewCache) {
+      const ageMs = now() - workspaceOverviewCache.cachedAt;
+      if (ageMs <= WORKSPACE_OVERVIEW_CACHE_MS) {
+        return workspaceOverviewCache.value;
+      }
+    }
+
+    if (!force && workspaceOverviewInFlight) {
+      return workspaceOverviewInFlight;
+    }
+
+    workspaceOverviewInFlight = axiosClient
+      .get("/content/workspace/overview", { signal })
+      .then((response) => {
+        workspaceOverviewCache = {
+          value: response.data,
+          cachedAt: now(),
+        };
+
+        return response.data;
+      })
+      .finally(() => {
+        workspaceOverviewInFlight = null;
+      });
+
+    return workspaceOverviewInFlight;
+  },
+
   searchSkills: async (search) => {
     const response = await axiosClient.get("/skills", {
       params: {
@@ -188,12 +251,42 @@ export const contentManagerLearningModuleApi = {
 
   createModule: async (payload) => {
     const response = await axiosClient.post("/content/learning-modules", payload);
+    invalidateWorkspaceOverviewCache();
     return response.data;
   },
 
-  getModule: async (moduleId) => {
-    const response = await axiosClient.get(`/content/learning-modules/${moduleId}`);
-    return response.data;
+  getModule: async (moduleId, { force = false } = {}) => {
+    const key = String(moduleId || "");
+
+    if (!key) {
+      throw new Error("Learning module id is required.");
+    }
+
+    if (!force) {
+      const cached = getCachedEntry(moduleDetailCache, key, MODULE_DETAIL_CACHE_MS);
+      if (cached) return cached;
+
+      if (moduleDetailInFlight.has(key)) {
+        return moduleDetailInFlight.get(key);
+      }
+    }
+
+    const request = axiosClient
+      .get(`/content/learning-modules/${encode(key)}`)
+      .then((response) => {
+        moduleDetailCache.set(key, {
+          value: response.data,
+          cachedAt: now(),
+        });
+
+        return response.data;
+      })
+      .finally(() => {
+        moduleDetailInFlight.delete(key);
+      });
+
+    moduleDetailInFlight.set(key, request);
+    return request;
   },
 
   getPublishReadiness: async (moduleId) => {
@@ -205,21 +298,25 @@ export const contentManagerLearningModuleApi = {
 
   updateModule: async (moduleId, payload) => {
     const response = await axiosClient.patch(`/content/learning-modules/${moduleId}`, payload);
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
   deleteDraftModule: async (moduleId) => {
     const response = await axiosClient.delete(`/content/learning-modules/${moduleId}`);
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
   publishModule: async (moduleId) => {
     const response = await axiosClient.post(`/content/learning-modules/${moduleId}/publish`);
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
   archiveModule: async (moduleId) => {
     const response = await axiosClient.post(`/content/learning-modules/${moduleId}/archive`);
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -246,6 +343,7 @@ export const contentManagerLearningModuleApi = {
       },
     );
 
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -254,6 +352,7 @@ export const contentManagerLearningModuleApi = {
       `/content/learning-modules/${moduleId}/lessons/reorder`,
       { lessons },
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -262,6 +361,7 @@ export const contentManagerLearningModuleApi = {
       `/content/learning-modules/${moduleId}/lessons/${lessonId}`,
       payload,
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -279,6 +379,7 @@ export const contentManagerLearningModuleApi = {
       },
     );
 
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -293,6 +394,7 @@ export const contentManagerLearningModuleApi = {
     const response = await axiosClient.post(
       `/content/learning-modules/${moduleId}/lessons/${lessonId}/reindex`,
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -300,11 +402,13 @@ export const contentManagerLearningModuleApi = {
     const response = await axiosClient.delete(
       `/content/learning-modules/${moduleId}/lessons/${lessonId}`,
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
   upsertQuiz: async (moduleId, payload) => {
     const response = await axiosClient.put(`/content/learning-modules/${moduleId}/quiz`, payload);
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -313,6 +417,7 @@ export const contentManagerLearningModuleApi = {
       `/content/learning-modules/${moduleId}/quiz/questions`,
       payload,
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -321,6 +426,7 @@ export const contentManagerLearningModuleApi = {
       `/content/learning-modules/${moduleId}/quiz/questions/${questionId}`,
       payload,
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -329,6 +435,7 @@ export const contentManagerLearningModuleApi = {
       `/content/learning-modules/${moduleId}/quiz/questions/reorder`,
       { questions },
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 
@@ -336,6 +443,7 @@ export const contentManagerLearningModuleApi = {
     const response = await axiosClient.delete(
       `/content/learning-modules/${moduleId}/quiz/questions/${questionId}`,
     );
+    invalidateAuthoringCaches(moduleId);
     return response.data;
   },
 };
