@@ -3,16 +3,23 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Archive,
   BookOpenText,
+  ChevronLeft,
+  ChevronRight,
   Edit3,
   Eye,
   FileQuestion,
   MoreHorizontal,
   Plus,
+  Search,
   Tag,
   Trash2,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { contentManagerLearningModuleApi, getLearningModuleNavigationState, getLearningModuleRouteSegment } from "../../../api/learningModuleApi";
+import {
+  contentManagerLearningModuleApi,
+  getLearningModuleRouteSegment,
+} from "../../../api/learningModuleApi";
+import AppSelect from "../../../components/common/AppSelect";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 import {
   getStatusTone,
@@ -25,17 +32,61 @@ import {
 } from "../../../components/learningModules/learningModuleUi";
 
 const statuses = ["draft", "published", "archived"];
+const pageSize = 15;
+
+const initialResult = {
+  items: [],
+  totalCount: 0,
+  page: 1,
+  pageSize,
+  totalPages: 0,
+  statusCounts: {
+    draft: 0,
+    published: 0,
+    archived: 0,
+  },
+};
+
+const difficultyOptions = [
+  { value: "all", label: "All difficulties" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+];
+
+const sortOptions = [
+  { value: "updated_desc", label: "Recently updated" },
+  { value: "created_desc", label: "Recently created" },
+  { value: "title_asc", label: "Title A–Z" },
+  { value: "title_desc", label: "Title Z–A" },
+];
+
+function parsePage(value) {
+  const parsed = Number.parseInt(value || "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function isCanceledRequest(error) {
+  return error?.code === "ERR_CANCELED" || error?.name === "CanceledError";
+}
 
 export default function ContentManagerLearningModulesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeStatus = searchParams.get("status") || "draft";
 
-  const [modulesByStatus, setModulesByStatus] = useState({
-    draft: [],
-    published: [],
-    archived: [],
-  });
+  const requestedStatus = searchParams.get("status");
+  const activeStatus = statuses.includes(requestedStatus) ? requestedStatus : "draft";
+  const searchQuery = searchParams.get("q") || "";
+  const difficulty = searchParams.get("difficulty") || "all";
+  const requestedSort = searchParams.get("sort") || "updated_desc";
+  const sort = sortOptions.some((option) => option.value === requestedSort)
+    ? requestedSort
+    : "updated_desc";
+  const requestedPage = parsePage(searchParams.get("page"));
+  const searchParamsString = searchParams.toString();
+
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const [result, setResult] = useState(initialResult);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
@@ -43,54 +94,125 @@ export default function ContentManagerLearningModulesPage() {
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const setQueryValues = (changes, options) => {
+    const next = new URLSearchParams(searchParamsString);
+
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+
+    setSearchParams(next, options);
+  };
+
   useEffect(() => {
-    let ignore = false;
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const normalizedSearch = searchInput.trim();
+    if (normalizedSearch === searchQuery) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      const next = new URLSearchParams(searchParamsString);
+
+      if (normalizedSearch) {
+        next.set("q", normalizedSearch);
+      } else {
+        next.delete("q");
+      }
+
+      next.delete("page");
+      setSearchParams(next, { replace: true });
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput, searchQuery, searchParamsString, setSearchParams]);
+
+  useEffect(() => {
+    const controller = new AbortController();
 
     async function loadModules() {
       try {
         setIsLoading(true);
         setError(null);
 
-        const entries = await Promise.all(
-          statuses.map(async (status) => [status, await contentManagerLearningModuleApi.getModules(status)]),
-        );
+        const nextResult = await contentManagerLearningModuleApi.getModules({
+          status: activeStatus,
+          search: searchQuery,
+          difficulty,
+          sort,
+          page: requestedPage,
+          pageSize,
+          signal: controller.signal,
+        });
 
-        if (!ignore) {
-          setModulesByStatus(Object.fromEntries(entries));
+        setResult(nextResult);
+        setOpenMenuId(null);
+
+        if (nextResult.page !== requestedPage) {
+          const next = new URLSearchParams(searchParamsString);
+
+          if (nextResult.page > 1) {
+            next.set("page", String(nextResult.page));
+          } else {
+            next.delete("page");
+          }
+
+          setSearchParams(next, { replace: true });
         }
-      } catch (err) {
-        if (!ignore) setError(err?.message || "Unable to load modules.");
+      } catch (requestError) {
+        if (!isCanceledRequest(requestError)) {
+          setError(requestError?.message || "Unable to load modules.");
+        }
       } finally {
-        if (!ignore) setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }
 
     loadModules();
 
-    return () => {
-      ignore = true;
-    };
-  }, [refreshKey]);
+    return () => controller.abort();
+  }, [
+    activeStatus,
+    difficulty,
+    refreshKey,
+    requestedPage,
+    searchQuery,
+    sort,
+    searchParamsString,
+    setSearchParams,
+  ]);
 
-  const visibleModules = useMemo(() => modulesByStatus[activeStatus] || [], [activeStatus, modulesByStatus]);
+  const visibleModules = result.items;
+  const hasFilters = Boolean(searchQuery || difficulty !== "all");
+  const pageRange = useMemo(() => {
+    if (result.totalCount === 0) return null;
+
+    return {
+      start: (result.page - 1) * result.pageSize + 1,
+      end: Math.min(result.page * result.pageSize, result.totalCount),
+    };
+  }, [result.page, result.pageSize, result.totalCount]);
+
   const reload = () => setRefreshKey((key) => key + 1);
+
+  const resetFilters = () => {
+    setSearchInput("");
+    setQueryValues({ q: null, difficulty: null, page: null });
+  };
 
   const requestDelete = (module) => {
     setPendingAction({ type: "delete", module });
   };
 
-  const handleDelete = async (module) => {
-    await contentManagerLearningModuleApi.deleteDraftModule(module.skillModuleId);
-    toast.success("Draft module deleted.");
-  };
-
   const requestArchive = (module) => {
     setPendingAction({ type: "archive", module });
-  };
-
-  const handleArchive = async (module) => {
-    await contentManagerLearningModuleApi.archiveModule(module.skillModuleId);
-    toast.success("Module archived.");
   };
 
   const confirmActionCopy = {
@@ -119,17 +241,23 @@ export default function ContentManagerLearningModulesPage() {
       setIsConfirmingAction(true);
 
       if (pendingAction.type === "delete") {
-        await handleDelete(pendingAction.module);
+        await contentManagerLearningModuleApi.deleteDraftModule(
+          pendingAction.module.skillModuleId,
+        );
+        toast.success("Draft module deleted.");
       }
 
       if (pendingAction.type === "archive") {
-        await handleArchive(pendingAction.module);
+        await contentManagerLearningModuleApi.archiveModule(
+          pendingAction.module.skillModuleId,
+        );
+        toast.success("Module archived.");
       }
 
       setPendingAction(null);
       reload();
-    } catch (err) {
-      toast.error(err?.message || "Unable to update module.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to update module.");
     } finally {
       setIsConfirmingAction(false);
     }
@@ -144,8 +272,12 @@ export default function ContentManagerLearningModulesPage() {
               <BookOpenText size={22} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">Workspace</p>
-              <h1 className="text-2xl font-extrabold text-[#18332D]">Learning module management</h1>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
+                Workspace
+              </p>
+              <h1 className="text-2xl font-extrabold text-[#18332D]">
+                Learning module management
+              </h1>
             </div>
           </div>
         </section>
@@ -154,13 +286,13 @@ export default function ContentManagerLearningModulesPage() {
           <div className="flex flex-wrap gap-2">
             {statuses.map((status) => {
               const isActive = activeStatus === status;
-              const count = modulesByStatus[status]?.length || 0;
+              const count = result.statusCounts[status] || 0;
 
               return (
                 <button
                   key={status}
                   type="button"
-                  onClick={() => setSearchParams({ status })}
+                  onClick={() => setQueryValues({ status, page: null })}
                   className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-extrabold transition ${
                     isActive
                       ? "border-[#2FA084] bg-[#6FCF97]/24 text-[#1F6F5F] shadow-sm"
@@ -170,7 +302,9 @@ export default function ContentManagerLearningModulesPage() {
                   {prettyModuleStatus[status]}
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] ${
-                      isActive ? "bg-white/75 text-[#1F6F5F]" : "bg-slate-100 text-slate-600"
+                      isActive
+                        ? "bg-white/75 text-[#1F6F5F]"
+                        : "bg-slate-100 text-slate-600"
                     }`}
                   >
                     {count}
@@ -185,16 +319,71 @@ export default function ContentManagerLearningModulesPage() {
           </ModuleButton>
         </div>
 
-        {error && <ModuleCard className="border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</ModuleCard>}
+        <ModuleCard className="p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(280px,1fr)_180px_190px]">
+            <label className="relative block">
+              <span className="sr-only">Search modules</span>
+              <Search
+                size={17}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Search modules or skills"
+                className="h-10 w-full rounded-lg border border-[#B9D8CC] bg-white pl-9 pr-3 text-sm font-semibold text-[#18332D] outline-none transition placeholder:text-slate-400 focus:border-[#2FA084] focus:ring-2 focus:ring-[#6FCF97]/25"
+              />
+            </label>
+
+            <AppSelect
+              value={difficulty}
+              options={difficultyOptions}
+              ariaLabel="Filter by difficulty"
+              onChange={(nextDifficulty) => setQueryValues({
+                difficulty: nextDifficulty === "all" ? null : nextDifficulty,
+                page: null,
+              })}
+            />
+
+            <AppSelect
+              value={sort}
+              options={sortOptions}
+              ariaLabel="Sort modules"
+              onChange={(nextSort) => setQueryValues({
+                sort: nextSort === "updated_desc" ? null : nextSort,
+                page: null,
+              })}
+            />
+          </div>
+        </ModuleCard>
+
+        {error && (
+          <ModuleCard className="border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+            {error}
+          </ModuleCard>
+        )}
 
         {isLoading ? (
-          <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">Loading modules...</ModuleCard>
+          <ModuleCard className="p-10 text-center text-sm font-bold text-slate-600">
+            Loading modules...
+          </ModuleCard>
         ) : visibleModules.length === 0 ? (
           <ModuleEmptyState
-            title={`No ${prettyModuleStatus[activeStatus].toLowerCase()} modules`}
-            action={<ModuleButton onClick={() => navigate("/content/learning-modules/create")}>Add module</ModuleButton>}
+            title={hasFilters
+              ? "No matching modules"
+              : `No ${prettyModuleStatus[activeStatus].toLowerCase()} modules`}
+            action={hasFilters ? (
+              <ModuleButton onClick={resetFilters}>Clear filters</ModuleButton>
+            ) : (
+              <ModuleButton onClick={() => navigate("/content/learning-modules/create")}>
+                Add module
+              </ModuleButton>
+            )}
           >
-            Modules will appear here after they are created.
+            {hasFilters
+              ? "Try another search or filter."
+              : "Modules will appear here after they are created."}
           </ModuleEmptyState>
         ) : (
           <ModuleCard className="overflow-visible">
@@ -212,7 +401,14 @@ export default function ContentManagerLearningModulesPage() {
                 className="grid gap-3 border-b border-[#B9D8CC]/60 px-4 py-4 last:border-b-0 xl:grid-cols-[minmax(340px,1.7fr)_190px_170px_120px_150px] xl:items-center"
               >
                 <div className="min-w-0">
-                  <div className="truncate text-base font-bold text-[#18332D]">{module.title}</div>
+                  <div className="truncate text-base font-bold text-[#18332D]">
+                    {module.title}
+                  </div>
+                  {module.difficultyLevel && (
+                    <div className="mt-1 text-xs font-semibold capitalize text-slate-500">
+                      {module.difficultyLevel}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -232,22 +428,26 @@ export default function ContentManagerLearningModulesPage() {
                 </div>
 
                 <div>
-                  <ModuleBadge tone={getStatusTone(module.status)}>{prettyModuleStatus[module.status] || module.status}</ModuleBadge>
+                  <ModuleBadge tone={getStatusTone(module.status)}>
+                    {prettyModuleStatus[module.status] || module.status}
+                  </ModuleBadge>
                 </div>
 
                 <div className="relative flex justify-start gap-2 xl:justify-end">
                   {module.status === "draft" ? (
-                    <ModuleActionButton onClick={() => navigate(
-                      `/content/learning-modules/${getLearningModuleRouteSegment(module)}/edit`,
-                      getLearningModuleNavigationState(module),
-                    )}>
+                    <ModuleActionButton
+                      onClick={() => navigate(
+                        `/content/learning-modules/${getLearningModuleRouteSegment(module)}/edit`,
+                      )}
+                    >
                       <Edit3 size={14} strokeWidth={2.25} /> Edit
                     </ModuleActionButton>
                   ) : (
-                    <ModuleActionButton onClick={() => navigate(
-                      `/content/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
-                      getLearningModuleNavigationState(module),
-                    )}>
+                    <ModuleActionButton
+                      onClick={() => navigate(
+                        `/content/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
+                      )}
+                    >
                       <Eye size={14} strokeWidth={2.25} /> Preview
                     </ModuleActionButton>
                   )}
@@ -255,7 +455,9 @@ export default function ContentManagerLearningModulesPage() {
                   {module.status !== "archived" && (
                     <button
                       type="button"
-                      onClick={() => setOpenMenuId((current) => current === module.skillModuleId ? null : module.skillModuleId)}
+                      onClick={() => setOpenMenuId((current) => (
+                        current === module.skillModuleId ? null : module.skillModuleId
+                      ))}
                       className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[#B9D8CC] bg-white text-slate-600 transition hover:border-[#2FA084] hover:bg-[#F7F1E8] hover:text-[#1F6F5F]"
                       aria-label="More actions"
                     >
@@ -263,7 +465,8 @@ export default function ContentManagerLearningModulesPage() {
                     </button>
                   )}
 
-                  {module.status !== "archived" && openMenuId === module.skillModuleId && (
+                  {module.status !== "archived"
+                    && openMenuId === module.skillModuleId && (
                     <div className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-lg">
                       {module.status === "draft" && (
                         <>
@@ -271,7 +474,6 @@ export default function ContentManagerLearningModulesPage() {
                             setOpenMenuId(null);
                             navigate(
                               `/content/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
-                              getLearningModuleNavigationState(module),
                             );
                           }}>
                             <Eye size={14} /> Preview
@@ -293,12 +495,49 @@ export default function ContentManagerLearningModulesPage() {
                           <Archive size={14} /> Archive
                         </OverflowAction>
                       )}
-
                     </div>
                   )}
                 </div>
               </div>
             ))}
+
+            {pageRange && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B9D8CC] px-4 py-3">
+                <span className="text-xs font-bold text-slate-600">
+                  {result.totalPages > 1
+                    ? `Showing ${pageRange.start}–${pageRange.end} of ${result.totalCount} modules`
+                    : `${result.totalCount} ${result.totalCount === 1 ? "module" : "modules"}`}
+                </span>
+
+                {result.totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQueryValues({
+                        page: result.page > 2 ? result.page - 1 : null,
+                      })}
+                      disabled={result.page <= 1}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border border-[#B9D8CC] bg-white px-2.5 text-xs font-extrabold text-slate-700 transition hover:border-[#2FA084] hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      <ChevronLeft size={14} /> Previous
+                    </button>
+
+                    <span className="min-w-24 text-center text-xs font-bold text-slate-600">
+                      Page {result.page} of {result.totalPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setQueryValues({ page: result.page + 1 })}
+                      disabled={result.page >= result.totalPages}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border border-[#B9D8CC] bg-white px-2.5 text-xs font-extrabold text-slate-700 transition hover:border-[#2FA084] hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Next <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </ModuleCard>
         )}
 
@@ -318,7 +557,6 @@ export default function ContentManagerLearningModulesPage() {
   );
 }
 
-
 function ModuleActionButton({ children, onClick }) {
   return (
     <button
@@ -332,10 +570,9 @@ function ModuleActionButton({ children, onClick }) {
 }
 
 function OverflowAction({ children, tone = "default", onClick }) {
-  const styles =
-    tone === "danger"
-      ? "text-rose-600 hover:bg-rose-50"
-      : "text-slate-700 hover:bg-[#F7F1E8] hover:text-[#1F6F5F]";
+  const styles = tone === "danger"
+    ? "text-rose-600 hover:bg-rose-50"
+    : "text-slate-700 hover:bg-[#F7F1E8] hover:text-[#1F6F5F]";
 
   return (
     <button

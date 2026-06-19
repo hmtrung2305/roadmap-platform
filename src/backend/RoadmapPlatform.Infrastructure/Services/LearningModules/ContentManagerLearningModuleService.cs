@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
+using RoadmapPlatform.Application.DTOs.ContentWorkspace;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -12,6 +14,9 @@ namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 
 public sealed class ContentManagerLearningModuleService : IContentManagerLearningModuleService
 {
+    private const int MinimumLessonCount = 3;
+    private const int MinimumQuizQuestionCount = 10;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ApplicationDbContext _context;
@@ -25,31 +30,242 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         _fileStorage = fileStorage;
     }
 
-    public async Task<IReadOnlyList<ContentManagerLearningModuleSummaryDto>> GetModulesAsync(
+
+    public async Task<ContentWorkspaceOverviewDto> GetWorkspaceOverviewAsync(
         Guid contentManagerUserId,
-        string? status,
         CancellationToken cancellationToken)
     {
-        var query = _context.SkillModules
+        var ownedModules = _context.SkillModules
             .AsNoTracking()
-            .Include(module => module.Skill)
-            .Include(module => module.SkillModuleLessons)
-            .Include(module => module.SkillModuleQuiz)
-                .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
             .Where(module => module.CreatedByUserId == contentManagerUserId);
 
-        if (!string.IsNullOrWhiteSpace(status))
+        var statusRows = await ownedModules
+            .GroupBy(module => module.Status)
+            .Select(group => new
+            {
+                Status = group.Key,
+                Count = group.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var draftModules = await ownedModules
+            .Where(module => module.Status == LearningModuleStatusValues.Draft)
+            .Include(module => module.Skill)
+            .Include(module => module.SkillModuleLessons)
+                .ThenInclude(lesson => lesson.SkillModuleChunks)
+            .Include(module => module.SkillModuleQuiz)
+                .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
+                    .ThenInclude(question => question.SkillModuleQuizOptions)
+            .OrderByDescending(module => module.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+        var draftReadiness = draftModules
+            .Select(module => new
+            {
+                Module = module,
+                Readiness = ValidatePublishReadiness(module)
+            })
+            .ToList();
+
+        var recentDrafts = draftModules
+            .Take(4)
+            .Select(MapWorkspaceModule)
+            .ToList();
+
+        var readyToPublish = draftReadiness
+            .Where(item => item.Readiness.CanPublish)
+            .Take(4)
+            .Select(item => MapWorkspaceModule(item.Module))
+            .ToList();
+
+        var needsAttention = draftReadiness
+            .Where(item => !item.Readiness.CanPublish)
+            .Take(4)
+            .Select(item =>
+            {
+                var check = item.Readiness.Checks.FirstOrDefault(candidate => !candidate.IsComplete);
+
+                return new ContentWorkspaceAttentionItemDto
+                {
+                    Module = MapWorkspaceModule(item.Module),
+                    CheckKey = check?.Key ?? string.Empty,
+                    Label = check?.Label ?? "Needs attention",
+                    Message = check?.Description ?? "Review this module."
+                };
+            })
+            .ToList();
+
+        var recentlyPublished = await ownedModules
+            .Where(module => module.Status == LearningModuleStatusValues.Published)
+            .OrderByDescending(module => module.PublishedAt ?? module.UpdatedAt)
+            .Take(4)
+            .Select(module => new ContentWorkspaceModuleItemDto
+            {
+                SkillModuleId = module.SkillModuleId,
+                SkillId = module.SkillId,
+                SkillName = module.Skill.Name,
+                SkillSlug = module.Skill.Slug,
+                Title = module.Title,
+                Slug = module.Slug,
+                Status = module.Status,
+                DifficultyLevel = module.DifficultyLevel,
+                LessonCount = module.SkillModuleLessons.Count,
+                QuestionCount = module.SkillModuleQuiz == null
+                    ? 0
+                    : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+                PublishedAt = module.PublishedAt,
+                UpdatedAt = module.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var draftCount = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Draft)?.Count ?? 0;
+        var publishedCount = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Published)?.Count ?? 0;
+
+        return new ContentWorkspaceOverviewDto
         {
-            query = query.Where(module => module.Status == status);
+            Metrics = new ContentWorkspaceMetricsDto
+            {
+                Drafts = draftCount,
+                ReadyToPublish = draftReadiness.Count(item => item.Readiness.CanPublish),
+                NeedsAttention = draftReadiness.Count(item => !item.Readiness.CanPublish),
+                Published = publishedCount
+            },
+            ReadyToPublish = readyToPublish,
+            NeedsAttention = needsAttention,
+            RecentDrafts = recentDrafts,
+            RecentlyPublished = recentlyPublished
+        };
+    }
+
+    public async Task<ContentManagerLearningModuleListResultDto> GetModulesAsync(
+        Guid contentManagerUserId,
+        ContentManagerLearningModuleListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        var status = NormalizeOptionalText(query.Status)?.ToLowerInvariant();
+        var sort = NormalizeOptionalText(query.Sort)?.ToLowerInvariant() ?? "updated_desc";
+        var safePage = Math.Max(query.Page, 1);
+        var safePageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        if (status != null
+            && status != LearningModuleStatusValues.Draft
+            && status != LearningModuleStatusValues.Published
+            && status != LearningModuleStatusValues.Archived)
+        {
+            throw new ArgumentException("Unsupported learning module status.", nameof(query.Status));
         }
 
-        var modules = await query.ToListAsync(cancellationToken);
+        if (sort is not ("updated_desc" or "created_desc" or "title_asc" or "title_desc"))
+        {
+            throw new ArgumentException("Unsupported learning module sort value.", nameof(query.Sort));
+        }
 
-        return modules
-            .OrderBy(module => GetStatusSortOrder(module.Status))
-            .ThenByDescending(module => GetStatusTime(module))
-            .Select(MapSummary)
-            .ToList();
+        var filteredQuery = _context.SkillModules
+            .AsNoTracking()
+            .Where(module => module.CreatedByUserId == contentManagerUserId);
+
+        var search = NormalizeOptionalText(query.Search);
+        if (search != null)
+        {
+            var pattern = BuildContainsPattern(search);
+
+            filteredQuery = filteredQuery.Where(module =>
+                EF.Functions.ILike(module.Title, pattern, "\\")
+                || EF.Functions.ILike(module.Slug, pattern, "\\")
+                || (module.Description != null
+                    && EF.Functions.ILike(module.Description, pattern, "\\"))
+                || EF.Functions.ILike(module.Skill.Name, pattern, "\\")
+                || EF.Functions.ILike(module.Skill.Slug, pattern, "\\"));
+        }
+
+        var difficulty = NormalizeOptionalText(query.Difficulty)?.ToLowerInvariant();
+        if (difficulty != null)
+        {
+            filteredQuery = filteredQuery.Where(module =>
+                module.DifficultyLevel != null
+                && module.DifficultyLevel.ToLower() == difficulty);
+        }
+
+        var statusRows = await filteredQuery
+            .GroupBy(module => module.Status)
+            .Select(group => new
+            {
+                Status = group.Key,
+                Count = group.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var statusCounts = new ContentManagerLearningModuleStatusCountsDto
+        {
+            Draft = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Draft)?.Count ?? 0,
+            Published = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Published)?.Count ?? 0,
+            Archived = statusRows.FirstOrDefault(item => item.Status == LearningModuleStatusValues.Archived)?.Count ?? 0
+        };
+
+        var pageQuery = status == null
+            ? filteredQuery
+            : filteredQuery.Where(module => module.Status == status);
+
+        var totalCount = await pageQuery.CountAsync(cancellationToken);
+        var totalPages = totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)safePageSize);
+        var effectivePage = totalPages == 0
+            ? 1
+            : Math.Min(safePage, totalPages);
+
+        var orderedQuery = sort switch
+        {
+            "created_desc" => pageQuery
+                .OrderByDescending(module => module.CreatedAt)
+                .ThenBy(module => module.Title),
+            "title_asc" => pageQuery
+                .OrderBy(module => module.Title)
+                .ThenByDescending(module => module.UpdatedAt),
+            "title_desc" => pageQuery
+                .OrderByDescending(module => module.Title)
+                .ThenByDescending(module => module.UpdatedAt),
+            _ => pageQuery
+                .OrderByDescending(module => module.UpdatedAt)
+                .ThenBy(module => module.Title)
+        };
+
+        var rows = await orderedQuery
+            .Skip((effectivePage - 1) * safePageSize)
+            .Take(safePageSize)
+            .Select(module => new ContentManagerLearningModuleSummaryProjection
+            {
+                SkillModuleId = module.SkillModuleId,
+                SkillId = module.SkillId,
+                SkillName = module.Skill.Name,
+                SkillSlug = module.Skill.Slug,
+                Title = module.Title,
+                Slug = module.Slug,
+                Description = module.Description,
+                DifficultyLevel = module.DifficultyLevel,
+                EstimatedHours = module.EstimatedHours,
+                Status = module.Status,
+                LessonCount = module.SkillModuleLessons.Count,
+                HasQuiz = module.SkillModuleQuiz != null,
+                QuestionCount = module.SkillModuleQuiz == null
+                    ? 0
+                    : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+                PublishedAt = module.PublishedAt,
+                ArchivedAt = module.ArchivedAt,
+                CreatedAt = module.CreatedAt,
+                UpdatedAt = module.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return new ContentManagerLearningModuleListResultDto
+        {
+            Items = rows.Select(MapSummary).ToList(),
+            TotalCount = totalCount,
+            Page = effectivePage,
+            PageSize = safePageSize,
+            TotalPages = totalPages,
+            StatusCounts = statusCounts
+        };
     }
 
     public async Task<ContentManagerLearningModuleDetailDto> GetModuleDetailAsync(
@@ -85,11 +301,31 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         };
     }
 
+    public async Task<SkillModuleDto> GetModuleOverviewAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        var module = await GetOwnedModuleQuery(contentManagerUserId)
+            .AsNoTracking()
+            .Include(item => item.Skill)
+            .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
+
+        if (module == null)
+        {
+            throw new NotFoundException("Learning module was not found.");
+        }
+
+        return MapModule(module);
+    }
+
     public async Task<SkillModuleDto> CreateModuleAsync(
         Guid contentManagerUserId,
         CreateLearningModuleRequestDto request,
         CancellationToken cancellationToken)
     {
+        ValidateCreateModuleRequest(request);
+
         var skill = await _context.Skills
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.SkillId == request.SkillId, cancellationToken);
@@ -149,6 +385,7 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             throw new NotFoundException("Learning module was not found.");
         }
 
+        ValidateUpdateModuleRequest(request);
         EnsureEditable(module);
 
         if (request.SkillId.HasValue && request.SkillId.Value != module.SkillId)
@@ -185,24 +422,26 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
                 cancellationToken);
         }
 
-        if (request.Description != null)
+        if (request.DescriptionIsSpecified)
         {
             module.Description = NormalizeOptionalText(request.Description);
         }
 
-        if (request.DifficultyLevel != null)
+        if (request.DifficultyLevelIsSpecified)
         {
             module.DifficultyLevel = NormalizeOptionalText(request.DifficultyLevel);
         }
 
-        if (request.EstimatedHours.HasValue)
+        if (request.EstimatedHoursIsSpecified)
         {
             module.EstimatedHours = request.EstimatedHours;
         }
 
-        if (request.Metadata != null)
+        if (request.MetadataIsSpecified)
         {
-            module.Metadata = JsonSerializer.Serialize(request.Metadata, JsonOptions);
+            module.Metadata = request.Metadata == null
+                ? "{}"
+                : JsonSerializer.Serialize(request.Metadata, JsonOptions);
         }
 
         module.UpdatedAt = DateTime.UtcNow;
@@ -373,6 +612,103 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
                     .ThenInclude(question => question.SkillModuleQuizOptions);
     }
 
+
+
+    private static ContentWorkspaceModuleItemDto MapWorkspaceModule(SkillModule module)
+    {
+        return new ContentWorkspaceModuleItemDto
+        {
+            SkillModuleId = module.SkillModuleId,
+            SkillId = module.SkillId,
+            SkillName = module.Skill.Name,
+            SkillSlug = module.Skill.Slug,
+            Title = module.Title,
+            Slug = module.Slug,
+            Status = module.Status,
+            DifficultyLevel = module.DifficultyLevel,
+            LessonCount = module.SkillModuleLessons.Count,
+            QuestionCount = module.SkillModuleQuiz == null
+                ? 0
+                : module.SkillModuleQuiz.SkillModuleQuizQuestions.Count,
+            PublishedAt = module.PublishedAt,
+            UpdatedAt = module.UpdatedAt
+        };
+    }
+
+    private static void ValidateCreateModuleRequest(CreateLearningModuleRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            throw new ConflictException("Module title is required.");
+        }
+
+        ValidateModuleTitle(request.Title);
+        ValidateOptionalLength(request.Slug, LearningModuleAuthoringLimits.ModuleSlugMaxLength, "Module slug");
+        ValidateOptionalLength(request.Description, LearningModuleAuthoringLimits.ModuleDescriptionMaxLength, "Module description");
+        ValidateOptionalLength(request.DifficultyLevel, LearningModuleAuthoringLimits.DifficultyLevelMaxLength, "Difficulty");
+        ValidateEstimatedHours(request.EstimatedHours);
+    }
+
+    private static void ValidateUpdateModuleRequest(UpdateLearningModuleRequestDto request)
+    {
+        if (request.Title != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                throw new ConflictException("Module title is required.");
+            }
+
+            ValidateModuleTitle(request.Title);
+        }
+
+        ValidateOptionalLength(request.Slug, LearningModuleAuthoringLimits.ModuleSlugMaxLength, "Module slug");
+
+        if (request.DescriptionIsSpecified)
+        {
+            ValidateOptionalLength(request.Description, LearningModuleAuthoringLimits.ModuleDescriptionMaxLength, "Module description");
+        }
+
+        if (request.DifficultyLevelIsSpecified)
+        {
+            ValidateOptionalLength(request.DifficultyLevel, LearningModuleAuthoringLimits.DifficultyLevelMaxLength, "Difficulty");
+        }
+
+        if (request.EstimatedHoursIsSpecified)
+        {
+            ValidateEstimatedHours(request.EstimatedHours);
+        }
+    }
+
+    private static void ValidateModuleTitle(string title)
+    {
+        if (title.Trim().Length > LearningModuleAuthoringLimits.ModuleTitleMaxLength)
+        {
+            throw new ConflictException($"Module title must be {LearningModuleAuthoringLimits.ModuleTitleMaxLength} characters or fewer.");
+        }
+    }
+
+    private static void ValidateOptionalLength(string? value, int maxLength, string fieldName)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && value.Trim().Length > maxLength)
+        {
+            throw new ConflictException($"{fieldName} must be {maxLength} characters or fewer.");
+        }
+    }
+
+    private static void ValidateEstimatedHours(decimal? estimatedHours)
+    {
+        if (!estimatedHours.HasValue)
+        {
+            return;
+        }
+
+        if (estimatedHours.Value < LearningModuleAuthoringLimits.EstimatedHoursMinValue
+            || estimatedHours.Value > LearningModuleAuthoringLimits.EstimatedHoursMaxValue)
+        {
+            throw new ConflictException("Estimated hours is outside the supported range.");
+        }
+    }
+
     private static void EnsureEditable(SkillModule module)
     {
         if (module.Status != LearningModuleStatusValues.Draft)
@@ -383,95 +719,174 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
 
     private static PublishLearningModuleReadinessDto ValidatePublishReadiness(SkillModule module)
     {
-        var errors = new List<string>();
-
-        if (module.SkillId == Guid.Empty)
-        {
-            errors.Add("Skill is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(module.Title))
-        {
-            errors.Add("Title is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(module.Slug))
-        {
-            errors.Add("Slug is required.");
-        }
-
         var lessons = module.SkillModuleLessons
             .OrderBy(lesson => lesson.OrderIndex)
             .ToList();
 
-        if (lessons.Count == 0)
+        var overviewMissing = new List<string>();
+
+        if (module.SkillId == Guid.Empty)
         {
-            errors.Add("At least one lesson is required.");
+            overviewMissing.Add("skill");
         }
 
-        if (lessons.Any(lesson => lesson.OrderIndex <= 0))
+        if (string.IsNullOrWhiteSpace(module.Title))
         {
-            errors.Add("Lesson order values must be positive.");
+            overviewMissing.Add("title");
         }
 
-        if (lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() != lessons.Count)
+        if (string.IsNullOrWhiteSpace(module.Slug))
         {
-            errors.Add("Lesson order values must be unique.");
+            overviewMissing.Add("module URL");
         }
 
-        if (lessons.Any(lesson => string.IsNullOrWhiteSpace(lesson.MarkdownFileKey)))
-        {
-            errors.Add("Every lesson must have a Markdown file.");
-        }
+        var overviewComplete = overviewMissing.Count == 0;
 
-        if (lessons.Any(lesson => lesson.IndexingStatus != LearningModuleLessonIndexingStatusValues.Indexed))
-        {
-            errors.Add("Every lesson must finish indexing before publishing.");
-        }
+        var lessonsComplete = lessons.Count >= MinimumLessonCount
+            && lessons.All(lesson => lesson.OrderIndex > 0)
+            && lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() == lessons.Count
+            && lessons.All(lesson => !string.IsNullOrWhiteSpace(lesson.MarkdownFileKey));
 
-        if (lessons.Any(lesson => lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexed
-            && lesson.SkillModuleChunks.Count == 0))
-        {
-            errors.Add("Every indexed lesson must have generated chunks.");
-        }
+        var preparedLessonCount = lessons.Count(lesson =>
+            lesson.IndexingStatus == LearningModuleLessonIndexingStatusValues.Indexed
+            && lesson.SkillModuleChunks.Count > 0);
+
+        var lessonIndexingComplete = lessons.Count >= MinimumLessonCount
+            && preparedLessonCount == lessons.Count;
 
         var quiz = module.SkillModuleQuiz;
+        var questions = quiz?.SkillModuleQuizQuestions.ToList()
+            ?? new List<SkillModuleQuizQuestion>();
 
-        if (quiz == null)
+        var quizComplete = quiz != null
+            && questions.Count >= MinimumQuizQuestionCount
+            && questions.All(question => question.SkillModuleQuizOptions.Count >= 2)
+            && questions
+                .Where(question => question.QuestionType == LearningModuleQuestionTypeValues.SingleChoice)
+                .All(question => question.SkillModuleQuizOptions.Count(option => option.IsCorrect) == 1);
+
+        var checks = new List<PublishLearningModuleReadinessCheckDto>
         {
-            errors.Add("Quiz is required.");
-        }
-        else
-        {
-            var questions = quiz.SkillModuleQuizQuestions.ToList();
-
-            if (questions.Count == 0)
+            new()
             {
-                errors.Add("Quiz must have at least one question.");
-            }
-
-            foreach (var question in questions)
+                Key = "overview",
+                Label = "Module overview",
+                Description = overviewComplete
+                    ? "Module details are ready."
+                    : $"Add {FormatList(overviewMissing)}.",
+                IsComplete = overviewComplete
+            },
+            new()
             {
-                if (question.SkillModuleQuizOptions.Count < 2)
-                {
-                    errors.Add("Each quiz question must have at least two options.");
-                    break;
-                }
-
-                if (question.QuestionType == LearningModuleQuestionTypeValues.SingleChoice
-                    && question.SkillModuleQuizOptions.Count(option => option.IsCorrect) != 1)
-                {
-                    errors.Add("Each single-choice question must have exactly one correct option.");
-                    break;
-                }
+                Key = "lessons",
+                Label = "Lessons",
+                Description = GetLessonReadinessDescription(lessons, lessonsComplete),
+                IsComplete = lessonsComplete
+            },
+            new()
+            {
+                Key = "lesson_indexing",
+                Label = "Learning assistant",
+                Description = lessons.Count < MinimumLessonCount
+                    ? $"Add at least {MinimumLessonCount} lessons."
+                    : lessonIndexingComplete
+                        ? "All lessons are ready for the learning assistant."
+                        : $"{preparedLessonCount}/{lessons.Count} lessons ready for the learning assistant.",
+                IsComplete = lessonIndexingComplete
+            },
+            new()
+            {
+                Key = "quiz",
+                Label = "Quiz",
+                Description = GetQuizReadinessDescription(quiz, questions, quizComplete),
+                IsComplete = quizComplete
             }
-        }
+        };
+
+        var errors = checks
+            .Where(check => !check.IsComplete)
+            .Select(check => check.Description)
+            .ToList();
 
         return new PublishLearningModuleReadinessDto
         {
             CanPublish = errors.Count == 0,
+            Checks = checks,
             Errors = errors
         };
+    }
+
+    private static string GetLessonReadinessDescription(
+        IReadOnlyCollection<SkillModuleLesson> lessons,
+        bool isComplete)
+    {
+        if (lessons.Count < MinimumLessonCount)
+        {
+            return $"Add at least {MinimumLessonCount} lessons ({lessons.Count}/{MinimumLessonCount}).";
+        }
+
+        if (lessons.Any(lesson => lesson.OrderIndex <= 0)
+            || lessons.Select(lesson => lesson.OrderIndex).Distinct().Count() != lessons.Count)
+        {
+            return "Fix the lesson order.";
+        }
+
+        if (lessons.Any(lesson => string.IsNullOrWhiteSpace(lesson.MarkdownFileKey)))
+        {
+            return "Add content to every lesson.";
+        }
+
+        return isComplete
+            ? $"{lessons.Count} {Pluralize(lessons.Count, "lesson", "lessons")} ready."
+            : "Finish preparing the lessons.";
+    }
+
+    private static string GetQuizReadinessDescription(
+        SkillModuleQuiz? quiz,
+        IReadOnlyCollection<SkillModuleQuizQuestion> questions,
+        bool isComplete)
+    {
+        if (quiz == null)
+        {
+            return "Create a quiz.";
+        }
+
+        if (questions.Count < MinimumQuizQuestionCount)
+        {
+            return $"Add at least {MinimumQuizQuestionCount} quiz questions ({questions.Count}/{MinimumQuizQuestionCount}).";
+        }
+
+        if (questions.Any(question => question.SkillModuleQuizOptions.Count < 2))
+        {
+            return "Add at least two options to every question.";
+        }
+
+        if (questions
+            .Where(question => question.QuestionType == LearningModuleQuestionTypeValues.SingleChoice)
+            .Any(question => question.SkillModuleQuizOptions.Count(option => option.IsCorrect) != 1))
+        {
+            return "Set one correct answer for every single-choice question.";
+        }
+
+        return isComplete
+            ? $"{questions.Count} quiz {Pluralize(questions.Count, "question", "questions")} ready."
+            : "Finish the quiz.";
+    }
+
+    private static string FormatList(IReadOnlyList<string> values)
+    {
+        return values.Count switch
+        {
+            0 => string.Empty,
+            1 => values[0],
+            2 => $"{values[0]} and {values[1]}",
+            _ => $"{string.Join(", ", values.Take(values.Count - 1))}, and {values[^1]}"
+        };
+    }
+
+    private static string Pluralize(int count, string singular, string plural)
+    {
+        return count == 1 ? singular : plural;
     }
 
     private async Task TryDeleteStoredFileAsync(string? fileKey)
@@ -536,25 +951,14 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
             : value.Trim();
     }
 
-    private static int GetStatusSortOrder(string status)
+    private static string BuildContainsPattern(string value)
     {
-        return status switch
-        {
-            LearningModuleStatusValues.Draft => 1,
-            LearningModuleStatusValues.Published => 2,
-            LearningModuleStatusValues.Archived => 3,
-            _ => 4
-        };
-    }
+        var escaped = value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 
-    private static DateTime GetStatusTime(SkillModule module)
-    {
-        return module.Status switch
-        {
-            LearningModuleStatusValues.Published => module.PublishedAt ?? module.UpdatedAt,
-            LearningModuleStatusValues.Archived => module.ArchivedAt ?? module.UpdatedAt,
-            _ => module.UpdatedAt
-        };
+        return $"%{escaped}%";
     }
 
     private static SkillModuleDto MapModule(SkillModule module)
@@ -579,23 +983,24 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
         };
     }
 
-    private static ContentManagerLearningModuleSummaryDto MapSummary(SkillModule module)
+    private static ContentManagerLearningModuleSummaryDto MapSummary(
+        ContentManagerLearningModuleSummaryProjection module)
     {
         return new ContentManagerLearningModuleSummaryDto
         {
             SkillModuleId = module.SkillModuleId,
             SkillId = module.SkillId,
-            SkillName = module.Skill.Name,
-            SkillSlug = module.Skill.Slug,
+            SkillName = module.SkillName,
+            SkillSlug = module.SkillSlug,
             Title = module.Title,
             Slug = module.Slug,
             Description = module.Description,
             DifficultyLevel = module.DifficultyLevel,
             EstimatedHours = module.EstimatedHours,
             Status = module.Status,
-            LessonCount = module.SkillModuleLessons.Count,
-            HasQuiz = module.SkillModuleQuiz != null,
-            QuestionCount = module.SkillModuleQuiz?.SkillModuleQuizQuestions.Count ?? 0,
+            LessonCount = module.LessonCount,
+            HasQuiz = module.HasQuiz,
+            QuestionCount = module.QuestionCount,
             PublishedAt = module.PublishedAt,
             ArchivedAt = module.ArchivedAt,
             CreatedAt = module.CreatedAt,
@@ -714,4 +1119,25 @@ public sealed class ContentManagerLearningModuleService : IContentManagerLearnin
                 }
         };
     }
+    private sealed class ContentManagerLearningModuleSummaryProjection
+    {
+        public Guid SkillModuleId { get; set; }
+        public Guid SkillId { get; set; }
+        public string SkillName { get; set; } = string.Empty;
+        public string SkillSlug { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? DifficultyLevel { get; set; }
+        public decimal? EstimatedHours { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public int LessonCount { get; set; }
+        public int QuestionCount { get; set; }
+        public bool HasQuiz { get; set; }
+        public DateTime? PublishedAt { get; set; }
+        public DateTime? ArchivedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
 }

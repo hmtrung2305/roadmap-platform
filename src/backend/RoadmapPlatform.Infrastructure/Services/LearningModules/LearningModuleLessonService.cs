@@ -24,6 +24,29 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
         _fileStorage = fileStorage;
     }
 
+
+    public async Task<IReadOnlyList<LearningModuleLessonDto>> GetLessonsAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureOwnedModuleExistsAsync(
+            contentManagerUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var lessons = await _context.SkillModuleLessons
+            .AsNoTracking()
+            .Include(lesson => lesson.SkillModuleChunks)
+            .Where(lesson => lesson.SkillModuleId == skillModuleId)
+            .OrderBy(lesson => lesson.OrderIndex)
+            .ToListAsync(cancellationToken);
+
+        return lessons
+            .Select(MapLesson)
+            .ToList();
+    }
+
     public async Task<BulkUploadLessonsResultDto> BulkUploadLessonsAsync(
         Guid contentManagerUserId,
         Guid skillModuleId,
@@ -267,12 +290,12 @@ public sealed class LearningModuleLessonService : ILearningModuleLessonService
                 cancellationToken);
         }
 
-        if (request.Summary != null)
+        if (request.SummaryIsSpecified)
         {
             lesson.Summary = NormalizeOptionalText(request.Summary);
         }
 
-        if (request.EstimatedHours.HasValue)
+        if (request.EstimatedHoursIsSpecified)
         {
             lesson.EstimatedHours = request.EstimatedHours;
         }

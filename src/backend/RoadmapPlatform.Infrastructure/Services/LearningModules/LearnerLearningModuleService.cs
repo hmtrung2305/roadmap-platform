@@ -444,6 +444,56 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
 
             throw new ConflictException("A quiz attempt was already started. Refresh and try again.");
         }
+        catch (PostgresException ex) when (IsQuizRequestConflict(ex))
+        {
+            _context.ChangeTracker.Clear();
+
+            var existingInProgressAttempt = await GetExistingInProgressAttemptAsync(
+                quiz.SkillModuleQuizId,
+                userId,
+                cancellationToken);
+
+            if (existingInProgressAttempt != null)
+            {
+                return MapStartQuizAttemptResult(existingInProgressAttempt, quiz);
+            }
+
+            throw new ConflictException("A quiz attempt was already started. Refresh and try again.");
+        }
+    }
+
+    public async Task<StartQuizAttemptResultDto> GetQuizAttemptSessionAsync(
+        Guid userId,
+        Guid skillModuleId,
+        Guid attemptId,
+        CancellationToken cancellationToken)
+    {
+        var attempt = await _context.SkillModuleQuizAttempts
+            .AsNoTracking()
+            .Include(item => item.SkillModuleQuiz)
+                .ThenInclude(quiz => quiz.SkillModule)
+            .Include(item => item.SkillModuleQuiz)
+                .ThenInclude(quiz => quiz.SkillModuleQuizQuestions)
+                    .ThenInclude(question => question.SkillModuleQuizOptions)
+            .FirstOrDefaultAsync(item =>
+                item.SkillModuleQuizAttemptId == attemptId
+                && item.UserId == userId
+                && item.SkillModuleQuiz.SkillModuleId == skillModuleId
+                && (item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Published
+                    || item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Archived),
+                cancellationToken);
+
+        if (attempt == null)
+        {
+            throw new NotFoundException("Quiz attempt was not found.");
+        }
+
+        if (attempt.Status != LearningModuleQuizAttemptStatusValues.InProgress)
+        {
+            throw new ConflictException("This quiz attempt has already been submitted.");
+        }
+
+        return MapStartQuizAttemptResult(attempt, attempt.SkillModuleQuiz);
     }
 
     public async Task<QuizAttemptReviewDto> SubmitQuizAttemptAsync(
@@ -560,6 +610,11 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             _context.ChangeTracker.Clear();
             throw new ConflictException("This quiz attempt has already been submitted.");
         }
+        catch (PostgresException ex) when (IsQuizRequestConflict(ex))
+        {
+            _context.ChangeTracker.Clear();
+            throw new ConflictException("This quiz attempt has already been submitted.");
+        }
 
         return await GetQuizAttemptReviewAsync(
             userId,
@@ -585,12 +640,19 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             .FirstOrDefaultAsync(item =>
                 item.SkillModuleQuizAttemptId == attemptId
                 && item.UserId == userId
-                && item.SkillModuleQuiz.SkillModuleId == skillModuleId,
+                && item.SkillModuleQuiz.SkillModuleId == skillModuleId
+                && (item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Published
+                    || item.SkillModuleQuiz.SkillModule.Status == LearningModuleStatusValues.Archived),
                 cancellationToken);
 
         if (attempt == null)
         {
             throw new NotFoundException("Quiz attempt was not found.");
+        }
+
+        if (attempt.Status != LearningModuleQuizAttemptStatusValues.Submitted)
+        {
+            throw new ConflictException("Quiz attempt is still in progress.");
         }
 
         return MapAttemptReview(attempt);
@@ -627,9 +689,13 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
     private static bool IsQuizRequestConflict(DbUpdateException exception)
     {
         return exception.InnerException is PostgresException postgresException
-            && (
-                postgresException.SqlState == PostgresErrorCodes.UniqueViolation
-                || postgresException.SqlState == PostgresErrorCodes.SerializationFailure);
+            && IsQuizRequestConflict(postgresException);
+    }
+
+    private static bool IsQuizRequestConflict(PostgresException exception)
+    {
+        return exception.SqlState == PostgresErrorCodes.UniqueViolation
+            || exception.SqlState == PostgresErrorCodes.SerializationFailure;
     }
 
     private static void EnsureLearnerCanAccessModule(

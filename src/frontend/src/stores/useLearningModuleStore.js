@@ -13,6 +13,7 @@ const MODULE_DETAIL_TTL_MS = 5 * 60 * 1000;
 const LESSON_CONTENT_TTL_MS = 10 * 60 * 1000;
 const QUIZ_ATTEMPTS_TTL_MS = 60 * 1000;
 const QUIZ_REVIEW_TTL_MS = 5 * 60 * 1000;
+const QUIZ_SESSION_TTL_MS = 30 * 1000;
 
 const PUBLISHED_MODULES_KEY = "learning-modules:published";
 const ENROLLED_MODULES_KEY = "learning-modules:enrolled";
@@ -51,6 +52,10 @@ function quizAttemptsKey(moduleId) {
 
 function quizReviewKey(moduleId, attemptId) {
   return `learning-module:quiz-review:${moduleId}:${attemptId}`;
+}
+
+function quizSessionKey(moduleId, attemptId) {
+  return `learning-module:quiz-session:${moduleId}:${attemptId}`;
 }
 
 function moduleMatchesId(module, moduleId) {
@@ -513,6 +518,16 @@ export const useLearningModuleStore = create((set, get) => ({
     return attempt;
   },
 
+  loadQuizAttemptSession: async (moduleId, attemptId, { force = false } = {}) => {
+    if (!moduleId || !attemptId) return null;
+
+    return cachedRequest(
+      quizSessionKey(moduleId, attemptId),
+      () => learningModuleApi.getQuizAttemptSession(moduleId, attemptId),
+      { ttlMs: QUIZ_SESSION_TTL_MS, force },
+    );
+  },
+
   loadQuizAttemptReview: async (moduleId, attemptId, { force = false } = {}) => {
     if (!moduleId || !attemptId) return null;
 
@@ -570,6 +585,7 @@ export const useLearningModuleStore = create((set, get) => ({
     );
 
     invalidateRequestCache(quizAttemptsKey(moduleId));
+    invalidateRequestCache(quizSessionKey(moduleId, attemptId));
     invalidateRequestCache(quizReviewKey(moduleId, attemptId));
     invalidateRequestCacheByPrefix("learning-module:detail:");
 

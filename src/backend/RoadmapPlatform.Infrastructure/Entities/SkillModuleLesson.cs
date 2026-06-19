@@ -29,15 +29,15 @@ public partial class SkillModuleLesson
 
     public int ContentVersion { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
-
     public string IndexingStatus { get; set; } = null!;
 
     public DateTime? IndexedAt { get; set; }
 
     public string? IndexingError { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
 
     public virtual SkillModule SkillModule { get; set; } = null!;
 

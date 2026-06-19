@@ -11,6 +11,7 @@ import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { hasPermission } from "../utils/authorizationUtils";
 import { useProfileStore } from "./useProfileStore";
 import { useAuthProviderStore } from "./useAuthProviderStore";
+import { useAccountProfileStore } from "./useAccountProfileStore";
 import { useRoadmapStore } from "./useRoadmapStore";
 import { usePortfolioEditorStore } from "./usePortfolioEditorStore";
 import { usePortfolioStore } from "./usePortfolioStore";
@@ -59,6 +60,7 @@ export const useAuthStore = create((set, get) => ({
     useStreakStore.getState().resetStreakState();
     useProfileStore.getState().resetProfile();
     useAuthProviderStore.getState().resetProviders();
+    useAccountProfileStore.getState().resetAccountProfile();
     useRoadmapStore.getState().resetRoadmaps();
     usePortfolioEditorStore.getState().resetPortfolioEditor();
     usePortfolioStore.getState().resetPortfolioView();
@@ -116,6 +118,7 @@ export const useAuthStore = create((set, get) => ({
       useStreakStore.getState().resetStreakState();
       useProfileStore.getState().resetProfile();
       useAuthProviderStore.getState().resetProviders();
+      useAccountProfileStore.getState().resetAccountProfile();
       useRoadmapStore.getState().resetRoadmaps();
       usePortfolioEditorStore.getState().resetPortfolioEditor();
       usePortfolioStore.getState().resetPortfolioView();

@@ -1,3 +1,4 @@
+using RoadmapPlatform.Application.Constants;
 using System.ComponentModel.DataAnnotations;
 
 namespace RoadmapPlatform.Application.DTOs.LearningModules;
@@ -8,15 +9,16 @@ public sealed class CreateLearningModuleRequestDto
     public Guid SkillId { get; set; }
 
     [Required]
-    [MaxLength(200)]
+    [MaxLength(LearningModuleAuthoringLimits.ModuleTitleMaxLength)]
     public string Title { get; set; } = string.Empty;
 
-    [MaxLength(200)]
+    [MaxLength(LearningModuleAuthoringLimits.ModuleSlugMaxLength)]
     public string? Slug { get; set; }
 
+    [MaxLength(LearningModuleAuthoringLimits.ModuleDescriptionMaxLength)]
     public string? Description { get; set; }
 
-    [MaxLength(30)]
+    [MaxLength(LearningModuleAuthoringLimits.DifficultyLevelMaxLength)]
     public string? DifficultyLevel { get; set; }
 
     public decimal? EstimatedHours { get; set; }
