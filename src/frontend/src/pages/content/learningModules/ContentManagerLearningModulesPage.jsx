@@ -17,7 +17,6 @@ import {
 import { toast } from "react-toastify";
 import {
   contentManagerLearningModuleApi,
-  getLearningModuleNavigationState,
   getLearningModuleRouteSegment,
 } from "../../../api/learningModuleApi";
 import AppSelect from "../../../components/common/AppSelect";
@@ -439,7 +438,6 @@ export default function ContentManagerLearningModulesPage() {
                     <ModuleActionButton
                       onClick={() => navigate(
                         `/content/learning-modules/${getLearningModuleRouteSegment(module)}/edit`,
-                        getLearningModuleNavigationState(module),
                       )}
                     >
                       <Edit3 size={14} strokeWidth={2.25} /> Edit
@@ -448,7 +446,6 @@ export default function ContentManagerLearningModulesPage() {
                     <ModuleActionButton
                       onClick={() => navigate(
                         `/content/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
-                        getLearningModuleNavigationState(module),
                       )}
                     >
                       <Eye size={14} strokeWidth={2.25} /> Preview
@@ -477,7 +474,6 @@ export default function ContentManagerLearningModulesPage() {
                             setOpenMenuId(null);
                             navigate(
                               `/content/learning-modules/${getLearningModuleRouteSegment(module)}/preview`,
-                              getLearningModuleNavigationState(module),
                             );
                           }}>
                             <Eye size={14} /> Preview

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   contentManagerLearningModuleApi,
@@ -14,12 +14,9 @@ import {
 import useEditorDirtyState from "./useEditorDirtyState";
 
 export default function useLearningModuleEditor() {
-  const { moduleSlug } = useParams();
+  const { moduleId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const routeStateModuleId = location.state?.moduleId || null;
-  const resolvedModuleIdRef = useRef(routeStateModuleId);
 
   const [detail, setDetail] = useState(null);
   const [activeTab, setActiveTab] = useState(
@@ -30,7 +27,7 @@ export default function useLearningModuleEditor() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [resolvedModuleId, setResolvedModuleId] = useState(routeStateModuleId);
+  const [resolvedModuleId, setResolvedModuleId] = useState(moduleId || null);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const loadRequestIdRef = useRef(0);
 
@@ -105,11 +102,8 @@ export default function useLearningModuleEditor() {
   };
 
   useEffect(() => {
-    if (!routeStateModuleId) return;
-
-    resolvedModuleIdRef.current = routeStateModuleId;
-    setResolvedModuleId(routeStateModuleId);
-  }, [routeStateModuleId]);
+    setResolvedModuleId(moduleId || null);
+  }, [moduleId]);
 
   useEffect(() => {
     const requestId = loadRequestIdRef.current + 1;
@@ -118,17 +112,15 @@ export default function useLearningModuleEditor() {
     async function loadDetail() {
       try {
         setIsLoading(true);
-        const knownModuleId = routeStateModuleId || resolvedModuleIdRef.current;
-        const moduleId = await contentManagerLearningModuleApi.resolveModuleIdFromRoute(
-          moduleSlug,
-          knownModuleId,
-        );
+        if (!moduleId) {
+          throw new Error("Learning module route is missing.");
+        }
+
         const data = await contentManagerLearningModuleApi.getModule(moduleId, {
           force: refreshKey > 0,
         });
 
         if (loadRequestIdRef.current === requestId) {
-          resolvedModuleIdRef.current = moduleId;
           setResolvedModuleId(moduleId);
           setDetail(data);
         }
@@ -143,7 +135,7 @@ export default function useLearningModuleEditor() {
     }
 
     loadDetail();
-  }, [moduleSlug, refreshKey, routeStateModuleId]);
+  }, [moduleId, refreshKey]);
 
   useEffect(() => {
     const nextTab = getValidEditorTab(searchParams.get("tab")) || "overview";
@@ -202,7 +194,6 @@ export default function useLearningModuleEditor() {
       return;
     }
 
-    resolvedModuleIdRef.current = updatedModule.skillModuleId;
     setResolvedModuleId(updatedModule.skillModuleId);
     setDetail((current) =>
       current
@@ -220,15 +211,12 @@ export default function useLearningModuleEditor() {
 
     const nextRouteSegment = getLearningModuleRouteSegment(updatedModule);
 
-    if (nextRouteSegment && nextRouteSegment !== moduleSlug) {
+    if (nextRouteSegment && nextRouteSegment !== moduleId) {
       const queryString = searchParams.toString();
 
       navigate(
         `/content/learning-modules/${nextRouteSegment}/edit${queryString ? `?${queryString}` : ""}`,
-        {
-          replace: true,
-          state: { moduleId: updatedModule.skillModuleId },
-        },
+        { replace: true },
       );
     }
   };

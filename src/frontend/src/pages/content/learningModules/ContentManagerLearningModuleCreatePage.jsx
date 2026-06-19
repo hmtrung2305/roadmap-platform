@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle2, ChevronDown } from "lucide-react";
 import { toast } from "react-toastify";
 import {
   contentManagerLearningModuleApi,
-  getLearningModuleNavigationState,
   getLearningModuleRouteSegment,
 } from "../../../api/learningModuleApi";
 import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
@@ -114,8 +113,7 @@ export default function ContentManagerLearningModuleCreatePage() {
 
       toast.success("Module draft created.");
       navigate(
-        `/content/learning-modules/${getLearningModuleRouteSegment(created)}/edit`,
-        getLearningModuleNavigationState(created),
+        `/content/learning-modules/${getLearningModuleRouteSegment(created)}/edit?tab=lessons`,
       );
     } catch (err) {
       toast.error(err?.message || "Unable to create module.");

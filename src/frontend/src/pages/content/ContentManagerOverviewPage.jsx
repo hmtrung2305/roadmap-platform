@@ -14,7 +14,6 @@ import {
 
 import {
   contentManagerLearningModuleApi,
-  getLearningModuleNavigationState,
   getLearningModuleRouteSegment,
 } from "../../api/learningModuleApi";
 import {
@@ -295,10 +294,7 @@ export default function ContentManagerOverviewPage() {
                     key={module.skillModuleId}
                     module={module}
                     actionLabel="Review"
-                    onAction={() => navigate(
-                      getModuleEditUrl(module, "publish"),
-                      getLearningModuleNavigationState(module),
-                    )}
+                    onAction={() => navigate(getModuleEditUrl(module, "publish"))}
                   />
                 ))}
               </ModuleListCard>
@@ -338,10 +334,7 @@ export default function ContentManagerOverviewPage() {
                       <ModuleButton
                         variant="secondary"
                         size="xs"
-                        onClick={() => navigate(
-                          getModuleEditUrl(item.module, tab),
-                          getLearningModuleNavigationState(item.module),
-                        )}
+                        onClick={() => navigate(getModuleEditUrl(item.module, tab))}
                       >
                         Fix
                       </ModuleButton>
@@ -364,10 +357,7 @@ export default function ContentManagerOverviewPage() {
                     key={module.skillModuleId}
                     module={module}
                     actionLabel="Continue"
-                    onAction={() => navigate(
-                      getModuleEditUrl(module),
-                      getLearningModuleNavigationState(module),
-                    )}
+                    onAction={() => navigate(getModuleEditUrl(module))}
                   />
                 ))}
               </ModuleListCard>
@@ -384,10 +374,7 @@ export default function ContentManagerOverviewPage() {
                     key={module.skillModuleId}
                     module={module}
                     actionLabel="Preview"
-                    onAction={() => navigate(
-                      getModulePreviewUrl(module),
-                      getLearningModuleNavigationState(module),
-                    )}
+                    onAction={() => navigate(getModulePreviewUrl(module))}
                   >
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
                       <ModuleBadge tone={getStatusTone(module.status)}>

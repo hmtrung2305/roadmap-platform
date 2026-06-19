@@ -203,8 +203,8 @@ export default function App() {
             <Route path="/content/overview" element={<ContentManagerOverviewPage />} />
             <Route path="/content/learning-modules" element={<ContentManagerLearningModulesPage />} />
             <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
-            <Route path="/content/learning-modules/:moduleSlug/edit" element={<ContentManagerLearningModuleEditorPage />} />
-            <Route path="/content/learning-modules/:moduleSlug/preview" element={<ContentManagerLearningModulePreviewPage />} />
+            <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />
+            <Route path="/content/learning-modules/:moduleId/preview" element={<ContentManagerLearningModulePreviewPage />} />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
           </Route>
 

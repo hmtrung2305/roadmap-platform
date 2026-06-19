@@ -2,7 +2,6 @@ import axiosClient from "./axiosClient";
 
 const encode = (value) => encodeURIComponent(value);
 
-const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MODULE_DETAIL_CACHE_MS = 20000;
 const WORKSPACE_OVERVIEW_CACHE_MS = 60000;
@@ -45,17 +44,16 @@ function invalidateAuthoringCaches(moduleId) {
   invalidateWorkspaceOverviewCache();
 }
 
-export function getLearningModuleNavigationState(module) {
-  const moduleId = module?.skillModuleId || module?.SkillModuleId || null;
-  return moduleId ? { state: { moduleId } } : undefined;
-}
-
 export function getLearningModuleRouteSegment(module) {
-  return encode(module?.skillModuleId || module?.SkillModuleId || module?.slug || module?.Slug || "");
-}
+  if (typeof module === "string") return encode(module);
 
-function normalizeRouteSegment(value) {
-  return decodeURIComponent(String(value || "")).trim().toLowerCase();
+  return encode(
+    module?.skillModuleId
+      || module?.SkillModuleId
+      || module?.id
+      || module?.Id
+      || "",
+  );
 }
 
 export const learningModuleApi = {
@@ -214,39 +212,6 @@ export const contentManagerLearningModuleApi = {
         archived: response.data?.statusCounts?.archived ?? 0,
       },
     };
-  },
-
-  resolveModuleIdFromRoute: async (moduleSlugOrId, knownModuleId = null) => {
-    const routeValue = String(moduleSlugOrId || "").trim();
-
-    if (knownModuleId) {
-      return knownModuleId;
-    }
-
-    if (guidPattern.test(routeValue)) {
-      return routeValue;
-    }
-
-    const normalizedSlug = normalizeRouteSegment(routeValue);
-
-    if (!normalizedSlug) {
-      throw new Error("Learning module route is missing.");
-    }
-
-    const result = await contentManagerLearningModuleApi.getModules({
-      search: normalizedSlug,
-      pageSize: 100,
-    });
-
-    const module = result.items.find(
-      (item) => normalizeRouteSegment(item.slug || item.Slug) === normalizedSlug,
-    );
-
-    if (!module?.skillModuleId && !module?.SkillModuleId) {
-      throw new Error("Learning module was not found.");
-    }
-
-    return module.skillModuleId || module.SkillModuleId;
   },
 
   createModule: async (payload) => {
