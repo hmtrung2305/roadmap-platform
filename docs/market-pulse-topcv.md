@@ -65,7 +65,7 @@ Frontend /market-pulse
       -> MarketPulseOverviewDto
 ```
 
-The scheduled refresh path still uses `IMarketPulseService.RefreshAsync`. With `Sources[].Kind = JobsApi`, it persists the Jobs API feed into the existing Market Pulse tables.
+The scheduled refresh path still uses `IMarketPulseService.RefreshAsync`. With `Sources[].Kind = JobsApi`, it persists the Jobs API feed into the current Market Pulse tables and the Phase 2 analytical tables.
 
 ## Database
 
@@ -88,7 +88,16 @@ The persistent Job Market tables stay compatible with the current database:
 - `specialties`
 - `benefits`
 
-Phase 2 analytical tables are intentionally not included yet. The current Phase 1 contract work keeps storage scope to the existing snapshot tables.
+`database/migrations/015-market-pulse-analytical-schema.sql` adds the Phase 2 analytical layer:
+
+- `job_posting_version` stores one immutable content version per posting/content hash.
+- `job_posting_observation` records daily seen/new/updated/stale/expired observations.
+- `skill_taxonomy` stores normalized skill names and slugs.
+- `job_skill_mention` links postings to normalized skills for aggregate analysis.
+- `job_market_daily_snapshot` stores daily aggregate rows by all jobs, category, location, and skill.
+- `market_pulse_insight_snapshot` stores generated insight payloads such as the market overview summary.
+
+`database/schema.sql` is updated through migration 015. Apply migrations before running the scheduled refresh against an existing PostgreSQL database.
 
 ## Deployment Baseline
 

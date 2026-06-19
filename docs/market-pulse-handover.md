@@ -104,6 +104,24 @@ Endpoint legacy `/api/jobs`, `/api/jobs/active`, `/api/jobs/today` van ton tai n
 
 `.NET JobsApiClient` doc duoc ca envelope moi va response legacy, nen co the rollout Jobs API v1 ma khong lam hong moi truong cu.
 
+## Phase 2 analytical storage da ap dung
+
+Roadmap backend da co analytical schema va pipeline persist them du lieu phan tich khi scheduled refresh chay:
+
+- Moi job co version theo `content_hash` trong `job_posting_version`.
+- Moi ngay/source co observation `new`, `seen`, `updated`, `stale_unverified`, `expired` trong `job_posting_observation`.
+- Skill normalized duoc upsert vao `skill_taxonomy` va link voi job qua `job_skill_mention`.
+- Daily aggregate duoc rebuild vao `job_market_daily_snapshot` theo tong quan, category, location va skill.
+- Insight overview duoc luu trong `market_pulse_insight_snapshot` voi payload JSON.
+
+Migration can apply:
+
+```text
+database/migrations/015-market-pulse-analytical-schema.sql
+```
+
+`database/schema.sql` da duoc cap nhat toi migration 015. Khi them table/cot sau nay, luon them migration tuong ung truoc khi sua schema tong hop.
+
 ## Du lieu dau vao
 
 Jobs API v1 response du kien:
@@ -193,7 +211,14 @@ Migration nay them cac cot typed vao `job_posting`:
 
 `requirements`, `specialties`, `benefits` la `jsonb` array co check constraint. Entity scaffold hien tai map `jsonb` thanh `string`, nen service serialize list thanh JSON string de nhat quan voi cac entity scaffolded khac trong project.
 
-Phase 2 analytical schema chua duoc ap dung trong code hien tai. Khong co table `job_posting_version`, `job_skill_mention`, `job_market_daily_snapshot` trong schema hien tai.
+Phase 2 analytical schema da duoc ap dung trong code hien tai. Cac table moi:
+
+- `job_posting_version`
+- `job_posting_observation`
+- `skill_taxonomy`
+- `job_skill_mention`
+- `job_market_daily_snapshot`
+- `market_pulse_insight_snapshot`
 
 Scaffold lai sau khi apply migration:
 
