@@ -3,9 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
+using RoadmapPlatform.Application.Extensions;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Infrastructure.Extensions;
-using RoadmapPlatform.Application.Extensions;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -13,6 +13,7 @@ builder.Configuration
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+    .AddUserSecrets(typeof(Program).Assembly, optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
 builder.Services
