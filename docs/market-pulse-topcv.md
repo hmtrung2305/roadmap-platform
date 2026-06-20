@@ -11,6 +11,7 @@ Prefer the versioned Jobs API contract:
 - Job detail: `https://<jobs-api-domain>/api/v1/jobs/{id}`
 - Jobs API market overview: `https://<jobs-api-domain>/api/v1/market/overview`
 - Jobs API health summary: `https://<jobs-api-domain>/api/v1/ops/health-summary`
+- Jobs API crawl run history: `https://<jobs-api-domain>/api/v1/crawl-runs/latest`
 
 List endpoints return a stable envelope:
 
@@ -88,7 +89,7 @@ The persistent Job Market tables stay compatible with the current database:
 - `specialties`
 - `benefits`
 
-`database/migrations/015-market-pulse-analytical-schema.sql` adds the Phase 2 analytical layer:
+`database/migrations/016-market-pulse-analytical-schema.sql` adds the analytical layer:
 
 - `job_posting_version` stores one immutable content version per posting/content hash.
 - `job_posting_observation` records daily seen/new/updated/stale/expired observations.
@@ -97,7 +98,39 @@ The persistent Job Market tables stay compatible with the current database:
 - `job_market_daily_snapshot` stores daily aggregate rows by all jobs, category, location, and skill.
 - `market_pulse_insight_snapshot` stores generated insight payloads such as the market overview summary.
 
-`database/schema.sql` is updated through migration 015. Apply migrations before running the scheduled refresh against an existing PostgreSQL database.
+`database/schema.sql` is updated through migration 016. Apply migrations before running the scheduled refresh against an existing PostgreSQL database.
+
+## Jobs API Worker Reliability
+
+The Python Jobs API should run as separate roles in production:
+
+- `jobs-api-web`: serves FastAPI endpoints only.
+- `jobs-scheduler`: runs scheduled listing/detail crawler work.
+- `jobs-crawler-worker`: runs one-off listing/detail work for manual recovery.
+
+The web process should keep:
+
+```text
+CRAWLER_ENABLED=false
+CRAWLER_RUN_IN_WEB_PROCESS=false
+CRAWLER_RUN_ON_STARTUP=false
+```
+
+The scheduler process should set:
+
+```text
+CRAWLER_ENABLED=true
+CRAWLER_RUN_ON_STARTUP=false
+```
+
+Before investigating missing Market Pulse data, check Jobs API operations:
+
+```text
+GET /api/v1/ops/health-summary
+GET /api/v1/crawl-runs/latest?pipeline=listing&limit=10
+```
+
+Both endpoints require `X-API-Key`.
 
 ## Deployment Baseline
 

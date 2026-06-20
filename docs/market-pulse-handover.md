@@ -117,10 +117,36 @@ Roadmap backend da co analytical schema va pipeline persist them du lieu phan ti
 Migration can apply:
 
 ```text
-database/migrations/015-market-pulse-analytical-schema.sql
+database/migrations/016-market-pulse-analytical-schema.sql
 ```
 
-`database/schema.sql` da duoc cap nhat toi migration 015. Khi them table/cot sau nay, luon them migration tuong ung truoc khi sua schema tong hop.
+`database/schema.sql` da duoc cap nhat toi migration 016. Khi them table/cot sau nay, luon them migration tuong ung truoc khi sua schema tong hop.
+
+## Phase 3 crawler reliability da ap dung
+
+Jobs API khong nen chay crawler nang trong web process production. Runtime duoc tach theo vai tro:
+
+- `jobs-api-web`: chi serve FastAPI.
+- `jobs-scheduler`: chay scheduled listing/detail.
+- `jobs-crawler-worker`: chay one-shot listing/detail khi can recovery.
+
+Run status nen doc theo vocabulary moi:
+
+- `success`
+- `partial_success`
+- `blocked`
+- `layout_changed`
+- `empty_protected`
+- `failed`
+
+Khi UI Market Pulse khong co du lieu, kiem tra Jobs API truoc:
+
+```http
+GET /api/v1/ops/health-summary
+GET /api/v1/crawl-runs/latest?pipeline=listing&limit=10
+```
+
+Hai endpoint nay can header `X-API-Key`. Neu deploy chi dung GitHub Actions/.NET `MarketPulseJob` de ingest, Web API cua Roadmap van nen giu `MarketPulse:Enabled=false` de tranh co hai scheduler cung ghi DB.
 
 ## Du lieu dau vao
 
