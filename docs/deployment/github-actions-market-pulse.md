@@ -70,7 +70,7 @@ Do not commit real connection strings.
 Before enabling the workflow, apply database migrations through:
 
 ```text
-database/migrations/015-market-pulse-analytical-schema.sql
+database/migrations/016-market-pulse-analytical-schema.sql
 ```
 
 The refresh job writes `job_posting`, `job_posting_version`, `job_posting_observation`, `skill_taxonomy`, `job_skill_mention`, `job_market_daily_snapshot`, and `market_pulse_insight_snapshot`.
@@ -166,10 +166,12 @@ NpgsqlException / PostgresException / relation does not exist
 ```
 
 Check the connection string and verify that the Market Pulse migration has been applied.
-For Phase 2, verify that migration `015-market-pulse-analytical-schema.sql` has also been applied.
+For the analytical layer, verify that migration `016-market-pulse-analytical-schema.sql` has also been applied.
 
 Jobs API returns zero jobs:
 
 - Verify `MARKET_PULSE_ACTIVE_JOBS_API_URL`.
 - Verify the Jobs API host is reachable from GitHub Actions.
+- Check `GET /api/v1/ops/health-summary` on the Jobs API with `X-API-Key`.
+- Check `GET /api/v1/crawl-runs/latest?pipeline=listing&limit=10` on the Jobs API with `X-API-Key`.
 - Check workflow logs for HTTP status warnings from `JobsApiClient`.
