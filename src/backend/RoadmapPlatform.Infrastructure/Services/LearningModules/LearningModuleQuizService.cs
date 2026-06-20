@@ -16,6 +16,26 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
         _context = context;
     }
 
+
+    public async Task<LearningModuleQuizDto?> GetQuizAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureOwnedModuleExistsAsync(
+            contentManagerUserId,
+            skillModuleId,
+            cancellationToken);
+
+        var quiz = await _context.SkillModuleQuizzes
+            .AsNoTracking()
+            .Include(item => item.SkillModuleQuizQuestions)
+                .ThenInclude(question => question.SkillModuleQuizOptions)
+            .FirstOrDefaultAsync(item => item.SkillModuleId == skillModuleId, cancellationToken);
+
+        return quiz == null ? null : MapQuiz(quiz);
+    }
+
     public async Task<LearningModuleQuizDto> UpsertQuizAsync(
         Guid contentManagerUserId,
         Guid skillModuleId,
@@ -348,6 +368,24 @@ public sealed class LearningModuleQuizService : ILearningModuleQuizService
         }
 
         return module;
+    }
+
+    private async Task EnsureOwnedModuleExistsAsync(
+        Guid contentManagerUserId,
+        Guid skillModuleId,
+        CancellationToken cancellationToken)
+    {
+        var exists = await _context.SkillModules
+            .AsNoTracking()
+            .AnyAsync(item =>
+                item.SkillModuleId == skillModuleId
+                && item.CreatedByUserId == contentManagerUserId,
+                cancellationToken);
+
+        if (!exists)
+        {
+            throw new NotFoundException("Learning module was not found.");
+        }
     }
 
     private async Task<int> GetNextQuestionOrderIndexAsync(

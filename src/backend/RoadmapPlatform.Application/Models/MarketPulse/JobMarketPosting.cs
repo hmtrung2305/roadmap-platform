@@ -4,6 +4,10 @@ public sealed class JobMarketPosting
 {
     public string? Id { get; init; }
 
+    public string? SourceJobId { get; init; }
+
+    public string? Source { get; init; }
+
     public string? Title { get; init; }
 
     public string? Company { get; init; }
@@ -31,4 +35,6 @@ public sealed class JobMarketPosting
     public IReadOnlyList<string> Specialties { get; init; } = [];
 
     public IReadOnlyList<string> Benefits { get; init; } = [];
+
+    public IReadOnlyList<string> Skills { get; init; } = [];
 }

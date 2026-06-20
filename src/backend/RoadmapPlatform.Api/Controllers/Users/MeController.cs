@@ -15,11 +15,16 @@ public class MeController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IPortfolioService _portfolioService;
+    private readonly IAccountProfileService _accountProfileService;
 
-    public MeController(IUserService userService, IPortfolioService portfolioService)
+    public MeController(
+        IUserService userService,
+        IPortfolioService portfolioService,
+        IAccountProfileService accountProfileService)
     {
         _userService = userService;
         _portfolioService = portfolioService;
+        _accountProfileService = accountProfileService;
     }
 
     [HttpGet]
@@ -51,6 +56,27 @@ public class MeController : ControllerBase
         await _userService.DeleteAccountAsync(userId);
 
         return NoContent();
+    }
+
+
+    [HttpGet("account-profile")]
+    [RequirePermission(PermissionConstant.ACCOUNT_VIEW_SELF)]
+    public async Task<IActionResult> GetAccountProfile()
+    {
+        var userId = GetCurrentUserId();
+        var result = await _accountProfileService.GetAccountProfileAsync(userId);
+
+        return Ok(result);
+    }
+
+    [HttpPatch("account-profile")]
+    [RequirePermission(PermissionConstant.ACCOUNT_UPDATE_SELF)]
+    public async Task<IActionResult> UpdateAccountProfile(UpdateAccountProfileRequestDto request)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _accountProfileService.UpdateAccountProfileAsync(userId, request);
+
+        return Ok(result);
     }
 
     [HttpGet("profile")]

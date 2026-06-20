@@ -12,7 +12,7 @@ Flow:
 GitHub Actions schedule / manual trigger
   -> dotnet run RoadmapPlatform.MarketPulseJob
   -> JobsApi source adapter
-  -> Upsert Supabase/PostgreSQL
+  -> Upsert Supabase/PostgreSQL current + analytical tables
   -> Web API reads live Jobs API or DB fallback
 ```
 
@@ -67,7 +67,15 @@ Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;
 
 Do not commit real connection strings.
 
-## Step 3: Optional Repository Variables
+Before enabling the workflow, apply database migrations through:
+
+```text
+database/migrations/016-market-pulse-analytical-schema.sql
+```
+
+The refresh job writes `job_posting`, `job_posting_version`, `job_posting_observation`, `skill_taxonomy`, `job_skill_mention`, `job_market_daily_snapshot`, and `market_pulse_insight_snapshot`.
+
+## Step 3: Required Repository Variables
 
 Create variables under:
 
@@ -81,11 +89,26 @@ Supported variables:
 MARKET_PULSE_ACTIVE_JOBS_API_URL
 MARKET_PULSE_TODAY_JOBS_API_URL
 MARKET_PULSE_JOBS_API_BASE_URL
-MARKET_PULSE_MAX_POSTINGS
-MARKET_PULSE_REQUEST_TIMEOUT_SECONDS
 ```
 
-Defaults are already defined in the workflow and `appsettings.json`.
+Example values:
+
+```text
+MARKET_PULSE_ACTIVE_JOBS_API_URL=https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc
+MARKET_PULSE_TODAY_JOBS_API_URL=https://<jobs-api-domain>/api/v1/jobs/today
+MARKET_PULSE_JOBS_API_BASE_URL=https://<jobs-api-domain>
+```
+
+The workflow fails clearly when any required URL is missing. It does not fall back to a hardcoded localhost or tunnel URL.
+
+Optional variables:
+
+```text
+MARKET_PULSE_MAX_POSTINGS
+MARKET_PULSE_JOBS_API_PAGE_SIZE
+MARKET_PULSE_JOBS_API_MAX_PAGES
+MARKET_PULSE_REQUEST_TIMEOUT_SECONDS
+```
 
 ## Step 4: Manual Test Run
 
@@ -124,8 +147,9 @@ GET /api/market-pulse/overview
 - Scheduled workflows only run when the workflow file is on the default branch.
 - GitHub may delay scheduled workflows during high load.
 - Public repositories can use standard GitHub-hosted runners without extra setup.
-- If the ngrok URL changes, update the repository variables instead of editing source code.
+- Use a stable Jobs API domain for production. Keep one-off tunnel URLs for local demos only.
 - `MaxPostingsPerSource` caps how many Jobs API postings are persisted by the scheduled refresh.
+- Prefer `MARKET_PULSE_ACTIVE_JOBS_API_URL=https://<crawler-host>/api/v1/jobs?active=true&sort=post_date_desc` so the adapter uses the versioned envelope contract and pagination.
 
 ## Quick Debug
 
@@ -142,9 +166,12 @@ NpgsqlException / PostgresException / relation does not exist
 ```
 
 Check the connection string and verify that the Market Pulse migration has been applied.
+For the analytical layer, verify that migration `016-market-pulse-analytical-schema.sql` has also been applied.
 
 Jobs API returns zero jobs:
 
 - Verify `MARKET_PULSE_ACTIVE_JOBS_API_URL`.
-- Verify the ngrok tunnel is alive.
+- Verify the Jobs API host is reachable from GitHub Actions.
+- Check `GET /api/v1/ops/health-summary` on the Jobs API with `X-API-Key`.
+- Check `GET /api/v1/crawl-runs/latest?pipeline=listing&limit=10` on the Jobs API with `X-API-Key`.
 - Check workflow logs for HTTP status warnings from `JobsApiClient`.

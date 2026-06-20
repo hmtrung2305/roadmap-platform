@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
@@ -40,78 +41,66 @@ public sealed class MarketPulseService(
         {
             var snapshot = await jobMarketSnapshotProvider.GetCurrentSnapshotAsync(cancellationToken);
 
-            return overviewBuilder.Build(
-                snapshot,
-                new JobMarketOverviewOptions
-                {
-                    Days = normalizedDays,
-                    SelectedSkillSlugs = skillSlugs,
-                    TrackedKeywordSpecs = options.Value.TrackedKeywords,
-                    ReferenceDate = DateOnly.FromDateTime(DateTime.UtcNow)
-                });
+            if (HasAnyLiveJobs(snapshot))
+            {
+                return overviewBuilder.Build(
+                    snapshot,
+                    new JobMarketOverviewOptions
+                    {
+                        Days = normalizedDays,
+                        SelectedSkillSlugs = skillSlugs,
+                        TrackedKeywordSpecs = options.Value.TrackedKeywords,
+                        ReferenceDate = DateOnly.FromDateTime(DateTime.UtcNow)
+                    });
+            }
         }
 
-        var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-(normalizedDays - 1)));
-        var selectedSlugs = skillSlugs
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim().ToLowerInvariant())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return await BuildOverviewFromDatabaseAsync(
+            normalizedDays,
+            skillSlugs,
+            cancellationToken);
+    }
 
-        var snapshots = await dbContext.Set<SkillTrendSnapshot>()
-            .AsNoTracking()
-            .Where(x => x.SourceName == AggregateSourceName && x.SnapshotDate >= cutoffDate)
-            .OrderBy(x => x.SnapshotDate)
-            .ThenBy(x => x.SkillName)
-            .ToListAsync(cancellationToken);
+    private static bool HasLiveJobsApi(MarketPulseSettings settings)
+    {
+        return !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl) &&
+            !string.IsNullOrWhiteSpace(settings.TodayJobsApiUrl);
+    }
 
-        var topSlugs = selectedSlugs.Count > 0
-            ? selectedSlugs
-            : snapshots
-                .GroupBy(x => x.SkillSlug)
-                .Select(g => g.OrderByDescending(x => x.SnapshotDate).First())
-                .OrderByDescending(x => x.MentionCount)
-                .Take(6)
-                .Select(x => x.SkillSlug)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    private static bool HasAnyLiveJobs(JobMarketSnapshot snapshot)
+    {
+        return snapshot.ActiveTotal > 0 ||
+            snapshot.TodayTotal > 0 ||
+            snapshot.ActiveJobs.Count > 0 ||
+            snapshot.TodayJobs.Count > 0;
+    }
 
-        var visibleSlugs = selectedSlugs.Count > 0 ? selectedSlugs : topSlugs;
-        var visibleSnapshots = snapshots
-            .Where(x => visibleSlugs.Count == 0 || visibleSlugs.Contains(x.SkillSlug))
-            .ToList();
+    private async Task<MarketPulseOverviewDto> BuildOverviewFromDatabaseAsync(
+        int normalizedDays,
+        IReadOnlyCollection<string> skillSlugs,
+        CancellationToken cancellationToken)
+    {
+        var settings = options.Value;
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+        var todayStart = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var tomorrowStart = todayStart.AddDays(1);
+        var activeLookbackDays = Math.Clamp(settings.ActivePostingLookbackDays, 1, 90);
+        var activeCutoff = now.AddDays(-activeLookbackDays);
+        var maxPostings = Math.Clamp(Math.Max(settings.MaxPostingsPerSource, 500), 100, 5_000);
 
-        var latestDate = snapshots.Count > 0
-            ? snapshots.Max(x => x.SnapshotDate).ToDateTime(TimeOnly.MinValue)
-            : (DateTime?)null;
-
-        var skills = snapshots
-            .GroupBy(x => x.SkillSlug)
-            .Select(g =>
-            {
-                var latest = g.OrderByDescending(x => x.SnapshotDate).First();
-                var previous = g
-                    .Where(x => x.SnapshotDate < latest.SnapshotDate)
-                    .OrderByDescending(x => x.SnapshotDate)
-                    .FirstOrDefault();
-
-                return new MarketSkillSummaryDto
-                {
-                    SkillName = latest.SkillName,
-                    SkillSlug = latest.SkillSlug,
-                    MentionCount = latest.MentionCount,
-                    PostingCount = latest.PostingCount,
-                    GrowthPercent = CalculateGrowth(latest.MentionCount, previous?.MentionCount ?? 0)
-                };
-            })
-            .OrderByDescending(x => x.MentionCount)
-            .ThenBy(x => x.SkillName)
-            .ToList();
-
-        var activeLookbackDays = Math.Clamp(options.Value.ActivePostingLookbackDays, 1, 90);
-        var activeCutoff = DateTime.UtcNow.AddDays(-activeLookbackDays);
-
-        var activePostings = await dbContext.Set<JobPosting>()
+        var activePostingCount = await dbContext.Set<JobPosting>()
             .AsNoTracking()
             .CountAsync(x => x.IsActive && x.LastSeenAt >= activeCutoff, cancellationToken);
+
+        var todayPostingCount = await dbContext.Set<JobPosting>()
+            .AsNoTracking()
+            .CountAsync(x =>
+                x.IsActive &&
+                x.PublishedAt.HasValue &&
+                x.PublishedAt.Value >= todayStart &&
+                x.PublishedAt.Value < tomorrowStart,
+                cancellationToken);
 
         var stalePostings = await dbContext.Set<JobPosting>()
             .AsNoTracking()
@@ -121,37 +110,65 @@ public sealed class MarketPulseService(
             .AsNoTracking()
             .CountAsync(x => x.LifecycleStatus == LifecycleExpired, cancellationToken);
 
-        var sourceCount = await dbContext.Set<JobPosting>()
+        var postings = await dbContext.Set<JobPosting>()
             .AsNoTracking()
+            .Include(x => x.JobPortalSource)
             .Where(x => x.IsActive && x.LastSeenAt >= activeCutoff)
-            .Select(x => x.JobPortalSourceId)
-            .Distinct()
-            .CountAsync(cancellationToken);
+            .OrderByDescending(x => x.PublishedAt ?? x.LastSeenAt)
+            .ThenByDescending(x => x.UpdatedAt)
+            .Take(maxPostings)
+            .ToListAsync(cancellationToken);
 
-        return new MarketPulseOverviewDto
-        {
-            LastUpdatedAt = latestDate,
-            TotalPostings = activePostings,
-            ActivePostings = activePostings,
-            StalePostings = stalePostings,
-            ExpiredPostings = expiredPostings,
-            SourceCount = sourceCount,
-            Skills = skills,
-            TrendPoints = visibleSnapshots.Select(x => new MarketTrendPointDto
+        var activeJobs = postings
+            .Select(ToJobMarketPosting)
+            .ToList();
+        var todayJobs = activeJobs
+            .Where(x => x.PostedOn == today)
+            .ToList();
+
+        var overview = overviewBuilder.Build(
+            new JobMarketSnapshot
             {
-                Date = x.SnapshotDate.ToDateTime(TimeOnly.MinValue),
-                SkillName = x.SkillName,
-                SkillSlug = x.SkillSlug,
-                MentionCount = x.MentionCount,
-                PostingCount = x.PostingCount
-            }).ToList()
-        };
+                ActiveTotal = activePostingCount,
+                TodayTotal = todayPostingCount,
+                ActiveJobs = activeJobs,
+                TodayJobs = todayJobs
+            },
+            new JobMarketOverviewOptions
+            {
+                Days = normalizedDays,
+                SelectedSkillSlugs = skillSlugs,
+                TrackedKeywordSpecs = settings.TrackedKeywords,
+                ReferenceDate = today
+            });
+
+        overview.StalePostings = stalePostings;
+        overview.ExpiredPostings = expiredPostings;
+        return overview;
     }
 
-    private static bool HasLiveJobsApi(MarketPulseSettings settings)
+    private static JobMarketPosting ToJobMarketPosting(JobPosting posting)
     {
-        return !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl) &&
-            !string.IsNullOrWhiteSpace(settings.TodayJobsApiUrl);
+        return new JobMarketPosting
+        {
+            Id = posting.ExternalId,
+            SourceJobId = posting.SourceJobId,
+            Source = posting.JobPortalSource?.Name,
+            Title = posting.Title,
+            Company = posting.CompanyName,
+            Category = posting.Category,
+            Location = posting.Location,
+            Salary = posting.Salary,
+            Experience = posting.Experience,
+            PostedOn = posting.PublishedAt.HasValue ? DateOnly.FromDateTime(posting.PublishedAt.Value) : null,
+            PostedOnText = posting.PostDateText,
+            UpdatedAt = posting.SourceUpdatedAt ?? posting.UpdatedAt,
+            Url = posting.Url,
+            IsActive = posting.IsActive,
+            Requirements = DeserializeStringList(posting.Requirements),
+            Specialties = DeserializeStringList(posting.Specialties),
+            Benefits = DeserializeStringList(posting.Benefits)
+        };
     }
     
     public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
@@ -193,30 +210,46 @@ public sealed class MarketPulseService(
 
             var source = await UpsertSourceAsync(sourceGroup.Key, sourceSettings, now, cancellationToken);
             var uniquePostings = sourceGroup
-                .GroupBy(x => BuildExternalId(source.Name, x.Url), StringComparer.OrdinalIgnoreCase)
+                .GroupBy(x => BuildExternalId(source.Name, x), StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.First())
                 .ToList();
-            var externalIds = uniquePostings
-                .Select(x => BuildExternalId(source.Name, x.Url))
+            var lookupExternalIds = uniquePostings
+                .SelectMany(x => new[]
+                {
+                    BuildExternalId(source.Name, x),
+                    BuildLegacyExternalId(source.Name, x.Url)
+                })
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var existingPostings = await dbContext.Set<JobPosting>()
-                .Where(x => x.JobPortalSourceId == source.JobPortalSourceId && externalIds.Contains(x.ExternalId))
+                .Where(x => x.JobPortalSourceId == source.JobPortalSourceId && lookupExternalIds.Contains(x.ExternalId))
                 .ToDictionaryAsync(x => x.ExternalId, cancellationToken);
 
-            var observations = new List<JobPostingObservation>();
+            var observations = new List<PostingObservationItem>();
 
             foreach (var rawPosting in uniquePostings)
             {
-                var externalId = BuildExternalId(source.Name, rawPosting.Url);
+                var externalId = BuildExternalId(source.Name, rawPosting);
                 var publishedAt = NormalizeUtc(rawPosting.PublishedAt);
                 var expiresAt = NormalizeUtc(rawPosting.ExpiresAt);
                 var contentHash = BuildContentHash(rawPosting, expiresAt);
                 var isExpired = expiresAt.HasValue && DateOnly.FromDateTime(expiresAt.Value) < snapshotDate;
 
-                if (existingPostings.TryGetValue(externalId, out var posting))
+                if (!existingPostings.TryGetValue(externalId, out var posting))
+                {
+                    var legacyExternalId = BuildLegacyExternalId(source.Name, rawPosting.Url);
+                    existingPostings.TryGetValue(legacyExternalId, out posting);
+                }
+
+                if (posting is not null)
                 {
                     var changed = !string.Equals(posting.ContentHash, contentHash, StringComparison.OrdinalIgnoreCase);
+
+                    if (!existingPostings.ContainsKey(externalId))
+                    {
+                        posting.ExternalId = externalId;
+                        existingPostings[externalId] = posting;
+                    }
 
                     posting.Title = TrimTo(rawPosting.Title, 250) ?? "Untitled IT job";
                     posting.CompanyName = TrimTo(rawPosting.CompanyName, 160);
@@ -253,7 +286,10 @@ public sealed class MarketPulseService(
                         updatedPostings++;
                     }
 
-                    observations.Add(new JobPostingObservation(
+                    await SavePostingVersionAsync(posting, rawPosting.Skills, contentHash, now, cancellationToken);
+                    await SyncSkillMentionsAsync(posting, source.Name, rawPosting.Skills, snapshotDate, now, cancellationToken);
+
+                    observations.Add(new PostingObservationItem(
                         posting,
                         changed ? ObservationUpdated : ObservationSeen,
                         contentHash));
@@ -299,7 +335,9 @@ public sealed class MarketPulseService(
                 };
 
                 dbContext.Set<JobPosting>().Add(newPosting);
-                observations.Add(new JobPostingObservation(newPosting, ObservationNew, contentHash));
+                await SavePostingVersionAsync(newPosting, rawPosting.Skills, contentHash, now, cancellationToken);
+                await SyncSkillMentionsAsync(newPosting, source.Name, rawPosting.Skills, snapshotDate, now, cancellationToken);
+                observations.Add(new PostingObservationItem(newPosting, ObservationNew, contentHash));
                 savedPostings++;
                 newPostings++;
             }
@@ -308,7 +346,14 @@ public sealed class MarketPulseService(
 
             if (uniquePostings.Count >= minimumLifecyclePostings)
             {
-                await MarkMissingPostingsAsync(source.JobPortalSourceId, externalIds, snapshotDate, now, missingThreshold, cancellationToken);
+                await MarkMissingPostingsAsync(
+                    source.JobPortalSourceId,
+                    source.Name,
+                    lookupExternalIds,
+                    snapshotDate,
+                    now,
+                    missingThreshold,
+                    cancellationToken);
             }
         }
 
@@ -335,6 +380,10 @@ public sealed class MarketPulseService(
         var definitions = keywordAnalyzer.BuildDefinitions(settings.TrackedKeywords);
         var frequencies = keywordAnalyzer.Analyze(documents, definitions);
         snapshotCount = await SaveSnapshotsAsync(snapshotDate, frequencies, cancellationToken);
+        await SaveDailyMarketSnapshotsAsync(snapshotDate, now, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveOverviewInsightAsync(snapshotDate, now, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         var result = new MarketPulseRefreshResultDto
         {
@@ -394,7 +443,7 @@ public sealed class MarketPulseService(
     private async Task UpsertDailyObservationsAsync(
         DateOnly snapshotDate,
         string sourceName,
-        IReadOnlyCollection<JobPostingObservation> observations,
+        IReadOnlyCollection<PostingObservationItem> observations,
         DateTime now,
         CancellationToken cancellationToken)
     {
@@ -419,6 +468,15 @@ public sealed class MarketPulseService(
                 snapshot.ObservationStatus = observation.Status;
                 snapshot.ContentHash = observation.ContentHash;
                 snapshot.ObservedAt = now;
+                await UpsertPostingObservationAsync(
+                    observation.Posting,
+                    snapshotDate,
+                    sourceName,
+                    observation.Status,
+                    observation.ContentHash,
+                    observation.Posting.IsActive,
+                    now,
+                    cancellationToken);
                 continue;
             }
 
@@ -433,11 +491,185 @@ public sealed class MarketPulseService(
                 ObservedAt = now,
                 CreatedAt = now
             });
+            await UpsertPostingObservationAsync(
+                observation.Posting,
+                snapshotDate,
+                sourceName,
+                observation.Status,
+                observation.ContentHash,
+                observation.Posting.IsActive,
+                now,
+                cancellationToken);
         }
+    }
+
+    private async Task UpsertPostingObservationAsync(
+        JobPosting posting,
+        DateOnly snapshotDate,
+        string sourceName,
+        string status,
+        string contentHash,
+        bool isActive,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await dbContext.Set<JobPostingObservation>()
+            .FirstOrDefaultAsync(x =>
+                x.JobPostingId == posting.JobPostingId &&
+                x.SnapshotDate == snapshotDate &&
+                x.ObservationStatus == status,
+                cancellationToken);
+
+        if (existing is null)
+        {
+            dbContext.Set<JobPostingObservation>().Add(new JobPostingObservation
+            {
+                JobPostingObservationId = Guid.NewGuid(),
+                JobPostingId = posting.JobPostingId,
+                SnapshotDate = snapshotDate,
+                SourceName = sourceName,
+                ObservationStatus = status,
+                ContentHash = contentHash,
+                IsActive = isActive,
+                ObservedAt = now,
+                CreatedAt = now
+            });
+            return;
+        }
+
+        existing.SourceName = sourceName;
+        existing.ContentHash = contentHash;
+        existing.IsActive = isActive;
+        existing.ObservedAt = now;
+    }
+
+    private async Task SavePostingVersionAsync(
+        JobPosting posting,
+        IEnumerable<string>? skills,
+        string contentHash,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var exists = await dbContext.Set<JobPostingVersion>()
+            .AnyAsync(x =>
+                x.JobPostingId == posting.JobPostingId &&
+                x.ContentHash == contentHash,
+                cancellationToken);
+
+        if (exists)
+        {
+            return;
+        }
+
+        dbContext.Set<JobPostingVersion>().Add(new JobPostingVersion
+        {
+            JobPostingVersionId = Guid.NewGuid(),
+            JobPostingId = posting.JobPostingId,
+            ContentHash = contentHash,
+            Title = posting.Title,
+            CompanyName = posting.CompanyName,
+            Category = posting.Category,
+            Location = posting.Location,
+            Salary = posting.Salary,
+            Experience = posting.Experience,
+            Description = posting.Description,
+            Requirements = posting.Requirements,
+            Specialties = posting.Specialties,
+            Benefits = posting.Benefits,
+            Skills = SerializeStringList(skills),
+            ObservedAt = now,
+            CreatedAt = now
+        });
+    }
+
+    private async Task SyncSkillMentionsAsync(
+        JobPosting posting,
+        string sourceName,
+        IEnumerable<string>? skills,
+        DateOnly snapshotDate,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var cleanSkills = CleanStringList(skills);
+
+        var existingMentions = await dbContext.Set<JobSkillMention>()
+            .Where(x => x.JobPostingId == posting.JobPostingId)
+            .ToListAsync(cancellationToken);
+
+        if (existingMentions.Count > 0)
+        {
+            dbContext.Set<JobSkillMention>().RemoveRange(existingMentions);
+        }
+
+        foreach (var skill in cleanSkills)
+        {
+            var slug = Slugify(skill);
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                continue;
+            }
+
+            var taxonomy = await UpsertSkillTaxonomyAsync(skill, slug, now, cancellationToken);
+            dbContext.Set<JobSkillMention>().Add(new JobSkillMention
+            {
+                JobSkillMentionId = Guid.NewGuid(),
+                JobPostingId = posting.JobPostingId,
+                SkillTaxonomyId = taxonomy.SkillTaxonomyId,
+                SourceName = sourceName,
+                SkillName = taxonomy.SkillName,
+                SkillSlug = taxonomy.SkillSlug,
+                MentionSource = "normalized",
+                SnapshotDate = snapshotDate,
+                ObservedAt = now,
+                CreatedAt = now
+            });
+        }
+    }
+
+    private async Task<SkillTaxonomy> UpsertSkillTaxonomyAsync(
+        string skillName,
+        string skillSlug,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var localTaxonomy = dbContext.Set<SkillTaxonomy>()
+            .Local
+            .FirstOrDefault(x => string.Equals(x.SkillSlug, skillSlug, StringComparison.OrdinalIgnoreCase));
+        if (localTaxonomy is not null)
+        {
+            return localTaxonomy;
+        }
+
+        var taxonomy = await dbContext.Set<SkillTaxonomy>()
+            .FirstOrDefaultAsync(x => x.SkillSlug == skillSlug, cancellationToken);
+
+        if (taxonomy is not null)
+        {
+            taxonomy.SkillName = string.IsNullOrWhiteSpace(taxonomy.SkillName)
+                ? skillName
+                : taxonomy.SkillName;
+            taxonomy.IsActive = true;
+            taxonomy.UpdatedAt = now;
+            return taxonomy;
+        }
+
+        taxonomy = new SkillTaxonomy
+        {
+            SkillTaxonomyId = Guid.NewGuid(),
+            SkillName = skillName,
+            SkillSlug = skillSlug,
+            Aliases = SerializeStringList(new[] { skillName }),
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        dbContext.Set<SkillTaxonomy>().Add(taxonomy);
+        return taxonomy;
     }
 
     private async Task MarkMissingPostingsAsync(
         Guid sourceId,
+        string sourceName,
         IReadOnlySet<string> observedExternalIds,
         DateOnly snapshotDate,
         DateTime now,
@@ -465,15 +697,195 @@ public sealed class MarketPulseService(
                 posting.IsActive = false;
                 posting.LifecycleStatus = LifecycleExpired;
                 posting.ClosedDetectedAt ??= now;
+                await UpsertPostingObservationAsync(
+                    posting,
+                    snapshotDate,
+                    sourceName,
+                    LifecycleExpired,
+                    posting.ContentHash,
+                    false,
+                    now,
+                    cancellationToken);
             }
             else if (posting.MissingScanCount >= missingThreshold)
             {
                 posting.IsActive = false;
                 posting.LifecycleStatus = LifecycleStaleUnverified;
+                await UpsertPostingObservationAsync(
+                    posting,
+                    snapshotDate,
+                    sourceName,
+                    LifecycleStaleUnverified,
+                    posting.ContentHash,
+                    false,
+                    now,
+                    cancellationToken);
             }
 
             posting.UpdatedAt = now;
         }
+    }
+
+    private async Task SaveDailyMarketSnapshotsAsync(
+        DateOnly snapshotDate,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var activePostings = await dbContext.Set<JobPosting>()
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .ToListAsync(cancellationToken);
+
+        var mentions = await dbContext.Set<JobSkillMention>()
+            .AsNoTracking()
+            .Where(x => x.SnapshotDate == snapshotDate)
+            .ToListAsync(cancellationToken);
+
+        var existingRows = await dbContext.Set<JobMarketDailySnapshot>()
+            .Where(x => x.SnapshotDate == snapshotDate && x.SourceName == AggregateSourceName)
+            .ToListAsync(cancellationToken);
+
+        if (existingRows.Count > 0)
+        {
+            dbContext.Set<JobMarketDailySnapshot>().RemoveRange(existingRows);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var rows = new List<JobMarketDailySnapshot>();
+        AddDailySnapshotRow(rows, snapshotDate, now, activePostings);
+
+        foreach (var group in activePostings.GroupBy(x => x.Category ?? "Other"))
+        {
+            AddDailySnapshotRow(rows, snapshotDate, now, group.ToList(), category: group.Key);
+        }
+
+        foreach (var group in activePostings.GroupBy(x => x.Location ?? "Unknown"))
+        {
+            AddDailySnapshotRow(rows, snapshotDate, now, group.ToList(), location: group.Key);
+        }
+
+        var postingsById = activePostings.ToDictionary(x => x.JobPostingId);
+        foreach (var group in mentions.GroupBy(x => new { x.SkillSlug, x.SkillName }))
+        {
+            var postings = group
+                .Select(x => postingsById.TryGetValue(x.JobPostingId, out var posting) ? posting : null)
+                .OfType<JobPosting>()
+                .DistinctBy(x => x.JobPostingId)
+                .ToList();
+
+            AddDailySnapshotRow(
+                rows,
+                snapshotDate,
+                now,
+                postings,
+                skillSlug: group.Key.SkillSlug,
+                skillName: group.Key.SkillName,
+                mentionCount: group.Count());
+        }
+
+        if (rows.Count > 0)
+        {
+            dbContext.Set<JobMarketDailySnapshot>().AddRange(rows);
+        }
+    }
+
+    private static void AddDailySnapshotRow(
+        ICollection<JobMarketDailySnapshot> rows,
+        DateOnly snapshotDate,
+        DateTime now,
+        IReadOnlyCollection<JobPosting> postings,
+        string? category = null,
+        string? location = null,
+        string? skillSlug = null,
+        string? skillName = null,
+        int mentionCount = 0)
+    {
+        var postingsWithSalary = postings
+            .Where(x => !string.IsNullOrWhiteSpace(x.Salary))
+            .ToList();
+
+        rows.Add(new JobMarketDailySnapshot
+        {
+            JobMarketDailySnapshotId = Guid.NewGuid(),
+            SnapshotDate = snapshotDate,
+            SourceName = AggregateSourceName,
+            Category = category,
+            Location = location,
+            SkillSlug = skillSlug,
+            SkillName = skillName,
+            ActiveJobCount = postings.Count(x => x.IsActive),
+            NewJobCount = postings.Count(x =>
+                x.PublishedAt.HasValue &&
+                DateOnly.FromDateTime(x.PublishedAt.Value) == snapshotDate),
+            ObservedJobCount = postings.Count,
+            MentionCount = mentionCount,
+            SalarySampleCount = postingsWithSalary.Count,
+            SampleSize = postings.Count,
+            Confidence = ConfidenceForSample(postings.Count),
+            GeneratedAt = now,
+            CreatedAt = now
+        });
+    }
+
+    private async Task SaveOverviewInsightAsync(
+        DateOnly snapshotDate,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var overview = await dbContext.Set<JobMarketDailySnapshot>()
+            .FirstOrDefaultAsync(x =>
+                x.SnapshotDate == snapshotDate &&
+                x.SourceName == AggregateSourceName &&
+                x.Category == null &&
+                x.Location == null &&
+                x.SkillSlug == null,
+                cancellationToken);
+
+        if (overview is null)
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            overview.ActiveJobCount,
+            overview.NewJobCount,
+            overview.ObservedJobCount,
+            overview.SampleSize,
+            overview.Confidence,
+            GeneratedAt = now
+        });
+
+        var existing = await dbContext.Set<MarketPulseInsightSnapshot>()
+            .FirstOrDefaultAsync(x =>
+                x.SnapshotDate == snapshotDate &&
+                x.SourceName == AggregateSourceName &&
+                x.InsightKey == "market-overview",
+                cancellationToken);
+
+        if (existing is null)
+        {
+            dbContext.Set<MarketPulseInsightSnapshot>().Add(new MarketPulseInsightSnapshot
+            {
+                MarketPulseInsightSnapshotId = Guid.NewGuid(),
+                SnapshotDate = snapshotDate,
+                SourceName = AggregateSourceName,
+                InsightKey = "market-overview",
+                InsightType = "overview",
+                PeriodDays = 1,
+                SampleSize = overview.SampleSize,
+                Confidence = overview.Confidence,
+                Payload = payload,
+                GeneratedAt = now,
+                CreatedAt = now
+            });
+            return;
+        }
+
+        existing.SampleSize = overview.SampleSize;
+        existing.Confidence = overview.Confidence;
+        existing.Payload = payload;
+        existing.GeneratedAt = now;
     }
 
     private async Task<int> SaveSnapshotsAsync(
@@ -538,10 +950,46 @@ public sealed class MarketPulseService(
         return Math.Round(((decimal)(current - previous) / previous) * 100, 1);
     }
 
-    private static string BuildExternalId(string sourceName, string url)
+    private static string BuildExternalId(string sourceName, ScrapedJobPosting posting)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{sourceName}:{url}".ToLowerInvariant()));
+        if (!string.IsNullOrWhiteSpace(posting.SourceJobId))
+        {
+            var sourceJobId = posting.SourceJobId.Trim();
+            return sourceJobId.Length <= 120
+                ? sourceJobId
+                : HashIdentity($"{sourceName}:source_job_id:{sourceJobId}");
+        }
+
+        var normalizedUrl = NormalizeUrlForIdentity(posting.Url);
+        return HashIdentity($"{sourceName}:url:{normalizedUrl}");
+    }
+
+    private static string BuildLegacyExternalId(string sourceName, string url)
+    {
+        return HashIdentity($"{sourceName}:{url.Trim()}");
+    }
+
+    private static string HashIdentity(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value.ToLowerInvariant()));
         return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string NormalizeUrlForIdentity(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return url.Trim();
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Query = string.Empty,
+            Fragment = string.Empty,
+            Path = uri.AbsolutePath.TrimEnd('/')
+        };
+
+        return builder.Uri.ToString();
     }
 
     private static string BuildContentHash(ScrapedJobPosting posting, DateTime? expiresAt)
@@ -560,6 +1008,7 @@ public sealed class MarketPulseService(
             SerializeStringList(posting.Requirements),
             SerializeStringList(posting.Specialties),
             SerializeStringList(posting.Benefits),
+            SerializeStringList(posting.Skills),
             expiresAt?.ToString("O") ?? string.Empty);
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
@@ -599,16 +1048,57 @@ public sealed class MarketPulseService(
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
-    private static string SerializeStringList(IEnumerable<string>? values)
+    private static IReadOnlyList<string> CleanStringList(IEnumerable<string>? values)
     {
-        var cleanValues = values?
+        return values?
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList() ?? [];
+    }
 
-        return JsonSerializer.Serialize(cleanValues);
+    private static IReadOnlyList<string> DeserializeStringList(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(value) is { Count: > 0 } values
+                ? CleanStringList(values)
+                : [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string SerializeStringList(IEnumerable<string>? values)
+    {
+        return JsonSerializer.Serialize(CleanStringList(values));
+    }
+
+    private static string Slugify(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant()
+            .Replace("#", "sharp", StringComparison.Ordinal)
+            .Replace("+", "plus", StringComparison.Ordinal);
+        normalized = Regex.Replace(normalized, "[^a-z0-9]+", "-");
+        return normalized.Trim('-');
+    }
+
+    private static string ConfidenceForSample(int sampleSize)
+    {
+        if (sampleSize >= 100)
+        {
+            return "high";
+        }
+
+        return sampleSize >= 30 ? "medium" : "low";
     }
 }
 
-internal sealed record JobPostingObservation(JobPosting Posting, string Status, string ContentHash);
+internal sealed record PostingObservationItem(JobPosting Posting, string Status, string ContentHash);

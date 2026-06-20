@@ -1,5 +1,5 @@
 import axios from "axios";
-import { API_BASE_URL } from "./apiConfig";
+import { API_BASE_URL, BACKEND_BASE_URL } from "./apiConfig";
 import { normalizeApiError } from "../utils/apiErrorUtils";
 import { dispatchUnauthorizedEvent } from "../utils/authEventUtils";
 
@@ -27,8 +27,15 @@ function shouldBroadcastUnauthorized(url) {
   return !PUBLIC_AUTH_ENDPOINTS.some((endpoint) => requestPath.startsWith(endpoint));
 }
 
+function shouldSkipNgrokBrowserWarning() {
+  return /(^|\.)ngrok(-free)?\./i.test(BACKEND_BASE_URL) || BACKEND_BASE_URL.includes(".ngrok.");
+}
+
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
+  headers: shouldSkipNgrokBrowserWarning()
+    ? { "ngrok-skip-browser-warning": "true" }
+    : undefined,
   withCredentials: true,
 });
 

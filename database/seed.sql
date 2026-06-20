@@ -3,66 +3,76 @@
 -- Run from the project root so these relative paths resolve correctly.
 
 \echo 'Seeding shared/core skills...'
-\i docs/database/seeds/core/shared-skills.seed.sql
+\i database/seeds/core/shared-skills.seed.sql
 
 \echo 'Seeding roles and permissions...'
-\i docs/database/seeds/core/rbac-roles-permissions.sql
+\i database/seeds/core/rbac-roles-permissions.sql
 
 \echo 'Seeding users...'
-\i docs/database/seeds/core/dev-users.seed.sql
+\i database/seeds/core/dev-users.seed.sql
+
+\echo 'Core seed completed.'
 
 \echo 'Seeding AI Engineer roadmap...'
-\i docs/database/seeds/roadmaps/ai-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/ai-engineer-roadmap.seed.sql
 
 \echo 'Seeding Backend Developer roadmap...'
-\i docs/database/seeds/roadmaps/backend-roadmap.seed.sql
+\i database/seeds/roadmaps/backend-roadmap.seed.sql
 
 \echo 'Seeding Business Intelligence Analyst roadmap...'
-\i docs/database/seeds/roadmaps/business-intelligence-roadmap.seed.sql
+\i database/seeds/roadmaps/business-intelligence-roadmap.seed.sql
 
 \echo 'Seeding Cyber Security Expert roadmap...'
-\i docs/database/seeds/roadmaps/cyber-security-expert-roadmap.seed.sql
+\i database/seeds/roadmaps/cyber-security-expert-roadmap.seed.sql
 
 \echo 'Seeding Data Engineer roadmap...'
-\i docs/database/seeds/roadmaps/data-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/data-engineer-roadmap.seed.sql
 
 \echo 'Seeding Frontend Developer roadmap...'
-\i docs/database/seeds/roadmaps/frontend-roadmap.seed.sql
+\i database/seeds/roadmaps/frontend-roadmap.seed.sql
 
 \echo 'Seeding Game Developer roadmap...'
-\i docs/database/seeds/roadmaps/game-developer-roadmap.seed.sql
+\i database/seeds/roadmaps/game-developer-roadmap.seed.sql
 
 \echo 'Seeding Machine Learning Engineer roadmap...'
-\i docs/database/seeds/roadmaps/machine-learning-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/machine-learning-engineer-roadmap.seed.sql
 
 \echo 'Seeding Network Engineer roadmap...'
-\i docs/database/seeds/roadmaps/network-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/network-engineer-roadmap.seed.sql
 
 \echo 'Seeding QA Engineer roadmap...'
-\i docs/database/seeds/roadmaps/qa-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/qa-engineer-roadmap.seed.sql
 
 \echo 'Seeding Full Stack Developer roadmap...'
-\i docs/database/seeds/roadmaps/fullstack-developer-roadmap.seed.sql
+\i database/seeds/roadmaps/fullstack-developer-roadmap.seed.sql
 
 \echo 'Seeding Data Analyst roadmap...'
-\i docs/database/seeds/roadmaps/data-analyst-roadmap.seed.sql
+\i database/seeds/roadmaps/data-analyst-roadmap.seed.sql
 
 \echo 'Seeding DevOps Engineer roadmap...'
-\i docs/database/seeds/roadmaps/devops-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/devops-engineer-roadmap.seed.sql
 
 \echo 'Seeding Cloud Engineer roadmap...'
-\i docs/database/seeds/roadmaps/cloud-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/cloud-engineer-roadmap.seed.sql
 
 \echo 'Seeding Mobile Developer roadmap...'
-\i docs/database/seeds/roadmaps/mobile-developer-roadmap.seed.sql
+\i database/seeds/roadmaps/mobile-developer-roadmap.seed.sql
 
 \echo 'Seeding Data Scientist roadmap...'
-\i docs/database/seeds/roadmaps/data-scientist-roadmap.seed.sql
+\i database/seeds/roadmaps/data-scientist-roadmap.seed.sql
 
 \echo 'Seeding Database Engineer roadmap...'
-\i docs/database/seeds/roadmaps/database-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/database-engineer-roadmap.seed.sql
 
 \echo 'Seeding Site Reliability Engineer roadmap...'
-\i docs/database/seeds/roadmaps/site-reliability-engineer-roadmap.seed.sql
+\i database/seeds/roadmaps/site-reliability-engineer-roadmap.seed.sql
 
 \echo 'Roadmap seed completed.'
+
+\echo 'Seeding draft learning modules...'
+\i database/seeds/learning-modules/draft-learning-modules.seed.sql
+
+\echo 'Seeding published learning modules...'
+\i database/seeds/learning-modules/published-learning-modules.seed.sql
+
+\echo 'Learning module seed completed.'

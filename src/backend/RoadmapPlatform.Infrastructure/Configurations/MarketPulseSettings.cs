@@ -2,7 +2,7 @@ namespace RoadmapPlatform.Infrastructure.Configurations;
 
 public sealed class MarketPulseSettings
 {
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; }
 
     public bool RunOnStartup { get; set; }
 
@@ -14,6 +14,10 @@ public sealed class MarketPulseSettings
 
     public int MaxPostingsPerSource { get; set; } = 160;
 
+    public int JobsApiPageSize { get; set; } = 100;
+
+    public int JobsApiMaxPages { get; set; } = 10;
+
     public int ActivePostingLookbackDays { get; set; } = 14;
 
     public int MissingScansBeforeStale { get; set; } = 3;
@@ -24,9 +28,9 @@ public sealed class MarketPulseSettings
 
     public int RequestTimeoutSeconds { get; set; } = 30;
 
-    public string ActiveJobsApiUrl { get; set; } = "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/active";
+    public string ActiveJobsApiUrl { get; set; } = string.Empty;
 
-    public string TodayJobsApiUrl { get; set; } = "https://nickname-sadness-capitol.ngrok-free.dev/api/jobs/today";
+    public string TodayJobsApiUrl { get; set; } = string.Empty;
     
     public string[] TrackedKeywords { get; set; } = [];
 
@@ -35,13 +39,13 @@ public sealed class MarketPulseSettings
 
 public sealed class MarketPulseSourceSettings
 {
-    public string Name { get; set; } = null!;
+    public string Name { get; set; } = string.Empty;
 
     public string Kind { get; set; } = "Html";
 
-    public string BaseUrl { get; set; } = null!;
+    public string BaseUrl { get; set; } = string.Empty;
 
-    public string SearchUrlTemplate { get; set; } = null!;
+    public string SearchUrlTemplate { get; set; } = string.Empty;
 
     public bool Enabled { get; set; } = true;
 

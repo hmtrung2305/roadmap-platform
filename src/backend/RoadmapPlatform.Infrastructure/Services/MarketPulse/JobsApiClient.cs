@@ -16,8 +16,14 @@ public sealed class JobsApiClient(
         PropertyNameCaseInsensitive = true
     };
 
+    public Task<JobsApiResult> FetchAsync(
+        string url,
+        CancellationToken cancellationToken) =>
+        FetchAsync(url, JobsApiFetchOptions.Default, cancellationToken);
+
     public async Task<JobsApiResult> FetchAsync(
         string url,
+        JobsApiFetchOptions options,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(url))
@@ -26,28 +32,75 @@ public sealed class JobsApiClient(
             return JobsApiResult.Empty;
         }
 
+        var normalizedOptions = options.Normalize();
+        var firstUrl = WithPaging(url, page: 1, pageSize: normalizedOptions.PageSize);
+
         try
         {
-            var client = httpClientFactory.CreateClient("market-pulse");
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-
-            request.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
-            request.Headers.TryAddWithoutValidation("Accept", "application/json");
-
-            using var response = await client.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+            var firstPage = await FetchPageAsync(firstUrl, cancellationToken);
+            if (firstPage == null)
             {
-                logger.LogWarning(
-                    "Jobs API returned {StatusCode} for {Url}.",
-                    response.StatusCode,
-                    url);
                 return JobsApiResult.Empty;
             }
 
+            var jobs = firstPage.Jobs.ToList();
+            var total = firstPage.Total > 0 ? firstPage.Total : jobs.Count;
+            var totalPages = ResolveTotalPages(firstPage, normalizedOptions);
+            var pageLimit = Math.Min(totalPages, normalizedOptions.MaxPages);
+
+            for (var page = 2; page <= pageLimit && jobs.Count < normalizedOptions.MaxItems; page++)
+            {
+                var nextUrl = WithPaging(url, page, normalizedOptions.PageSize);
+                var nextPage = await FetchPageAsync(nextUrl, cancellationToken);
+
+                if (nextPage == null || nextPage.Jobs.Count == 0)
+                {
+                    break;
+                }
+
+                jobs.AddRange(nextPage.Jobs);
+            }
+
+            return new JobsApiResult(
+                total,
+                jobs
+                    .Where(x => x.IsActive)
+                    .Take(normalizedOptions.MaxItems)
+                    .ToList());
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or UriFormatException)
+        {
+            logger.LogWarning(ex, "Could not read Jobs API data from {Url}.", url);
+            return JobsApiResult.Empty;
+        }
+    }
+
+    private async Task<JobsApiPageResult?> FetchPageAsync(
+        string url,
+        CancellationToken cancellationToken)
+    {
+        var client = httpClientFactory.CreateClient("market-pulse");
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        request.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
+        request.Headers.TryAddWithoutValidation("Accept", "application/json");
+
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning(
+                "Jobs API returned {StatusCode} for {Url}.",
+                response.StatusCode,
+                url);
+            return null;
+        }
+
+        try
+        {
             var envelope = await response.Content.ReadFromJsonAsync<JobsApiEnvelope>(
                 JsonOptions,
                 cancellationToken);
@@ -55,35 +108,107 @@ public sealed class JobsApiClient(
                 .Select(ToJobMarketPosting)
                 .ToList() ?? [];
 
-            return new JobsApiResult(envelope?.Total ?? jobs.Count, jobs);
+            return new JobsApiPageResult(
+                envelope?.Pagination?.Total ?? envelope?.Total ?? jobs.Count,
+                envelope?.Pagination?.Page ?? envelope?.Page,
+                envelope?.Pagination?.PageSize ?? envelope?.PageSize,
+                envelope?.Pagination?.TotalPages ?? envelope?.TotalPages,
+                jobs);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (JsonException ex)
         {
             logger.LogWarning(ex, "Could not read Jobs API data from {Url}.", url);
-            return JobsApiResult.Empty;
+            return null;
         }
     }
 
     private static JobMarketPosting ToJobMarketPosting(JobsApiJob job)
     {
+        var category = FirstNonEmpty(job.CategoryNormalized, job.Category);
+        var location = FirstNonEmpty(job.PrimaryCity, job.Location);
+        var updatedAt = ParseDateTime(FirstNonEmpty(job.UpdatedAt, job.LastSeenAt, job.FirstSeenAt));
+
         return new JobMarketPosting
         {
             Id = Clean(job.Id),
+            SourceJobId = Clean(FirstNonEmpty(job.SourceJobId, StripSourcePrefix(job.Id))),
+            Source = Clean(job.Source),
             Title = Clean(job.Title),
             Company = Clean(job.Company),
-            Category = Clean(job.Category),
-            Location = Clean(job.Location),
+            Category = Clean(category),
+            Location = Clean(location),
             Salary = Clean(job.Salary),
             Experience = Clean(job.Experience),
             PostedOn = ParseDateOnly(job.PostDate),
             PostedOnText = Clean(job.PostDateText),
-            UpdatedAt = ParseDateTime(job.UpdatedAt),
+            UpdatedAt = updatedAt,
             Url = Clean(job.Url),
             IsActive = job.IsActive != false,
             Requirements = CleanList(job.Requirements),
             Specialties = CleanList(job.Specialties),
-            Benefits = CleanList(job.Benefits)
+            Benefits = CleanList(job.Benefits),
+            Skills = CleanList(job.SkillsNormalized)
         };
+    }
+
+    private static int ResolveTotalPages(JobsApiPageResult page, JobsApiFetchOptions options)
+    {
+        if (page.TotalPages.GetValueOrDefault() > 0)
+        {
+            return page.TotalPages!.Value;
+        }
+
+        if (page.Total <= page.Jobs.Count || page.Jobs.Count == 0)
+        {
+            return 1;
+        }
+
+        return (int)Math.Ceiling((double)page.Total / options.PageSize);
+    }
+
+    private static string WithPaging(string url, int page, int pageSize)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return url;
+        }
+
+        var builder = new UriBuilder(uri);
+        var query = ParseQuery(builder.Query);
+        query["page"] = page.ToString(CultureInfo.InvariantCulture);
+        query["page_size"] = pageSize.ToString(CultureInfo.InvariantCulture);
+        query["pageSize"] = pageSize.ToString(CultureInfo.InvariantCulture);
+        builder.Query = string.Join(
+            '&',
+            query.Select(x =>
+                $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value)}"));
+
+        return builder.Uri.ToString();
+    }
+
+    private static Dictionary<string, string> ParseQuery(string query)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var cleanQuery = query.TrimStart('?');
+
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return values;
+        }
+
+        foreach (var pair in cleanQuery.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            var key = Uri.UnescapeDataString(parts[0]);
+            var value = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                values[key] = value;
+            }
+        }
+
+        return values;
     }
 
     private static DateOnly? ParseDateOnly(string? value)
@@ -134,6 +259,25 @@ public sealed class JobsApiClient(
             ? null
             : value.Trim();
     }
+
+    private static string? FirstNonEmpty(params string?[] values)
+    {
+        return values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim();
+    }
+
+    private static string? StripSourcePrefix(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        var separatorIndex = trimmed.IndexOf(':', StringComparison.Ordinal);
+        return separatorIndex >= 0 && separatorIndex < trimmed.Length - 1
+            ? trimmed[(separatorIndex + 1)..]
+            : trimmed;
+    }
 }
 
 public sealed record JobsApiResult(int Total, IReadOnlyList<JobMarketPosting> Jobs)
@@ -141,19 +285,72 @@ public sealed record JobsApiResult(int Total, IReadOnlyList<JobMarketPosting> Jo
     public static JobsApiResult Empty { get; } = new(0, []);
 }
 
+public sealed record JobsApiFetchOptions(int MaxItems, int PageSize, int MaxPages)
+{
+    public static JobsApiFetchOptions Default { get; } = new(160, 100, 2);
+
+    public JobsApiFetchOptions Normalize() => new(
+        Math.Clamp(MaxItems, 1, 2_000),
+        Math.Clamp(PageSize, 1, 500),
+        Math.Clamp(MaxPages, 1, 100));
+}
+
+internal sealed record JobsApiPageResult(
+    int Total,
+    int? Page,
+    int? PageSize,
+    int? TotalPages,
+    IReadOnlyList<JobMarketPosting> Jobs);
+
 internal sealed class JobsApiEnvelope
 {
+    [JsonPropertyName("ok")]
+    public bool? Ok { get; set; }
+
     [JsonPropertyName("total")]
     public int Total { get; set; }
 
+    [JsonPropertyName("page")]
+    public int? Page { get; set; }
+
+    [JsonPropertyName("page_size")]
+    public int? PageSize { get; set; }
+
+    [JsonPropertyName("total_pages")]
+    public int? TotalPages { get; set; }
+
+    [JsonPropertyName("pagination")]
+    public JobsApiPagination? Pagination { get; set; }
+
     [JsonPropertyName("data")]
     public List<JobsApiJob> Data { get; set; } = [];
+}
+
+internal sealed class JobsApiPagination
+{
+    [JsonPropertyName("page")]
+    public int? Page { get; set; }
+
+    [JsonPropertyName("pageSize")]
+    public int? PageSize { get; set; }
+
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("totalPages")]
+    public int? TotalPages { get; set; }
 }
 
 internal sealed class JobsApiJob
 {
     [JsonPropertyName("id")]
     public string? Id { get; set; }
+
+    [JsonPropertyName("source_job_id")]
+    public string? SourceJobId { get; set; }
+
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
 
     [JsonPropertyName("salary")]
     public string? Salary { get; set; }
@@ -166,6 +363,9 @@ internal sealed class JobsApiJob
 
     [JsonPropertyName("category")]
     public string? Category { get; set; }
+
+    [JsonPropertyName("category_normalized")]
+    public string? CategoryNormalized { get; set; }
 
     [JsonPropertyName("benefits")]
     public List<string> Benefits { get; set; } = [];
@@ -182,6 +382,9 @@ internal sealed class JobsApiJob
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
+    [JsonPropertyName("primary_city")]
+    public string? PrimaryCity { get; set; }
+
     [JsonPropertyName("post_date_text")]
     public string? PostDateText { get; set; }
 
@@ -194,6 +397,15 @@ internal sealed class JobsApiJob
     [JsonPropertyName("specialties")]
     public List<string> Specialties { get; set; } = [];
 
+    [JsonPropertyName("skills_normalized")]
+    public List<string> SkillsNormalized { get; set; } = [];
+
     [JsonPropertyName("updated_at")]
     public string? UpdatedAt { get; set; }
+
+    [JsonPropertyName("first_seen_at")]
+    public string? FirstSeenAt { get; set; }
+
+    [JsonPropertyName("last_seen_at")]
+    public string? LastSeenAt { get; set; }
 }
