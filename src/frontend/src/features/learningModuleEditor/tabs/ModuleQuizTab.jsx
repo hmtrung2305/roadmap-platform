@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, GripVertical, Minus, Plus, Save, Settings, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";

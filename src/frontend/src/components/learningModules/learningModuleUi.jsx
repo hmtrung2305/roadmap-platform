@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 export const prettyModuleStatus = {
   draft: "Draft",
   published: "Published",

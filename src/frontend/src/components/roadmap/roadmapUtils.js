@@ -168,7 +168,7 @@ export function patchCachedNodeProgress(cache, result) {
   return nextCache;
 }
 
-export function getBalancedEdgePath(sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition) {
+export function getBalancedEdgePath(sourceX, sourceY, targetX, targetY, sourcePosition) {
   const sameRow = Math.abs(sourceY - targetY) < 8;
   const sameColumn = Math.abs(sourceX - targetX) < 8;
 
@@ -514,7 +514,7 @@ export function splitSideChildrenIntoColumns(sideChildren, choiceChildrenByParen
   const columns = { left: [], right: [] };
   const heights = { left: 0, right: 0 };
 
-  getSortedChildren(sideChildren).forEach((child, index) => {
+  getSortedChildren(sideChildren).forEach((child) => {
     const preferredSide = getPreferredSide(child);
     const rowHeight = getSideRowHeight(child, choiceChildrenByParent);
     const side = preferredSide || (heights.left <= heights.right ? "left" : "right");

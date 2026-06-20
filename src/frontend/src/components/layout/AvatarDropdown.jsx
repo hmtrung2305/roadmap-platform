@@ -12,7 +12,6 @@ import { useNavigate } from "react-router-dom";
 import { redirectToGitHubLink } from "../../api/authProviderApi";
 import { FaGithub } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import {
   ADMIN_SURFACE_PERMISSIONS,
   CONTENT_MANAGER_SURFACE_PERMISSIONS,

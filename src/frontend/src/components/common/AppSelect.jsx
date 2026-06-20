@@ -15,7 +15,11 @@ export default function AppSelect({
   const [activeIndex, setActiveIndex] = useState(0);
 
   const selectedIndex = useMemo(
-    () => Math.max(options.findIndex((option) => option.value === value), 0),
+    () =>
+      Math.max(
+        options.findIndex((option) => option.value === value),
+        0,
+      ),
     [options, value],
   );
   const selectedOption = options[selectedIndex] || options[0];
@@ -33,11 +37,19 @@ export default function AppSelect({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [isOpen]);
 
-  useEffect(() => {
+  const openSelect = () => {
+    setActiveIndex(selectedIndex);
+    setIsOpen(true);
+  };
+
+  const toggleSelect = () => {
     if (isOpen) {
-      setActiveIndex(selectedIndex);
+      setIsOpen(false);
+      return;
     }
-  }, [isOpen, selectedIndex]);
+
+    openSelect();
+  };
 
   const chooseOption = (option) => {
     if (!option || option.disabled) return;
@@ -63,7 +75,7 @@ export default function AppSelect({
     if (!isOpen) {
       if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
         event.preventDefault();
-        setIsOpen(true);
+        openSelect();
       }
       return;
     }
@@ -100,7 +112,7 @@ export default function AppSelect({
         aria-expanded={isOpen}
         aria-controls={listboxId}
         disabled={disabled}
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={toggleSelect}
         onKeyDown={handleKeyDown}
         className={`flex h-10 w-full items-center justify-between gap-3 rounded-lg border bg-white px-3 text-left text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:ring-2 focus:ring-[#6FCF97]/25 disabled:cursor-not-allowed disabled:opacity-60 ${
           isOpen

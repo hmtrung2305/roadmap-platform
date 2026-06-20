@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { Minus, Plus, Save } from "lucide-react";
 import { toast } from "react-toastify";

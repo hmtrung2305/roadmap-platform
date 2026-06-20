@@ -9,7 +9,6 @@ import { getRepositoryId } from "./portfolioEditUtils";
 export default function EditPortfolioRepositoryManager({
   repositories,
   selectedIds,
-  selectedCount,
   isGitHubLinked,
   repositoryLoading,
   syncing,

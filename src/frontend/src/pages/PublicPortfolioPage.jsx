@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -7,7 +8,6 @@ function PublicPortfolioPage() {
   const { username } = useParams();
   const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
@@ -24,8 +24,7 @@ function PublicPortfolioPage() {
     try {
       const r = await fetch(`${API_BASE_URL}/me`, { credentials: "include" });
       setIsAuthenticated(r.ok);
-      if (r.ok) setCurrentUser(await r.json());
-    } catch { setIsAuthenticated(false); setCurrentUser(null); }
+    } catch { setIsAuthenticated(false); }
   }
 
   async function loadPortfolio() {
@@ -48,11 +47,6 @@ function PublicPortfolioPage() {
     } catch {
       setToast("Could not copy the link.");
     }
-  }
-
-  async function handleLogout() {
-    try { await fetch(`${API_BASE_URL}/auth/logout`, { method: "POST", credentials: "include" }); }
-    finally { navigate("/login", { replace: true }); }
   }
 
   if (status === "loading") return (

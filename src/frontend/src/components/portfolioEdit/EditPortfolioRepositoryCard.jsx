@@ -104,7 +104,7 @@ export default function EditPortfolioRepositoryCard({
   const insightStatus = getInsightStatus(insight);
   const insightButtonLabel = hasCompletedInsight ? "Regenerate" : insightStatus.label;
   const tags = getUniqueTags(repository, insight);
-  const { visible: visibleTags, hidden: hiddenTags, extraCount } = getVisibleTags(tags, 4);
+  const { visible: visibleTags, extraCount } = getVisibleTags(tags, 4);
 
   return (
     <article className={`flex min-h-[132px] flex-col rounded-lg border p-3.5 shadow-[0_10px_24px_rgba(31,111,95,0.06)] transition-colors hover:border-[#2FA084] ${isSelected ? "border-[#2FA084] bg-[#6FCF97]/12" : "border-[#E2D2B8] bg-[#FFF8EF] hover:bg-white"}`}>

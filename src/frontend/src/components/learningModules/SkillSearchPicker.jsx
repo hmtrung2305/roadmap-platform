@@ -94,6 +94,7 @@ export default function SkillSearchPicker({
 
   const searchRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const queryRef = useRef("");
 
   const normalizedQuery = query.trim();
   const isSearching = normalizedQuery.length > 0;
@@ -101,20 +102,33 @@ export default function SkillSearchPicker({
   const displayedLoading = isSearching ? isLoading : isSuggestionsLoading;
   const displayedFailed = isSearching ? searchFailed : suggestionsFailed;
 
+  const selectedSkillFromState =
+    selectedSkill && value && String(selectedSkill.skillId) === String(value)
+      ? selectedSkill
+      : null;
+
+  const selectedSkillFromInitial =
+    initialSkill && value && String(initialSkill.skillId) === String(value)
+      ? initialSkill
+      : null;
+
+  const currentSelectedSkill = value
+    ? (selectedSkillFromState ?? selectedSkillFromInitial)
+    : null;
+
   useEffect(() => {
     let ignore = false;
 
     if (!value) {
-      setSelectedSkill(null);
       return undefined;
     }
 
-    if (initialSkill && String(initialSkill.skillId) === String(value)) {
-      setSelectedSkill(initialSkill);
-
-      if (Array.isArray(initialSkill.careerRoles)) {
-        return undefined;
-      }
+    if (
+      initialSkill &&
+      String(initialSkill.skillId) === String(value) &&
+      Array.isArray(initialSkill.careerRoles)
+    ) {
+      return undefined;
     }
 
     async function loadSelectedSkill() {
@@ -175,7 +189,7 @@ export default function SkillSearchPicker({
 
         if (!ignore) {
           setSuggestions(items);
-          if (!query.trim()) {
+          if (!queryRef.current.trim()) {
             setActiveIndex(items.length > 0 ? 0 : -1);
           }
         }
@@ -183,7 +197,7 @@ export default function SkillSearchPicker({
         if (!ignore) {
           setSuggestions([]);
           setSuggestionsFailed(true);
-          if (!query.trim()) {
+          if (!queryRef.current.trim()) {
             setActiveIndex(-1);
           }
         }
@@ -206,10 +220,6 @@ export default function SkillSearchPicker({
     const term = query.trim();
 
     if (!isOpen || term.length === 0) {
-      setResults([]);
-      setIsLoading(false);
-      setSearchFailed(false);
-      setActiveIndex(suggestions.length > 0 ? 0 : -1);
       return undefined;
     }
 
@@ -246,19 +256,20 @@ export default function SkillSearchPicker({
       ignore = true;
       window.clearTimeout(timeoutId);
     };
-  }, [isOpen, query, suggestions.length]);
+  }, [isOpen, query]);
 
-  const hasSelectedSkill = Boolean(selectedSkill || value);
+  const hasSelectedSkill = Boolean(currentSelectedSkill || value);
 
   const selectedLabel = useMemo(() => {
-    if (selectedSkill?.name) return selectedSkill.name;
-    return value ? "Selected skill" : "";
-  }, [selectedSkill, value]);
+  if (currentSelectedSkill?.name) return currentSelectedSkill.name;
+  return value ? "Selected skill" : "";
+}, [currentSelectedSkill, value]);
 
   const openDialog = () => {
     if (disabled) return;
 
     previousFocusRef.current = document.activeElement;
+    queryRef.current = "";
     setQuery("");
     setResults([]);
     setSearchFailed(false);
@@ -276,6 +287,19 @@ export default function SkillSearchPicker({
     setIsOpen(false);
     onChange?.(skill.skillId, skill);
   };
+
+  const handleQueryChange = (event) => {
+  const nextQuery = event.target.value;
+  queryRef.current = nextQuery;
+  setQuery(nextQuery);
+
+  if (nextQuery.trim().length === 0) {
+    setResults([]);
+    setIsLoading(false);
+    setSearchFailed(false);
+    setActiveIndex(suggestions.length > 0 ? 0 : -1);
+  }
+};
 
   const handleSearchKeyDown = (event) => {
     if (displayedSkills.length === 0) return;
@@ -300,164 +324,173 @@ export default function SkillSearchPicker({
     }
   };
 
-  const dialog = isOpen && typeof document !== "undefined"
-    ? createPortal(
-        <div
-          className="fixed inset-0 z-[100] grid place-items-center bg-[#18332D]/40 px-4 py-6 backdrop-blur-sm"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDialog();
-            }
-          }}
-        >
+  const dialog =
+    isOpen && typeof document !== "undefined"
+      ? createPortal(
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="skill-picker-title"
-            className="flex h-[calc(100vh-3rem)] max-h-[680px] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#B9D8CC] bg-white shadow-2xl"
+            className="fixed inset-0 z-[100] grid place-items-center bg-[#18332D]/40 px-4 py-6 backdrop-blur-sm"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                closeDialog();
+              }
+            }}
           >
-            <div className="flex items-center justify-between border-b border-[#B9D8CC] px-5 py-4">
-              <h2 id="skill-picker-title" className="text-lg font-extrabold text-[#18332D]">
-                Choose skill
-              </h2>
-              <button
-                type="button"
-                onClick={closeDialog}
-                className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-                aria-label="Close skill picker"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="border-b border-[#B9D8CC] p-5">
-              <label className="relative block">
-                <Search
-                  size={17}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-                <input
-                  ref={searchRef}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder={placeholder}
-                  className={`${inputClass} pl-10`}
-                  role="combobox"
-                  aria-expanded="true"
-                  aria-controls="skill-picker-results"
-                  aria-activedescendant={
-                    activeIndex >= 0 && displayedSkills[activeIndex]
-                      ? `skill-option-${displayedSkills[activeIndex].skillId}`
-                      : undefined
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#B9D8CC]/70 px-5">
-                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-500">
-                  {isSearching ? "Search results" : "Suggested skills"}
-                </p>
-                {!displayedLoading && !displayedFailed && displayedSkills.length > 0 && (
-                  <span className="text-xs font-bold text-slate-400">
-                    {displayedSkills.length}
-                  </span>
-                )}
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="skill-picker-title"
+              className="flex h-[calc(100vh-3rem)] max-h-[680px] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#B9D8CC] bg-white shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-[#B9D8CC] px-5 py-4">
+                <h2
+                  id="skill-picker-title"
+                  className="text-lg font-extrabold text-[#18332D]"
+                >
+                  Choose skill
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeDialog}
+                  className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                  aria-label="Close skill picker"
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              <div
-                id="skill-picker-results"
-                role="listbox"
-                className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
-              >
-                {displayedLoading ? (
-                  <div className="grid h-full place-items-center px-6 text-sm font-semibold text-slate-500">
-                    Loading...
-                  </div>
-                ) : displayedFailed ? (
-                  <div className="grid h-full place-items-center px-6 text-sm font-semibold text-rose-700">
-                    Unable to load skills.
-                  </div>
-                ) : displayedSkills.length === 0 ? (
-                  <div className="grid h-full place-items-center px-6 text-center">
-                    <div>
-                      <p className="text-sm font-extrabold text-[#18332D]">
-                        {isSearching ? "No skills found" : "Search for a skill"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  displayedSkills.map((skill, index) => {
-                    const isSelected = String(value) === String(skill.skillId);
-                    const isActive = index === activeIndex;
+              <div className="border-b border-[#B9D8CC] p-5">
+                <label className="relative block">
+                  <Search
+                    size={17}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    ref={searchRef}
+                    value={query}
+                    onChange={handleQueryChange}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder={placeholder}
+                    className={`${inputClass} pl-10`}
+                    role="combobox"
+                    aria-expanded="true"
+                    aria-controls="skill-picker-results"
+                    aria-activedescendant={
+                      activeIndex >= 0 && displayedSkills[activeIndex]
+                        ? `skill-option-${displayedSkills[activeIndex].skillId}`
+                        : undefined
+                    }
+                  />
+                </label>
+              </div>
 
-                    return (
-                      <button
-                        id={`skill-option-${skill.skillId}`}
-                        key={skill.skillId}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onMouseEnter={() => setActiveIndex(index)}
-                        onClick={() => chooseSkill(skill)}
-                        className={`w-full border-b border-[#B9D8CC]/60 px-5 py-4 text-left transition last:border-b-0 ${
-                          isSelected
-                            ? "bg-[#6FCF97]/12"
-                            : isActive
-                              ? "bg-[#F7F1E8]"
-                              : "hover:bg-[#F7F1E8]"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-extrabold text-[#18332D]">
-                              <HighlightedText
-                                text={skill.name}
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#B9D8CC]/70 px-5">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-500">
+                    {isSearching ? "Search results" : "Suggested skills"}
+                  </p>
+                  {!displayedLoading &&
+                    !displayedFailed &&
+                    displayedSkills.length > 0 && (
+                      <span className="text-xs font-bold text-slate-400">
+                        {displayedSkills.length}
+                      </span>
+                    )}
+                </div>
+
+                <div
+                  id="skill-picker-results"
+                  role="listbox"
+                  className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+                >
+                  {displayedLoading ? (
+                    <div className="grid h-full place-items-center px-6 text-sm font-semibold text-slate-500">
+                      Loading...
+                    </div>
+                  ) : displayedFailed ? (
+                    <div className="grid h-full place-items-center px-6 text-sm font-semibold text-rose-700">
+                      Unable to load skills.
+                    </div>
+                  ) : displayedSkills.length === 0 ? (
+                    <div className="grid h-full place-items-center px-6 text-center">
+                      <div>
+                        <p className="text-sm font-extrabold text-[#18332D]">
+                          {isSearching
+                            ? "No skills found"
+                            : "Search for a skill"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    displayedSkills.map((skill, index) => {
+                      const isSelected =
+                        String(value) === String(skill.skillId);
+                      const isActive = index === activeIndex;
+
+                      return (
+                        <button
+                          id={`skill-option-${skill.skillId}`}
+                          key={skill.skillId}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onMouseEnter={() => setActiveIndex(index)}
+                          onClick={() => chooseSkill(skill)}
+                          className={`w-full border-b border-[#B9D8CC]/60 px-5 py-4 text-left transition last:border-b-0 ${
+                            isSelected
+                              ? "bg-[#6FCF97]/12"
+                              : isActive
+                                ? "bg-[#F7F1E8]"
+                                : "hover:bg-[#F7F1E8]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-extrabold text-[#18332D]">
+                                <HighlightedText
+                                  text={skill.name}
+                                  query={normalizedQuery}
+                                />
+                              </div>
+                              <SkillDetails
+                                skill={skill}
                                 query={normalizedQuery}
+                                compact
                               />
                             </div>
-                            <SkillDetails
-                              skill={skill}
-                              query={normalizedQuery}
-                              compact
-                            />
-                          </div>
 
-                          {isSelected && (
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#6FCF97]/20 px-2 py-0.5 text-[11px] font-extrabold text-[#1F6F5F]">
-                              <Check size={12} /> Selected
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
+                            {isSelected && (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#6FCF97]/20 px-2 py-0.5 text-[11px] font-extrabold text-[#1F6F5F]">
+                                <Check size={12} /> Selected
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <p className="sr-only" aria-live="polite">
+                {displayedLoading
+                  ? "Loading skills"
+                  : `${displayedSkills.length} skills available`}
+              </p>
+
+              <div className="flex justify-end border-t border-[#B9D8CC] px-5 py-4">
+                <button
+                  type="button"
+                  onClick={closeDialog}
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-[#B9D8CC] bg-white px-4 text-sm font-extrabold text-[#1F6F5F] transition hover:bg-[#F7F1E8]"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-
-            <p className="sr-only" aria-live="polite">
-              {displayedLoading
-                ? "Loading skills"
-                : `${displayedSkills.length} skills available`}
-            </p>
-
-            <div className="flex justify-end border-t border-[#B9D8CC] px-5 py-4">
-              <button
-                type="button"
-                onClick={closeDialog}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-[#B9D8CC] bg-white px-4 text-sm font-extrabold text-[#1F6F5F] transition hover:bg-[#F7F1E8]"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )
-    : null;
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="space-y-3">
@@ -471,7 +504,7 @@ export default function SkillSearchPicker({
               <div className="mt-1 truncate text-base font-extrabold text-[#18332D]">
                 {selectedLabel}
               </div>
-              <SkillDetails skill={selectedSkill} />
+              <SkillDetails skill={currentSelectedSkill} />
             </div>
 
             <button

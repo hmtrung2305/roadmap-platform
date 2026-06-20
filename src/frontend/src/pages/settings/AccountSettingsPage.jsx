@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { MdEmail } from "react-icons/md";

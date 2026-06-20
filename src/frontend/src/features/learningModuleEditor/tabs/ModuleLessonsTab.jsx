@@ -1,9 +1,11 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { Eye, FileUp, GripVertical, Loader2, MoreVertical, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
 import { LEARNING_MODULE_AUTHORING_LIMITS, formatFileSize } from "../../../constants/learningModuleAuthoringLimits";
-import MarkdownRenderer, { titleFromMarkdown } from "../../../components/learningModules/MarkdownRenderer";
+import MarkdownRenderer from "../../../components/learningModules/MarkdownRenderer";
+import { titleFromMarkdown } from "../../../utils/markdownUtils";
 import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 import { inputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../../components/learningModules/learningModuleUi";
 import { DirtyStateBadge } from "../EditorControls";

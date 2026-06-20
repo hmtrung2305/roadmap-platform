@@ -41,7 +41,6 @@ export default function LoginPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [passwordFocused, setPasswordFocused] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaError, setCaptchaError] = useState("");
@@ -257,9 +256,7 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={handleChange}
-                    onFocus={() => setPasswordFocused(true)}
-                    onBlur={() => setPasswordFocused(false)}
-                    placeholder="••••••••"
+                                placeholder="••••••••"
                     className="h-10 w-full rounded-lg border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
                     required
                   />
