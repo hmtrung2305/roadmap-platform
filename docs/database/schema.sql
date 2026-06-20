@@ -650,6 +650,10 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node
         UNIQUE (roadmap_version_id, slug)
 );
 
+ALTER TABLE public.roadmap_node
+ADD COLUMN is_assessment_skill boolean NOT NULL DEFAULT false;
+
+
 -- Optional mapping: one node can teach multiple skills.
 CREATE TABLE IF NOT EXISTS public.roadmap_node_skill
 (

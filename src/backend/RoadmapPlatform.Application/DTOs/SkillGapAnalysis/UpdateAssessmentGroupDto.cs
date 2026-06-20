@@ -4,11 +4,10 @@ using System.Text;
 
 namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 {
-    public enum LearningPriority
+    public sealed class UpdateAssessmentGroupDto
     {
-        Critical = 1,
-        High = 2,
-        Medium = 3,
-        Low = 4
+        public Guid GroupId { get; set; }
+
+        public bool IsAssessmentSkill { get; set; }
     }
 }

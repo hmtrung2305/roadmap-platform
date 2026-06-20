@@ -66,6 +66,19 @@ public static class PermissionConstant
     public const string MARKET_PULSE_VIEW_CATALOG = "market_pulse.view.catalog";
     public const string SKILL_VIEW_CATALOG = "skill.view.catalog";
 
+    public const string SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF = "skill_gap_analysis_history.view.self";
+    public const string SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF = "skill_gap_analysis_history.delete.self";
+
+    // =====================================================
+    // ADMIN CONFIG SKILL GAP ANALYSIS PERMISSIONS
+    // =====================================================
+    public const string SKILL_GAP_CONFIG_VIEW_ANY = "skill_gap_config.view.any";
+
+    public const string SKILL_GAP_CONFIG_UPDATE_ANY = "skill_gap_config.update.any";
+
+
+
+
     // =====================================================
     // COUNSELOR LEARNING MODULE OWNERSHIP PERMISSIONS
     // =====================================================
@@ -143,6 +156,11 @@ public static class PermissionConstant
     public const string SKILL_CREATE_ANY = "skill.create.any";
     public const string SKILL_UPDATE_ANY = "skill.update.any";
     public const string SKILL_DELETE_ANY = "skill.delete.any";
+
+    // =====================================================
+    // ANALYSIS PERMISSIONS
+    // =====================================================
+
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>
     {
