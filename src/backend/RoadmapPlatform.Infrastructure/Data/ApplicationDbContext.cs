@@ -18,8 +18,6 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<CareerRole> CareerRoles { get; set; }
 
-    public virtual DbSet<CareerRoleSkillGroup> CareerRoleSkillGroups { get; set; }
-
     public virtual DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
 
     public virtual DbSet<Invoice> Invoices { get; set; }
@@ -74,9 +72,7 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Skill> Skills { get; set; }
 
-    public virtual DbSet<SkillGroup> SkillGroups { get; set; }
-
-    public virtual DbSet<SkillGroupItem> SkillGroupItems { get; set; }
+    public virtual DbSet<SkillGapAnalysisHistory> SkillGapAnalysisHistories { get; set; }
 
     public virtual DbSet<SkillModule> SkillModules { get; set; }
 
@@ -212,30 +208,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<CareerRoleSkillGroup>(entity =>
-        {
-            entity.HasKey(e => e.CareerRoleSkillGroupId).HasName("career_role_skill_group_pkey");
-
-            entity.ToTable("career_role_skill_group");
-
-            entity.HasIndex(e => new { e.CareerRoleId, e.SkillGroupId }, "uq_career_role_skill_group").IsUnique();
-
-            entity.Property(e => e.CareerRoleSkillGroupId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("career_role_skill_group_id");
-            entity.Property(e => e.CareerRoleId).HasColumnName("career_role_id");
-            entity.Property(e => e.Priority).HasColumnName("priority");
-            entity.Property(e => e.SkillGroupId).HasColumnName("skill_group_id");
-
-            entity.HasOne(d => d.CareerRole).WithMany(p => p.CareerRoleSkillGroups)
-                .HasForeignKey(d => d.CareerRoleId)
-                .HasConstraintName("fk_career_role_skill_group_role");
-
-            entity.HasOne(d => d.SkillGroup).WithMany(p => p.CareerRoleSkillGroups)
-                .HasForeignKey(d => d.SkillGroupId)
-                .HasConstraintName("fk_career_role_skill_group_group");
-        });
-
         modelBuilder.Entity<EmailVerificationToken>(entity =>
         {
             entity.HasKey(e => e.VerificationId).HasName("email_verification_token_pkey");
@@ -344,19 +316,11 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("job_posting");
 
-            entity.HasIndex(e => new { e.IsActive, e.LastSeenAt }, "ix_job_posting_active_last_seen");
-
             entity.HasIndex(e => e.Category, "ix_job_posting_category");
-
-            entity.HasIndex(e => e.LifecycleStatus, "ix_job_posting_lifecycle_status");
 
             entity.HasIndex(e => e.PublishedAt, "ix_job_posting_published_at");
 
-            entity.HasIndex(e => e.ScrapedAt, "ix_job_posting_scraped_at");
-
             entity.HasIndex(e => e.SourceJobId, "ix_job_posting_source_job_id");
-
-            entity.HasIndex(e => e.Title, "ix_job_posting_title");
 
             entity.HasIndex(e => new { e.JobPortalSourceId, e.ExternalId }, "uq_job_posting_source_external").IsUnique();
 
@@ -455,8 +419,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.JobPostingDailySnapshotId).HasName("job_posting_daily_snapshot_pkey");
 
             entity.ToTable("job_posting_daily_snapshot");
-
-            entity.HasIndex(e => e.SnapshotDate, "ix_job_posting_daily_snapshot_date");
 
             entity.HasIndex(e => new { e.JobPostingId, e.SnapshotDate }, "uq_job_posting_daily_snapshot").IsUnique();
 
@@ -1283,6 +1245,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasColumnName("difficulty_level");
             entity.Property(e => e.EstimatedHours).HasColumnName("estimated_hours");
+            entity.Property(e => e.IsAssessmentSkill).HasColumnName("is_assessment_skill");
             entity.Property(e => e.IsRequired)
                 .HasDefaultValue(true)
                 .HasColumnName("is_required");
@@ -1518,52 +1481,45 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<SkillGroup>(entity =>
+        modelBuilder.Entity<SkillGapAnalysisHistory>(entity =>
         {
-            entity.HasKey(e => e.SkillGroupId).HasName("skill_group_pkey");
+            entity.HasKey(e => e.SkillGapAnalysisHistoryId).HasName("skill_gap_analysis_history_pkey");
 
-            entity.ToTable("skill_group");
+            entity.ToTable("skill_gap_analysis_history");
 
-            entity.HasIndex(e => e.Slug, "skill_group_slug_key").IsUnique();
+            entity.Property(e => e.SkillGapAnalysisHistoryId)
+                .ValueGeneratedNever()
+                .HasColumnName("skill_gap_analysis_history_id");
+            entity.Property(e => e.CareerRoleId).HasColumnName("career_role_id");
+            entity.Property(e => e.CareerRoleName)
+                .HasMaxLength(500)
+                .HasColumnName("career_role_name");
+            entity.Property(e => e.CareerRoleSlug)
+                .HasMaxLength(200)
+                .HasColumnName("career_role_slug");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ReadinessPercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("readiness_percent");
+            entity.Property(e => e.SkillCoveragePercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("skill_coverage_percent");
+            entity.Property(e => e.SnapshotJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("snapshot_json");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
 
-            entity.Property(e => e.SkillGroupId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("skill_group_id");
-            entity.Property(e => e.CompletionRule)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'ANY'::character varying")
-                .HasColumnName("completion_rule");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
-            entity.Property(e => e.RequiredSkillCount).HasColumnName("required_skill_count");
-            entity.Property(e => e.Slug)
-                .HasMaxLength(100)
-                .HasColumnName("slug");
-        });
+            entity.HasOne(d => d.CareerRole).WithMany(p => p.SkillGapAnalysisHistories)
+                .HasForeignKey(d => d.CareerRoleId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_skill_gap_history_role");
 
-        modelBuilder.Entity<SkillGroupItem>(entity =>
-        {
-            entity.HasKey(e => e.SkillGroupItemId).HasName("skill_group_item_pkey");
-
-            entity.ToTable("skill_group_item");
-
-            entity.HasIndex(e => new { e.SkillGroupId, e.SkillId }, "uq_skill_group_item").IsUnique();
-
-            entity.Property(e => e.SkillGroupItemId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("skill_group_item_id");
-            entity.Property(e => e.SkillGroupId).HasColumnName("skill_group_id");
-            entity.Property(e => e.SkillId).HasColumnName("skill_id");
-
-            entity.HasOne(d => d.SkillGroup).WithMany(p => p.SkillGroupItems)
-                .HasForeignKey(d => d.SkillGroupId)
-                .HasConstraintName("fk_skill_group_item_group");
-
-            entity.HasOne(d => d.Skill).WithMany(p => p.SkillGroupItems)
-                .HasForeignKey(d => d.SkillId)
-                .HasConstraintName("fk_skill_group_item_skill");
+            entity.HasOne(d => d.User).WithMany(p => p.SkillGapAnalysisHistories)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_skill_gap_history_user");
         });
 
         modelBuilder.Entity<SkillModule>(entity =>
@@ -1724,8 +1680,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.SkillModuleLessonId).HasName("skill_module_lesson_pkey");
 
             entity.ToTable("skill_module_lesson");
-
-            entity.HasIndex(e => new { e.SkillModuleId, e.IndexingStatus }, "ix_skill_module_lesson_indexing_status");
 
             entity.HasIndex(e => new { e.SkillModuleId, e.OrderIndex }, "ix_skill_module_lesson_module_order");
 
@@ -1968,8 +1922,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
 
             entity.ToTable("skill_trend_snapshot");
-
-            entity.HasIndex(e => e.SnapshotDate, "ix_skill_trend_snapshot_date");
 
             entity.HasIndex(e => new { e.SkillSlug, e.SnapshotDate, e.SourceName }, "uq_skill_trend_snapshot").IsUnique();
 

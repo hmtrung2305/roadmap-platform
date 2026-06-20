@@ -8,9 +8,20 @@ namespace RoadmapPlatform.Application.Interfaces.CareerRoleSkill
 {
     public interface ISkillGapAnalysisService
     {
-        Task<List<CareerRoleResponseDto>> GetAllCareerRolesAsync();
-        Task<CareerRoleResponseDto> GetCareerRoleBySlugAsync(string slug);
-        Task<AssessmentSkillResponseDto> GetAssessmentSkillBySlugAsync(string slug);
-        Task<SkillGapResultResponseDto> GetSkillGapResultAsync(AnalyzeSkillGapRequestDto analyzeSkillGapRequest);
+        Task<AssessmentResponseDto> GetAssessmentAsync(string careerRoleSlug);
+
+        Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request);
+
+        Task<List<CareerRoleOptionDto>> GetCareerRolesAsync();
+
+        Task<List<AssessmentGroupAdminDto>> GetAssessmentGroupsAsync(string careerRoleSlug);
+
+        Task UpdateAssessmentGroupsAsync(List<UpdateAssessmentGroupDto> request);
+
+        Task<List<SkillGapHistoryDto>> GetHistoryAsync(Guid userId);
+
+        Task<SkillGapHistoryDetailDto> GetHistoryDetailAsync(Guid historyId, Guid userId);
+
+        Task DeleteHistoryAsync(Guid historyId, Guid userId);
     }
 }
