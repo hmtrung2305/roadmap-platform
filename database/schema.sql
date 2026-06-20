@@ -1,3 +1,9 @@
+-- ============================================================
+-- Consolidated database schema
+-- Represents the final schema after migrations 002 through 016.
+-- Intended for provisioning a new PostgreSQL database.
+-- ============================================================
+
 -- =========================
 -- User, Role, Permission
 -- =========================
@@ -7,16 +13,16 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS public.permission
 (
     permission_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    permission_name varchar(50) NOT NULL UNIQUE
+    permission_name varchar(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS public.role
 (
     role_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_name varchar(15) NOT NULL UNIQUE
+    role_name varchar(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS public.user
+CREATE TABLE IF NOT EXISTS public."user"
 (
     user_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     username varchar(50) UNIQUE NOT NULL,
@@ -35,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.user_profile
     user_id uuid PRIMARY KEY,
 
     display_name varchar(50),
+    phone_number varchar(32),
     headline varchar(150),
     bio varchar(500),
     location varchar(100),
@@ -58,7 +65,7 @@ CREATE TABLE IF NOT EXISTS public.user_profile
 
     CONSTRAINT fk_user_profile_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -72,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.user_activity_stats
 
     CONSTRAINT fk_user_activity_stats_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -183,6 +190,147 @@ CREATE TABLE IF NOT EXISTS public.skill_trend_snapshot
         CHECK (mention_count >= 0 AND posting_count >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS public.job_posting_version
+(
+    job_posting_version_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_posting_id uuid NOT NULL REFERENCES public.job_posting(job_posting_id) ON DELETE CASCADE,
+    content_hash varchar(64) NOT NULL,
+    title varchar(250) NOT NULL,
+    company_name varchar(160),
+    category varchar(100),
+    location varchar(160),
+    salary varchar(100),
+    experience varchar(100),
+    description text NOT NULL,
+    requirements jsonb NOT NULL DEFAULT '[]'::jsonb,
+    specialties jsonb NOT NULL DEFAULT '[]'::jsonb,
+    benefits jsonb NOT NULL DEFAULT '[]'::jsonb,
+    skills jsonb NOT NULL DEFAULT '[]'::jsonb,
+    observed_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_job_posting_version_hash
+        UNIQUE (job_posting_id, content_hash),
+
+    CONSTRAINT chk_job_posting_version_requirements_json_array
+        CHECK (jsonb_typeof(requirements) = 'array'),
+
+    CONSTRAINT chk_job_posting_version_specialties_json_array
+        CHECK (jsonb_typeof(specialties) = 'array'),
+
+    CONSTRAINT chk_job_posting_version_benefits_json_array
+        CHECK (jsonb_typeof(benefits) = 'array'),
+
+    CONSTRAINT chk_job_posting_version_skills_json_array
+        CHECK (jsonb_typeof(skills) = 'array')
+);
+
+CREATE TABLE IF NOT EXISTS public.job_posting_observation
+(
+    job_posting_observation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_posting_id uuid NOT NULL REFERENCES public.job_posting(job_posting_id) ON DELETE CASCADE,
+    snapshot_date date NOT NULL,
+    source_name varchar(80) NOT NULL,
+    observation_status varchar(32) NOT NULL,
+    content_hash varchar(64) NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    observed_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_job_posting_observation
+        UNIQUE (job_posting_id, snapshot_date, observation_status)
+);
+
+CREATE TABLE IF NOT EXISTS public.skill_taxonomy
+(
+    skill_taxonomy_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    skill_name varchar(100) NOT NULL,
+    skill_slug varchar(120) NOT NULL,
+    category varchar(100),
+    aliases jsonb NOT NULL DEFAULT '[]'::jsonb,
+    platform_skill_slug varchar(120),
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_skill_taxonomy_slug UNIQUE (skill_slug),
+
+    CONSTRAINT chk_skill_taxonomy_aliases_json_array
+        CHECK (jsonb_typeof(aliases) = 'array')
+);
+
+CREATE TABLE IF NOT EXISTS public.job_skill_mention
+(
+    job_skill_mention_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_posting_id uuid NOT NULL REFERENCES public.job_posting(job_posting_id) ON DELETE CASCADE,
+    skill_taxonomy_id uuid NOT NULL REFERENCES public.skill_taxonomy(skill_taxonomy_id) ON DELETE CASCADE,
+    source_name varchar(80) NOT NULL,
+    skill_name varchar(100) NOT NULL,
+    skill_slug varchar(120) NOT NULL,
+    mention_source varchar(40) NOT NULL DEFAULT 'normalized',
+    snapshot_date date NOT NULL,
+    observed_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_job_skill_mention
+        UNIQUE (job_posting_id, skill_slug, mention_source)
+);
+
+CREATE TABLE IF NOT EXISTS public.job_market_daily_snapshot
+(
+    job_market_daily_snapshot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    snapshot_date date NOT NULL,
+    source_name varchar(80) NOT NULL DEFAULT 'all',
+    category varchar(100),
+    location varchar(160),
+    skill_slug varchar(120),
+    skill_name varchar(100),
+    active_job_count int NOT NULL DEFAULT 0,
+    new_job_count int NOT NULL DEFAULT 0,
+    observed_job_count int NOT NULL DEFAULT 0,
+    mention_count int NOT NULL DEFAULT 0,
+    salary_sample_count int NOT NULL DEFAULT 0,
+    salary_min int,
+    salary_max int,
+    experience_min_years numeric(5,2),
+    experience_max_years numeric(5,2),
+    sample_size int NOT NULL DEFAULT 0,
+    confidence varchar(20) NOT NULL DEFAULT 'low',
+    generated_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_job_market_daily_snapshot_counts
+        CHECK (
+            active_job_count >= 0 AND
+            new_job_count >= 0 AND
+            observed_job_count >= 0 AND
+            mention_count >= 0 AND
+            salary_sample_count >= 0 AND
+            sample_size >= 0
+        )
+);
+
+CREATE TABLE IF NOT EXISTS public.market_pulse_insight_snapshot
+(
+    market_pulse_insight_snapshot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    snapshot_date date NOT NULL,
+    source_name varchar(80) NOT NULL DEFAULT 'all',
+    insight_key varchar(120) NOT NULL,
+    insight_type varchar(60) NOT NULL,
+    period_days int NOT NULL DEFAULT 1,
+    sample_size int NOT NULL DEFAULT 0,
+    confidence varchar(20) NOT NULL DEFAULT 'low',
+    payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+    generated_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_market_pulse_insight_snapshot
+        UNIQUE (snapshot_date, source_name, insight_key),
+
+    CONSTRAINT chk_market_pulse_insight_payload_json_object
+        CHECK (jsonb_typeof(payload) = 'object')
+);
+
 CREATE INDEX IF NOT EXISTS ix_job_posting_scraped_at
     ON public.job_posting(scraped_at);
 
@@ -209,6 +357,39 @@ CREATE INDEX IF NOT EXISTS ix_job_posting_daily_snapshot_date
     
 CREATE INDEX IF NOT EXISTS ix_skill_trend_snapshot_date
     ON public.skill_trend_snapshot(snapshot_date);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_version_posting_observed
+    ON public.job_posting_version(job_posting_id, observed_at);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_observation_source_date
+    ON public.job_posting_observation(source_name, snapshot_date);
+
+CREATE INDEX IF NOT EXISTS ix_skill_taxonomy_active_slug
+    ON public.skill_taxonomy(is_active, skill_slug);
+
+CREATE INDEX IF NOT EXISTS ix_job_skill_mention_skill_date
+    ON public.job_skill_mention(skill_slug, snapshot_date);
+
+CREATE INDEX IF NOT EXISTS ix_job_skill_mention_source_date
+    ON public.job_skill_mention(source_name, snapshot_date);
+
+CREATE INDEX IF NOT EXISTS ix_job_market_daily_snapshot_date_source
+    ON public.job_market_daily_snapshot(snapshot_date, source_name);
+
+CREATE INDEX IF NOT EXISTS ix_job_market_daily_snapshot_skill_date
+    ON public.job_market_daily_snapshot(skill_slug, snapshot_date);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_job_market_daily_snapshot_grain
+    ON public.job_market_daily_snapshot(
+        snapshot_date,
+        source_name,
+        COALESCE(category, ''),
+        COALESCE(location, ''),
+        COALESCE(skill_slug, '')
+    );
+
+CREATE INDEX IF NOT EXISTS ix_market_pulse_insight_snapshot_type_date
+    ON public.market_pulse_insight_snapshot(insight_type, snapshot_date);
 
 CREATE TABLE IF NOT EXISTS public.ai_credit_plan
 (
@@ -247,7 +428,7 @@ CREATE TABLE IF NOT EXISTS public.user_ai_credit_plan
 
     CONSTRAINT fk_user_ai_credit_plan_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_ai_credit_plan_plan_code
@@ -268,7 +449,7 @@ CREATE TABLE IF NOT EXISTS public.ai_credit_usage
 
     CONSTRAINT fk_ai_credit_usage_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT chk_ai_credit_usage_credit_cost
@@ -283,7 +464,8 @@ CREATE INDEX IF NOT EXISTS idx_ai_credit_usage_feature_created_at
 
 CREATE TABLE IF NOT EXISTS public.permission_role
 (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),    permission_id uuid NOT NULL,
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    permission_id uuid NOT NULL,
     role_id uuid NOT NULL,
 
     CONSTRAINT fk_permission_role_permission_id
@@ -308,7 +490,7 @@ CREATE TABLE IF NOT EXISTS public.user_role
 
     CONSTRAINT fk_user_role_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_user_role_role_id
@@ -336,7 +518,7 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
 
     CONSTRAINT fk_user_auth_provider_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_provider_identity
@@ -346,11 +528,37 @@ CREATE TABLE IF NOT EXISTS public.user_auth_provider
         UNIQUE (user_id, provider)
 );
 
+CREATE TABLE IF NOT EXISTS public.pending_local_registration
+(
+    pending_local_registration_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    username varchar(50) NOT NULL,
+    username_normalized varchar(50) NOT NULL,
+
+    email varchar(254) NOT NULL,
+    password_hash text NOT NULL,
+
+    expires_at timestamptz NOT NULL,
+    used_at timestamptz,
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_local_registration_email_active
+    ON public.pending_local_registration(email)
+    WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS ix_pending_local_registration_expires_at
+    ON public.pending_local_registration(expires_at)
+    WHERE used_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS public.email_verification_token
 (
     verification_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    user_id uuid NOT NULL,
+    user_id uuid,
+    pending_local_registration_id uuid,
 
     provider varchar(50) NOT NULL,
     email varchar(255) NOT NULL,
@@ -359,7 +567,7 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
     otp_hash text NOT NULL,
 
     expires_at timestamptz NOT NULL,
-    used_at timestamptz NULL,
+    used_at timestamptz,
 
     attempt_count int NOT NULL DEFAULT 0,
     max_attempts int NOT NULL DEFAULT 5,
@@ -368,9 +576,24 @@ CREATE TABLE IF NOT EXISTS public.email_verification_token
 
     CONSTRAINT fk_email_verification_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
-        ON DELETE CASCADE
+        REFERENCES public."user"(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_email_verification_pending_local_registration_id
+        FOREIGN KEY (pending_local_registration_id)
+        REFERENCES public.pending_local_registration(pending_local_registration_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_email_verification_token_single_owner
+        CHECK (
+            (user_id IS NOT NULL AND pending_local_registration_id IS NULL)
+            OR
+            (user_id IS NULL AND pending_local_registration_id IS NOT NULL)
+        )
 );
+
+CREATE INDEX IF NOT EXISTS ix_email_verification_token_pending_local_registration_id
+    ON public.email_verification_token(pending_local_registration_id);
 
 -- =========================
 -- Roadmap
@@ -482,7 +705,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap
 
     CONSTRAINT fk_roadmap_owner_user
         FOREIGN KEY (owner_user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE SET NULL,
 
     CONSTRAINT chk_roadmap_type
@@ -522,7 +745,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
 
     CONSTRAINT fk_roadmap_version_generated_by_user
         FOREIGN KEY (generated_by_user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE SET NULL,
 
     CONSTRAINT uq_roadmap_version_number
@@ -573,6 +796,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node
     learning_outcomes jsonb NOT NULL DEFAULT '[]'::jsonb,
     completion_criteria jsonb NOT NULL DEFAULT '[]'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
+    is_assessment_skill boolean NOT NULL DEFAULT false,
 
     CONSTRAINT fk_roadmap_node_version
         FOREIGN KEY (roadmap_version_id)
@@ -649,10 +873,6 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node
     CONSTRAINT uq_roadmap_node_version_slug
         UNIQUE (roadmap_version_id, slug)
 );
-
-ALTER TABLE public.roadmap_node
-ADD COLUMN is_assessment_skill boolean NOT NULL DEFAULT false;
-
 
 -- Optional mapping: one node can teach multiple skills.
 CREATE TABLE IF NOT EXISTS public.roadmap_node_skill
@@ -748,7 +968,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_enrollment
 
     CONSTRAINT fk_roadmap_enrollment_user
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_roadmap_enrollment_version
@@ -819,7 +1039,7 @@ CREATE TABLE IF NOT EXISTS public.progress_event
 
     CONSTRAINT fk_progress_event_user
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT chk_progress_event_old_status
@@ -1335,10 +1555,10 @@ CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_module_id
 CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_lesson_id
     ON public.skill_module_chunk(skill_module_lesson_id);
 
-CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_embedding
-    ON public.skill_module_chunk
-    USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
+-- CREATE INDEX IF NOT EXISTS ix_skill_module_chunk_embedding
+--     ON public.skill_module_chunk
+--     USING ivfflat (embedding vector_cosine_ops)
+--     WITH (lists = 100);
 
 CREATE TABLE IF NOT EXISTS public.user_insight
 (
@@ -1348,7 +1568,7 @@ CREATE TABLE IF NOT EXISTS public.user_insight
 
     CONSTRAINT fk_user_insight_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -1380,7 +1600,7 @@ CREATE TABLE IF NOT EXISTS public.repository
 
     CONSTRAINT fk_repository_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_user_github_repo
@@ -1434,7 +1654,7 @@ CREATE TABLE IF NOT EXISTS public.invoice
 
     CONSTRAINT fk_invoice_user_id
         FOREIGN KEY (user_id)
-        REFERENCES public.user(user_id)
+        REFERENCES public."user"(user_id)
         ON DELETE CASCADE
 );
 
@@ -1455,4 +1675,23 @@ CREATE TABLE IF NOT EXISTS public.payment_transaction
         ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
+(
+    skill_gap_analysis_history_id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    career_role_id UUID NOT NULL,
+    career_role_slug VARCHAR(200) NOT NULL,
+    career_role_name VARCHAR(500) NOT NULL,
+    readiness_percent NUMERIC(5,2) NOT NULL,
+    skill_coverage_percent NUMERIC(5,2) NOT NULL,
+    snapshot_json JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+    CONSTRAINT fk_skill_gap_history_user
+        FOREIGN KEY(user_id)
+        REFERENCES "user"(user_id),
+
+    CONSTRAINT fk_skill_gap_history_role
+        FOREIGN KEY(career_role_id)
+        REFERENCES career_role(career_role_id)
+);
