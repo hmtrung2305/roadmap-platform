@@ -147,6 +147,44 @@ GET /api/v1/crawl-runs/latest?pipeline=listing&limit=10
 ```
 
 Hai endpoint nay can header `X-API-Key`. Neu deploy chi dung GitHub Actions/.NET `MarketPulseJob` de ingest, Web API cua Roadmap van nen giu `MarketPulse:Enabled=false` de tranh co hai scheduler cung ghi DB.
+Neu Jobs API chi chay service web production, se khong co crawl moi. Can chay
+them scheduler/worker rieng, hoac mot one-shot worker de nap du lieu ban dau.
+Neu SQLite chay tren host co filesystem ephemeral, can gan persistent disk vao
+`/app/data`; neu khong database se rong sau moi lan redeploy/restart.
+
+Tren Render/Railway/GitHub Actions, gia tri env la literal. Khong dung
+`%jobsApi%` trong dashboard production; hay paste full URL vao tung bien.
+
+## Phase 4 analytics layer da ap dung
+
+Market Pulse overview khong chi tra ve job count/keyword count nua. Backend da
+bo sung analytics metadata de moi insight co ngu canh:
+
+- `insightMeta`: period, sample size, confidence, last updated, methodology.
+- `dataQuality`: score 0-100, salary/category/location/detail coverage,
+  freshness, source count, warning list.
+- `insightCards`: market size, top rising skill, role demand, location bias,
+  salary signal, data confidence.
+- `risingSkills` va `fallingSkills`: so sanh window hien tai voi window truoc
+  theo `days`.
+- `skillCoOccurrences`: cac cap skill hay xuat hien cung nhau trong posting.
+- `salaryInsight`: salary coverage, median/min/max monthly VND va breakdown theo
+  category.
+- `experienceSummaries`: phan bo Intern/Fresher/Junior/Mid/Senior/Lead.
+- `learningRecommendations`: goi y action de map skill/skill-pair sang learning
+  module hoac project suggestion.
+
+`MarketPulseService.GetOverviewAsync` da dung chung `JobMarketOverviewBuilder`
+cho ca live Jobs API va DB snapshot fallback. Nho vay production snapshot mode va
+local live mode tra ve contract analytics tuong dong. Khong can migration moi cho
+phase nay vi day la lop tinh toan/read model dua tren field hien co.
+
+Frontend `/market-pulse` da hien thi data confidence banner, insight cards,
+rising/falling skills, skill co-occurrence, source/category/location/experience
+mix, salary signal va learning actions.
+
+Luu y phan salary chi parse chuoi co so ro rang. Cac job `thoa thuan`,
+`negotiable` hoac khong co salary se khong vao median va lam giam coverage.
 
 ## Du lieu dau vao
 

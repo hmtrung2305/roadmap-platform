@@ -68,6 +68,24 @@ Frontend /market-pulse
 
 The scheduled refresh path still uses `IMarketPulseService.RefreshAsync`. With `Sources[].Kind = JobsApi`, it persists the Jobs API feed into the current Market Pulse tables and the Phase 2 analytical tables.
 
+## Analytics Contract
+
+`GET /api/market-pulse/overview` returns descriptive dashboard fields plus
+Phase 4 analytical context:
+
+- `insightMeta`: selected period, sample size, confidence, last updated time, and methodology.
+- `dataQuality`: score, warning list, coverage rates, source count, freshness hours.
+- `insightCards`: compact insight summaries with sample size, period, confidence.
+- `risingSkills` / `fallingSkills`: current period versus previous period movement.
+- `skillCoOccurrences`: skill pairs that appear together in the same postings.
+- `salaryInsight`: salary coverage and parsed monthly VND medians.
+- `experienceSummaries`: inferred experience levels.
+- `learningRecommendations`: actions for mapping market signals to roadmap/modules.
+
+Every user-facing insight includes enough metadata for the UI to show period,
+sample size, and confidence instead of presenting counts as context-free truth.
+The overview builder is shared by live Jobs API mode and database fallback mode.
+
 ## Database
 
 The persistent Job Market tables stay compatible with the current database:
@@ -150,6 +168,11 @@ MarketPulse__Sources__0__BaseUrl=https://<jobs-api-domain>
 MarketPulse__Sources__0__SearchUrlTemplate=https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc
 MarketPulse__Sources__0__Enabled=true
 ```
+
+Render, Railway, GitHub Actions, and most production dashboards do not expand
+Windows CMD variables such as `%jobsApi%`. Put the full Jobs API URL in every
+environment value there. The `%jobsApi%` examples below are only for a local
+Windows CMD session.
 
 Frontend environment:
 
