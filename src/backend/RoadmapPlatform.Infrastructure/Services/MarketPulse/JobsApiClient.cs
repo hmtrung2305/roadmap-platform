@@ -132,6 +132,7 @@ public sealed class JobsApiClient(
         {
             Id = Clean(job.Id),
             SourceJobId = Clean(FirstNonEmpty(job.SourceJobId, StripSourcePrefix(job.Id))),
+            Source = Clean(job.Source),
             Title = Clean(job.Title),
             Company = Clean(job.Company),
             Category = Clean(category),
@@ -347,6 +348,9 @@ internal sealed class JobsApiJob
 
     [JsonPropertyName("source_job_id")]
     public string? SourceJobId { get; set; }
+
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
 
     [JsonPropertyName("salary")]
     public string? Salary { get; set; }
