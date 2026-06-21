@@ -25,7 +25,5 @@ public partial class Skill
 
     public virtual ICollection<RoadmapNodeSkill> RoadmapNodeSkills { get; set; } = new List<RoadmapNodeSkill>();
 
-    public virtual ICollection<SkillGroupItem> SkillGroupItems { get; set; } = new List<SkillGroupItem>();
-
     public virtual ICollection<SkillModule> SkillModules { get; set; } = new List<SkillModule>();
 }

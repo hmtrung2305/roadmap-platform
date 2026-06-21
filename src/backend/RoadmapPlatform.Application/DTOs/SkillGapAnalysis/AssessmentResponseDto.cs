@@ -4,12 +4,12 @@ using System.Text;
 
 namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 {
-    public sealed class AnalyzeSkillGapRequestDto
+    public sealed class AssessmentResponseDto
     {
-        public string CareerRoleSlug { get; set; }
+        public string CareerRoleName { get; set; }
             = string.Empty;
 
-        public List<Guid> SelectedNodeIds { get; set; }
+        public List<AssessmentGroupDto> Groups { get; set; }
             = [];
     }
 }
