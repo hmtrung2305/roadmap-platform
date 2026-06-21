@@ -83,8 +83,10 @@ function ExtraTagPopover({ hiddenTags }) {
 
 export default function PortfolioRepositoryCard({ repository }) {
   const insight = repository.insight;
+  const insightStatus = String(insight?.analysisStatus || insight?.status || "").toLowerCase();
   const hasCompletedInsight =
-    insight?.analysisStatus === "completed" && insight?.summary;
+    insightStatus === "completed" && insight?.summary;
+  const publicInsight = hasCompletedInsight ? insight : null;
   const name = repository.name || repository.repoName || "Untitled repository";
   const href = repository.htmlUrl || repository.repoUrl;
 
@@ -94,7 +96,7 @@ export default function PortfolioRepositoryCard({ repository }) {
     repository.description ||
     "No description provided.";
 
-  const tags = getProjectTags(repository, insight);
+  const tags = getProjectTags(repository, publicInsight);
   const {
     visible: visibleTags,
     hidden: hiddenTags,

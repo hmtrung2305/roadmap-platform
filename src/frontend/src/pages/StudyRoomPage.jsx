@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Bot, Clock, FileText, PanelLeftOpen } from "lucide-react";
 import { toast } from "react-toastify";
@@ -12,6 +13,7 @@ import StudyRoomHeader from "../components/studyRoom/StudyRoomHeader";
 import { areAllLessonsCompleted, HEADER_HEIGHT, PAGE_GAP } from "../components/studyRoom/studyRoomUtils";
 import { useStudyRoomLayout } from "../hooks/useStudyRoomLayout";
 import { useLearningModuleStore } from "../stores/useLearningModuleStore";
+import { useStreakStore } from "../stores/useStreakStore";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -25,6 +27,7 @@ export default function StudyRoomPage() {
   const navigate = useNavigate();
   const [activeLessonId, setActiveLessonId] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
+  const hasTrackedLearningStreakRef = useRef(false);
 
   const module = useLearningModuleStore((state) => state.getModuleSnapshot(slug));
   const moduleLoaded = useLearningModuleStore((state) => state.getModuleLoaded(slug));
@@ -34,6 +37,7 @@ export default function StudyRoomPage() {
   const enrollModule = useLearningModuleStore((state) => state.enrollModule);
   const loadLessonContent = useLearningModuleStore((state) => state.loadLessonContent);
   const updateLessonProgress = useLearningModuleStore((state) => state.updateLessonProgress);
+  const trackStreakIfNeeded = useStreakStore((state) => state.trackStreakIfNeeded);
 
   const activeLesson = useMemo(() => {
     if (!module?.lessons?.length) return null;
@@ -80,6 +84,21 @@ export default function StudyRoomPage() {
 
     loadModuleBySlug(slug).catch(() => {});
   }, [slug, loadModuleBySlug]);
+
+  useEffect(() => {
+    hasTrackedLearningStreakRef.current = false;
+  }, [slug]);
+
+  useEffect(() => {
+    if (hasTrackedLearningStreakRef.current) return;
+    if (!module?.skillModuleId || !module?.enrollment) return;
+    if (getEnrollmentStatus(module) === "not_started") return;
+
+    hasTrackedLearningStreakRef.current = true;
+    trackStreakIfNeeded().catch(() => {
+      // Learning access should not be blocked by streak tracking.
+    });
+  }, [module, module?.skillModuleId, module?.enrollment, trackStreakIfNeeded]);
 
   useEffect(() => {
     if (!module?.lessons?.length) return;
@@ -143,6 +162,10 @@ export default function StudyRoomPage() {
     try {
       setIsStarting(true);
       await enrollModule(module.skillModuleId, { slug });
+      hasTrackedLearningStreakRef.current = true;
+      trackStreakIfNeeded().catch(() => {
+        // Streak tracking should not block module enrollment.
+      });
       toast.success("Module started.");
     } catch (error) {
       toast.error(error?.message || "Unable to start this module.");

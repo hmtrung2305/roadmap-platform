@@ -38,13 +38,15 @@ export default function TopNavbar() {
     { label: "E-Portfolio", path: portfolioPath },
   ];
 
-  useEffect(() => {
-    if (!user) return;
+  const userProfileKey = user?.userId ?? user?.id ?? user?.email ?? user?.username ?? null;
 
-    loadProfile().catch((error) => {
-      console.error("Failed to load profile:", error);
-    });
-  }, [loadProfile, user?.userId, user?.id, user?.email, user?.username]);
+useEffect(() => {
+  if (!userProfileKey) return;
+
+  loadProfile().catch((error) => {
+    console.error("Failed to load profile:", error);
+  });
+}, [loadProfile, userProfileKey]);
 
   const handleLogout = async () => {
     await logout();

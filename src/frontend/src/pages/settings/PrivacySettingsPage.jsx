@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, Globe2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";

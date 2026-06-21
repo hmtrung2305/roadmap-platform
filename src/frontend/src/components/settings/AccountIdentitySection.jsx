@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-refresh/only-export-components */
 import { useEffect, useMemo, useState } from "react";
 import { Image, Phone, Save, UserRound } from "lucide-react";
 

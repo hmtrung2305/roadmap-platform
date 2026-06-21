@@ -296,3 +296,130 @@ textarea {
     transform: none;
   }
 }
+
+/* TechMap custom toast system */
+.Toastify__toast-container {
+  z-index: 9999;
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+}
+
+.Toastify__toast-container--top-right {
+  top: 88px;
+  right: 24px;
+}
+
+.tm-toast.Toastify__toast {
+  position: relative;
+  min-height: 64px;
+  overflow: hidden;
+  border: 1px solid rgba(185, 216, 204, 0.95);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fffaf1 0%, #ffffff 52%, #eaf8f1 100%);
+  color: #18332d;
+  box-shadow: 0 6px 14px rgba(31, 111, 95, 0.1);
+  padding: 14px 16px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.tm-toast.Toastify__toast::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, #2fa084, #6fcf97);
+}
+
+.tm-toast.Toastify__toast--success::before {
+  background: linear-gradient(180deg, #1f6f5f, #6fcf97);
+}
+
+.tm-toast.Toastify__toast--error::before {
+  background: linear-gradient(180deg, #b91c1c, #fb7185);
+}
+
+.tm-toast.Toastify__toast--warning::before {
+  background: linear-gradient(180deg, #b45309, #fbbf24);
+}
+
+.tm-toast.Toastify__toast--info::before {
+  background: linear-gradient(180deg, #2f7f98, #5a9cb5);
+}
+
+.tm-toast .Toastify__toast-icon {
+  width: 22px;
+  min-width: 22px;
+  margin-inline-end: 10px;
+  color: #1f6f5f;
+}
+
+.tm-toast.Toastify__toast--success .Toastify__toast-icon {
+  color: #1f6f5f;
+}
+
+.tm-toast.Toastify__toast--error .Toastify__toast-icon {
+  color: #b91c1c;
+}
+
+.tm-toast.Toastify__toast--warning .Toastify__toast-icon {
+  color: #b45309;
+}
+
+.tm-toast.Toastify__toast--info .Toastify__toast-icon {
+  color: #2f7f98;
+}
+
+.tm-toast-body {
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0 22px 0 0;
+  line-height: 1.45;
+}
+
+.tm-toast .Toastify__close-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: #667a73;
+  opacity: 0.65;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.tm-toast .Toastify__close-button:hover {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.tm-toast-progress.Toastify__progress-bar {
+  height: 3px;
+  opacity: 1;
+  background: linear-gradient(90deg, #1f6f5f, #6fcf97);
+}
+
+.Toastify__toast--error .tm-toast-progress.Toastify__progress-bar {
+  background: linear-gradient(90deg, #b91c1c, #fb7185);
+}
+
+.Toastify__toast--warning .tm-toast-progress.Toastify__progress-bar {
+  background: linear-gradient(90deg, #b45309, #fbbf24);
+}
+
+.Toastify__toast--info .tm-toast-progress.Toastify__progress-bar {
+  background: linear-gradient(90deg, #2f7f98, #5a9cb5);
+}
+
+@media (max-width: 640px) {
+  .Toastify__toast-container {
+    width: calc(100vw - 24px);
+  }
+
+  .Toastify__toast-container--top-right {
+    top: 76px;
+    right: 12px;
+    left: 12px;
+  }
+}
+

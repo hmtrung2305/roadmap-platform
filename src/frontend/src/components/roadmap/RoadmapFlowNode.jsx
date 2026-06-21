@@ -11,8 +11,6 @@ const handleClass = "!h-2 !w-2 !border-2 !border-[#B9D8CC] !bg-white";
 
 const LOCKED_GRAY_NODE_TYPES = new Set(["phase", "choice_group"]);
 const LOCKED_TEXT_COLOR = "oklch(55.4% .046 257.417)";
-const SKILL_NODE_TYPES = new Set(["topic", "choice_option", "option", "skill"]);
-
 const lockedGrayNodeStyle = {
   backgroundColor: "#E5E7EB",
   borderColor: "#CBD5E1",

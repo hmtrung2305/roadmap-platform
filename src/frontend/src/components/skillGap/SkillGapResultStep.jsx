@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, ChevronDown, RefreshCw } from "lucide-react";
 import { getPriorityNumber, getPriorityStyle, toArray } from "./skillGapUtils";

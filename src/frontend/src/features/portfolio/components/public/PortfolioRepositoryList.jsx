@@ -1,6 +1,6 @@
 import { FolderGit2 } from "lucide-react";
-import PortfolioRepositoryCard from "./PortfolioRepositoryCard";
-import PortfolioEmptyState from "./PortfolioEmptyState";
+import PortfolioRepositoryCard from "../shared/PortfolioRepositoryCard";
+import PortfolioEmptyState from "../shared/PortfolioEmptyState";
 
 export default function PortfolioRepositoryList({ repositories = [] }) {
   return (

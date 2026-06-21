@@ -119,12 +119,17 @@ export default function App() {
     <AuthBootstrap>
       <ToastContainer
         position="top-right"
-        autoClose={2500}
+        autoClose={3200}
         hideProgressBar={false}
         newestOnTop
         closeOnClick
         pauseOnHover
         draggable
+        limit={4}
+        theme="light"
+        toastClassName="tm-toast"
+        bodyClassName="tm-toast-body"
+        progressClassName="tm-toast-progress"
       />
 
       <AnimatePresence>

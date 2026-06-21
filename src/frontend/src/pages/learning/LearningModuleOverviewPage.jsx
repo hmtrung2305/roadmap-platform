@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
+import { useStreakStore } from "../../stores/useStreakStore";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -22,6 +23,7 @@ export default function LearningModuleOverviewPage() {
   const error = useLearningModuleStore((state) => state.getModuleError(slug));
   const loadModuleBySlug = useLearningModuleStore((state) => state.loadModuleBySlug);
   const enrollModule = useLearningModuleStore((state) => state.enrollModule);
+  const trackStreakIfNeeded = useStreakStore((state) => state.trackStreakIfNeeded);
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
@@ -38,6 +40,9 @@ export default function LearningModuleOverviewPage() {
     if (!module || isStarting) return;
 
     if (getEnrollmentStatus(module) !== "not_started") {
+      trackStreakIfNeeded().catch(() => {
+        // Streak tracking should not block opening a learning module.
+      });
       navigate(`/learning-modules/${module.slug}/study`);
       return;
     }
@@ -45,6 +50,9 @@ export default function LearningModuleOverviewPage() {
     try {
       setIsStarting(true);
       await enrollModule(module.skillModuleId, { slug });
+      trackStreakIfNeeded().catch(() => {
+        // Streak tracking should not block module enrollment.
+      });
       toast.success("Module started.");
       navigate(`/learning-modules/${module.slug}/study`);
     } catch (err) {

@@ -7,7 +7,6 @@ export default function BalancedRoadmapEdge({
   targetX,
   targetY,
   sourcePosition,
-  targetPosition,
   style,
   markerEnd,
 }) {
@@ -16,8 +15,7 @@ export default function BalancedRoadmapEdge({
     sourceY,
     targetX,
     targetY,
-    sourcePosition,
-    targetPosition
+    sourcePosition
   );
 
   return (
@@ -34,7 +32,7 @@ export default function BalancedRoadmapEdge({
   );
 }
 
-function getBalancedEdgePath(sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition) {
+function getBalancedEdgePath(sourceX, sourceY, targetX, targetY, sourcePosition) {
   const sameRow = Math.abs(sourceY - targetY) < 8;
   const sameColumn = Math.abs(sourceX - targetX) < 8;
 

@@ -1,5 +1,3 @@
-import { BookOpenText } from "lucide-react";
-
 export default function PortfolioAbout({ portfolio }) {
   return (
     <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">

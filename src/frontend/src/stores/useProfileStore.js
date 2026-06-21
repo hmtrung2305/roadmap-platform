@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getMyProfileApi, updateMyProfileApi } from "../api/profileApi";
+import { usePortfolioStore } from "./usePortfolioStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import {
   cachedRequest,
@@ -10,6 +11,7 @@ import {
 
 const PROFILE_CACHE_KEY = "profile:me";
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+const PORTFOLIO_EDITOR_CACHE_KEY = "portfolio-editor:me";
 
 let profileRequestVersion = 0;
 
@@ -96,6 +98,8 @@ export const useProfileStore = create((set, get) => ({
       };
 
       setCachedRequestData(PROFILE_CACHE_KEY, nextProfile);
+      invalidateRequestCache(PORTFOLIO_EDITOR_CACHE_KEY);
+      usePortfolioStore.getState().invalidatePortfolioView();
 
       set({
         profile: nextProfile,
