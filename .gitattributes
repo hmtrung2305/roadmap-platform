@@ -1,0 +1,2 @@
+# Exclude roadmap seed data from GitHub language statistics
+database/seeds/** linguist-generated=true
