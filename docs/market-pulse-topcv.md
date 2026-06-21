@@ -55,23 +55,28 @@ Legacy endpoints under `/api/jobs` remain available and are now paginated, but n
 
 ```text
 Frontend /market-pulse
-  -> GET /api/market-pulse/overview
+  -> GET /api/market-pulse/overview?days=30&skills=react
     -> MarketPulseService
-      -> IJobMarketSnapshotProvider
-        -> JobsApiClient
-          -> /api/v1/jobs
-          -> /api/v1/jobs/today
+      -> PostgreSQL current + analytical Market Pulse tables
       -> JobMarketOverviewBuilder
         -> JobMarketKeywordAnalyzer
       -> MarketPulseOverviewDto
+
+Refresh / ingest
+  -> MarketPulseHostedService, MarketPulseJob, or internal API
+    -> JobPortalScraper
+      -> JobsApiClient
+        -> /api/v1/jobs
+    -> Persist lifecycle, observations, skill mentions, daily aggregates
 ```
 
 The scheduled refresh path still uses `IMarketPulseService.RefreshAsync`. With `Sources[].Kind = JobsApi`, it persists the Jobs API feed into the current Market Pulse tables and the Phase 2 analytical tables.
+The public overview path is DB-first and does not call the live Jobs API during a user request.
 
 ## Analytics Contract
 
-`GET /api/market-pulse/overview` returns descriptive dashboard fields plus
-Phase 4 analytical context:
+`GET /api/market-pulse/overview` reads from the persisted DB snapshot and returns
+descriptive dashboard fields plus Phase 4 analytical context:
 
 - `insightMeta`: selected period, sample size, confidence, last updated time, and methodology.
 - `dataQuality`: score, warning list, coverage rates, source count, freshness hours.
@@ -82,9 +87,20 @@ Phase 4 analytical context:
 - `experienceSummaries`: inferred experience levels.
 - `learningRecommendations`: actions for mapping market signals to roadmap/modules.
 
+Supported query parameters:
+
+| Param | Meaning |
+|---|---|
+| `days` | Analysis window, clamped to 7..180 days. |
+| `skills` | Repeatable selected skill slugs, capped at 6. |
+| `category`, `location`, `experience`, `source` | Narrow the DB read model before analytics. |
+| `salaryMinMonthlyVnd`, `salaryMaxMonthlyVnd` | Salary overlap filter after parsing salary text. |
+
 Every user-facing insight includes enough metadata for the UI to show period,
 sample size, and confidence instead of presenting counts as context-free truth.
-The overview builder is shared by live Jobs API mode and database fallback mode.
+The overview builder is shared by the scheduled ingest path and DB read model.
+Overview responses are cached by query for `MarketPulse:OverviewCacheSeconds`
+seconds and invalidated after successful refresh/ingest.
 
 ## Database
 
@@ -160,6 +176,8 @@ Backend environment:
 Cors__AllowedOrigins__0=https://<frontend-domain>
 MarketPulse__Enabled=false
 MarketPulse__RunOnStartup=false
+MarketPulse__OverviewCacheSeconds=120
+MarketPulse__InternalApiKey=<strong-internal-key-at-least-16-chars>
 MarketPulse__ActiveJobsApiUrl=https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc
 MarketPulse__TodayJobsApiUrl=https://<jobs-api-domain>/api/v1/jobs/today
 MarketPulse__Sources__0__Name=Jobs API
@@ -193,6 +211,8 @@ $env:MarketPulse__Sources__0__Kind="JobsApi"
 $env:MarketPulse__Sources__0__BaseUrl=$jobsApi
 $env:MarketPulse__Sources__0__SearchUrlTemplate="$jobsApi/api/v1/jobs?active=true&sort=post_date_desc"
 $env:MarketPulse__Sources__0__Enabled="true"
+$env:MarketPulse__OverviewCacheSeconds="120"
+$env:MarketPulse__InternalApiKey="<strong-internal-key-at-least-16-chars>"
 ```
 
 CMD:
@@ -206,6 +226,8 @@ set "MarketPulse__Sources__0__Kind=JobsApi"
 set "MarketPulse__Sources__0__BaseUrl=%jobsApi%"
 set "MarketPulse__Sources__0__SearchUrlTemplate=%jobsApi%/api/v1/jobs?active=true&sort=post_date_desc"
 set "MarketPulse__Sources__0__Enabled=true"
+set "MarketPulse__OverviewCacheSeconds=120"
+set "MarketPulse__InternalApiKey=<strong-internal-key-at-least-16-chars>"
 ```
 
 User secrets for local backend:
@@ -219,6 +241,8 @@ dotnet user-secrets set "MarketPulse:Sources:0:Kind" "JobsApi"
 dotnet user-secrets set "MarketPulse:Sources:0:BaseUrl" "https://<jobs-api-domain>"
 dotnet user-secrets set "MarketPulse:Sources:0:SearchUrlTemplate" "https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc"
 dotnet user-secrets set "MarketPulse:Sources:0:Enabled" "true"
+dotnet user-secrets set "MarketPulse:OverviewCacheSeconds" "120"
+dotnet user-secrets set "MarketPulse:InternalApiKey" "<strong-internal-key-at-least-16-chars>"
 ```
 
 ## Smoke Test
@@ -234,6 +258,16 @@ Then call:
 
 ```text
 http://127.0.0.1:5208/api/market-pulse/overview?days=7
+http://127.0.0.1:5208/api/market-pulse/overview?days=14&skills=react&location=Ha%20Noi
+```
+
+Internal refresh smoke test:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:5208/api/internal/market-pulse/refresh" `
+  -Headers @{ "X-Market-Pulse-Key" = "<strong-internal-key-at-least-16-chars>" }
 ```
 
 Expected high-level fields:

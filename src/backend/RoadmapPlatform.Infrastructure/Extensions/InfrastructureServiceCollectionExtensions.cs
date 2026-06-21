@@ -108,7 +108,6 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Job market / Market Pulse Services
             services.AddScoped<JobsApiClient>();
-            services.AddScoped<IJobMarketSnapshotProvider, JobsApiJobMarketSnapshotProvider>();
             services.AddScoped<IJobPortalScraper, JobPortalScraper>();
             services.AddScoped<IMarketPulseService, MarketPulseService>();
             services.AddHostedService<MarketPulseHostedService>();

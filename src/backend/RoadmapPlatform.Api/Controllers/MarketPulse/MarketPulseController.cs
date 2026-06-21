@@ -16,11 +16,26 @@ public sealed class MarketPulseController(IMarketPulseService marketPulseService
     public async Task<IActionResult> GetOverview(
         [FromQuery] int days = 30,
         [FromQuery] string[]? skills = null,
+        [FromQuery] string? category = null,
+        [FromQuery] string? location = null,
+        [FromQuery] string? experience = null,
+        [FromQuery] string? source = null,
+        [FromQuery] decimal? salaryMinMonthlyVnd = null,
+        [FromQuery] decimal? salaryMaxMonthlyVnd = null,
         CancellationToken cancellationToken = default)
     {
         var result = await marketPulseService.GetOverviewAsync(
-            days,
-            skills ?? [],
+            new MarketPulseOverviewQueryDto
+            {
+                Days = days,
+                SkillSlugs = skills ?? [],
+                Category = category,
+                Location = location,
+                Experience = experience,
+                Source = source,
+                SalaryMinMonthlyVnd = salaryMinMonthlyVnd,
+                SalaryMaxMonthlyVnd = salaryMaxMonthlyVnd
+            },
             cancellationToken);
 
         return Ok(result);

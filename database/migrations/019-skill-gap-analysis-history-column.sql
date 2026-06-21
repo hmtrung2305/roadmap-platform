@@ -1,23 +1,13 @@
-
-
-CREATE TABLE IF NOT EXISTS skill_gap_analysis_history
+CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
 (
     skill_gap_analysis_history_id UUID PRIMARY KEY,
-
     user_id UUID NOT NULL,
-
     career_role_id UUID NOT NULL,
-
     career_role_slug VARCHAR(200) NOT NULL,
-
     career_role_name VARCHAR(500) NOT NULL,
-
     readiness_percent NUMERIC(5,2) NOT NULL,
-
     skill_coverage_percent NUMERIC(5,2) NOT NULL,
-
     snapshot_json JSONB NOT NULL,
-
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_skill_gap_history_user
