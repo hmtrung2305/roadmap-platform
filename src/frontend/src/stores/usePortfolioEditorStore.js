@@ -10,9 +10,10 @@ import {
   syncGitHubRepositoriesApi,
 } from "../api/githubRepositoryApi";
 import { useAuthProviderStore } from "./useAuthProviderStore";
+import { useAiCreditStore } from "./useAiCreditStore";
 import { usePortfolioStore } from "./usePortfolioStore";
-import { getInitiallySelectedIds, getRepositoryId } from "../components/portfolioEdit/portfolioEditUtils";
-import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import { getInitiallySelectedIds, getRepositoryId } from "../features/portfolio/utils/portfolioEditUtils";
+import { getCreditStatus, getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import {
   getGitHubConnectionAction,
   getGitHubErrorMessage,
@@ -69,6 +70,20 @@ function patchRepositoryInsight(repositories, repositoryId, insight) {
       insight,
     };
   });
+}
+
+
+function getRepositoryInsightStatus(insight) {
+  return String(insight?.analysisStatus || insight?.status || "").trim().toLowerCase();
+}
+
+function getRepositoryInsightErrorMessage(insight) {
+  return (
+    insight?.errorMessage ||
+    insight?.analysisMessage ||
+    insight?.message ||
+    "AI insight generation failed. Please check the repository README and try again."
+  );
 }
 
 function patchSelectedRepositories(repositories, selectedIds) {
@@ -422,8 +437,27 @@ export const usePortfolioEditorStore = create((set, get) => ({
       }
 
       const repositories = patchRepositoryInsight(get().repositories, repositoryId, insight);
+      const insightCreditStatus = getCreditStatus(insight);
+      const insightStatus = getRepositoryInsightStatus(insight);
+
+      if (insightCreditStatus) {
+        useAiCreditStore.getState().patchCreditStatus(insightCreditStatus);
+      } else {
+        useAiCreditStore.getState().invalidateCreditStatus();
+      }
+
       setCachedRequestData(REPOSITORIES_CACHE_KEY, repositories);
       usePortfolioStore.getState().invalidatePortfolioView();
+
+      if (insightStatus === "failed") {
+        set({
+          repositories,
+          repoError: getRepositoryInsightErrorMessage(insight),
+          repoSuccess: "",
+        });
+
+        return insight;
+      }
 
       set({
         repositories,
@@ -440,6 +474,12 @@ export const usePortfolioEditorStore = create((set, get) => ({
             isGitHubLinked: false,
             githubConnectionAction: getGitHubConnectionAction(error),
           });
+        }
+
+        const errorCreditStatus = getCreditStatus(error);
+
+        if (errorCreditStatus) {
+          useAiCreditStore.getState().patchCreditStatus(errorCreditStatus);
         }
 
         set({

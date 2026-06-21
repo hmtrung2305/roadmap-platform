@@ -6,6 +6,13 @@ import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import { useProfileStore } from "../../stores/useProfileStore";
+import { usePortfolioStore } from "../../stores/usePortfolioStore";
+import {
+  buildPortfolioProfileUpdatePayload,
+  getPortfolioProfileToastMessage,
+  hasPortfolioProfileErrors,
+  validatePortfolioProfileForm,
+} from "../../features/portfolio/utils/profileValidation";
 
 const initialForm = {
   displayName: "",
@@ -28,16 +35,19 @@ export default function ProfileSettingsPage() {
 
   const loadProfile = useProfileStore((state) => state.loadProfile);
   const updateProfile = useProfileStore((state) => state.updateProfile);
+  const loadPortfolio = usePortfolioStore((state) => state.loadPortfolio);
 
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
       setError("");
+      setFieldErrors({});
 
       const data = await loadProfile();
 
@@ -48,7 +58,9 @@ export default function ProfileSettingsPage() {
     } catch (error) {
       console.error("Failed to load profile:", error.response?.data || error);
 
-      setError(getFriendlyApiErrorMessage(error, "Unable to load profile."));
+      const message = getFriendlyApiErrorMessage(error, "Unable to load profile.");
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -63,6 +75,14 @@ export default function ProfileSettingsPage() {
 
     if (error) {
       setError("");
+    }
+
+    if (fieldErrors[name]) {
+      setFieldErrors((current) => {
+        const nextErrors = { ...current };
+        delete nextErrors[name];
+        return nextErrors;
+      });
     }
 
     setForm((prev) => ({
@@ -80,17 +100,34 @@ export default function ProfileSettingsPage() {
     event.preventDefault();
 
     try {
+      const validationErrors = validatePortfolioProfileForm(form);
+
+      if (hasPortfolioProfileErrors(validationErrors)) {
+        const message = getPortfolioProfileToastMessage(validationErrors);
+        setFieldErrors(validationErrors);
+        setError("Please review the highlighted profile fields before saving.");
+        toast.error(message);
+        return;
+      }
+
       setSaving(true);
       setError("");
+      setFieldErrors({});
 
-      await updateProfile(form);
+      const payload = buildPortfolioProfileUpdatePayload(form);
+      await updateProfile(payload);
+      await loadPortfolio({ isOwnPortfolio: true, force: true }).catch((error) => {
+        console.warn("Could not refresh portfolio after profile update:", error);
+      });
 
       toast.success("Profile updated successfully.");
       navigate("/portfolio");
     } catch (error) {
       console.error("Failed to update profile:", error.response?.data || error);
 
-      setError(getFriendlyApiErrorMessage(error, "Unable to update profile."));
+      const message = getFriendlyApiErrorMessage(error, "Unable to update profile.");
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -257,6 +294,7 @@ export default function ProfileSettingsPage() {
             value={form.publicEmail}
             onChange={handleChange}
             placeholder="example@email.com"
+            error={fieldErrors.publicEmail}
           />
 
           <div className="md:col-span-2">
@@ -288,6 +326,7 @@ export default function ProfileSettingsPage() {
             value={form.avatarUrl}
             onChange={handleChange}
             placeholder="https://..."
+            error={fieldErrors.avatarUrl}
           />
 
           <Input
@@ -296,6 +335,7 @@ export default function ProfileSettingsPage() {
             value={form.coverImageUrl}
             onChange={handleChange}
             placeholder="https://..."
+            error={fieldErrors.coverImageUrl}
           />
 
           <Input
@@ -304,6 +344,7 @@ export default function ProfileSettingsPage() {
             value={form.githubUrl}
             onChange={handleChange}
             placeholder="https://github.com/username"
+            error={fieldErrors.githubUrl}
           />
 
           <Input
@@ -312,6 +353,7 @@ export default function ProfileSettingsPage() {
             value={form.linkedinUrl}
             onChange={handleChange}
             placeholder="https://linkedin.com/in/username"
+            error={fieldErrors.linkedinUrl}
           />
 
           <Input
@@ -320,6 +362,7 @@ export default function ProfileSettingsPage() {
             value={form.personalWebsiteUrl}
             onChange={handleChange}
             placeholder="https://your-site.com"
+            error={fieldErrors.personalWebsiteUrl}
           />
         </div>
       </section>
@@ -347,7 +390,7 @@ export default function ProfileSettingsPage() {
   );
 }
 
-function Input({ label, name, value, onChange, placeholder }) {
+function Input({ label, name, value, onChange, placeholder, error }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -359,8 +402,19 @@ function Input({ label, name, value, onChange, placeholder }) {
         value={value || ""}
         onChange={onChange}
         placeholder={placeholder}
-        className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${name}-error` : undefined}
+        className={`h-11 w-full rounded-lg border bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:ring-4 ${
+          error
+            ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+            : "border-slate-300 focus:border-[#2FA084] focus:ring-[#6FCF97]/20"
+        }`}
       />
+      {error && (
+        <p id={`${name}-error`} className="mt-1.5 text-xs font-semibold text-red-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

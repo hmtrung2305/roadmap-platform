@@ -108,6 +108,16 @@ export const useStreakStore = create((set, get) => ({
     });
   },
 
+  trackStreakIfNeeded: async () => {
+    const state = get();
+
+    if (state.tracking || state.streak?.isCompletedStreakToday) {
+      return state.streak;
+    }
+
+    return get().trackStreak();
+  },
+
   closeAnimation: () => {
     set({ showAnimation: false });
   },

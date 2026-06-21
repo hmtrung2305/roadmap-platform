@@ -4,11 +4,11 @@ import { useParams } from "react-router-dom";
 
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePortfolioStore } from "../stores/usePortfolioStore";
-import PortfolioHeader from "../components/portfolio/PortfolioHeader";
-import PortfolioStats from "../components/portfolio/PortfolioStats";
-import PortfolioAbout from "../components/portfolio/PortfolioAbout";
-import PortfolioRepositoryList from "../components/portfolio/PortfolioRepositoryList";
-import PortfolioSkillGroups from "../components/portfolio/PortfolioSkillGroups";
+import PortfolioHeader from "../features/portfolio/components/public/PortfolioHeader";
+import PortfolioStats from "../features/portfolio/components/public/PortfolioStats";
+import PortfolioAbout from "../features/portfolio/components/public/PortfolioAbout";
+import PortfolioRepositoryList from "../features/portfolio/components/public/PortfolioRepositoryList";
+import PortfolioSkillGroups from "../features/portfolio/components/public/PortfolioSkillGroups";
 
 export default function PortfolioPage() {
   const { username: routeUsername } = useParams();
@@ -101,10 +101,12 @@ function toPortfolioTagArray(value) {
 
 function getRepositoryTechStackTags(repository) {
   const insight = repository?.insight;
+  const insightStatus = String(insight?.analysisStatus || insight?.status || "").toLowerCase();
+  const publicInsight = insightStatus === "completed" ? insight : null;
 
   return [
-    ...toPortfolioTagArray(insight?.techStack),
-    ...toPortfolioTagArray(insight?.techStacks),
+    ...toPortfolioTagArray(publicInsight?.techStack),
+    ...toPortfolioTagArray(publicInsight?.techStacks),
     ...toPortfolioTagArray(repository?.techStack),
     ...toPortfolioTagArray(repository?.techStacks),
   ].filter(Boolean);
