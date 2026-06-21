@@ -4,7 +4,7 @@ This guide runs the scheduled Job Market refresh with GitHub Actions. The workfl
 
 ## Goal
 
-The Web API can serve live Job Market overview data from Jobs API. A separate scheduled job can also persist a daily snapshot into Supabase/PostgreSQL for lifecycle and historical analysis.
+The Web API serves Job Market overview data from the persisted database snapshot. A separate scheduled job pulls from Jobs API and persists the daily snapshot into Supabase/PostgreSQL for lifecycle and historical analysis.
 
 Flow:
 
@@ -13,7 +13,7 @@ GitHub Actions schedule / manual trigger
   -> dotnet run RoadmapPlatform.MarketPulseJob
   -> JobsApi source adapter
   -> Upsert Supabase/PostgreSQL current + analytical tables
-  -> Web API reads live Jobs API or DB fallback
+  -> Web API reads DB snapshot with a short overview cache
 ```
 
 No backend script runtime is required for this workflow.
@@ -100,6 +100,8 @@ MARKET_PULSE_JOBS_API_BASE_URL=https://<jobs-api-domain>
 ```
 
 The workflow fails clearly when any required URL is missing. It does not fall back to a hardcoded localhost or tunnel URL.
+Repository variables are literal values. Do not use Windows CMD interpolation
+such as `%jobsApi%` here; paste the full production URL into each variable.
 
 Optional variables:
 
@@ -132,7 +134,7 @@ Successful logs include:
 
 ```text
 Starting Market Pulse cron refresh...
-Market Pulse result: snapshotDate=..., sources=..., scraped=..., saved=..., new=..., updated=...
+Market Pulse result: snapshotDate=..., sources=..., scraped=..., inserted=..., updated=..., seen=..., expiredInRun=...
 Market Pulse cron refresh finished successfully...
 ```
 
@@ -140,6 +142,15 @@ Then open the app's Market Pulse page or call:
 
 ```http
 GET /api/market-pulse/overview
+GET /api/market-pulse/overview?days=14&skills=react&location=Ha%20Noi
+```
+
+If using the internal Web API endpoint instead of the `.NET MarketPulseJob`, set
+`MarketPulse:InternalApiKey` as a secret/env value and call:
+
+```http
+POST /api/internal/market-pulse/refresh
+X-Market-Pulse-Key: <strong-internal-key-at-least-16-chars>
 ```
 
 ## Operational Notes
@@ -174,4 +185,10 @@ Jobs API returns zero jobs:
 - Verify the Jobs API host is reachable from GitHub Actions.
 - Check `GET /api/v1/ops/health-summary` on the Jobs API with `X-API-Key`.
 - Check `GET /api/v1/crawl-runs/latest?pipeline=listing&limit=10` on the Jobs API with `X-API-Key`.
+- If the Jobs API is deployed with Docker Compose, make sure the `jobs-scheduler`
+  profile is running or run a one-shot `jobs-crawler-worker`. The web service
+  alone intentionally does not crawl in production.
+- If the Jobs API uses SQLite on a hosted platform, mount a persistent disk for
+  `/app/data` or switch `DATABASE_URL` to durable storage. Ephemeral disks become
+  empty after redeploy/restart.
 - Check workflow logs for HTTP status warnings from `JobsApiClient`.

@@ -48,13 +48,14 @@ catch (Exception ex)
 static void LogResult(ILogger logger, MarketPulseRefreshResultDto result)
 {
     logger.LogInformation(
-        "Market Pulse result: snapshotDate={SnapshotDate}, sources={SourcesScraped}, scraped={PostingsScraped}, saved={PostingsSaved}, new={NewPostings}, updated={UpdatedPostings}, active={ActivePostings}, stale={StalePostings}, expired={ExpiredPostings}, skillSnapshots={SkillSnapshotsSaved}.",
+        "Market Pulse result: snapshotDate={SnapshotDate}, sources={SourcesScraped}, scraped={PostingsScraped}, inserted={PostingsInserted}, updated={PostingsUpdated}, seen={PostingsSeen}, expiredInRun={PostingsExpired}, active={ActivePostings}, stale={StalePostings}, expired={ExpiredPostings}, skillSnapshots={SkillSnapshotsSaved}.",
         result.SnapshotDate,
         result.SourcesScraped,
         result.PostingsScraped,
-        result.PostingsSaved,
-        result.NewPostings,
-        result.UpdatedPostings,
+        result.PostingsInserted,
+        result.PostingsUpdated,
+        result.PostingsSeen,
+        result.PostingsExpired,
         result.ActivePostings,
         result.StalePostings,
         result.ExpiredPostings,
