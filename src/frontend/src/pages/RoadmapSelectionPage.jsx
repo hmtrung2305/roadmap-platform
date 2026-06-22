@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import RoadmapCard from "../components/roadmap/RoadmapCard";
 import CareerMentorWidget from "../components/mentor/CareerMentorWidget";
 import { getRoadmapVersionId, useRoadmapStore } from "../stores/useRoadmapStore";
 
 export default function RoadmapSelectionPage() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") || searchParams.get("role") || "";
 
   const baseRoadmaps = useRoadmapStore((state) => state.roadmaps);
   const enrollmentByVersionId = useRoadmapStore((state) => state.enrollmentByVersionId);
@@ -62,6 +63,22 @@ export default function RoadmapSelectionPage() {
       console.error(error);
     });
   }, [loadRoadmaps]);
+
+  function updateQuery(value) {
+    setSearchParams((current) => {
+      const nextParams = new URLSearchParams(current);
+      const trimmed = value.trim();
+
+      if (trimmed) {
+        nextParams.set("q", trimmed);
+      } else {
+        nextParams.delete("q");
+        nextParams.delete("role");
+      }
+
+      return nextParams;
+    }, { replace: true });
+  }
 
   function handleRetry() {
     loadRoadmaps({ force: true, includeEnrollments: true }).catch((error) => {
@@ -149,7 +166,7 @@ export default function RoadmapSelectionPage() {
 
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => updateQuery(event.target.value)}
               placeholder="Search career role"
               className="w-full rounded-lg border border-[#B9D8CC] bg-white py-3 pl-12 pr-4 text-sm font-bold text-[#18332D] shadow-sm outline-none placeholder:text-slate-400 transition-colors duration-150 focus:border-[#2FA084] focus:bg-[#EAF8F1] focus:ring-4 focus:ring-[#2FA084]/10"
             />

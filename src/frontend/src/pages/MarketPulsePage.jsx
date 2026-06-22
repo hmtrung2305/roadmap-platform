@@ -1,25 +1,59 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
+  ArrowRight,
   BadgeCheck,
   BarChart3,
+  BookOpenCheck,
   BriefcaseBusiness,
   CalendarDays,
+  ChevronRight,
+  CircleDot,
   Database,
   DollarSign,
   ExternalLink,
+  Filter,
   GraduationCap,
+  Info,
+  Layers,
+  Lightbulb,
   MapPin,
   Network,
   RefreshCw,
+  Search,
   ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Target,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { marketPulseApi } from "../api/marketPulseApi";
 
 const chartColors = ["#2563eb", "#dc2626", "#ca8a04", "#16a34a", "#7c3aed", "#0891b2"];
-const dayOptions = [7, 14, 30, 60];
+const chartDashPatterns = ["", "8 5", "3 5", "10 3 2 3", "2 3", "12 4"];
+const emptyArray = Object.freeze([]);
+const emptyObject = Object.freeze({});
+const dayOptions = [7, 14, 30, 90];
+const emptyFilters = {
+  category: "",
+  location: "",
+  experience: "",
+  source: "",
+  salaryRange: "",
+  salaryMinMillion: "",
+  salaryMaxMillion: "",
+  skillQuery: "",
+};
+const salaryRanges = [
+  { value: "", label: "Any salary", min: "", max: "" },
+  { value: "lt15", label: "Under 15M", min: "", max: "15" },
+  { value: "15-30", label: "15M - 30M", min: "15", max: "30" },
+  { value: "30-50", label: "30M - 50M", min: "30", max: "50" },
+  { value: "gt50", label: "50M+", min: "50", max: "" },
+];
 const numberFormatter = new Intl.NumberFormat("vi-VN");
 const dateFormatter = new Intl.DateTimeFormat("vi-VN", {
   day: "2-digit",
@@ -36,12 +70,28 @@ const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
 
 export default function MarketPulsePage() {
   const [overview, setOverview] = useState(null);
-  const [days, setDays] = useState(14);
+  const [days, setDays] = useState(30);
+  const [filters, setFilters] = useState(emptyFilters);
   const [selectedSkills, setSelectedSkills] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const queryParams = useMemo(
+    () => ({
+      days,
+      skills: selectedSkills,
+      category: filters.category,
+      location: filters.location,
+      experience: filters.experience,
+      source: filters.source,
+      salaryMinMonthlyVnd: toMonthlyVnd(filters.salaryMinMillion),
+      salaryMaxMonthlyVnd: toMonthlyVnd(filters.salaryMaxMillion),
+    }),
+    [days, filters, selectedSkills],
+  );
 
   useEffect(() => {
     let ignore = false;
@@ -51,21 +101,14 @@ export default function MarketPulsePage() {
       setError("");
 
       try {
-        const data = await marketPulseApi.getOverview({
-          days,
-          skills: selectedSkills,
-        });
+        const data = await marketPulseApi.getOverview(queryParams);
 
         if (ignore) return;
 
         setOverview(data);
-
-        if (selectedSkills.length === 0 && data?.skills?.length > 0) {
-          setSelectedSkills(data.skills.slice(0, 4).map((skill) => skill.skillSlug));
-        }
       } catch (err) {
         if (!ignore) {
-          setError(err?.message || "Unable to load market pulse data.");
+          setError(normalizeOverviewError(err));
         }
       } finally {
         if (!ignore) {
@@ -79,30 +122,89 @@ export default function MarketPulsePage() {
     return () => {
       ignore = true;
     };
-  }, [days, selectedSkills, refreshKey]);
+  }, [queryParams, refreshKey]);
 
   const selectedSkillSet = useMemo(() => new Set(selectedSkills), [selectedSkills]);
-  const skills = overview?.skills ?? [];
-  const todaySkills = overview?.todaySkills ?? [];
-  const trendPoints = overview?.trendPoints ?? [];
-  const categorySummaries = overview?.categorySummaries ?? [];
-  const locationSummaries = overview?.locationSummaries ?? [];
-  const sourceSummaries = overview?.sourceSummaries ?? [];
-  const todayJobs = overview?.todayJobs ?? [];
-  const recentJobs = overview?.recentJobs ?? [];
-  const insightMeta = overview?.insightMeta ?? {};
-  const dataQuality = overview?.dataQuality ?? {};
-  const insightCards = overview?.insightCards ?? [];
-  const risingSkills = overview?.risingSkills ?? [];
-  const fallingSkills = overview?.fallingSkills ?? [];
-  const coOccurrences = overview?.skillCoOccurrences ?? [];
-  const salaryInsight = overview?.salaryInsight ?? {};
-  const experienceSummaries = overview?.experienceSummaries ?? [];
-  const learningRecommendations = overview?.learningRecommendations ?? [];
+  const skills = overview?.skills ?? emptyArray;
+  const todaySkills = overview?.todaySkills ?? emptyArray;
+  const trendPoints = overview?.trendPoints ?? emptyArray;
+  const categorySummaries = overview?.categorySummaries ?? emptyArray;
+  const locationSummaries = overview?.locationSummaries ?? emptyArray;
+  const sourceSummaries = overview?.sourceSummaries ?? emptyArray;
+  const todayJobs = overview?.todayJobs ?? emptyArray;
+  const recentJobs = overview?.recentJobs ?? emptyArray;
+  const insightMeta = overview?.insightMeta ?? emptyObject;
+  const dataQuality = overview?.dataQuality ?? emptyObject;
+  const insightCards = overview?.insightCards ?? emptyArray;
+  const risingSkills = overview?.risingSkills ?? emptyArray;
+  const fallingSkills = overview?.fallingSkills ?? emptyArray;
+  const coOccurrences = overview?.skillCoOccurrences ?? emptyArray;
+  const salaryInsight = overview?.salaryInsight ?? emptyObject;
+  const experienceSummaries = overview?.experienceSummaries ?? emptyArray;
+  const learningRecommendations = overview?.learningRecommendations ?? emptyArray;
+  const categoryOptions = buildSegmentOptions(categorySummaries, filters.category);
+  const locationOptions = buildSegmentOptions(locationSummaries, filters.location);
+  const sourceOptions = buildSegmentOptions(sourceSummaries, filters.source);
+  const experienceOptions = buildSegmentOptions(experienceSummaries, filters.experience);
+  const visibleSkillOptions = useMemo(
+    () => filterSkillOptions(skills, selectedSkills, filters.skillQuery),
+    [filters.skillQuery, selectedSkills, skills],
+  );
+  const activeFilterChips = useMemo(
+    () => buildActiveFilterChips({ days, filters, selectedSkills, skills }),
+    [days, filters, selectedSkills, skills],
+  );
+  const narrativeInsights = useMemo(
+    () =>
+      buildNarrativeInsights({
+        activePostings: overview?.activePostings ?? 0,
+        todayPostings: overview?.todayPostings ?? 0,
+        periodDays: insightMeta?.periodDays || days,
+        risingSkills,
+        fallingSkills,
+        categorySummaries,
+        salaryInsight,
+        dataQuality,
+      }),
+    [
+      categorySummaries,
+      dataQuality,
+      days,
+      fallingSkills,
+      insightMeta?.periodDays,
+      overview?.activePostings,
+      overview?.todayPostings,
+      risingSkills,
+      salaryInsight,
+    ],
+  );
+  const hasOverviewData = Number(overview?.activePostings || 0) > 0;
 
   const latestUpdated = overview?.lastUpdatedAt
     ? dateTimeFormatter.format(new Date(overview.lastUpdatedAt))
     : "No sync yet";
+
+  const updateFilter = (key, value) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const applySalaryRange = (value) => {
+    const range = salaryRanges.find((item) => item.value === value) || salaryRanges[0];
+
+    setFilters((current) => ({
+      ...current,
+      salaryRange: range.value,
+      salaryMinMillion: range.min,
+      salaryMaxMillion: range.max,
+    }));
+  };
+
+  const resetFilters = () => {
+    setDays(30);
+    setFilters(emptyFilters);
+    setSelectedSkills([]);
+    setHoveredPoint(null);
+  };
 
   const toggleSkill = (skillSlug) => {
     setSelectedSkills((current) => {
@@ -124,25 +226,18 @@ export default function MarketPulsePage() {
           </div>
           <h1 className="mt-3 text-3xl font-bold text-slate-950">IT hiring demand</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            Live TopCV job signals from active openings and postings published today.
+            Analyze persisted Jobs API snapshots by period, role, location, salary, source, and skill focus.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {dayOptions.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setDays(option)}
-              className={`h-10 rounded-md border px-4 text-sm font-bold transition ${
-                days === option
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
-              }`}
-            >
-              {option}d
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <Link
+            to="/learning-modules/browse"
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 transition hover:border-emerald-400"
+          >
+            <BookOpenCheck size={16} />
+            Learning modules
+          </Link>
           <button
             type="button"
             onClick={() => setRefreshKey((value) => value + 1)}
@@ -155,11 +250,30 @@ export default function MarketPulsePage() {
       </div>
 
       {error && (
-        <div className="mb-6 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        <div className="mb-6 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           <AlertTriangle size={17} />
           {error}
         </div>
       )}
+
+      <FilterBar
+        days={days}
+        filters={filters}
+        selectedSkills={selectedSkills}
+        selectedSkillSet={selectedSkillSet}
+        skillOptions={visibleSkillOptions}
+        categoryOptions={categoryOptions}
+        locationOptions={locationOptions}
+        sourceOptions={sourceOptions}
+        experienceOptions={experienceOptions}
+        onSetDays={setDays}
+        onUpdateFilter={updateFilter}
+        onApplySalaryRange={applySalaryRange}
+        onToggleSkill={toggleSkill}
+        onReset={resetFilters}
+      />
+
+      <FilterChips chips={activeFilterChips} />
 
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard icon={<BriefcaseBusiness size={18} />} label="Active jobs" value={formatNumber(overview?.activePostings)} />
@@ -169,6 +283,17 @@ export default function MarketPulsePage() {
       </div>
 
       <QualityBanner meta={insightMeta} quality={dataQuality} />
+
+      <MarketStateNotice
+        error={error}
+        isLoading={isLoading}
+        hasOverview={Boolean(overview)}
+        hasOverviewData={hasOverviewData}
+        quality={dataQuality}
+        lastUpdatedAt={overview?.lastUpdatedAt}
+      />
+
+      <NarrativeInsightGrid insights={narrativeInsights} />
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {insightCards.map((card) => (
@@ -193,6 +318,9 @@ export default function MarketPulsePage() {
             selectedSkills={selectedSkills}
             hoveredPoint={hoveredPoint}
             onHoverPoint={setHoveredPoint}
+            periodDays={insightMeta?.periodDays || days}
+            sampleSize={insightMeta?.sampleSize}
+            sourceCount={dataQuality?.sourceCount}
           />
         </section>
 
@@ -209,27 +337,35 @@ export default function MarketPulsePage() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {skills.map((skill) => (
-              <button
-                key={skill.skillSlug}
-                type="button"
-                onClick={() => toggleSkill(skill.skillSlug)}
-                className={`rounded-md border px-3 py-2 text-left text-sm font-bold transition ${
-                  selectedSkillSet.has(skill.skillSlug)
-                    ? "border-blue-500 bg-blue-50 text-blue-800"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-400"
-                }`}
-              >
-                {skill.skillName}
-              </button>
+              <div key={skill.skillSlug} className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                <button
+                  type="button"
+                  onClick={() => toggleSkill(skill.skillSlug)}
+                  className={`px-3 py-2 text-left text-sm font-bold transition ${
+                    selectedSkillSet.has(skill.skillSlug)
+                      ? "bg-blue-50 text-blue-800"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                >
+                  {skill.skillName}
+                </button>
+                <Link
+                  to={buildLearningModulesHref(skill)}
+                  className="inline-flex w-9 items-center justify-center border-l border-slate-200 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-700"
+                  title={`Find learning modules for ${skill.skillName}`}
+                >
+                  <GraduationCap size={15} />
+                </Link>
+              </div>
             ))}
           </div>
 
-          <SkillTable skills={skills.slice(0, 10)} />
+          <SkillTable skills={skills.slice(0, 10)} onToggleSkill={toggleSkill} selectedSkillSet={selectedSkillSet} />
         </section>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <SegmentPanel title="Category mix" segments={categorySummaries} />
+        <SegmentPanel title="Role/category mix" segments={categorySummaries} hrefForSegment={buildRoadmapHref} />
         <SegmentPanel title="Location mix" segments={locationSummaries} icon={<MapPin size={18} />} />
         <SegmentPanel title="Source mix" segments={sourceSummaries} icon={<Database size={18} />} />
       </div>
@@ -254,8 +390,8 @@ export default function MarketPulsePage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <JobList title="Jobs posted today" jobs={todayJobs} />
-        <JobList title="Recent active jobs" jobs={recentJobs} />
+        <JobList title="Jobs posted today" jobs={todayJobs} onInspectJob={setSelectedJob} />
+        <JobList title="Recent active jobs" jobs={recentJobs} onInspectJob={setSelectedJob} />
       </div>
 
       {isLoading && (
@@ -263,6 +399,8 @@ export default function MarketPulsePage() {
           Loading market signals...
         </div>
       )}
+
+      <JobBreakdownDrawer job={selectedJob} onClose={() => setSelectedJob(null)} />
     </section>
   );
 }
@@ -278,6 +416,328 @@ function MetricCard({ icon, label, value }) {
       </div>
       <div className="mt-4 min-h-8 break-words text-2xl font-bold text-slate-950">{value}</div>
     </div>
+  );
+}
+
+function FilterBar({
+  days,
+  filters,
+  selectedSkills,
+  selectedSkillSet,
+  skillOptions,
+  categoryOptions,
+  locationOptions,
+  sourceOptions,
+  experienceOptions,
+  onSetDays,
+  onUpdateFilter,
+  onApplySalaryRange,
+  onToggleSkill,
+  onReset,
+}) {
+  return (
+    <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-cyan-50 text-cyan-700">
+            <SlidersHorizontal size={17} />
+          </span>
+          Market filters
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {dayOptions.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onSetDays(option)}
+              className={`h-9 rounded-md border px-3 text-sm font-bold transition ${
+                days === option
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+              }`}
+            >
+              {option}d
+            </button>
+          ))}
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-600 transition hover:border-slate-400 hover:bg-white"
+          >
+            <X size={15} />
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <FilterSelect
+          label="Role/category"
+          value={filters.category}
+          options={categoryOptions}
+          placeholder="All roles"
+          onChange={(value) => onUpdateFilter("category", value)}
+        />
+        <FilterSelect
+          label="Location"
+          value={filters.location}
+          options={locationOptions}
+          placeholder="All locations"
+          onChange={(value) => onUpdateFilter("location", value)}
+        />
+        <FilterSelect
+          label="Experience"
+          value={filters.experience}
+          options={experienceOptions}
+          placeholder="All levels"
+          onChange={(value) => onUpdateFilter("experience", value)}
+        />
+        <FilterSelect
+          label="Source"
+          value={filters.source}
+          options={sourceOptions}
+          placeholder="All sources"
+          onChange={(value) => onUpdateFilter("source", value)}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.9fr)]">
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <label className="text-xs font-bold uppercase text-slate-500">Skill focus</label>
+            <span className="text-xs font-semibold text-slate-500">
+              {selectedSkills.length}/6 selected
+            </span>
+          </div>
+
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              value={filters.skillQuery}
+              onChange={(event) => onUpdateFilter("skillQuery", event.target.value)}
+              className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              placeholder="Search skill"
+            />
+          </label>
+
+          <div className="mt-3 flex max-h-32 flex-wrap gap-2 overflow-y-auto pr-1">
+            {skillOptions.length === 0 ? (
+              <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-500">
+                No matching skill.
+              </div>
+            ) : (
+              skillOptions.map((skill) => (
+                <button
+                  key={skill.skillSlug}
+                  type="button"
+                  onClick={() => onToggleSkill(skill.skillSlug)}
+                  className={`rounded-md border px-3 py-1.5 text-sm font-bold transition ${
+                    selectedSkillSet.has(skill.skillSlug)
+                      ? "border-blue-500 bg-blue-50 text-blue-800"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+                  }`}
+                >
+                  {skill.skillName}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
+            <DollarSign size={14} />
+            Salary range
+          </div>
+
+          <select
+            value={filters.salaryRange}
+            onChange={(event) => onApplySalaryRange(event.target.value)}
+            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+          >
+            {filters.salaryRange === "custom" && <option value="custom">Custom</option>}
+            {salaryRanges.map((range) => (
+              <option key={range.value || "all"} value={range.value}>
+                {range.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="text-xs font-bold text-slate-500">Min M/month</span>
+              <input
+                value={filters.salaryMinMillion}
+                onChange={(event) => {
+                  onUpdateFilter("salaryRange", "custom");
+                  onUpdateFilter("salaryMinMillion", event.target.value);
+                }}
+                inputMode="decimal"
+                className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                placeholder="0"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold text-slate-500">Max M/month</span>
+              <input
+                value={filters.salaryMaxMillion}
+                onChange={(event) => {
+                  onUpdateFilter("salaryRange", "custom");
+                  onUpdateFilter("salaryMaxMillion", event.target.value);
+                }}
+                inputMode="decimal"
+                className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                placeholder="Any"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FilterSelect({ label, value, options, placeholder, onChange }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase text-slate-500">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+      >
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function FilterChips({ chips }) {
+  if (chips.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {chips.map((chip) => (
+        <span
+          key={`${chip.label}-${chip.value}`}
+          className="inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-800"
+        >
+          <Filter size={13} />
+          {chip.label}: {chip.value}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MarketStateNotice({ error, isLoading, hasOverview, hasOverviewData, quality, lastUpdatedAt }) {
+  if (isLoading) return null;
+
+  if (error) {
+    return (
+      <section className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 shrink-0" size={18} />
+          <div>
+            <h2 className="font-bold">Backend unavailable</h2>
+            <p className="mt-1 font-semibold leading-6">
+              Market Pulse could not reach the roadmap backend or the current user is not allowed to read the overview.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!hasOverview || hasOverviewData) {
+    return null;
+  }
+
+  const hasSnapshot = Boolean(lastUpdatedAt);
+  const title = hasSnapshot ? "No matching market signal" : "No snapshot yet";
+  const detail = hasSnapshot
+    ? "The backend is healthy, but the current filters do not match any active job posting."
+    : "Run the Jobs API crawler and Market Pulse refresh job before opening the analytics view.";
+
+  return (
+    <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+      <div className="flex items-start gap-3">
+        <Info className="mt-0.5 shrink-0" size={18} />
+        <div>
+          <h2 className="font-bold">{title}</h2>
+          <p className="mt-1 font-semibold leading-6">{detail}</p>
+          {(quality?.warnings ?? []).length > 0 && (
+            <p className="mt-2 text-xs font-bold text-amber-800">
+              Latest warning: {quality.warnings[0]}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NarrativeInsightGrid({ insights }) {
+  if (insights.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      {insights.map((insight) => (
+        <NarrativeInsightCard key={insight.title} insight={insight} />
+      ))}
+    </section>
+  );
+}
+
+function NarrativeInsightCard({ insight }) {
+  const Icon = insight.icon;
+
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <span className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${insight.iconClass}`}>
+          <Icon size={17} />
+        </span>
+        <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold uppercase text-slate-500">
+          {insight.confidence}
+        </span>
+      </div>
+      <h2 className="mt-4 text-xs font-bold uppercase text-slate-500">{insight.title}</h2>
+      <div className="mt-2 break-words text-xl font-bold text-slate-950">{insight.value}</div>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{insight.detail}</p>
+      <div className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-blue-700">
+        {insight.actionLabel}
+        <ChevronRight size={14} />
+      </div>
+    </>
+  );
+
+  if (insight.href) {
+    return (
+      <Link
+        to={insight.href}
+        className="tm-animate-item rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <article className="tm-animate-item rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      {content}
+    </article>
   );
 }
 
@@ -464,7 +924,7 @@ function RecommendationsPanel({ recommendations }) {
     <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-slate-950">Learning actions</h2>
-        <GraduationCap className="text-slate-400" size={20} />
+        <Lightbulb className="text-slate-400" size={20} />
       </div>
 
       {recommendations.length === 0 ? (
@@ -482,7 +942,13 @@ function RecommendationsPanel({ recommendations }) {
                 </span>
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
-              <div className="mt-2 text-xs font-bold text-blue-700">{item.actionLabel}</div>
+              <Link
+                to={item.skillSlug ? buildLearningModulesHref({ skillSlug: item.skillSlug, skillName: item.title }) : "/roadmaps"}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900"
+              >
+                {item.actionLabel}
+                <ArrowRight size={13} />
+              </Link>
             </div>
           ))}
         </div>
@@ -491,7 +957,7 @@ function RecommendationsPanel({ recommendations }) {
   );
 }
 
-function SkillTable({ skills, compact = false }) {
+function SkillTable({ skills, compact = false, onToggleSkill = null, selectedSkillSet = null }) {
   if (skills.length === 0) {
     return (
       <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm font-semibold text-slate-500">
@@ -513,7 +979,30 @@ function SkillTable({ skills, compact = false }) {
         <tbody className="divide-y divide-slate-100">
           {skills.map((skill) => (
             <tr key={skill.skillSlug}>
-              <td className="px-3 py-3 font-semibold text-slate-800">{skill.skillName}</td>
+              <td className="px-3 py-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  {onToggleSkill ? (
+                    <button
+                      type="button"
+                      onClick={() => onToggleSkill(skill.skillSlug)}
+                      className={`truncate text-left font-semibold hover:text-blue-700 ${
+                        selectedSkillSet?.has(skill.skillSlug) ? "text-blue-800" : "text-slate-800"
+                      }`}
+                    >
+                      {skill.skillName}
+                    </button>
+                  ) : (
+                    <span className="truncate font-semibold text-slate-800">{skill.skillName}</span>
+                  )}
+                  <Link
+                    to={buildLearningModulesHref(skill)}
+                    className="shrink-0 text-slate-400 transition hover:text-emerald-700"
+                    title={`Find learning modules for ${skill.skillName}`}
+                  >
+                    <GraduationCap size={14} />
+                  </Link>
+                </div>
+              </td>
               <td className="px-3 py-3 text-slate-600">{formatNumber(skill.mentionCount)}</td>
               {!compact && (
                 <td className={`px-3 py-3 font-bold ${growthClass(skill.growthPercent)}`}>
@@ -528,7 +1017,7 @@ function SkillTable({ skills, compact = false }) {
   );
 }
 
-function SegmentPanel({ title, segments, icon = null }) {
+function SegmentPanel({ title, segments, icon = null, hrefForSegment = null }) {
   return (
     <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
@@ -546,7 +1035,17 @@ function SegmentPanel({ title, segments, icon = null }) {
         {segments.map((segment) => (
           <div key={segment.name}>
             <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-              <span className="truncate font-semibold text-slate-700">{segment.name}</span>
+              {hrefForSegment ? (
+                <Link
+                  to={hrefForSegment(segment.name)}
+                  className="inline-flex min-w-0 items-center gap-1 truncate font-semibold text-slate-700 hover:text-blue-700"
+                >
+                  <span className="truncate">{segment.name}</span>
+                  <ArrowRight size={13} className="shrink-0" />
+                </Link>
+              ) : (
+                <span className="truncate font-semibold text-slate-700">{segment.name}</span>
+              )}
               <span className="shrink-0 font-bold text-slate-950">{formatNumber(segment.count)}</span>
             </div>
             <div className="h-2 rounded-full bg-slate-100">
@@ -562,7 +1061,7 @@ function SegmentPanel({ title, segments, icon = null }) {
   );
 }
 
-function JobList({ title, jobs }) {
+function JobList({ title, jobs, onInspectJob }) {
   return (
     <section className="tm-animate-item rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold text-slate-950">{title}</h2>
@@ -577,15 +1076,13 @@ function JobList({ title, jobs }) {
             <article key={`${job.id}-${job.url}`} className="py-4 first:pt-0 last:pb-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <a
-                    href={job.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group inline-flex items-start gap-2 text-sm font-bold leading-6 text-slate-950 hover:text-blue-700"
+                  <button
+                    type="button"
+                    onClick={() => onInspectJob(job)}
+                    className="block text-left text-sm font-bold leading-6 text-slate-950 hover:text-blue-700"
                   >
                     <span>{job.title}</span>
-                    <ExternalLink className="mt-1 shrink-0 opacity-50 group-hover:opacity-100" size={14} />
-                  </a>
+                  </button>
                   <div className="mt-1 text-sm font-semibold text-slate-600">
                     {[job.company, job.location].filter(Boolean).join(" - ") || "Unknown company"}
                   </div>
@@ -610,6 +1107,26 @@ function JobList({ title, jobs }) {
                   ))}
                 </div>
               )}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => onInspectJob(job)}
+                  className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 transition hover:border-blue-400"
+                >
+                  Requirement breakdown
+                  <ArrowRight size={13} />
+                </button>
+                <a
+                  href={job.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 transition hover:border-slate-400"
+                >
+                  Source
+                  <ExternalLink size={13} />
+                </a>
+              </div>
             </article>
           ))}
         </div>
@@ -618,7 +1135,147 @@ function JobList({ title, jobs }) {
   );
 }
 
-function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint }) {
+function JobBreakdownDrawer({ job, onClose }) {
+  if (!job) {
+    return null;
+  }
+
+  const requirements = job.requirements ?? [];
+  const specialties = job.specialties ?? [];
+  const firstSkill = specialties[0] ? { skillName: specialties[0], skillSlug: slugify(specialties[0]) } : null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/35 p-3 sm:p-6" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        aria-label="Close job breakdown"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+
+      <aside className="relative flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap gap-2">
+                <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                  {job.category || "Other"}
+                </span>
+                {job.source && (
+                  <span className="rounded-md bg-cyan-50 px-2 py-1 text-xs font-bold text-cyan-700">
+                    {job.source}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl font-bold leading-7 text-slate-950">{job.title}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                {[job.company, job.location].filter(Boolean).join(" - ") || "Unknown company"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-900"
+            >
+              <X size={17} />
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <DrawerStat label="Salary" value={job.salary || "n/a"} icon={<DollarSign size={16} />} />
+            <DrawerStat label="Experience" value={job.experience || "n/a"} icon={<BadgeCheck size={16} />} />
+            <DrawerStat label="Posted" value={job.postDate ? formatDate(job.postDate) : job.postDateText || "n/a"} icon={<CalendarDays size={16} />} />
+          </div>
+
+          <section className="mt-5">
+            <h3 className="text-sm font-bold uppercase text-slate-500">Requirement breakdown</h3>
+            {requirements.length === 0 ? (
+              <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm font-semibold text-slate-500">
+                No enriched requirements were captured for this posting yet.
+              </div>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {requirements.slice(0, 10).map((requirement, index) => (
+                  <li key={`${requirement}-${index}`} className="flex gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700">
+                    <CircleDot className="mt-1 shrink-0 text-cyan-600" size={14} />
+                    <span>{requirement}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="mt-5">
+            <h3 className="text-sm font-bold uppercase text-slate-500">Matched skills</h3>
+            {specialties.length === 0 ? (
+              <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm font-semibold text-slate-500">
+                No normalized skill list is available yet.
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {specialties.map((skill) => (
+                  <Link
+                    key={skill}
+                    to={buildLearningModulesHref({ skillName: skill, skillSlug: slugify(skill) })}
+                    className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-800 transition hover:border-emerald-400"
+                  >
+                    {skill}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="border-t border-slate-200 px-5 py-4">
+          <div className="flex flex-wrap gap-2">
+            {firstSkill && (
+              <Link
+                to={buildLearningModulesHref(firstSkill)}
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-emerald-700"
+              >
+                <GraduationCap size={16} />
+                Learn this skill
+              </Link>
+            )}
+            <Link
+              to={buildRoadmapHref(job.category || job.title)}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-slate-400"
+            >
+              <Target size={16} />
+              Find roadmap
+            </Link>
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-slate-400"
+            >
+              <ExternalLink size={16} />
+              Open source
+            </a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function DrawerStat({ label, value, icon }) {
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-2 break-words text-sm font-bold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint, periodDays, sampleSize, sourceCount }) {
   const width = 900;
   const height = 360;
   const padding = { top: 24, right: 28, bottom: 44, left: 54 };
@@ -647,6 +1304,8 @@ function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint }) {
       skillSlug,
       label: skillPoints[0]?.skillName || skillSlug,
       color: chartColors[index % chartColors.length],
+      dashPattern: chartDashPatterns[index % chartDashPatterns.length],
+      marker: index + 1,
       points: skillPoints,
     };
   });
@@ -699,7 +1358,15 @@ function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint }) {
 
           return (
             <g key={series.skillSlug}>
-              <path d={path} fill="none" stroke={series.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d={path}
+                fill="none"
+                stroke={series.color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray={series.dashPattern}
+              />
               {series.points.map((point) => {
                 const date = point.date.slice(0, 10);
                 const x = xForDate(date);
@@ -718,6 +1385,15 @@ function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint }) {
                   />
                 );
               })}
+              {series.points.length > 0 && (
+                <text
+                  x={xForDate(series.points[series.points.length - 1].date.slice(0, 10)) + 8}
+                  y={yForValue(series.points[series.points.length - 1].mentionCount) + 4}
+                  className="fill-slate-500 text-[11px] font-bold"
+                >
+                  {series.marker}
+                </text>
+              )}
             </g>
           );
         })}
@@ -726,7 +1402,19 @@ function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint }) {
       <div className="mt-3 flex flex-wrap gap-3">
         {pointsBySkill.map((series) => (
           <span key={series.skillSlug} className="inline-flex items-center gap-2 text-xs font-bold text-slate-600">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: series.color }} />
+            <svg width="30" height="10" aria-hidden>
+              <line
+                x1="1"
+                x2="28"
+                y1="5"
+                y2="5"
+                stroke={series.color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={series.dashPattern}
+              />
+            </svg>
+            <span className="rounded-sm bg-slate-100 px-1 text-[10px] text-slate-500">{series.marker}</span>
             {series.label}
           </span>
         ))}
@@ -735,11 +1423,232 @@ function TrendChart({ points, selectedSkills, hoveredPoint, onHoverPoint }) {
       {hoveredPoint && (
         <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
           {hoveredPoint.skillName}: {formatNumber(hoveredPoint.mentionCount)} mentions in{" "}
-          {formatNumber(hoveredPoint.postingCount)} jobs on {formatDate(hoveredPoint.date)}
+          {formatNumber(hoveredPoint.postingCount)} jobs on {formatDate(hoveredPoint.date)}. Period{" "}
+          {formatNumber(periodDays)}d, sample {formatNumber(sampleSize)}, sources {formatNumber(sourceCount)}.
         </div>
       )}
     </div>
   );
+}
+
+function toMonthlyVnd(value) {
+  if (value === undefined || value === null || value === "") {
+    return "";
+  }
+
+  const normalized = Number(String(value).replace(",", "."));
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    return "";
+  }
+
+  return Math.round(normalized * 1_000_000);
+}
+
+function normalizeOverviewError(error) {
+  const status = error?.response?.status;
+
+  if (status === 401 || status === 403) {
+    return "Backend reached, but the current session cannot read Market Pulse. Sign in with a role that has market pulse permission.";
+  }
+
+  if (status >= 500) {
+    return "Roadmap backend returned an error while building Market Pulse overview.";
+  }
+
+  if (error?.message === "Network Error" || !status) {
+    return "Backend unavailable. Check VITE_BACKEND_BASE_URL, CORS, and whether the roadmap API is running.";
+  }
+
+  return error?.message || "Unable to load market pulse data.";
+}
+
+function buildSegmentOptions(segments, selectedValue) {
+  const names = segments
+    .map((segment) => segment.name)
+    .filter((name) => name && name !== "Unspecified");
+
+  if (selectedValue && !names.some((name) => name.toLowerCase() === selectedValue.toLowerCase())) {
+    names.unshift(selectedValue);
+  }
+
+  return names;
+}
+
+function filterSkillOptions(skills, selectedSkills, query) {
+  const term = query.trim().toLowerCase();
+  const selectedSet = new Set(selectedSkills);
+  const options = skills.filter((skill) => {
+    if (!term) return true;
+    return `${skill.skillName} ${skill.skillSlug}`.toLowerCase().includes(term);
+  });
+  const selectedFallbacks = selectedSkills
+    .filter((slug) => !options.some((skill) => skill.skillSlug === slug))
+    .map((slug) => ({
+      skillSlug: slug,
+      skillName: skillLabelFromSlug(slug),
+      mentionCount: 0,
+      postingCount: 0,
+      growthPercent: 0,
+    }));
+
+  return [...selectedFallbacks, ...options]
+    .sort((a, b) => {
+      const aSelected = selectedSet.has(a.skillSlug) ? 1 : 0;
+      const bSelected = selectedSet.has(b.skillSlug) ? 1 : 0;
+      return bSelected - aSelected || Number(b.mentionCount || 0) - Number(a.mentionCount || 0);
+    })
+    .slice(0, 24);
+}
+
+function buildActiveFilterChips({ days, filters, selectedSkills, skills }) {
+  const skillNameBySlug = new Map(skills.map((skill) => [skill.skillSlug, skill.skillName]));
+  const chips = [{ label: "Window", value: `${days}d` }];
+
+  [
+    ["Role", filters.category],
+    ["Location", filters.location],
+    ["Experience", filters.experience],
+    ["Source", filters.source],
+  ].forEach(([label, value]) => {
+    if (value) {
+      chips.push({ label, value });
+    }
+  });
+
+  selectedSkills.forEach((slug) => {
+    chips.push({
+      label: "Skill",
+      value: skillNameBySlug.get(slug) || skillLabelFromSlug(slug),
+    });
+  });
+
+  if (filters.salaryMinMillion || filters.salaryMaxMillion) {
+    chips.push({
+      label: "Salary",
+      value: `${filters.salaryMinMillion || "0"}M - ${filters.salaryMaxMillion || "any"}M`,
+    });
+  }
+
+  return chips;
+}
+
+function buildNarrativeInsights({
+  activePostings,
+  todayPostings,
+  periodDays,
+  risingSkills,
+  fallingSkills,
+  categorySummaries,
+  salaryInsight,
+  dataQuality,
+}) {
+  const topRising = risingSkills[0];
+  const topFalling = fallingSkills[0];
+  const topRole = categorySummaries[0];
+  const bestSalarySegment = [...(salaryInsight?.byCategory ?? [])]
+    .sort((a, b) => Number(b.coveragePercent || 0) - Number(a.coveragePercent || 0) || Number(b.sampleSize || 0) - Number(a.sampleSize || 0))[0];
+  const confidence = formatConfidence(dataQuality?.level);
+
+  return [
+    {
+      title: periodDays <= 7 ? "Top rising skill this week" : "Top rising skill",
+      value: topRising?.skillName || "No movement yet",
+      detail: topRising
+        ? `${formatDelta(topRising.delta)} mentions versus the previous ${formatNumber(periodDays)}d window.`
+        : "Not enough dated postings to compare skill movement.",
+      confidence: formatConfidence(topRising?.confidence || dataQuality?.level),
+      href: topRising ? buildLearningModulesHref(topRising) : "/learning-modules/browse",
+      actionLabel: "Open learning path",
+      icon: Sparkles,
+      iconClass: "bg-amber-50 text-amber-700",
+    },
+    {
+      title: "Most demanded role",
+      value: topRole?.name || "Unspecified",
+      detail: topRole
+        ? `${formatNumber(topRole.count)} postings, ${formatPercent(topRole.percent)} of the filtered sample.`
+        : "No category distribution is available for this filter set.",
+      confidence,
+      href: topRole?.name ? buildRoadmapHref(topRole.name) : "/roadmaps",
+      actionLabel: "Suggest roadmap",
+      icon: BriefcaseBusiness,
+      iconClass: "bg-blue-50 text-blue-700",
+    },
+    {
+      title: "Salary-backed signal",
+      value: bestSalarySegment?.name || `${formatPercent(salaryInsight?.coveragePercent)} covered`,
+      detail: bestSalarySegment
+        ? `${formatNumber(bestSalarySegment.sampleSize)} salary samples, median ${formatMoneyVnd(bestSalarySegment.medianMinMonthlyVnd)} - ${formatMoneyVnd(bestSalarySegment.medianMaxMonthlyVnd)}.`
+        : `${formatPercent(salaryInsight?.coveragePercent)} of postings have parseable salary strings.`,
+      confidence: formatConfidence(salaryInsight?.confidence || dataQuality?.level),
+      href: bestSalarySegment?.name ? buildRoadmapHref(bestSalarySegment.name) : null,
+      actionLabel: "Compare role",
+      icon: DollarSign,
+      iconClass: "bg-emerald-50 text-emerald-700",
+    },
+    {
+      title: "Data confidence",
+      value: confidence,
+      detail: `${formatDecimal(dataQuality?.score)}/100 from freshness, coverage, source diversity, and detail enrichment.`,
+      confidence,
+      href: null,
+      actionLabel: "Review quality",
+      icon: ShieldCheck,
+      iconClass: "bg-cyan-50 text-cyan-700",
+    },
+    {
+      title: "What changed",
+      value: `${formatNumber(todayPostings)} new today`,
+      detail: topRising || topFalling
+        ? `${formatNumber(risingSkills.length)} rising and ${formatNumber(fallingSkills.length)} cooling skills in ${formatNumber(activePostings)} active postings.`
+        : "No movement signal yet; wait for another snapshot or widen the period.",
+      confidence,
+      href: topRising ? buildLearningModulesHref(topRising) : null,
+      actionLabel: "Inspect signal",
+      icon: Layers,
+      iconClass: "bg-violet-50 text-violet-700",
+    },
+  ];
+}
+
+function buildLearningModulesHref(skill) {
+  const query = skill?.skillName || skillLabelFromSlug(skill?.skillSlug);
+  const params = new URLSearchParams();
+
+  if (query) {
+    params.set("q", query);
+  }
+
+  return `/learning-modules/browse${params.toString() ? `?${params}` : ""}`;
+}
+
+function buildRoadmapHref(value) {
+  const params = new URLSearchParams();
+
+  if (value) {
+    params.set("q", value);
+  }
+
+  return `/roadmaps${params.toString() ? `?${params}` : ""}`;
+}
+
+function skillLabelFromSlug(slug) {
+  if (!slug) return "Skill";
+
+  return String(slug)
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function slugify(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function formatNumber(value) {

@@ -220,6 +220,24 @@ X-Market-Pulse-Key: <MarketPulse:InternalApiKey>
 `MarketPulse:InternalApiKey` phai duoc cau hinh bang env/user-secrets/secret
 va co do dai toi thieu 16 ky tu. Khong commit key that vao source.
 
+## Frontend Market Pulse UX da ap dung
+
+Trang `/market-pulse` hien la lop phan tich tu DB-first overview, khong goi
+truc tiep Jobs API/ngrok trong request cua browser. UI su dung cung query
+options public overview da ho tro:
+
+- Period filter: 7/14/30/90 ngay, backend van clamp 7..180 ngay.
+- Filter bar: role/category, location, experience, source, salary range va skill focus toi da 6 skill.
+- Insight cards theo ngu canh: top rising skill, most demanded role, salary-backed signal, data confidence va what changed.
+- Data quality notice: backend unavailable/permission issue, no snapshot, no matching market signal, stale/warning tu `dataQuality`.
+- Chart demand movement co tooltip period/source/sample size va phan biet series bang mau + dashed line + marker number.
+- Skill click mo `learning-modules/browse?q=<skill>`, role/category click mo `roadmaps?q=<role>`.
+- Job list co requirement breakdown drawer trong UI, van giu link source goc TopCV/Jobs API.
+
+Trang `/roadmaps` da doc query `?q=`/`?role=` de Market Pulse co the mo
+roadmap suggestion da loc theo role/category. Khong can migration/backend
+contract moi cho phase UX nay.
+
 ## Du lieu dau vao
 
 Jobs API v1 response du kien:
@@ -444,7 +462,7 @@ Frontend lint cho trang Job Market:
 
 ```powershell
 cd src/frontend
-npx.cmd eslint src/pages/MarketPulsePage.jsx src/api/marketPulseApi.js
+npx.cmd eslint src/pages/MarketPulsePage.jsx src/pages/RoadmapSelectionPage.jsx src/api/marketPulseApi.js
 ```
 
 Checklist special cases can kiem tra khi review Job Market:

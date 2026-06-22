@@ -102,6 +102,30 @@ The overview builder is shared by the scheduled ingest path and DB read model.
 Overview responses are cached by query for `MarketPulse:OverviewCacheSeconds`
 seconds and invalidated after successful refresh/ingest.
 
+## Frontend Analytics UX
+
+The `/market-pulse` page is a DB-first analytics view over
+`GET /api/market-pulse/overview`. Browser requests should point to the roadmap
+backend with `VITE_BACKEND_BASE_URL`; the roadmap backend is responsible for
+reading the persisted snapshot.
+
+Current UI behavior:
+
+- Window selector: 7, 14, 30, and 90 days.
+- Filters sent to backend: `category`, `location`, `experience`, `source`,
+  repeatable `skills`, `salaryMinMonthlyVnd`, `salaryMaxMonthlyVnd`.
+- Salary inputs are entered as million VND/month in the UI and converted to VND
+  before calling the API.
+- Insight cards show top rising skill, most demanded role, salary-backed signal,
+  data confidence, and what changed since the latest snapshot.
+- Data quality states distinguish backend unavailable/permission error, no
+  snapshot yet, no matching signal, and stale/low-confidence warnings.
+- Skill links open `/learning-modules/browse?q=<skill>`.
+- Role/category links open `/roadmaps?q=<role>`; `/roadmaps` reads `?q=` and
+  `?role=` query params.
+- Job rows open an in-page requirement breakdown drawer using the persisted
+  `requirements` and `specialties` fields, plus the source URL.
+
 ## Database
 
 The persistent Job Market tables stay compatible with the current database:
