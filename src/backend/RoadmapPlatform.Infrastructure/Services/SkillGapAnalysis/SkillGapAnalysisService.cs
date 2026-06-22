@@ -17,17 +17,104 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             _dbContext = dbContext;
         }
 
-        public async Task<AssessmentResponseDto> GetAssessmentAsync(string careerRoleSlug)
-        {
 
-            var careerRole = await _dbContext.CareerRoles
-                .FirstOrDefaultAsync(x =>
-                    x.Slug == careerRoleSlug);
+
+
+
+
+
+
+        public async Task<List<CareerRoleOptionDto>> GetCareerRolesAsync()
+        {
+            return await _dbContext.CareerRoles
+                .OrderBy(x => x.Name)
+                .Select(x =>
+                    new CareerRoleOptionDto
+                    {
+                        CareerRoleId = x.CareerRoleId,
+                        Name = x.Name,
+                        Slug = x.Slug
+                    })
+                .ToListAsync();
+        }
+
+
+
+
+        // USER
+        public async Task<List<AssessmentLevelDto>> GetAssessmentLevelsAsync(string careerRoleSlug)
+        {
+            var careerRole =
+                await _dbContext.CareerRoles
+                    .FirstOrDefaultAsync(x =>
+                        x.Slug == careerRoleSlug);
 
             if (careerRole == null)
             {
-                throw new NotFoundException("Career role not found.");
+                throw new NotFoundException(
+                    "Career role not found.");
             }
+
+            return await _dbContext
+                .AssessmentLevels
+                .Where(x =>
+                    x.CareerRoleId ==
+                    careerRole.CareerRoleId)
+                .OrderBy(x =>
+                    x.SortOrder)
+                .Select(x =>
+                    new AssessmentLevelDto
+                    {
+                        LevelId =
+                            x.AssessmentLevelId,
+
+                        LevelName =
+                            x.Name,
+
+                        Slug =
+                            x.Slug
+                    })
+                .ToListAsync();
+        }
+
+        public async Task<AssessmentByLevelResponseDto> GetAssessmentByLevelAsync(string careerRoleSlug, string levelSlug)
+        {
+            var careerRole =
+                await _dbContext.CareerRoles
+                    .FirstOrDefaultAsync(x =>
+                        x.Slug == careerRoleSlug);
+
+            if (careerRole == null)
+            {
+                throw new NotFoundException(
+                    "Career role not found.");
+            }
+
+            var level =
+                await _dbContext.AssessmentLevels
+                    .FirstOrDefaultAsync(x =>
+                        x.CareerRoleId ==
+                            careerRole.CareerRoleId
+                        &&
+                        x.Slug ==
+                            levelSlug);
+
+            if (level == null)
+            {
+                throw new NotFoundException(
+                    "Assessment level not found.");
+            }
+
+            var levelGroupIds =
+                await _dbContext
+                    .AssessmentLevelGroups
+                    .Where(x =>
+                        x.AssessmentLevelId ==
+                        level.AssessmentLevelId)
+                    .Select(x =>
+                        x.RoadmapNodeId)
+                    .ToListAsync();
+
 
             var roadmap = await _dbContext.Roadmaps
                 .FirstOrDefaultAsync(x =>
@@ -36,21 +123,39 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
 
             if (roadmap == null)
             {
-                throw new NotFoundException("Roadmap not found.");
+                throw new NotFoundException(
+                    "Roadmap not found.");
             }
 
-            var roadmapVersion = await _dbContext.RoadmapVersions
-                .Where(x =>
-                    x.RoadmapId == roadmap.RoadmapId &&
-                    x.Status == "published")
-                .OrderByDescending(x =>
-                    x.VersionNumber)
-                .FirstOrDefaultAsync();
+            var roadmapVersion =
+                await _dbContext.RoadmapVersions
+                    .Where(x =>
+                        x.RoadmapId ==
+                        roadmap.RoadmapId
+                        &&
+                        x.Status ==
+                        "published")
+                    .OrderByDescending(x =>
+                        x.VersionNumber)
+                    .FirstOrDefaultAsync();
 
             if (roadmapVersion == null)
             {
-                throw new NotFoundException("Published roadmap version not found.");
+                throw new NotFoundException(
+                    "Published roadmap version not found.");
             }
+
+            var groups =
+                await _dbContext.RoadmapNodes
+                    .Where(x =>
+                        levelGroupIds.Contains(
+                            x.RoadmapNodeId)
+                        &&
+                        x.NodeType == "choice_group"
+                        &&
+                        x.RoadmapVersionId ==
+                            roadmapVersion.RoadmapVersionId)
+                    .ToListAsync();
 
             var phases = await _dbContext.RoadmapNodes
                 .Where(x =>
@@ -63,76 +168,118 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             var phaseMap = phases.ToDictionary(
                 x => x.RoadmapNodeId);
 
+            var edges =
+                await _dbContext.RoadmapEdges
+                    .Where(x =>
+                        x.RoadmapVersionId ==
+                            roadmapVersion.RoadmapVersionId
+                        &&
+                        x.EdgeType ==
+                            "choice")
+                    .ToListAsync();
 
-            var groups = await _dbContext.RoadmapNodes
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                        roadmapVersion.RoadmapVersionId &&
-                    x.NodeType == "choice_group" &&
-                    x.IsAssessmentSkill)
-                .ToListAsync();
+            var topics =
+                await _dbContext.RoadmapNodes
+                    .Where(x =>
+                        x.RoadmapVersionId ==
+                            roadmapVersion.RoadmapVersionId
+                        &&
+                        x.NodeType ==
+                            "topic")
+                    .ToListAsync();
 
-            var edges = await _dbContext.RoadmapEdges
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                        roadmapVersion.RoadmapVersionId &&
-                    x.EdgeType == "choice")
-                .ToListAsync();
-
-            var topics = await _dbContext.RoadmapNodes
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                        roadmapVersion.RoadmapVersionId &&
-                    x.NodeType == "topic" &&
-                    x.IsAssessmentSkill)
-                .ToListAsync();
-
-            var resultGroups = groups
-                .Select(group =>
-                {
-                    var phase = phaseMap[group.ParentNodeId!.Value];
-
-                    var topicIds = edges
-                        .Where(e =>
-                            e.FromNodeId == group.RoadmapNodeId)
-                        .Select(e => e.ToNodeId)
-                        .ToHashSet();
-
-                    var skills = topics
-                        .Where(t =>
-                            topicIds.Contains(
-                                t.RoadmapNodeId))
-                        .Select(t =>
-                            new AssessmentSkillDto
-                            {
-                                NodeId = t.RoadmapNodeId,
-                                Name = t.Title,
-                                Slug = t.Slug
-                            })
-                        .ToList();
-
-                    return new AssessmentGroupDto
+            var resultGroups =
+                groups
+                    .Select(group =>
                     {
-                        GroupId = group.RoadmapNodeId,
-                        GroupName = group.Title,
-                        GroupSlug = group.Slug,
-                        PhaseName = phase.Title,
-                        SortOrder = (phase.OrderIndex * 1000) + group.OrderIndex,
-                        SelectionType = group.SelectionType,
-                        RequiredCount = group.RequiredCount,
-                        Skills = skills
-                    };
-                })
-                .Where(x => x.Skills.Any())
-                .OrderBy(x => x.SortOrder)
-                .ToList();
+                        if (
+                            !group.ParentNodeId.HasValue ||
+                            !phaseMap.TryGetValue(
+                                group.ParentNodeId.Value,
+                                out var phase))
+                        {
+                            return null;
+                        }
 
-            return new AssessmentResponseDto
+                        var topicIds =
+                            edges
+                                .Where(x =>
+                                    x.FromNodeId ==
+                                    group.RoadmapNodeId)
+                                .Select(x =>
+                                    x.ToNodeId)
+                                .ToHashSet();
+
+                        var skills =
+                            topics
+                                .Where(x =>
+                                    topicIds.Contains(
+                                        x.RoadmapNodeId))
+                                .Select(x =>
+                                    new AssessmentSkillDto
+                                    {
+                                        NodeId =
+                                            x.RoadmapNodeId,
+
+                                        Name =
+                                            x.Title,
+
+                                        Slug =
+                                            x.Slug
+                                    })
+                                .ToList();
+
+                        return new AssessmentGroupByLevelDto
+                        {
+                            GroupId =
+                                group.RoadmapNodeId,
+
+                            GroupName =
+                                group.Title,
+
+                            GroupSlug =
+                                group.Slug,
+
+                            SelectionType =
+                                group.SelectionType,
+
+                            PhaseName =
+                                phase.Title,
+
+                            SortOrder =
+                                (phase.OrderIndex * 1000)
+                                + group.OrderIndex,
+
+                            RequiredCount =
+                                group.RequiredCount,
+
+                            Skills =
+                                skills
+                        };
+                    })
+                    .Where(x => x != null)
+                    .Where(x => x!.Skills.Any())
+                    .OrderBy(x => x!.SortOrder)
+                    .Select(x => x!)
+                    .ToList();
+
+            return new AssessmentByLevelResponseDto
             {
-                CareerRoleName = careerRole?.Name ?? "",
-                Groups = resultGroups
-            };
+                LevelId =
+                    level.AssessmentLevelId,
 
+                LevelName =
+                    level.Name,
+
+                LevelSlug =
+                    level.Slug,
+
+                CareerRoleName =
+                    careerRole.Name,
+
+                Groups =
+                    resultGroups
+            };
         }
 
         public async Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request)
@@ -146,6 +293,30 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 throw new NotFoundException("Career role not found.");
             }
 
+            var level =
+                await _dbContext.AssessmentLevels
+                    .FirstOrDefaultAsync(x =>
+                        x.CareerRoleId ==
+                            careerRole.CareerRoleId
+                        &&
+                        x.Slug ==
+                            request.LevelSlug);
+
+            if (level == null)
+            {
+                throw new NotFoundException(
+                    "Assessment level not found.");
+            }
+
+            var levelGroupIds =
+                await _dbContext
+                    .AssessmentLevelGroups
+                    .Where(x =>
+                        x.AssessmentLevelId ==
+                        level.AssessmentLevelId)
+                    .Select(x =>
+                        x.RoadmapNodeId)
+                    .ToListAsync();
 
             var latestHistory =
                 await _dbContext
@@ -154,7 +325,11 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         x.UserId == userId
                         &&
                         x.CareerRoleId ==
-                            careerRole.CareerRoleId)
+                        careerRole.CareerRoleId
+                        &&
+                        x.LevelSlug ==
+                        request.LevelSlug
+                        )
                     .OrderByDescending(x =>
                         x.CreatedAt)
                     .FirstOrDefaultAsync();
@@ -209,20 +384,26 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                     x => x.RoadmapNodeId);
 
 
-            var groups = await _dbContext.RoadmapNodes
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                        roadmapVersion.RoadmapVersionId &&
-                    x.NodeType == "choice_group" &&
-                    x.IsAssessmentSkill)
-                .ToListAsync();
+            var groups =
+                await _dbContext.RoadmapNodes
+                    .Where(x =>
+                        levelGroupIds.Contains(
+                            x.RoadmapNodeId)
+                        &&
+                        x.NodeType ==
+                            "choice_group"
+                        &&
+                        x.RoadmapVersionId ==
+                            roadmapVersion.RoadmapVersionId)
+
+                    .ToListAsync();
+
 
             var topics = await _dbContext.RoadmapNodes
                 .Where(x =>
                     x.RoadmapVersionId ==
                         roadmapVersion.RoadmapVersionId &&
-                    x.NodeType == "topic" &&
-                    x.IsAssessmentSkill)
+                    x.NodeType == "topic")
                 .ToListAsync();
 
             var edges = await _dbContext.RoadmapEdges
@@ -232,31 +413,46 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                     x.EdgeType == "choice")
                 .ToListAsync();
 
+            var assessmentTopicIds =
+                edges
+                    .Where(x =>
+                        levelGroupIds.Contains(
+                            x.FromNodeId))
+                    .Select(x =>
+                        x.ToNodeId)
+                    .Distinct()
+                    .ToHashSet();
+
+            var assessmentTopics =
+                topics
+                    .Where(x =>
+                        assessmentTopicIds.Contains(
+                            x.RoadmapNodeId))
+                    .ToList();
+
             var selectedNodeIds =
                 request.SelectedNodeIds.ToHashSet() ?? [];
 
-            var totalSkills = topics.Count;
+            var totalSkills = assessmentTopics.Count;
 
-            var matchedSkills = topics.Count(x =>
-                selectedNodeIds.Contains(
-                    x.RoadmapNodeId));
+            var matchedSkills =
+                assessmentTopics.Count(x =>
+                    selectedNodeIds.Contains(
+                        x.RoadmapNodeId));
 
-            var skillCoveragePercent =
-                totalSkills == 0
-                    ? 0
-                    : Math.Round(
-                        matchedSkills * 100m / totalSkills,
-                        2);
-
+            var missingSkills = totalSkills - matchedSkills;
 
             var groupResults = groups
                 .Select(group =>
                 {
 
-                    var phase =
-                        phaseMap[
-                            group.ParentNodeId!.Value
-                        ];
+                    if (!group.ParentNodeId.HasValue ||
+                        !phaseMap.TryGetValue(
+                            group.ParentNodeId.Value,
+                            out var phase))
+                    {
+                        return null;
+                    }
 
                     var topicIds = edges
                         .Where(x =>
@@ -266,11 +462,12 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                             x.ToNodeId)
                         .ToHashSet();
 
-                    var groupTopics = topics
-                        .Where(x =>
-                            topicIds.Contains(
-                                x.RoadmapNodeId))
-                        .ToList();
+                    var groupTopics =
+                        assessmentTopics
+                            .Where(x =>
+                                topicIds.Contains(
+                                    x.RoadmapNodeId))
+                            .ToList();
 
                     var groupMatched =
                         groupTopics.Count(x =>
@@ -321,13 +518,6 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         GroupName = group.Title,
                         TotalSkills = groupTotal,
                         MatchedSkills = groupMatched,
-                        CompletionPercent =
-                            groupTotal == 0
-                                ? 0
-                                : Math.Round(
-                                    groupMatched * 100m /
-                                    groupTotal,
-                                    2),
                         SelectionType = group.SelectionType,
                         PhaseName = phase.Title,
                         SortOrder = (phase.OrderIndex * 1000) + group.OrderIndex,
@@ -337,6 +527,8 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
 
                     };
                 })
+                .Where(x => x != null)
+                .Cast<SkillGapGroupResultDto>()
                 .Where(x => x.TotalSkills > 0)
                 .OrderBy(x => x.SortOrder)
                 .ToList();
@@ -344,24 +536,18 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             var totalGroups = groupResults.Count;
             var completedGroups = groupResults.Count(x => x.IsCompleted);
             var missingGroups = groupResults.Count(x => !x.IsCompleted);
-            var readinessPercent =
-                totalGroups == 0
-                    ? 0
-                    : Math.Round(
-                        completedGroups * 100m /
-                        totalGroups,
-                        2);
 
             var response = new AnalyzeSkillGapResponseDto
             {
                 CareerRoleName = careerRole.Name,
+                LevelName = level.Name,
+                LevelSlug = level.Slug,
                 TotalGroups = totalGroups,
                 CompletedGroups = completedGroups,
                 MissingGroups = missingGroups,
-                ReadinessPercent = readinessPercent,
                 TotalSkills = totalSkills,
                 MatchedSkills = matchedSkills,
-                SkillCoveragePercent = skillCoveragePercent,
+                MissingSkills = missingSkills,
                 Groups = groupResults,
             };
 
@@ -370,8 +556,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             var history =
     new SkillGapAnalysisHistory
     {
-        SkillGapAnalysisHistoryId =
-            Guid.NewGuid(),
+        SkillGapAnalysisHistoryId = Guid.NewGuid(),
 
         UserId =
             userId,
@@ -385,11 +570,15 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
         CareerRoleName =
             careerRole.Name,
 
-        ReadinessPercent =
-            response.ReadinessPercent,
+        LevelSlug = level.Slug,
 
-        SkillCoveragePercent =
-            response.SkillCoveragePercent,
+        LevelName = level.Name,
+
+        MatchedSkills = matchedSkills,
+
+        TotalSkills = totalSkills,
+
+        MissingSkills = missingSkills,
 
         SnapshotJson =
             snapshotJson,
@@ -406,236 +595,6 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 .SaveChangesAsync();
 
             return response;
-        }
-
-        public async Task<List<CareerRoleOptionDto>> GetCareerRolesAsync()
-        {
-            return await _dbContext.CareerRoles
-                .OrderBy(x => x.Name)
-                .Select(x =>
-                    new CareerRoleOptionDto
-                    {
-                        CareerRoleId = x.CareerRoleId,
-                        Name = x.Name,
-                        Slug = x.Slug
-                    })
-                .ToListAsync();
-        }
-
-        public async Task<List<AssessmentGroupAdminDto>> GetAssessmentGroupsAsync(string careerRoleSlug)
-        {
-            var careerRole = await _dbContext.CareerRoles
-                .FirstOrDefaultAsync(x =>
-                    x.Slug == careerRoleSlug);
-
-            if (careerRole == null)
-            {
-                throw new NotFoundException(
-                    "Career role not found.");
-            }
-
-            var roadmap = await _dbContext.Roadmaps
-                .FirstOrDefaultAsync(x =>
-                    x.CareerRoleId ==
-                    careerRole.CareerRoleId);
-
-            if (roadmap == null)
-            {
-                throw new NotFoundException(
-                    "Roadmap not found.");
-            }
-
-            var roadmapVersion = await _dbContext.RoadmapVersions
-                .Where(x =>
-                    x.RoadmapId ==
-                    roadmap.RoadmapId &&
-                    x.Status == "published")
-                .OrderByDescending(x =>
-                    x.VersionNumber)
-                .FirstOrDefaultAsync();
-
-            if (roadmapVersion == null)
-            {
-                throw new NotFoundException(
-                    "Published roadmap version not found.");
-            }
-
-
-            var phases = await _dbContext.RoadmapNodes
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                        roadmapVersion.RoadmapVersionId
-                    &&
-                    x.NodeType == "phase")
-                .ToListAsync();
-
-            var phaseMap = phases
-                .ToDictionary(
-                    x => x.RoadmapNodeId);
-
-
-            var groups = await _dbContext.RoadmapNodes
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                    roadmapVersion.RoadmapVersionId &&
-                    x.NodeType == "choice_group")
-                .ToListAsync();
-
-            var groupSortMap = groups
-                .ToDictionary(
-                    g => g.RoadmapNodeId,
-                    g =>
-                    {
-                        var phase =
-                            phaseMap[
-                                g.ParentNodeId!.Value
-                            ];
-
-                        return
-                            (
-                                phase.OrderIndex * 1000
-                            )
-                            +
-                            g.OrderIndex;
-                    });
-
-
-
-            var edges = await _dbContext.RoadmapEdges
-                .Where(x =>
-                    x.RoadmapVersionId ==
-                    roadmapVersion.RoadmapVersionId &&
-                    x.EdgeType == "choice")
-                .ToListAsync();
-
-            var result = groups
-                .Select(group =>
-                {
-                    var topicIds = edges
-                        .Where(x =>
-                            x.FromNodeId ==
-                            group.RoadmapNodeId)
-                        .Select(x =>
-                            x.ToNodeId)
-                        .ToHashSet();
-
-                    var phase = phaseMap[group.ParentNodeId!.Value];
-
-                    var sortOrder = groupSortMap[group.RoadmapNodeId];
-
-                    var totalTopics = topicIds.Count;
-
-                    return new
-                    {
-                        SortOrder = sortOrder,
-                        Data =
-                            new AssessmentGroupAdminDto
-                            {
-                                GroupId =
-                                    group.RoadmapNodeId,
-
-                                GroupName =
-                                    group.Title,
-
-                                PhaseName = phase.Title,
-
-                                SortOrder = sortOrder,
-
-                                IsAssessmentSkill =
-                                    group.IsAssessmentSkill,
-
-                                TotalTopics = totalTopics,
-                            }
-                    };
-                })
-                .OrderBy(x =>
-                    x.SortOrder)
-                .Select(x =>
-                    x.Data)
-                .ToList();
-
-            return result;
-        }
-
-        public async Task UpdateAssessmentGroupsAsync(List<UpdateAssessmentGroupDto> request)
-        {
-            var requestMap = request
-                .ToDictionary(
-                    x => x.GroupId,
-                    x => x.IsAssessmentSkill);
-
-            var nodeIds = requestMap.Keys.ToList();
-
-            var groups = await _dbContext.RoadmapNodes
-                .Where(x =>
-                    nodeIds.Contains(
-                        x.RoadmapNodeId)
-                    &&
-                    x.NodeType ==
-                        "choice_group")
-                .ToListAsync();
-
-            if (groups.Count != request.Count)
-            {
-                throw new Exception(
-                    "Invalid choice group.");
-            }
-
-            foreach (var group in groups)
-            {
-                group.IsAssessmentSkill =
-                    requestMap[
-                        group.RoadmapNodeId];
-            }
-
-            var groupEdges = await _dbContext.RoadmapEdges
-                .Where(x =>
-                    nodeIds.Contains(
-                        x.FromNodeId)
-                    &&
-                    x.EdgeType == "choice")
-                .ToListAsync();
-
-            var childTopicIds =
-                groupEdges
-                    .Select(x =>
-                        x.ToNodeId)
-                    .Distinct()
-                    .ToList();
-
-            var childTopics =
-                await _dbContext.RoadmapNodes
-                    .Where(x =>
-                        childTopicIds.Contains(
-                            x.RoadmapNodeId))
-                    .ToListAsync();
-
-            foreach (var group in groups)
-            {
-                var enabled =
-                    group.IsAssessmentSkill;
-
-                var topicIds =
-                    groupEdges
-                        .Where(x =>
-                            x.FromNodeId ==
-                            group.RoadmapNodeId)
-                        .Select(x =>
-                            x.ToNodeId)
-                        .ToHashSet();
-
-                foreach (var topic in childTopics)
-                {
-                    if (topicIds.Contains(
-                            topic.RoadmapNodeId))
-                    {
-                        topic.IsAssessmentSkill =
-                            enabled;
-                    }
-                }
-            }
-
-            await _dbContext.SaveChangesAsync();
         }
 
         public async Task<List<SkillGapHistoryDto>> GetHistoryAsync(Guid userId)
@@ -655,11 +614,17 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         CareerRoleName =
                             x.CareerRoleName,
 
-                        ReadinessPercent =
-                            x.ReadinessPercent,
+                        LevelName =
+                            x.LevelName,
 
-                        SkillCoveragePercent =
-                            x.SkillCoveragePercent,
+                        MatchedSkills =
+                            x.MatchedSkills,
+
+                        TotalSkills =
+                            x.TotalSkills,
+
+                        MissingSkills =
+                            x.MissingSkills,
 
                         CreatedAt =
                             x.CreatedAt
@@ -734,6 +699,310 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             await _dbContext
                 .SaveChangesAsync();
         }
+
+
+
+
+
+
+        //ADMIN
+        public async Task UpdateAssessmentLevelGroupsAsync(string careerRoleSlug, string levelSlug, UpdateAssessmentLevelGroupsDto request)
+        {
+            request.GroupIds =
+                request.GroupIds
+                    .Distinct()
+                    .ToList();
+
+            var level =
+              await _dbContext.AssessmentLevels
+                  .Include(x =>
+                      x.CareerRole)
+                  .FirstOrDefaultAsync(x =>
+                      x.CareerRole.Slug ==
+                          careerRoleSlug
+                      &&
+                      x.Slug ==
+                          levelSlug);
+
+            if (level == null)
+            {
+                throw new NotFoundException(
+                    "Assessment level not found.");
+            }
+
+            var roadmap =
+                await _dbContext.Roadmaps
+                    .FirstOrDefaultAsync(x =>
+                        x.CareerRoleId ==
+                        level.CareerRoleId);
+
+            if (roadmap == null)
+            {
+                throw new NotFoundException(
+                    "Roadmap not found.");
+            }
+
+            var roadmapVersion =
+                await _dbContext.RoadmapVersions
+                    .Where(x =>
+                        x.RoadmapId ==
+                            roadmap.RoadmapId
+                        &&
+                        x.Status ==
+                            "published")
+                    .OrderByDescending(x =>
+                        x.VersionNumber)
+                    .FirstOrDefaultAsync();
+
+            if (roadmapVersion == null)
+            {
+                throw new NotFoundException(
+                    "Published roadmap version not found.");
+            }
+
+            var groups =
+                await _dbContext.RoadmapNodes
+                    .Where(x =>
+                        request.GroupIds.Contains(
+                            x.RoadmapNodeId)
+                        &&
+                        x.NodeType ==
+                            "choice_group"
+                        &&
+                        x.RoadmapVersionId ==
+                            roadmapVersion
+                                .RoadmapVersionId)
+                    .ToListAsync();
+
+            if (groups.Count !=
+                request.GroupIds.Count)
+            {
+                throw new Exception(
+                    "Invalid choice group.");
+            }
+
+            var existingMappings =
+                await _dbContext
+                    .AssessmentLevelGroups
+                    .Where(x =>
+                        x.AssessmentLevelId ==
+                        level.AssessmentLevelId)
+                    .ToListAsync();
+
+            _dbContext
+                .AssessmentLevelGroups
+                .RemoveRange(
+                    existingMappings);
+
+            var newMappings =
+                request.GroupIds
+                    .Select(groupId =>
+                        new AssessmentLevelGroup
+                        {
+                            AssessmentLevelGroupId =
+                                Guid.NewGuid(),
+
+                            AssessmentLevelId =
+                                level.AssessmentLevelId,
+
+                            RoadmapNodeId =
+                                groupId
+                        })
+                    .ToList();
+
+            await _dbContext
+                .AssessmentLevelGroups
+                .AddRangeAsync(
+                    newMappings);
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<List<AssessmentLevelAdminDto>> GetAssessmentLevelsAdminAsync(string careerRoleSlug)
+        {
+            var careerRole =
+                await _dbContext.CareerRoles
+                    .FirstOrDefaultAsync(x =>
+                        x.Slug ==
+                        careerRoleSlug);
+
+            if (careerRole == null)
+            {
+                throw new NotFoundException(
+                    "Career role not found.");
+            }
+
+            return await _dbContext
+                .AssessmentLevels
+                .Where(x =>
+                    x.CareerRoleId ==
+                    careerRole.CareerRoleId)
+                .OrderBy(x =>
+                    x.SortOrder)
+                .Select(x =>
+                    new AssessmentLevelAdminDto
+                    {
+                        LevelId =
+                            x.AssessmentLevelId,
+
+                        LevelName =
+                            x.Name,
+
+                        Slug =
+                            x.Slug,
+
+                        GroupCount =
+                            x.AssessmentLevelGroups
+                                .Count
+                    })
+                .ToListAsync();
+        }
+
+        public async Task<AssessmentLevelGroupsAdminDto> GetAssessmentGroupsByLevelAsync(string careerRoleSlug, string levelSlug)
+        {
+            var level =
+                await _dbContext.AssessmentLevels
+                    .Include(x =>
+                        x.CareerRole)
+                    .FirstOrDefaultAsync(x =>
+                        x.CareerRole.Slug ==
+                            careerRoleSlug
+                        &&
+                        x.Slug ==
+                            levelSlug);
+
+            if (level == null)
+            {
+                throw new NotFoundException(
+                    "Assessment level not found.");
+            }
+
+
+            var roadmap =
+                await _dbContext.Roadmaps
+                    .FirstOrDefaultAsync(x =>
+                        x.CareerRoleId ==
+                        level.CareerRoleId);
+
+            if (roadmap == null)
+            {
+                throw new NotFoundException(
+                    "Roadmap not found.");
+            }
+
+            var roadmapVersion =
+                await _dbContext.RoadmapVersions
+                    .Where(x =>
+                        x.RoadmapId ==
+                            roadmap.RoadmapId
+                        &&
+                        x.Status ==
+                            "published")
+                    .OrderByDescending(x =>
+                        x.VersionNumber)
+                    .FirstOrDefaultAsync();
+
+            if (roadmapVersion == null)
+            {
+                throw new NotFoundException(
+                    "Published roadmap version not found.");
+            }
+
+            var phases =
+                await _dbContext.RoadmapNodes
+                    .Where(x =>
+                        x.RoadmapVersionId ==
+                            roadmapVersion
+                                .RoadmapVersionId
+                        &&
+                        x.NodeType ==
+                            "phase")
+                    .ToListAsync();
+
+            var phaseMap =
+                phases.ToDictionary(
+                    x => x.RoadmapNodeId);
+
+
+            var groups =
+                await _dbContext.RoadmapNodes
+                    .Where(x =>
+                        x.RoadmapVersionId ==
+                            roadmapVersion
+                                .RoadmapVersionId
+                        &&
+                        x.NodeType ==
+                            "choice_group")
+                    .ToListAsync();
+
+            var selectedGroupIds =
+                await _dbContext
+                    .AssessmentLevelGroups
+                    .Where(x =>
+                        x.AssessmentLevelId ==
+                            level.AssessmentLevelId)
+                    .Select(x =>
+                        x.RoadmapNodeId)
+                    .ToHashSetAsync();
+
+            var resultGroups =
+                groups
+                    .Select(group =>
+                    {
+                        if (!group.ParentNodeId.HasValue ||
+                            !phaseMap.TryGetValue(
+                                group.ParentNodeId.Value,
+                                out var phase))
+                        {
+                            return null;
+                        }
+
+                        return new AssessmentGroupAdminDto
+                        {
+                            GroupId =
+                                group.RoadmapNodeId,
+
+                            GroupName =
+                                group.Title,
+
+                            PhaseName =
+                                phase.Title,
+
+                            GroupSlug = group.Slug,
+
+                            SortOrder =
+                                (phase.OrderIndex * 1000)
+                                + group.OrderIndex,
+
+                            Selected =
+                                selectedGroupIds
+                                    .Contains(
+                                        group.RoadmapNodeId)
+                        };
+                    })
+                    .Where(x => x != null)
+                    .Cast<AssessmentGroupAdminDto>()
+                    .OrderBy(x => x.SortOrder)
+                    .ToList();
+
+            return new AssessmentLevelGroupsAdminDto
+            {
+                CareerRoleName =
+                    level.CareerRole.Name,
+
+                LevelName =
+                    level.Name,
+
+                LevelSlug =
+                    level.Slug,
+
+                GroupCount = resultGroups.Count,
+
+                Groups =
+                    resultGroups
+            };
+        }
+
 
 
     }

@@ -11,9 +11,14 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
         public string CareerRoleName { get; set; }
             = string.Empty;
 
-        public decimal ReadinessPercent { get; set; }
+        public string LevelName { get; set; }
+            = string.Empty;
 
-        public decimal SkillCoveragePercent { get; set; }
+        public int MatchedSkills { get; set; }
+
+        public int TotalSkills { get; set; }
+
+        public int MissingSkills { get; set; }
 
         public DateTime CreatedAt { get; set; }
     }

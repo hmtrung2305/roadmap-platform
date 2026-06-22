@@ -4,10 +4,9 @@ using System.Text;
 
 namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 {
-    public sealed class UpdateAssessmentGroupDto
+    public sealed class UpdateAssessmentLevelGroupsDto
     {
-        public Guid GroupId { get; set; }
-
-        public bool IsAssessmentSkill { get; set; }
+        public List<Guid> GroupIds { get; set; }
+            = [];
     }
 }

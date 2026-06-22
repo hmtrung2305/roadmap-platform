@@ -8,6 +8,8 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
     {
         public string CareerRoleSlug { get; set; }
             = string.Empty;
+        public string LevelSlug { get; set; }
+            = string.Empty;
 
         public List<Guid> SelectedNodeIds { get; set; }
             = [];

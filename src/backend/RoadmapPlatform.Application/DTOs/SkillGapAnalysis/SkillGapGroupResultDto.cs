@@ -16,8 +16,6 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 
         public int MatchedSkills { get; set; }
 
-        public decimal CompletionPercent { get; set; }
-
         public string SelectionType { get; set; } = string.Empty;
 
         public int? RequiredCount { get; set; }

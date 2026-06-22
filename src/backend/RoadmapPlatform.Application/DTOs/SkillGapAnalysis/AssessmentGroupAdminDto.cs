@@ -11,13 +11,13 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
         public string GroupName { get; set; }
             = string.Empty;
 
+        public string GroupSlug { get; set; } = string.Empty;
+
         public string PhaseName { get; set; }
             = string.Empty;
 
         public int SortOrder { get; set; }
 
-        public bool IsAssessmentSkill { get; set; }
-
-        public int TotalTopics { get; set; }
+        public bool Selected { get; set; }
     }
 }

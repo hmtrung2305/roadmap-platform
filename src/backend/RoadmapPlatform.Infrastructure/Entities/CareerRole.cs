@@ -21,6 +21,8 @@ public partial class CareerRole
 
     public DateTime UpdatedAt { get; set; }
 
+    public virtual ICollection<AssessmentLevel> AssessmentLevels { get; set; } = new List<AssessmentLevel>();
+
     public virtual ICollection<Roadmap> Roadmaps { get; set; } = new List<Roadmap>();
 
     public virtual ICollection<SkillGapAnalysisHistory> SkillGapAnalysisHistories { get; set; } = new List<SkillGapAnalysisHistory>();

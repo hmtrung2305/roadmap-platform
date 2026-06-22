@@ -7,14 +7,15 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
     public class AnalyzeSkillGapResponseDto
     {
         public string CareerRoleName { get; set; } = string.Empty;
+        public string LevelName { get; set; } = string.Empty;
+
+        public string LevelSlug { get; set; } = string.Empty;
+
+        public int MissingSkills { get; set; }
 
         public int TotalSkills { get; set; }
 
         public int MatchedSkills { get; set; }
-
-        public decimal SkillCoveragePercent { get; set; }
-
-        public decimal ReadinessPercent { get; set; }
 
         public int TotalGroups { get; set; }
 
