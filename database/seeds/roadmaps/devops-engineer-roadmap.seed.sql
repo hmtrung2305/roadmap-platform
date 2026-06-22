@@ -344,7 +344,7 @@ INSERT INTO seed_resource VALUES
 ('qe-owasp-web-security-testing', 'OWASP Web Security Testing Guide', 'https://owasp.org/www-project-web-security-testing-guide/', 'documentation', 'OWASP guide for testing common web application security risks.', 'OWASP', 'intermediate'),
 ('qe-kaggle-data-viz', 'Kaggle Learn: Data Visualization', 'https://www.kaggle.com/learn/data-visualization', 'course', 'Hands-on micro-course for practical data visualization with Python.', 'Kaggle Learn', 'beginner'),
 ('qe-owasp-secrets', 'OWASP Secrets Management Cheat Sheet', 'https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html', 'documentation', 'OWASP guidance for managing secrets, credentials, rotation, and storage.', 'OWASP', 'intermediate'),
-('qe-nginx-beginners-guide', 'NGINX Beginner’s Guide', 'https://nginx.org/en/docs/beginners_guide.html', 'documentation', 'Official NGINX beginner guide covering configuration structure, serving static content, proxying, and FastCGI proxying.', 'NGINX', 'beginner');
+('qe-nginx-beginners-guide', 'NGINX Beginner''s Guide', 'https://nginx.org/en/docs/beginners_guide.html', 'documentation', 'Official NGINX beginner guide covering configuration structure, serving static content, proxying, and FastCGI proxying.', 'NGINX', 'beginner');
 
 UPDATE public.learning_resource lr
 SET title = sr.title,
