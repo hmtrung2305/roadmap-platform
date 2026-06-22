@@ -162,6 +162,31 @@ X-Market-Pulse-Key: <strong-internal-key-at-least-16-chars>
 - `MaxPostingsPerSource` caps how many Jobs API postings are persisted by the scheduled refresh.
 - Prefer `MARKET_PULSE_ACTIVE_JOBS_API_URL=https://<crawler-host>/api/v1/jobs?active=true&sort=post_date_desc` so the adapter uses the versioned envelope contract and pagination.
 
+## CI, Security, And Health Checks
+
+The repository also includes `.github/workflows/ci.yml` for pull requests and
+pushes to `main`:
+
+- .NET restore/build, plus `dotnet test` when test projects exist.
+- Frontend `npm ci`, `npm run lint`, and `npm run build`.
+- Guardrails for committed runtime files, hardcoded ngrok hosts,
+  `UserSecretsId`, and weak sample secrets in project/config files.
+
+Runtime health endpoints:
+
+```http
+GET /health
+GET /ready
+```
+
+Use `/health` for lightweight process checks and `/ready` for deployment
+readiness because it verifies database connectivity. Keep the protected
+`GET /api/Home/check-connection` endpoint for authenticated admin diagnostics.
+
+`ConnectionStrings:DefaultConnection` must be supplied by environment variable,
+deployment secret, or a local secret. Do not commit database credentials in
+`appsettings.json`.
+
 ## Quick Debug
 
 Missing secret:
