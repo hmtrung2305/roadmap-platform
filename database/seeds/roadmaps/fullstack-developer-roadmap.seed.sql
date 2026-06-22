@@ -379,7 +379,7 @@ INSERT INTO seed_resource VALUES
 ('web-mdn-responsive', 'Responsive Design - MDN', 'https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/CSS_layout/Responsive_Design', 'documentation', 'MDN guide for responsive layouts and media queries.', 'MDN Web Docs', 'beginner'),
 ('web-next-app', 'Next.js App Router Docs', 'https://nextjs.org/docs/app', 'documentation', 'Next.js documentation for app routing, layouts, rendering, and full-stack patterns.', 'Next.js', 'intermediate'),
 ('web-react-learn', 'React Learn', 'https://react.dev/learn', 'documentation', 'Official React learning material for components, props, state, and rendering.', 'React', 'beginner'),
-('web-react-state', 'State: A Component’s Memory - React', 'https://react.dev/learn/state-a-components-memory', 'documentation', 'Official React guide for component state.', 'React', 'beginner'),
+('web-react-state', 'State: A Component''s Memory - React', 'https://react.dev/learn/state-a-components-memory', 'documentation', 'Official React guide for component state.', 'React', 'beginner'),
 ('cur-cloudflare-dns', 'What is DNS? - Cloudflare', 'https://www.cloudflare.com/learning/dns/what-is-dns/', 'article', 'Cloudflare explanation of DNS and domain-name resolution.', 'Cloudflare', 'beginner'),
 ('cur-mdn-http-overview', 'HTTP Overview - MDN', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview', 'documentation', 'MDN guide explaining HTTP request and response concepts.', 'MDN Web Docs', 'beginner'),
 ('cur-learnopengl-getting-started', 'LearnOpenGL Getting Started', 'https://learnopengl.com/Getting-started/OpenGL', 'practice', 'LearnOpenGL tutorial for OpenGL basics.', 'LearnOpenGL', 'intermediate'),

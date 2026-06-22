@@ -223,7 +223,7 @@ INSERT INTO seed_resource VALUES
 ('cur-istqb-foundation', 'ISTQB Foundation Level Syllabus', 'https://www.istqb.org/certifications/certified-tester-foundation-level', 'documentation', 'ISTQB Foundation Level syllabus for testing concepts.', 'ISTQB', 'beginner'),
 ('cur-mdn-accessibility', 'Accessibility - MDN', 'https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility', 'documentation', 'MDN guide for accessible web content.', 'MDN Web Docs', 'beginner'),
 ('cur-wcag-mobile', 'Mobile Accessibility - W3C WAI', 'https://www.w3.org/WAI/standards-guidelines/mobile/', 'documentation', 'W3C guidance for mobile accessibility.', 'W3C', 'beginner'),
-('cur-react-state', 'State: A Component’s Memory - React', 'https://react.dev/learn/state-a-components-memory', 'documentation', 'React documentation explaining component state.', 'React', 'beginner'),
+('cur-react-state', 'State: A Component''s Memory - React', 'https://react.dev/learn/state-a-components-memory', 'documentation', 'React documentation explaining component state.', 'React', 'beginner'),
 ('cur-mdn-http-overview', 'HTTP Overview - MDN', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview', 'documentation', 'MDN guide explaining HTTP request and response concepts.', 'MDN Web Docs', 'beginner'),
 ('cur-api-design-ms', 'API Design - Microsoft Azure Architecture Center', 'https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design', 'documentation', 'Microsoft guidance for designing HTTP APIs.', 'Microsoft Learn', 'intermediate'),
 ('cur-graphql-queries', 'GraphQL Queries and Mutations', 'https://graphql.org/learn/queries/', 'documentation', 'GraphQL tutorial section for queries and mutations.', 'GraphQL', 'beginner'),
