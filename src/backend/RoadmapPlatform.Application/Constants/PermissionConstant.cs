@@ -64,6 +64,7 @@ public static class PermissionConstant
     public const string CAREER_ROLE_VIEW_CATALOG = "career_role.view.catalog";
     public const string SKILL_GAP_ANALYSIS_CREATE_SELF = "skill_gap_analysis.create.self";
     public const string MARKET_PULSE_VIEW_CATALOG = "market_pulse.view.catalog";
+    public const string MARKET_PULSE_MANAGE_ANY = "market_pulse.manage.any";
     public const string SKILL_VIEW_CATALOG = "skill.view.catalog";
 
     public const string SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF = "skill_gap_analysis_history.view.self";
@@ -199,6 +200,7 @@ public static class PermissionConstant
         CAREER_ROLE_VIEW_CATALOG,
         SKILL_GAP_ANALYSIS_CREATE_SELF,
         MARKET_PULSE_VIEW_CATALOG,
+        MARKET_PULSE_MANAGE_ANY,
         SKILL_VIEW_CATALOG,
         SKILL_VIEW_ANY,
         LEARNING_MODULE_VIEW_OWN,

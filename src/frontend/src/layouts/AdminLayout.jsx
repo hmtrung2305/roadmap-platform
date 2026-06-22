@@ -5,6 +5,7 @@ import {
   ChevronUp,
   LayoutDashboard,
   LogOut,
+  Activity,
   Settings,
   Shield,
 } from "lucide-react";
@@ -22,6 +23,12 @@ const adminNavItems = [
     match: (pathname) => pathname === "/admin",
   },
   {
+    label: "Market Pulse",
+    path: "/admin/market-pulse",
+    icon: Activity,
+    match: (pathname) => pathname === "/admin/market-pulse",
+  },
+  {
     label: "Settings",
     path: "/admin/settings",
     icon: Settings,
@@ -36,6 +43,10 @@ function getAdminPageTitle(pathname) {
 
   if (pathname === "/admin/settings") {
     return "Settings";
+  }
+
+  if (pathname === "/admin/market-pulse") {
+    return "Market Pulse";
   }
 
   return "Admin";
