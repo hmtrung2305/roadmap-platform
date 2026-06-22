@@ -6,7 +6,10 @@
 \i database/seeds/core/shared-skills.seed.sql
 
 \echo 'Seeding roles and permissions...'
-\i database/seeds/core/rbac-roles-permissions.sql
+\i database/seeds/core/001-rbac-roles-permissions.seed.sql
+
+\echo 'Seeding roles and permissions...'
+\i database/seeds/core/002-rbac-roles-permissions.seed.sql
 
 \echo 'Seeding users...'
 \i database/seeds/core/dev-users.seed.sql
