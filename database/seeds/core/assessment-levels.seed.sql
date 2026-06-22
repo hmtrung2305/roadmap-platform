@@ -22,5 +22,3 @@ CROSS JOIN
 ) AS lvl(name, slug, sort_order)
 ON CONFLICT (career_role_id, slug)
 DO NOTHING;
-
-
