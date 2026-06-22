@@ -11,6 +11,9 @@
 \echo 'Seeding roles and permissions...'
 \i database/seeds/core/002-rbac-roles-permissions.seed.sql
 
+\echo 'Seeding assessment levels...'
+\i database/seeds/core/assessment-levels.seed.sql
+
 \echo 'Seeding users...'
 \i database/seeds/core/dev-users.seed.sql
 
