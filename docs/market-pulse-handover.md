@@ -238,6 +238,30 @@ Trang `/roadmaps` da doc query `?q=`/`?role=` de Market Pulse co the mo
 roadmap suggestion da loc theo role/category. Khong can migration/backend
 contract moi cho phase UX nay.
 
+## CI/CD, security, observability da ap dung
+
+Roadmap Platform co workflow PR/push `.github/workflows/ci.yml`:
+
+- .NET: restore, build solution, va tu dong chay `dotnet test` neu sau nay co test project.
+- Frontend: `npm ci`, `npm run lint`, `npm run build`.
+- Guardrails: chan `.env`, SQLite DB/runtime files, hardcoded ngrok host,
+  `UserSecretsId`, `Password=123456`, `change-me` trong project/config files.
+
+Security config:
+
+- `appsettings.json` khong con chua database password mau. Dat
+  `ConnectionStrings__DefaultConnection` bang env/deployment secret/local secret.
+- Neu connection string thieu, backend fail fast voi thong bao ro rang.
+- Cac project `.csproj` khong commit `UserSecretsId`. Neu can user-secrets local,
+  chay `dotnet user-secrets init` tren may local va khong commit thay doi do.
+
+Observability:
+
+- `GET /health` public: process song.
+- `GET /ready` public: kiem tra database reachable, tra `503` khi DB loi.
+- `GET /api/Home/check-connection` van duoc bao ve bang
+  `system_health.view.any` cho diagnostics co RBAC.
+
 ## Du lieu dau vao
 
 Jobs API v1 response du kien:
@@ -364,7 +388,7 @@ Query params:
 
 | Param | Kieu | Mac dinh | Rule |
 |---|---:|---:|---|
-| `days` | number | `30` | Backend clamp trong khoang `7..180`; UI hien co cac nut `7`, `14`, `30`, `60`. |
+| `days` | number | `30` | Backend clamp trong khoang `7..180`; UI hien co cac nut `7`, `14`, `30`, `90`. |
 | `skills` | repeated string | empty | Neu rong, backend chon top skills. Neu co, chart render toi da 6 skill dau tien. |
 
 Response fields chinh:
@@ -417,6 +441,7 @@ Backend:
 
 ```powershell
 cd src/backend
+$env:ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=roadmap_platform;Username=postgres;Password=<local-password>"
 dotnet run --project RoadmapPlatform.Api/RoadmapPlatform.Api.csproj --urls http://127.0.0.1:5208
 ```
 

@@ -51,10 +51,18 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             this IServiceCollection services,
             IConfiguration configuration)
         {
+            var defaultConnection = configuration.GetConnectionString("DefaultConnection");
+            if (string.IsNullOrWhiteSpace(defaultConnection))
+            {
+                throw new InvalidOperationException(
+                    "ConnectionStrings:DefaultConnection must be configured by environment variable, " +
+                    "user secret, or deployment secret. Do not commit database credentials in appsettings.json.");
+            }
+
             // Database connection
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(
-                    configuration.GetConnectionString("DefaultConnection"),
+                    defaultConnection,
                     npgsqlOptions =>
                     {
                         npgsqlOptions.UseVector();

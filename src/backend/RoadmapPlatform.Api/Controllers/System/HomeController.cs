@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.Constants;
@@ -15,6 +16,55 @@ namespace RoadmapPlatform.Api.Controllers.System
         public HomeController(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+        [HttpGet("/health")]
+        [AllowAnonymous]
+        public IActionResult Health()
+        {
+            return Ok(new
+            {
+                status = "ok",
+                service = "roadmap-platform-api",
+                generatedAt = DateTime.UtcNow
+            });
+        }
+
+        [HttpGet("/ready")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Ready(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var canConnect = await _context.Database.CanConnectAsync(cancellationToken);
+                if (canConnect)
+                {
+                    return Ok(new
+                    {
+                        status = "ready",
+                        database = "reachable",
+                        generatedAt = DateTime.UtcNow
+                    });
+                }
+
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    ApiErrorResponseFactory.Create(
+                        HttpContext,
+                        StatusCodes.Status503ServiceUnavailable,
+                        "DATABASE_UNAVAILABLE",
+                        "Database is not reachable."));
+            }
+            catch
+            {
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    ApiErrorResponseFactory.Create(
+                        HttpContext,
+                        StatusCodes.Status503ServiceUnavailable,
+                        "DATABASE_UNAVAILABLE",
+                        "Database is not reachable."));
+            }
         }
 
         [HttpGet("check-connection")]
