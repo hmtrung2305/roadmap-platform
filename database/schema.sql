@@ -1690,7 +1690,7 @@ CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
     level_slug VARCHAR(50) NOT NULL DEFAULT '',
     matched_skills INT NOT NULL DEFAULT 0,
     total_skills INT NOT NULL DEFAULT 0,
-    missing_skills INT NOT NULL DEFAULT 0
+    missing_skills INT NOT NULL DEFAULT 0,
     snapshot_json JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
