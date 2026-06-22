@@ -8,7 +8,7 @@ using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
     [ApiController]
-    [Route("api/admin/skill-gap")]
+    [Route("api/content/skill-gap")]
     public class AdminSkillGapController : ControllerBase
     {
 
@@ -18,27 +18,42 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
             _skillGapAnalysisService = skillGapAnalysisService;
         }
 
-        // ADMIN
+        // CONTENT MANAGER
+        [HttpGet("{careerRoleSlug}/levels")]
         [RequirePermission(PermissionConstant.SKILL_GAP_CONFIG_VIEW_ANY)]
-        [HttpGet("assessment-groups/{careerRoleSlug}")]
-        public async Task<IActionResult> GetAssessmentGroups(string careerRoleSlug)
+        public async Task<IActionResult> GetAssessmentLevelsAdmin(string careerRoleSlug)
         {
             var result =
                 await _skillGapAnalysisService
-                    .GetAssessmentGroupsAsync(
-                        careerRoleSlug);
+                    .GetAssessmentLevelsAdminAsync(careerRoleSlug);
 
             return Ok(result);
         }
 
 
+        [HttpGet("{careerRoleSlug}/levels/{levelSlug}/groups")]
+        [RequirePermission(PermissionConstant.SKILL_GAP_CONFIG_VIEW_ANY)]
+        public async Task<IActionResult> GetGroupsByLevel(string careerRoleSlug, string levelSlug)
+        {
+            var result =
+                await _skillGapAnalysisService
+                    .GetAssessmentGroupsByLevelAsync(
+                        careerRoleSlug,
+                        levelSlug);
 
+            return Ok(result);
+        }
+
+
+        [HttpPut("{careerRoleSlug}/levels/{levelSlug}/groups")]
         [RequirePermission(PermissionConstant.SKILL_GAP_CONFIG_UPDATE_ANY)]
-        [HttpPut("assessment-groups")]
-        public async Task<IActionResult> UpdateAssessmentGroups([FromBody] List<UpdateAssessmentGroupDto> request)
+
+        public async Task<IActionResult> UpdateAssessmentGroupsByLevel(string careerRoleSlug, string levelSlug, [FromBody] UpdateAssessmentLevelGroupsDto request)
         {
             await _skillGapAnalysisService
-                .UpdateAssessmentGroupsAsync(
+                .UpdateAssessmentLevelGroupsAsync(
+                    careerRoleSlug,
+                    levelSlug,
                     request);
 
             return NoContent();

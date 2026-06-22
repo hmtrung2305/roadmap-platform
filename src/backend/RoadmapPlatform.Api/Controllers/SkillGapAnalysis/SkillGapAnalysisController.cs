@@ -26,8 +26,8 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
 
 
 
-        [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
         [HttpGet("skill-gap/career-roles")]
+        [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
         public async Task<IActionResult> GetCareerRoles()
         {
             var result =
@@ -38,20 +38,8 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
         }
 
 
-        [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
-        [HttpGet("skill-gap/{careerRoleSlug}/assessment")]
-        public async Task<IActionResult> GetAssessment(string careerRoleSlug)
-        {
-            var result =
-                await _skillGapAnalysisService
-                    .GetAssessmentAsync(careerRoleSlug);
-
-            return Ok(result);
-        }
-
-
-        [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_CREATE_SELF)]
         [HttpPost("skill-gap/analyze")]
+        [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_CREATE_SELF)]
         public async Task<IActionResult> Analyze([FromBody] AnalyzeSkillGapRequestDto request)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -79,6 +67,8 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
             return Ok(result);
         }
 
+
+
         [HttpGet("me/skill-gap/history/{historyId:guid}")]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF)]
         public async Task<IActionResult> GetHistoryDetail(Guid historyId)
@@ -96,6 +86,8 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
             return Ok(result);
         }
 
+
+
         [HttpDelete("me/skill-gap/history/{historyId:guid}")]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF)]
         public async Task<IActionResult> DeleteHistory(Guid historyId)
@@ -110,6 +102,34 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
                     userId);
 
             return NoContent();
+        }
+        
+
+
+        [HttpGet("skill-gap/{careerRoleSlug}/levels")]
+        [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
+        public async Task<IActionResult> GetAssessmentLevels(string careerRoleSlug)
+        {
+            var result =
+                await _skillGapAnalysisService
+                    .GetAssessmentLevelsAsync(
+                        careerRoleSlug);
+
+            return Ok(result);
+        }
+
+
+        [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
+        [HttpGet("skill-gap/{careerRoleSlug}/assessment/{levelSlug}")]
+        public async Task<IActionResult> GetAssessmentByLevel(string careerRoleSlug, string levelSlug)
+        {
+            var result =
+                await _skillGapAnalysisService
+                    .GetAssessmentByLevelAsync(
+                        careerRoleSlug,
+                        levelSlug);
+
+            return Ok(result);
         }
     }
 }

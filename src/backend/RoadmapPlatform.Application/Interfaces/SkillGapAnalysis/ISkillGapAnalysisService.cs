@@ -8,20 +8,32 @@ namespace RoadmapPlatform.Application.Interfaces.CareerRoleSkill
 {
     public interface ISkillGapAnalysisService
     {
-        Task<AssessmentResponseDto> GetAssessmentAsync(string careerRoleSlug);
 
-        Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request);
 
         Task<List<CareerRoleOptionDto>> GetCareerRolesAsync();
 
-        Task<List<AssessmentGroupAdminDto>> GetAssessmentGroupsAsync(string careerRoleSlug);
 
-        Task UpdateAssessmentGroupsAsync(List<UpdateAssessmentGroupDto> request);
+
+        //USER
+        Task<List<AssessmentLevelDto>> GetAssessmentLevelsAsync(string careerRoleSlug);
+
+        Task<AssessmentByLevelResponseDto> GetAssessmentByLevelAsync(string careerRoleSlug, string levelSlug);
+
+        Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request);
+
+        Task DeleteHistoryAsync(Guid historyId, Guid userId);
 
         Task<List<SkillGapHistoryDto>> GetHistoryAsync(Guid userId);
 
         Task<SkillGapHistoryDetailDto> GetHistoryDetailAsync(Guid historyId, Guid userId);
 
-        Task DeleteHistoryAsync(Guid historyId, Guid userId);
+
+
+
+        // ADMIN
+        Task UpdateAssessmentLevelGroupsAsync(string careerRoleSlug, string levelSlug, UpdateAssessmentLevelGroupsDto request);
+        Task<List<AssessmentLevelAdminDto>> GetAssessmentLevelsAdminAsync(string careerRoleSlug);
+
+        Task<AssessmentLevelGroupsAdminDto> GetAssessmentGroupsByLevelAsync(string careerRoleSlug, string levelSlug);
     }
 }

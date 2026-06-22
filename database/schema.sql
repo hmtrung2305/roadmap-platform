@@ -796,7 +796,6 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node
     learning_outcomes jsonb NOT NULL DEFAULT '[]'::jsonb,
     completion_criteria jsonb NOT NULL DEFAULT '[]'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    is_assessment_skill boolean NOT NULL DEFAULT false,
 
     CONSTRAINT fk_roadmap_node_version
         FOREIGN KEY (roadmap_version_id)
@@ -1675,6 +1674,11 @@ CREATE TABLE IF NOT EXISTS public.payment_transaction
         ON DELETE CASCADE
 );
 
+-- =========================
+-- SKILL GAP HISTORY
+-- =========================
+
+
 CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
 (
     skill_gap_analysis_history_id UUID PRIMARY KEY,
@@ -1682,8 +1686,11 @@ CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
     career_role_id UUID NOT NULL,
     career_role_slug VARCHAR(200) NOT NULL,
     career_role_name VARCHAR(500) NOT NULL,
-    readiness_percent NUMERIC(5,2) NOT NULL,
-    skill_coverage_percent NUMERIC(5,2) NOT NULL,
+    level_name VARCHAR(50) NOT NULL DEFAULT '',
+    level_slug VARCHAR(50) NOT NULL DEFAULT '',
+    matched_skills INT NOT NULL DEFAULT 0,
+    total_skills INT NOT NULL DEFAULT 0,
+    missing_skills INT NOT NULL DEFAULT 0
     snapshot_json JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -1695,3 +1702,65 @@ CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
         FOREIGN KEY(career_role_id)
         REFERENCES career_role(career_role_id)
 );
+
+
+-- =========================
+-- SKILL GAP LEVEL ASSESSMENT
+-- =========================
+
+CREATE TABLE IF NOT EXISTS public.assessment_level
+(
+    assessment_level_id UUID PRIMARY KEY,
+
+    career_role_id UUID NOT NULL,
+
+    name VARCHAR(50) NOT NULL,
+
+	slug VARCHAR(50) NOT NULL, 
+
+    sort_order INT NOT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+	CONSTRAINT uq_assessment_level_slug
+    	UNIQUE(career_role_id, slug),	
+	
+    CONSTRAINT fk_assessment_level_career_role
+        FOREIGN KEY (career_role_id)
+        REFERENCES career_role(career_role_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.assessment_level_group
+(
+    assessment_level_group_id UUID PRIMARY KEY,
+
+    assessment_level_id UUID NOT NULL,
+
+    roadmap_node_id UUID NOT NULL,
+
+	CONSTRAINT uq_assessment_level_group
+	UNIQUE
+	(
+    assessment_level_id,
+    roadmap_node_id
+	),
+
+    CONSTRAINT fk_assessment_level_group_level
+        FOREIGN KEY (assessment_level_id)
+        REFERENCES assessment_level(assessment_level_id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_assessment_level_group_node
+        FOREIGN KEY (roadmap_node_id)
+        REFERENCES roadmap_node(roadmap_node_id) ON DELETE CASCADE
+);
+
+
+
+
+
+
+
+
+
+
+

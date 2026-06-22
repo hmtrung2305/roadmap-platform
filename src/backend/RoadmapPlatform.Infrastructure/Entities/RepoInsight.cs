@@ -17,6 +17,8 @@ public partial class RepoInsight
 
     public string? ProjectType { get; set; }
 
+    public DateTime AnalyzedAt { get; set; }
+
     public string AnalysisStatus { get; set; } = null!;
 
     public string? ReadmeHash { get; set; }
@@ -26,8 +28,6 @@ public partial class RepoInsight
     public string? AiModel { get; set; }
 
     public string? ErrorMessage { get; set; }
-
-    public DateTime AnalyzedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
 

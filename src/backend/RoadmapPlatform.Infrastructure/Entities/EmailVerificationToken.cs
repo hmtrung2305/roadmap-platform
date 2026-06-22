@@ -9,8 +9,6 @@ public partial class EmailVerificationToken
 
     public Guid? UserId { get; set; }
 
-    public Guid? PendingLocalRegistrationId { get; set; }
-
     public string Provider { get; set; } = null!;
 
     public string Email { get; set; } = null!;
@@ -28,6 +26,8 @@ public partial class EmailVerificationToken
     public int MaxAttempts { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    public Guid? PendingLocalRegistrationId { get; set; }
 
     public virtual PendingLocalRegistration? PendingLocalRegistration { get; set; }
 
