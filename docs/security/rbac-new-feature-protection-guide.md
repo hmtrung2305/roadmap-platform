@@ -293,10 +293,6 @@ new permissions
 role-permission mappings for built-in roles
 ```
 
-For the first RBAC version, the baseline seed is allowed to converge the built-in roles back to the canonical mapping.
-
-For future RBAC versions, prefer additive or versioned seed changes according to the database workflow.
-
 Do not put environment-specific users in the core RBAC seed:
 
 ```text
@@ -308,6 +304,99 @@ sample module data
 ```
 
 Those belong to dev/local seeds.
+
+## Adding new permissions to SQL seeds
+
+Treat the first RBAC seed as the baseline.
+
+Example baseline file:
+
+```text
+rbac-roles-permissions.seed.sql
+```
+
+After that file has been committed, shared, or applied to another environment, do not keep expanding it for every new feature. Add a new incremental seed file instead.
+
+Good:
+
+```text
+001-rbac-roles-permissions.seed.sql
+002-rbac-learning-module-review-permissions.seed.sql
+003-rbac-roadmap-moderation-permissions.seed.sql
+```
+
+Also acceptable if the project does not use numeric prefixes yet:
+
+```text
+rbac-roles-permissions.seed.sql
+rbac-learning-module-review-permissions.seed.sql
+rbac-roadmap-moderation-permissions.seed.sql
+```
+
+Update the existing baseline seed only when the change is still local and the seed has not been merged, shared, or applied outside the current working database.
+
+### What the new SQL seed should contain
+
+A permission seed for a new feature should usually include two parts:
+
+```text
+1. Insert the new permissions.
+2. Insert the role-permission mappings for built-in roles.
+```
+
+Example:
+
+```sql
+INSERT INTO permissions (name, description)
+VALUES
+    ('learning_module_review.view.own', 'View review data for own learning modules'),
+    ('learning_module_review.update.own', 'Update review data for own learning modules')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.name IN (
+    'learning_module_review.view.own',
+    'learning_module_review.update.own'
+)
+WHERE r.name = 'content_manager'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+```
+
+The exact table and column names must match the database schema, but the rule is the same: permission inserts and role-permission inserts must be safe to run more than once.
+
+### Required properties
+
+New RBAC SQL seed files should be:
+
+```text
+idempotent
+ordered after the seed they depend on
+limited to RBAC data
+named after the feature or permission area
+safe to run on a database that already has older RBAC seeds applied
+```
+
+Avoid destructive changes in incremental permission seeds unless the feature explicitly requires a permission migration.
+
+Avoid:
+
+```sql
+DELETE FROM role_permissions;
+DELETE FROM permissions;
+```
+
+Prefer targeted additive changes:
+
+```sql
+INSERT ...
+ON CONFLICT DO NOTHING;
+```
+
+If a permission name is wrong and has already been shared, create a follow-up correction seed instead of silently changing the old seed file. The follow-up seed should add the corrected permission, map it to the correct roles, and only remove or unmap the old permission if the application no longer uses it.
+
+Backend constants, frontend constants, and SQL seed values must match exactly.
 
 ## Common feature patterns
 
@@ -408,37 +497,3 @@ Route under /admin/*
 Guard with ADMIN_SURFACE_PERMISSIONS
 Hide from learner/content manager users
 ```
-
-## Pre-merge checklist for new features
-
-Before merging a new feature, verify:
-
-```text
-[ ] The owning persona/surface is clear.
-[ ] Every new protected endpoint has RequirePermission or explicit AllowAnonymous.
-[ ] Anonymous access is intentional and documented.
-[ ] New permissions follow resource.action.scope.
-[ ] Backend constants, seed values, and frontend constants match exactly.
-[ ] self/own/enrolled scopes are enforced in services, not only in permission names.
-[ ] Frontend route groups are guarded by surface permissions.
-[ ] Sensitive UI actions are hidden by action-level permissions.
-[ ] Wrong-surface access renders neutral not-found in the frontend.
-[ ] /api/me returns the permissions needed by the frontend.
-[ ] Permission matrix and route access docs are updated.
-```
-
-## Review questions
-
-Use these questions during code review:
-
-```text
-Could a user without this role discover or call the endpoint?
-Could a content manager act on another content manager's resource?
-Could an admin accidentally participate in learner workflows?
-Does any endpoint rely on frontend hiding instead of backend enforcement?
-Does the permission name describe the actual business action?
-Is the scope too broad for the feature?
-Does the seed grant only what the role needs?
-```
-
-If any answer is unclear, the feature is not ready for merge.

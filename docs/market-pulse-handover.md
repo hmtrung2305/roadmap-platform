@@ -20,13 +20,18 @@ Frontend /market-pulse
   -> GET /api/market-pulse/overview?days=14&skills=react&skills=node-js
     -> MarketPulseController
       -> IMarketPulseService
-        -> IJobMarketSnapshotProvider
-          -> JobsApiClient
-            -> /api/v1/jobs?active=true&sort=post_date_desc
-            -> /api/v1/jobs/today
+        -> PostgreSQL current + analytical Market Pulse tables
         -> JobMarketOverviewBuilder
           -> JobMarketKeywordAnalyzer
           -> MarketPulseOverviewDto
+
+Refresh / ingest path
+  -> MarketPulseHostedService, MarketPulseJob, or internal endpoint
+    -> IMarketPulseService.RefreshAsync / IngestAsync
+      -> JobPortalScraper
+        -> JobsApiClient
+          -> /api/v1/jobs?active=true&sort=post_date_desc
+      -> Persist job lifecycle, skill mentions, daily aggregates, insight snapshot
 ```
 
 Huong phu thuoc:
@@ -39,10 +44,11 @@ Application -> pure DTO/model/builder/analyzer, khong phu thuoc HTTP, EF, config
 
 Design pattern/ap dung:
 
-- Port and Adapter: `IJobMarketSnapshotProvider` la port, `JobsApiJobMarketSnapshotProvider` va `JobsApiClient` la adapter.
+- Port and Adapter: refresh/ingest di qua `IJobPortalScraper`, `JobPortalScraper` va `JobsApiClient` adapter de doc Jobs API.
 - Builder: `JobMarketOverviewBuilder` gom raw snapshot thanh DTO phuc vu UI.
 - Strategy-friendly source model: `JobPortalScraper` van ho tro `Kind = JobsApi` va `Kind = Html`, nen sau nay co the them portal moi ma khong sua controller/UI.
 - Pure domain analysis: `JobMarketKeywordAnalyzer` khong dung EF/HTTP, de test rieng.
+- DB-first read model: public overview doc tu database/materialized snapshot. Live Jobs API chi dung trong refresh/ingest job de on dinh UX va tranh user request phu thuoc crawler host.
 
 ## Phase 0 baseline da ap dung
 
@@ -174,10 +180,11 @@ bo sung analytics metadata de moi insight co ngu canh:
 - `learningRecommendations`: goi y action de map skill/skill-pair sang learning
   module hoac project suggestion.
 
-`MarketPulseService.GetOverviewAsync` da dung chung `JobMarketOverviewBuilder`
-cho ca live Jobs API va DB snapshot fallback. Nho vay production snapshot mode va
-local live mode tra ve contract analytics tuong dong. Khong can migration moi cho
-phase nay vi day la lop tinh toan/read model dua tren field hien co.
+`MarketPulseService.GetOverviewAsync` dung chung `JobMarketOverviewBuilder`
+voi refresh/ingest pipeline, nhung public request doc tu DB snapshot. Nho vay UI
+nhan cung contract analytics ma khong phu thuoc live crawler host. Khong can
+migration moi cho phase nay vi day la lop tinh toan/read model dua tren field
+hien co.
 
 Frontend `/market-pulse` da hien thi data confidence banner, insight cards,
 rising/falling skills, skill co-occurrence, source/category/location/experience
@@ -185,6 +192,51 @@ mix, salary signal va learning actions.
 
 Luu y phan salary chi parse chuoi co so ro rang. Cac job `thoa thuan`,
 `negotiable` hoac khong co salary se khong vao median va lam giam coverage.
+
+## Phase 5 backend refactor da ap dung
+
+Public overview da chuyen sang DB-first:
+
+- `GET /api/market-pulse/overview` khong goi live Jobs API trong user request.
+- Overview duoc build tu `job_posting` va analytical tables, sau do di qua cung `JobMarketOverviewBuilder` nen van co day du `categorySummaries`, `locationSummaries`, `todayJobs`, `recentJobs`, `todaySkills` va analytics phase 4.
+- Live Jobs API chi con nam o ingestion paths: hosted scheduler, `.NET MarketPulseJob`, hoac internal refresh endpoint.
+- Overview co cache ngan han `MarketPulse:OverviewCacheSeconds`, mac dinh 120 giay va clamp toi da 300 giay. Cache tu dong invalidate sau refresh/ingest thanh cong.
+- Query options moi: `days`, `skills`, `category`, `location`, `experience`, `source`, `salaryMinMonthlyVnd`, `salaryMaxMonthlyVnd`.
+- Refresh result tach counter ro rang: `postingsInserted`, `postingsUpdated`, `postingsSeen`, `postingsExpired`. `postingsSaved`, `newPostings`, `updatedPostings` van duoc giu de backward-compatible.
+
+Internal endpoints moi:
+
+```http
+POST /api/internal/market-pulse/refresh
+POST /api/internal/market-pulse/ingest
+```
+
+Ca hai endpoint can header:
+
+```text
+X-Market-Pulse-Key: <MarketPulse:InternalApiKey>
+```
+
+`MarketPulse:InternalApiKey` phai duoc cau hinh bang env/user-secrets/secret
+va co do dai toi thieu 16 ky tu. Khong commit key that vao source.
+
+## Frontend Market Pulse UX da ap dung
+
+Trang `/market-pulse` hien la lop phan tich tu DB-first overview, khong goi
+truc tiep Jobs API/ngrok trong request cua browser. UI su dung cung query
+options public overview da ho tro:
+
+- Period filter: 7/14/30/90 ngay, backend van clamp 7..180 ngay.
+- Filter bar: role/category, location, experience, source, salary range va skill focus toi da 6 skill.
+- Insight cards theo ngu canh: top rising skill, most demanded role, salary-backed signal, data confidence va what changed.
+- Data quality notice: backend unavailable/permission issue, no snapshot, no matching market signal, stale/warning tu `dataQuality`.
+- Chart demand movement co tooltip period/source/sample size va phan biet series bang mau + dashed line + marker number.
+- Skill click mo `learning-modules/browse?q=<skill>`, role/category click mo `roadmaps?q=<role>`.
+- Job list co requirement breakdown drawer trong UI, van giu link source goc TopCV/Jobs API.
+
+Trang `/roadmaps` da doc query `?q=`/`?role=` de Market Pulse co the mo
+roadmap suggestion da loc theo role/category. Khong can migration/backend
+contract moi cho phase UX nay.
 
 ## Du lieu dau vao
 
@@ -348,12 +400,14 @@ Thong so quan trong:
 | `MarketPulse:TodayJobsApiUrl` | Endpoint jobs posted today. Nen dung `/api/v1/jobs/today`. |
 | `MarketPulse:JobsApiPageSize` | So job moi page khi goi Jobs API co pagination. |
 | `MarketPulse:JobsApiMaxPages` | Gioi han so page toi da moi lan goi live API. |
+| `MarketPulse:OverviewCacheSeconds` | Cache public overview 0..300 giay. Dat `0` de tat cache khi debug. |
+| `MarketPulse:InternalApiKey` | API key rieng cho `/api/internal/market-pulse/*`. Dat bang secret/env, khong commit gia tri that. |
 | `MarketPulse:TrackedKeywords` | Danh sach keyword specs. Dung `|` de khai bao alias, vi du `React|React.js|ReactJS`. |
 | `MarketPulse:Sources[].Kind` | `JobsApi` cho source Jobs API, `Html` cho fallback generic HTML scraper. |
 | `MarketPulse:Sources[].SearchUrlTemplate` | URL de scheduled refresh doc data source. Nen dung `/api/v1/jobs?active=true&sort=post_date_desc`. |
 | `MarketPulse:MaxPostingsPerSource` | Gioi han so postings persist khi chay scheduled refresh. |
 | `MarketPulse:RequestTimeoutSeconds` | Timeout HTTP client, clamp `5..120` giay. |
-| `MarketPulse:ActivePostingLookbackDays` | Lookback khi tinh active postings trong DB fallback. |
+| `MarketPulse:ActivePostingLookbackDays` | Lookback khi tinh active postings trong DB read model. |
 | `MarketPulse:MissingScansBeforeStale` | So lan khong thay job truoc khi danh dau stale trong DB lifecycle. |
 | `MarketPulse:MinimumPostingsForLifecycleCheck` | Nguong an toan truoc khi mark missing jobs, tranh source fail lam tat ca job bi stale. |
 
@@ -385,6 +439,7 @@ Smoke test API:
 
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:5208/api/market-pulse/overview?days=7"
+Invoke-RestMethod "http://127.0.0.1:5208/api/market-pulse/overview?days=14&skills=react&location=Ha%20Noi"
 ```
 
 ## Kiem thu
@@ -407,7 +462,7 @@ Frontend lint cho trang Job Market:
 
 ```powershell
 cd src/frontend
-npx.cmd eslint src/pages/MarketPulsePage.jsx
+npx.cmd eslint src/pages/MarketPulsePage.jsx src/pages/RoadmapSelectionPage.jsx src/api/marketPulseApi.js
 ```
 
 Checklist special cases can kiem tra khi review Job Market:

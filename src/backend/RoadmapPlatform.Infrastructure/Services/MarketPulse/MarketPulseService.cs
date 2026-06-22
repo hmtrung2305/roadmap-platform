@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
@@ -17,12 +19,13 @@ namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 public sealed class MarketPulseService(
     ApplicationDbContext dbContext,
     IJobPortalScraper scraper,
-    IJobMarketSnapshotProvider jobMarketSnapshotProvider,
     JobMarketOverviewBuilder overviewBuilder,
     JobMarketKeywordAnalyzer keywordAnalyzer,
+    IMemoryCache cache,
     IOptions<MarketPulseSettings> options) : IMarketPulseService
 {
     private const string AggregateSourceName = "all";
+    private const string OverviewCacheVersionKey = "market-pulse:overview:version";
     private const string LifecycleActive = "active";
     private const string LifecycleStaleUnverified = "stale_unverified";
     private const string LifecycleExpired = "expired";
@@ -31,53 +34,28 @@ public sealed class MarketPulseService(
     private const string ObservationUpdated = "updated";
 
     public async Task<MarketPulseOverviewDto> GetOverviewAsync(
-        int days,
-        IReadOnlyCollection<string> skillSlugs,
+        MarketPulseOverviewQueryDto query,
         CancellationToken cancellationToken)
     {
-        var normalizedDays = Math.Clamp(days, 7, 180);
-
-        if (HasLiveJobsApi(options.Value))
+        var normalizedQuery = NormalizeQuery(query);
+        var cacheSeconds = Math.Clamp(options.Value.OverviewCacheSeconds, 0, 300);
+        if (cacheSeconds <= 0)
         {
-            var snapshot = await jobMarketSnapshotProvider.GetCurrentSnapshotAsync(cancellationToken);
-
-            if (HasAnyLiveJobs(snapshot))
-            {
-                return overviewBuilder.Build(
-                    snapshot,
-                    new JobMarketOverviewOptions
-                    {
-                        Days = normalizedDays,
-                        SelectedSkillSlugs = skillSlugs,
-                        TrackedKeywordSpecs = options.Value.TrackedKeywords,
-                        ReferenceDate = DateOnly.FromDateTime(DateTime.UtcNow)
-                    });
-            }
+            return await BuildOverviewFromDatabaseAsync(normalizedQuery, cancellationToken);
         }
 
-        return await BuildOverviewFromDatabaseAsync(
-            normalizedDays,
-            skillSlugs,
-            cancellationToken);
-    }
+        var version = GetOverviewCacheVersion();
+        var cacheKey = BuildOverviewCacheKey(normalizedQuery, version);
 
-    private static bool HasLiveJobsApi(MarketPulseSettings settings)
-    {
-        return !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl) &&
-            !string.IsNullOrWhiteSpace(settings.TodayJobsApiUrl);
-    }
-
-    private static bool HasAnyLiveJobs(JobMarketSnapshot snapshot)
-    {
-        return snapshot.ActiveTotal > 0 ||
-            snapshot.TodayTotal > 0 ||
-            snapshot.ActiveJobs.Count > 0 ||
-            snapshot.TodayJobs.Count > 0;
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(cacheSeconds);
+                return await BuildOverviewFromDatabaseAsync(normalizedQuery, cancellationToken);
+            }) ?? new MarketPulseOverviewDto();
     }
 
     private async Task<MarketPulseOverviewDto> BuildOverviewFromDatabaseAsync(
-        int normalizedDays,
-        IReadOnlyCollection<string> skillSlugs,
+        MarketPulseOverviewQueryDto query,
         CancellationToken cancellationToken)
     {
         var settings = options.Value;
@@ -88,15 +66,25 @@ public sealed class MarketPulseService(
         var activeLookbackDays = Math.Clamp(settings.ActivePostingLookbackDays, 1, 90);
         var activeCutoff = now.AddDays(-activeLookbackDays);
         var maxPostings = Math.Clamp(Math.Max(settings.MaxPostingsPerSource, 500), 100, 5_000);
+        var sourceFilter = NormalizeFilter(query.Source);
+        var categoryFilter = NormalizeFilter(query.Category);
+        var locationFilter = NormalizeFilter(query.Location);
 
         var activePostingCount = await dbContext.Set<JobPosting>()
             .AsNoTracking()
-            .CountAsync(x => x.IsActive && x.LastSeenAt >= activeCutoff, cancellationToken);
+            .Where(x => x.IsActive && x.LastSeenAt >= activeCutoff)
+            .Where(x => sourceFilter == null || x.JobPortalSource.Name == sourceFilter)
+            .Where(x => categoryFilter == null || x.Category == categoryFilter)
+            .Where(x => locationFilter == null || x.Location == locationFilter)
+            .CountAsync(cancellationToken);
 
         var todayPostingCount = await dbContext.Set<JobPosting>()
             .AsNoTracking()
             .CountAsync(x =>
                 x.IsActive &&
+                (sourceFilter == null || x.JobPortalSource.Name == sourceFilter) &&
+                (categoryFilter == null || x.Category == categoryFilter) &&
+                (locationFilter == null || x.Location == locationFilter) &&
                 x.PublishedAt.HasValue &&
                 x.PublishedAt.Value >= todayStart &&
                 x.PublishedAt.Value < tomorrowStart,
@@ -114,6 +102,9 @@ public sealed class MarketPulseService(
             .AsNoTracking()
             .Include(x => x.JobPortalSource)
             .Where(x => x.IsActive && x.LastSeenAt >= activeCutoff)
+            .Where(x => sourceFilter == null || x.JobPortalSource.Name == sourceFilter)
+            .Where(x => categoryFilter == null || x.Category == categoryFilter)
+            .Where(x => locationFilter == null || x.Location == locationFilter)
             .OrderByDescending(x => x.PublishedAt ?? x.LastSeenAt)
             .ThenByDescending(x => x.UpdatedAt)
             .Take(maxPostings)
@@ -121,23 +112,25 @@ public sealed class MarketPulseService(
 
         var activeJobs = postings
             .Select(ToJobMarketPosting)
+            .Where(x => MatchesMemoryFilters(x, query))
             .ToList();
         var todayJobs = activeJobs
             .Where(x => x.PostedOn == today)
             .ToList();
+        var useMemoryTotals = HasMemoryFilters(query);
 
         var overview = overviewBuilder.Build(
             new JobMarketSnapshot
             {
-                ActiveTotal = activePostingCount,
-                TodayTotal = todayPostingCount,
+                ActiveTotal = useMemoryTotals ? activeJobs.Count : activePostingCount,
+                TodayTotal = useMemoryTotals ? todayJobs.Count : todayPostingCount,
                 ActiveJobs = activeJobs,
                 TodayJobs = todayJobs
             },
             new JobMarketOverviewOptions
             {
-                Days = normalizedDays,
-                SelectedSkillSlugs = skillSlugs,
+                Days = query.Days,
+                SelectedSkillSlugs = query.SkillSlugs,
                 TrackedKeywordSpecs = settings.TrackedKeywords,
                 ReferenceDate = today
             });
@@ -170,13 +163,203 @@ public sealed class MarketPulseService(
             Benefits = DeserializeStringList(posting.Benefits)
         };
     }
+
+    private static MarketPulseOverviewQueryDto NormalizeQuery(MarketPulseOverviewQueryDto query)
+    {
+        var salaryMin = query.SalaryMinMonthlyVnd;
+        var salaryMax = query.SalaryMaxMonthlyVnd;
+        if (salaryMin.HasValue && salaryMax.HasValue && salaryMin > salaryMax)
+        {
+            (salaryMin, salaryMax) = (salaryMax, salaryMin);
+        }
+
+        return new MarketPulseOverviewQueryDto
+        {
+            Days = Math.Clamp(query.Days, 7, 180),
+            SkillSlugs = query.SkillSlugs
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim().ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(6)
+                .ToList(),
+            Category = NormalizeFilter(query.Category),
+            Location = NormalizeFilter(query.Location),
+            Experience = NormalizeFilter(query.Experience),
+            Source = NormalizeFilter(query.Source),
+            SalaryMinMonthlyVnd = salaryMin,
+            SalaryMaxMonthlyVnd = salaryMax
+        };
+    }
+
+    private string GetOverviewCacheVersion()
+    {
+        return cache.GetOrCreate(OverviewCacheVersionKey, entry =>
+        {
+            entry.Priority = CacheItemPriority.NeverRemove;
+            return Guid.NewGuid().ToString("N");
+        }) ?? "initial";
+    }
+
+    private void InvalidateOverviewCache()
+    {
+        cache.Set(
+            OverviewCacheVersionKey,
+            Guid.NewGuid().ToString("N"),
+            new MemoryCacheEntryOptions { Priority = CacheItemPriority.NeverRemove });
+    }
+
+    private static string BuildOverviewCacheKey(MarketPulseOverviewQueryDto query, string version)
+    {
+        return string.Join(
+            '|',
+            "market-pulse:overview",
+            version,
+            query.Days.ToString(CultureInfo.InvariantCulture),
+            string.Join(',', query.SkillSlugs.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)),
+            query.Category ?? string.Empty,
+            query.Location ?? string.Empty,
+            query.Experience ?? string.Empty,
+            query.Source ?? string.Empty,
+            query.SalaryMinMonthlyVnd?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            query.SalaryMaxMonthlyVnd?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+    }
+
+    private static string? NormalizeFilter(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static bool MatchesMemoryFilters(JobMarketPosting posting, MarketPulseOverviewQueryDto query)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Experience) &&
+            !ContainsNormalized(posting.Experience, query.Experience) &&
+            !ContainsNormalized(posting.Title, query.Experience))
+        {
+            return false;
+        }
+
+        if (query.SalaryMinMonthlyVnd.HasValue || query.SalaryMaxMonthlyVnd.HasValue)
+        {
+            var salaryRange = TryParseMonthlySalary(posting.Salary);
+            if (salaryRange is null)
+            {
+                return false;
+            }
+
+            if (query.SalaryMinMonthlyVnd.HasValue &&
+                salaryRange.MaxMonthlyVnd.GetValueOrDefault(salaryRange.MinMonthlyVnd ?? 0) < query.SalaryMinMonthlyVnd.Value)
+            {
+                return false;
+            }
+
+            if (query.SalaryMaxMonthlyVnd.HasValue &&
+                salaryRange.MinMonthlyVnd.GetValueOrDefault(salaryRange.MaxMonthlyVnd ?? decimal.MaxValue) > query.SalaryMaxMonthlyVnd.Value)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasMemoryFilters(MarketPulseOverviewQueryDto query)
+    {
+        return !string.IsNullOrWhiteSpace(query.Experience) ||
+            query.SalaryMinMonthlyVnd.HasValue ||
+            query.SalaryMaxMonthlyVnd.HasValue;
+    }
+
+    private static bool ContainsNormalized(string? value, string expected)
+    {
+        if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(expected))
+        {
+            return false;
+        }
+
+        var normalizedValue = RemoveVietnameseDiacritics(value).ToLowerInvariant();
+        var normalizedExpected = RemoveVietnameseDiacritics(expected).ToLowerInvariant();
+        return normalizedValue.Contains(normalizedExpected, StringComparison.Ordinal);
+    }
+
+    private static ScrapedJobPosting ToScrapedJobPosting(
+        string sourceName,
+        MarketPulseIngestPostingDto posting)
+    {
+        var title = TrimTo(posting.Title, 250) ?? "Untitled IT job";
+        var url = TrimTo(posting.Url, 500) ?? string.Empty;
+        var description = string.IsNullOrWhiteSpace(posting.Description)
+            ? BuildIngestDescription(posting)
+            : posting.Description.Trim();
+
+        return new ScrapedJobPosting(
+            sourceName,
+            title,
+            TrimTo(posting.Company, 160),
+            TrimTo(posting.Location, 160),
+            url,
+            description,
+            NormalizeUtc(posting.PublishedAt),
+            NormalizeUtc(posting.ExpiresAt),
+            TrimTo(posting.SourceJobId ?? posting.Id, 120),
+            TrimTo(posting.Category, 100),
+            TrimTo(posting.Salary, 100),
+            TrimTo(posting.Experience, 100),
+            TrimTo(posting.PostDateText, 80),
+            NormalizeUtc(posting.SourceUpdatedAt),
+            CleanStringList(posting.Requirements),
+            CleanStringList(posting.Specialties),
+            CleanStringList(posting.Benefits),
+            CleanStringList(posting.Skills));
+    }
+
+    private static string BuildIngestDescription(MarketPulseIngestPostingDto posting)
+    {
+        var parts = new[]
+        {
+            posting.Title,
+            posting.Company,
+            posting.Category,
+            posting.Salary,
+            posting.Experience,
+            posting.Location,
+            string.Join(' ', CleanStringList(posting.Skills)),
+            string.Join(' ', CleanStringList(posting.Requirements)),
+            string.Join(' ', CleanStringList(posting.Specialties)),
+            string.Join(' ', CleanStringList(posting.Benefits))
+        };
+
+        return string.Join(' ', parts.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
+    }
     
     public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
+    {
+        var rawPostings = await scraper.ScrapeAsync(cancellationToken);
+        return await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
+    }
+
+    public async Task<MarketPulseRefreshResultDto> IngestAsync(
+        MarketPulseIngestRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var sourceName = string.IsNullOrWhiteSpace(request.SourceName)
+            ? "Jobs API"
+            : request.SourceName.Trim();
+        var rawPostings = request.Postings
+            .Where(x => x.IsActive)
+            .Select(x => ToScrapedJobPosting(sourceName, x))
+            .Where(x => !string.IsNullOrWhiteSpace(x.Url))
+            .ToList();
+
+        return await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
+    }
+
+    private async Task<MarketPulseRefreshResultDto> PersistScrapedPostingsAsync(
+        IReadOnlyList<ScrapedJobPosting> rawPostings,
+        CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
         var snapshotDate = DateOnly.FromDateTime(now);
         var settings = options.Value;
-        var rawPostings = await scraper.ScrapeAsync(cancellationToken);
 
         if (rawPostings.Count == 0)
         {
@@ -186,6 +369,10 @@ public sealed class MarketPulseService(
                 SourcesScraped = 0,
                 PostingsScraped = 0,
                 PostingsSaved = 0,
+                PostingsInserted = 0,
+                PostingsUpdated = 0,
+                PostingsSeen = 0,
+                PostingsExpired = 0,
                 NewPostings = 0,
                 UpdatedPostings = 0,
                 ActivePostings = await dbContext.Set<JobPosting>().CountAsync(x => x.IsActive, cancellationToken),
@@ -198,6 +385,8 @@ public sealed class MarketPulseService(
         var savedPostings = 0;
         var newPostings = 0;
         var updatedPostings = 0;
+        var seenPostings = 0;
+        var expiredPostingsInRun = 0;
         var missingThreshold = Math.Max(1, settings.MissingScansBeforeStale);
         var minimumLifecyclePostings = Math.Max(1, settings.MinimumPostingsForLifecycleCheck);
 
@@ -244,6 +433,7 @@ public sealed class MarketPulseService(
                 if (posting is not null)
                 {
                     var changed = !string.Equals(posting.ContentHash, contentHash, StringComparison.OrdinalIgnoreCase);
+                    var wasExpired = string.Equals(posting.LifecycleStatus, LifecycleExpired, StringComparison.OrdinalIgnoreCase);
 
                     if (!existingPostings.ContainsKey(externalId))
                     {
@@ -284,6 +474,15 @@ public sealed class MarketPulseService(
                     {
                         posting.UpdatedScanCount++;
                         updatedPostings++;
+                    }
+                    else
+                    {
+                        seenPostings++;
+                    }
+
+                    if (isExpired && !wasExpired)
+                    {
+                        expiredPostingsInRun++;
                     }
 
                     await SavePostingVersionAsync(posting, rawPosting.Skills, contentHash, now, cancellationToken);
@@ -340,13 +539,17 @@ public sealed class MarketPulseService(
                 observations.Add(new PostingObservationItem(newPosting, ObservationNew, contentHash));
                 savedPostings++;
                 newPostings++;
+                if (isExpired)
+                {
+                    expiredPostingsInRun++;
+                }
             }
 
             await UpsertDailyObservationsAsync(snapshotDate, source.Name, observations, now, cancellationToken);
 
             if (uniquePostings.Count >= minimumLifecyclePostings)
             {
-                await MarkMissingPostingsAsync(
+                expiredPostingsInRun += await MarkMissingPostingsAsync(
                     source.JobPortalSourceId,
                     source.Name,
                     lookupExternalIds,
@@ -390,7 +593,11 @@ public sealed class MarketPulseService(
             SnapshotDate = snapshotDate.ToDateTime(TimeOnly.MinValue),
             SourcesScraped = rawPostings.Select(x => x.SourceName).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             PostingsScraped = rawPostings.Count,
-            PostingsSaved = savedPostings,
+            PostingsSaved = savedPostings + updatedPostings + seenPostings,
+            PostingsInserted = savedPostings,
+            PostingsUpdated = updatedPostings,
+            PostingsSeen = seenPostings,
+            PostingsExpired = expiredPostingsInRun,
             NewPostings = newPostings,
             UpdatedPostings = updatedPostings,
             ActivePostings = await dbContext.Set<JobPosting>().CountAsync(x => x.IsActive, cancellationToken),
@@ -400,6 +607,7 @@ public sealed class MarketPulseService(
         };
 
         await transaction.CommitAsync(cancellationToken);
+        InvalidateOverviewCache();
 
         return result;
     }
@@ -667,7 +875,7 @@ public sealed class MarketPulseService(
         return taxonomy;
     }
 
-    private async Task MarkMissingPostingsAsync(
+    private async Task<int> MarkMissingPostingsAsync(
         Guid sourceId,
         string sourceName,
         IReadOnlySet<string> observedExternalIds,
@@ -676,6 +884,7 @@ public sealed class MarketPulseService(
         int missingThreshold,
         CancellationToken cancellationToken)
     {
+        var expiredInRun = 0;
         var missingPostings = await dbContext.Set<JobPosting>()
             .Where(x =>
                 x.JobPortalSourceId == sourceId &&
@@ -694,9 +903,14 @@ public sealed class MarketPulseService(
 
             if (posting.ExpiresAt.HasValue && DateOnly.FromDateTime(posting.ExpiresAt.Value) < snapshotDate)
             {
+                var wasExpired = string.Equals(posting.LifecycleStatus, LifecycleExpired, StringComparison.OrdinalIgnoreCase);
                 posting.IsActive = false;
                 posting.LifecycleStatus = LifecycleExpired;
                 posting.ClosedDetectedAt ??= now;
+                if (!wasExpired)
+                {
+                    expiredInRun++;
+                }
                 await UpsertPostingObservationAsync(
                     posting,
                     snapshotDate,
@@ -724,6 +938,8 @@ public sealed class MarketPulseService(
 
             posting.UpdatedAt = now;
         }
+
+        return expiredInRun;
     }
 
     private async Task SaveDailyMarketSnapshotsAsync(
@@ -950,6 +1166,71 @@ public sealed class MarketPulseService(
         return Math.Round(((decimal)(current - previous) / previous) * 100, 1);
     }
 
+    private static SalaryRange? TryParseMonthlySalary(string? salary)
+    {
+        if (string.IsNullOrWhiteSpace(salary))
+        {
+            return null;
+        }
+
+        var text = RemoveVietnameseDiacritics(salary.Trim().ToLowerInvariant());
+        if (text.Contains("thoa thuan", StringComparison.Ordinal) ||
+            text.Contains("thuong luong", StringComparison.Ordinal) ||
+            text.Contains("negotiable", StringComparison.Ordinal) ||
+            text.Contains("canh tranh", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var values = Regex.Matches(text, @"\d+(?:[.,]\d+)?")
+            .Select(match => decimal.TryParse(
+                match.Value.Replace(',', '.'),
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out var value)
+                ? value
+                : (decimal?)null)
+            .OfType<decimal>()
+            .Where(x => x > 0)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return null;
+        }
+
+        var multiplier = text.Contains("usd", StringComparison.Ordinal) || text.Contains('$', StringComparison.Ordinal)
+            ? 25_000m
+            : text.Contains("trieu", StringComparison.Ordinal) || text.Contains("tr", StringComparison.Ordinal) || values.Max() < 1_000m
+                ? 1_000_000m
+                : 1m;
+        var normalized = values.Select(x => x * multiplier).OrderBy(x => x).ToList();
+
+        return normalized.Count == 1
+            ? new SalaryRange(normalized[0], normalized[0])
+            : new SalaryRange(normalized.First(), normalized.Last());
+    }
+
+    private static string RemoveVietnameseDiacritics(string value)
+    {
+        var normalized = value.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+
+        foreach (var character in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder
+            .ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Replace('\u0111', 'd')
+            .Replace('\u0110', 'D');
+    }
+
     private static string BuildExternalId(string sourceName, ScrapedJobPosting posting)
     {
         if (!string.IsNullOrWhiteSpace(posting.SourceJobId))
@@ -1102,3 +1383,5 @@ public sealed class MarketPulseService(
 }
 
 internal sealed record PostingObservationItem(JobPosting Posting, string Status, string ContentHash);
+
+internal sealed record SalaryRange(decimal? MinMonthlyVnd, decimal? MaxMonthlyVnd);

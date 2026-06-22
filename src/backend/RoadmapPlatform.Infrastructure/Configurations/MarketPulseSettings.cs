@@ -28,6 +28,10 @@ public sealed class MarketPulseSettings
 
     public int RequestTimeoutSeconds { get; set; } = 30;
 
+    public int OverviewCacheSeconds { get; set; } = 120;
+
+    public string InternalApiKey { get; set; } = string.Empty;
+
     public string ActiveJobsApiUrl { get; set; } = string.Empty;
 
     public string TodayJobsApiUrl { get; set; } = string.Empty;

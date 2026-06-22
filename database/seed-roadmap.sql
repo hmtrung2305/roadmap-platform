@@ -1,18 +1,7 @@
--- Main roadmap seed runner.
--- Requires psql because it uses \i include commands.
--- Run from the project root so these relative paths resolve correctly.
+-- Roadmap seed runner
 
 \echo 'Seeding shared/core skills...'
 \i database/seeds/core/shared-skills.seed.sql
-
-\echo 'Seeding roles and permissions...'
-\i database/seeds/core/001-rbac-roles-permissions.seed.sql
-
-\echo 'Seeding roles and permissions...'
-\i database/seeds/core/002-rbac-roles-permissions.seed.sql
-
-\echo 'Seeding users...'
-\i database/seeds/core/dev-users.seed.sql
 
 \echo 'Core seed completed.'
 
@@ -71,11 +60,3 @@
 \i database/seeds/roadmaps/site-reliability-engineer-roadmap.seed.sql
 
 \echo 'Roadmap seed completed.'
-
-\echo 'Seeding draft learning modules...'
-\i database/seeds/learning-modules/draft-learning-modules.seed.sql
-
-\echo 'Seeding published learning modules...'
-\i database/seeds/learning-modules/published-learning-modules.seed.sql
-
-\echo 'Learning module seed completed.'

@@ -10,6 +10,14 @@ public sealed class MarketPulseRefreshResultDto
 
     public int PostingsSaved { get; set; }
 
+    public int PostingsInserted { get; set; }
+
+    public int PostingsUpdated { get; set; }
+
+    public int PostingsSeen { get; set; }
+
+    public int PostingsExpired { get; set; }
+
     public int NewPostings { get; set; }
 
     public int UpdatedPostings { get; set; }

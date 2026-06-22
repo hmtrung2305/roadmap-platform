@@ -86,11 +86,46 @@ export function mergeGraphNodeWithDetail(graphNode, detailNode) {
     graphNode.learningModules ||
     graphNode.LearningModules ||
     [];
+  const detailResources =
+    detailNode.resources ||
+    detailNode.Resources ||
+    graphNode.resources ||
+    graphNode.Resources ||
+    [];
+  const detailSkills =
+    detailNode.skills ||
+    detailNode.Skills ||
+    graphNode.skills ||
+    graphNode.Skills ||
+    [];
+  const detailLearningOutcomes =
+    detailNode.learningOutcomes ||
+    detailNode.LearningOutcomes ||
+    graphNode.learningOutcomes ||
+    graphNode.LearningOutcomes ||
+    [];
+  const detailCompletionCriteria =
+    detailNode.completionCriteria ||
+    detailNode.CompletionCriteria ||
+    graphNode.completionCriteria ||
+    graphNode.CompletionCriteria ||
+    [];
+  const detailMetadata =
+    detailNode.metadata ??
+    detailNode.Metadata ??
+    graphNode.metadata ??
+    graphNode.Metadata ??
+    null;
 
   return {
     ...graphNode,
     ...detailNode,
+    metadata: detailMetadata,
     learningModules: detailLearningModules,
+    resources: detailResources,
+    skills: detailSkills,
+    learningOutcomes: detailLearningOutcomes,
+    completionCriteria: detailCompletionCriteria,
     progress: {
       ...(graphNode.progress || {}),
       ...(detailNode.progress || {}),
