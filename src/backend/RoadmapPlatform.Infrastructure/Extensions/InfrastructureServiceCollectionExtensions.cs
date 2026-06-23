@@ -8,6 +8,7 @@ using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
+using RoadmapPlatform.Application.Interfaces.ContentRoadmaps;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
@@ -27,6 +28,7 @@ using RoadmapPlatform.Infrastructure.Security;
 using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.Auth;
+using RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
 using RoadmapPlatform.Infrastructure.Services.CareerRoleSkill;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
@@ -139,6 +141,11 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRoadmapEnrollmentService, RoadmapEnrollmentService>();
             services.AddScoped<IRoadmapProgressService, RoadmapProgressService>();
             services.AddScoped<IRoadmapLayoutService, RoadmapLayoutService>();
+            services.AddScoped<ContentRoadmapQueryService>();
+            services.AddScoped<ContentRoadmapMetadataService>();
+            services.AddScoped<ContentRoadmapMappingService>();
+            services.AddScoped<ContentLearningResourceSearchService>();
+            services.AddScoped<IContentManagerRoadmapService, ContentManagerRoadmapService>();
 
             // File Storage
             services.AddScoped<LocalFileStorage>();
