@@ -66,6 +66,8 @@ public sealed class MarketPulseSettings
         BackoffBaseMs = GetInt("MARKET_PULSE_BACKOFF_BASE_MS", BackoffBaseMs);
         SourceRateLimit = GetInt("MARKET_PULSE_SOURCE_RATE_LIMIT", SourceRateLimit);
         ScheduleCron = GetString("MARKET_PULSE_SCHEDULE_CRON", ScheduleCron);
+        ActiveJobsApiUrl = GetString("MARKET_PULSE_ACTIVE_JOBS_API_URL", ActiveJobsApiUrl);
+        TodayJobsApiUrl = GetString("MARKET_PULSE_TODAY_JOBS_API_URL", TodayJobsApiUrl);
     }
 
     private static bool GetBool(string name, bool fallback)
