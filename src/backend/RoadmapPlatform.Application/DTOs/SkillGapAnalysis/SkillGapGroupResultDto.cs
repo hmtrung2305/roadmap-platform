@@ -16,7 +16,7 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 
         public int MatchedSkills { get; set; }
 
-        public string SelectionType { get; set; } = string.Empty;
+        public string? SelectionType { get; set; } = string.Empty;
 
         public int? RequiredCount { get; set; }
 
