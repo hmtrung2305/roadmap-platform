@@ -9,6 +9,18 @@ on:
         description: "Max Jobs API postings to persist for this manual run"
         required: false
         default: "80"
+      jobs_api_base_url:
+        description: "Optional Jobs API base URL override, for example https://jobs-api.example.com"
+        required: false
+        default: ""
+      active_jobs_api_url:
+        description: "Optional full active jobs URL override"
+        required: false
+        default: ""
+      today_jobs_api_url:
+        description: "Optional full today jobs URL override"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -28,17 +40,20 @@ jobs:
       ConnectionStrings__DefaultConnection: ${{ secrets.MARKET_PULSE_DB_CONNECTION_STRING }}
       MarketPulse__Enabled: "true"
       MarketPulse__RunOnStartup: "false"
-      MarketPulse__ActiveJobsApiUrl: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
-      MarketPulse__TodayJobsApiUrl: ${{ vars.MARKET_PULSE_TODAY_JOBS_API_URL }}
+      MarketPulse__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
+      MarketPulse__TodayJobsApiUrl: ${{ github.event.inputs.today_jobs_api_url || vars.MARKET_PULSE_TODAY_JOBS_API_URL }}
       MarketPulse__Sources__0__Name: "Jobs API"
       MarketPulse__Sources__0__Kind: "JobsApi"
-      MarketPulse__Sources__0__BaseUrl: ${{ vars.MARKET_PULSE_JOBS_API_BASE_URL }}
-      MarketPulse__Sources__0__SearchUrlTemplate: ${{ vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
+      MarketPulse__Sources__0__BaseUrl: ${{ github.event.inputs.jobs_api_base_url || vars.MARKET_PULSE_JOBS_API_BASE_URL }}
+      MarketPulse__Sources__0__SearchUrlTemplate: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
       MarketPulse__Sources__0__Enabled: "true"
       MarketPulse__MaxPostingsPerSource: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_MAX_POSTINGS || '500' }}
       MarketPulse__JobsApiPageSize: ${{ vars.MARKET_PULSE_JOBS_API_PAGE_SIZE || '100' }}
       MarketPulse__JobsApiMaxPages: ${{ vars.MARKET_PULSE_JOBS_API_MAX_PAGES || '10' }}
       MarketPulse__RequestTimeoutSeconds: ${{ vars.MARKET_PULSE_REQUEST_TIMEOUT_SECONDS || '30' }}
+      WorkflowInput__JobsApiBaseUrl: ${{ github.event.inputs.jobs_api_base_url }}
+      WorkflowInput__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url }}
+      WorkflowInput__TodayJobsApiUrl: ${{ github.event.inputs.today_jobs_api_url }}
 
     steps:
       - name: Checkout repository
@@ -49,25 +64,54 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Verify required configuration
+      - name: Resolve Jobs API configuration
         shell: bash
         run: |
           if [ -z "$ConnectionStrings__DefaultConnection" ]; then
             echo "Missing MARKET_PULSE_DB_CONNECTION_STRING secret."
             exit 1
           fi
-          if [ -z "$MarketPulse__ActiveJobsApiUrl" ]; then
-            echo "Missing MARKET_PULSE_ACTIVE_JOBS_API_URL repository variable."
+
+          jobs_api_base_url="${WorkflowInput__JobsApiBaseUrl:-$MarketPulse__Sources__0__BaseUrl}"
+          jobs_api_base_url="${jobs_api_base_url%/}"
+          active_jobs_api_url="${WorkflowInput__ActiveJobsApiUrl:-$MarketPulse__ActiveJobsApiUrl}"
+          today_jobs_api_url="${WorkflowInput__TodayJobsApiUrl:-$MarketPulse__TodayJobsApiUrl}"
+
+          if [ -n "$WorkflowInput__JobsApiBaseUrl" ] && [ -z "$WorkflowInput__ActiveJobsApiUrl" ]; then
+            active_jobs_api_url=""
+          fi
+
+          if [ -n "$WorkflowInput__JobsApiBaseUrl" ] && [ -z "$WorkflowInput__TodayJobsApiUrl" ]; then
+            today_jobs_api_url=""
+          fi
+
+          if [ -z "$jobs_api_base_url" ] && [ -n "$active_jobs_api_url" ]; then
+            jobs_api_base_url="${active_jobs_api_url%%/api/*}"
+          fi
+
+          if [ -z "$jobs_api_base_url" ]; then
+            echo "Missing Jobs API URL. Set MARKET_PULSE_JOBS_API_BASE_URL, MARKET_PULSE_ACTIVE_JOBS_API_URL, or provide a workflow_dispatch override."
             exit 1
           fi
-          if [ -z "$MarketPulse__TodayJobsApiUrl" ]; then
-            echo "Missing MARKET_PULSE_TODAY_JOBS_API_URL repository variable."
-            exit 1
+
+          if [ -z "$active_jobs_api_url" ]; then
+            active_jobs_api_url="$jobs_api_base_url/api/v1/jobs?active=true&sort=post_date_desc"
           fi
-          if [ -z "$MarketPulse__Sources__0__BaseUrl" ]; then
-            echo "Missing MARKET_PULSE_JOBS_API_BASE_URL repository variable."
-            exit 1
+
+          if [ -z "$today_jobs_api_url" ]; then
+            today_jobs_api_url="$jobs_api_base_url/api/v1/jobs/today"
           fi
+
+          {
+            echo "MarketPulse__Sources__0__BaseUrl=$jobs_api_base_url"
+            echo "MarketPulse__ActiveJobsApiUrl=$active_jobs_api_url"
+            echo "MarketPulse__TodayJobsApiUrl=$today_jobs_api_url"
+            echo "MarketPulse__Sources__0__SearchUrlTemplate=$active_jobs_api_url"
+          } >> "$GITHUB_ENV"
+
+          echo "Using Jobs API base URL: $jobs_api_base_url"
+          echo "Using active jobs path: ${active_jobs_api_url#"$jobs_api_base_url"}"
+          echo "Using today jobs path: ${today_jobs_api_url#"$jobs_api_base_url"}"
 
       - name: Restore Market Pulse job
         run: dotnet restore src/backend/RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj
