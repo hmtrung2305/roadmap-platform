@@ -1,4 +1,4 @@
-import LearningModuleMarkdown from "../learningModules/LearningModuleMarkdown";
+import LearningModuleMarkdown from "../../features/learningModules/components/LearningModuleMarkdown";
 
 export default function DocumentReader({ markdownContent }) {
   if (!markdownContent) {

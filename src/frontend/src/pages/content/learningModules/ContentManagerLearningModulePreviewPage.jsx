@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
-import MarkdownRenderer from "../../../components/learningModules/MarkdownRenderer";
+import MarkdownRenderer from "../../../features/learningModules/components/MarkdownRenderer";
 import {
   inputClass,
   ModuleBadge,
@@ -11,7 +11,7 @@ import {
   ModuleCard,
   ModuleEmptyState,
   ModulePageShell,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../../features/learningModules/components/learningModuleUi";
 
 
 const lessonIndexingMeta = {

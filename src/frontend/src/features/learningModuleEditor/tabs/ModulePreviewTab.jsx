@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
-import LearningModuleLessonReader from "../../../components/learningModules/LearningModuleLessonReader";
-import LearningModuleQuizPreview from "../../../components/learningModules/LearningModuleQuizPreview";
-import { inputClass, ModuleBadge, ModuleButton, ModuleCard } from "../../../components/learningModules/learningModuleUi";
+import LearningModuleLessonReader from "../../learningModules/components/LearningModuleLessonReader";
+import LearningModuleQuizPreview from "../../learningModules/components/LearningModuleQuizPreview";
+import { inputClass, ModuleBadge, ModuleButton, ModuleCard } from "../../learningModules/components/learningModuleUi";
 
 export default function ModulePreviewTab({ moduleId, detail }) {
   return <PreviewShell moduleId={moduleId} detail={detail} />;

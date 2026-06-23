@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaFireAlt } from "react-icons/fa";
 
-import AuthLogo from "../auth/AuthLogo";
+import AuthLogo from "../../features/auth/components/AuthLogo";
 import { useStreakStore } from "../../stores/useStreakStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useProfileStore } from "../../stores/useProfileStore";
@@ -38,15 +38,16 @@ export default function TopNavbar() {
     { label: "E-Portfolio", path: portfolioPath },
   ];
 
-  const userProfileKey = user?.userId ?? user?.id ?? user?.email ?? user?.username ?? null;
+  const userProfileKey =
+    user?.userId ?? user?.id ?? user?.email ?? user?.username ?? null;
 
-useEffect(() => {
-  if (!userProfileKey) return;
+  useEffect(() => {
+    if (!userProfileKey) return;
 
-  loadProfile().catch((error) => {
-    console.error("Failed to load profile:", error);
-  });
-}, [loadProfile, userProfileKey]);
+    loadProfile().catch((error) => {
+      console.error("Failed to load profile:", error);
+    });
+  }, [loadProfile, userProfileKey]);
 
   const handleLogout = async () => {
     await logout();
@@ -69,7 +70,8 @@ useEffect(() => {
             {navItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
-                (item.path !== "/login" && location.pathname.startsWith(`${item.path}/`));
+                (item.path !== "/login" &&
+                  location.pathname.startsWith(`${item.path}/`));
 
               return (
                 <button
@@ -98,13 +100,21 @@ useEffect(() => {
                   : "border-[#B9D8CC] bg-white text-[#18332D]"
               }`}
             >
-              <FaFireAlt className={isCompletedStreakToday ? "text-orange-600" : "text-[#2FA084]"} />
+              <FaFireAlt
+                className={
+                  isCompletedStreakToday ? "text-orange-600" : "text-[#2FA084]"
+                }
+              />
               <span>{currentStreak} STREAK</span>
             </div>
           )}
 
           {user ? (
-            <AvatarDropdown user={user} profile={user ? profile : null} onLogout={handleLogout} />
+            <AvatarDropdown
+              user={user}
+              profile={user ? profile : null}
+              onLogout={handleLogout}
+            />
           ) : (
             <button
               type="button"

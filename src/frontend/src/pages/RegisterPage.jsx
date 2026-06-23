@@ -3,12 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { startGitHubLogin, startGoogleLogin } from "../api/authApi";
 import { CAPTCHA_ENABLED } from "../api/apiConfig";
 import { useAuthStore } from "../stores/useAuthStore";
-import AuthLogo from "../components/auth/AuthLogo";
+import AuthLogo from "../features/auth/components/AuthLogo";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-import MotionWrapper from "../components/auth/MotionWrapper";
+import MotionWrapper from "../features/auth/components/MotionWrapper";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
-import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
+import AuthRoadmapPanel from "../features/auth/components/AuthRoadmapPanel";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 import {
   getErrorMessage,

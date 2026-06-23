@@ -34,6 +34,7 @@ import ContentManagerLearningModuleCreatePage from "./pages/content/learningModu
 import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
 import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
 import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
+import ContentManagerSkillGapPage from "./pages/content/ContentManagerSkillGapPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
@@ -42,6 +43,7 @@ import {
   ADMIN_SURFACE_PERMISSIONS,
   CONTENT_MANAGER_SURFACE_PERMISSIONS,
   LEARNER_SURFACE_PERMISSIONS,
+  PERMISSIONS,
 } from "./constants/permissions";
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
@@ -212,6 +214,14 @@ export default function App() {
             <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />
             <Route path="/content/learning-modules/:moduleId/preview" element={<ContentManagerLearningModulePreviewPage />} />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
+            <Route
+              path="/content/skill-gap"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY]}>
+                  <ContentManagerSkillGapPage />
+                </RequirePermission>
+              }
+            />
           </Route>
 
           <Route

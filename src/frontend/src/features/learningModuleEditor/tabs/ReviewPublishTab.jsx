@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle } from "lucide-react";
-import { ModuleBadge, ModuleButton, ModuleCard } from "../../../components/learningModules/learningModuleUi";
+import { ModuleBadge, ModuleButton, ModuleCard } from "../../../features/learningModules/components/learningModuleUi";
 
 export default function ReviewPublishTab({ detail, isPublishing, onPublish }) {
   const module = detail.module;

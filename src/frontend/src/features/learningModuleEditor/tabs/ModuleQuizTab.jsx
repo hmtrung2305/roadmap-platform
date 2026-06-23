@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, GripVertical, Minus, Plus, Save, Settings, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
-import { inputClass, numberInputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../../components/learningModules/learningModuleUi";
+import ConfirmActionDialog from "../../learningModules/components/ConfirmActionDialog";
+import { inputClass, numberInputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../learningModules/components/learningModuleUi";
 import { DirtyStateBadge } from "../EditorControls";
 import { createEmptyQuestionPayload, getEditorStorageKey, getUnsavedQuizQuestions, hasQuestionDraftChanges, hasQuizDraftChanges, isUnsavedQuestion, mergeQuizQuestions, readSessionJson, readSessionValue, removeSessionValue, toQuestionPayload, writeSessionJson, writeSessionValue } from "../editorUtils";
 

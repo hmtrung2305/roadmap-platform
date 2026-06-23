@@ -23,11 +23,7 @@ import {
   getRoadmapVersionId,
   useRoadmapStore,
 } from "../stores/useRoadmapStore";
-import BalancedRoadmapEdge from "../components/roadmap/BalancedRoadmapEdge";
-import RoadmapDetailDrawer from "../components/roadmap/RoadmapDetailDrawer";
-import RoadmapFlowNode from "../components/roadmap/RoadmapFlowNode";
-import RoadmapFullScreen from "../components/roadmap/RoadmapFullScreen";
-import RoadmapLegend from "../components/roadmap/RoadmapLegend";
+import RoadmapLegend from "../features/roadmaps/components/RoadmapLegend";
 import {
   buildRoadmapFlow,
   focusRoadmapStart,
@@ -37,8 +33,11 @@ import {
   patchNodeProgress,
   applyProgressUpdateResult,
   findChangedProgress,
-} from "../components/roadmap/roadmapUtils";
-
+} from "../features/roadmaps/utils/roadmapUtils";
+import BalancedRoadmapEdge from "../features/roadmaps/components/BalancedRoadmapEdge";
+import RoadmapFlowNode from "../features/roadmaps/components/RoadmapFlowNode";
+import RoadmapFullScreen from "../features/roadmaps/components/RoadmapFullScreen";
+import RoadmapDetailDrawer from "../features/roadmaps/components/RoadmapDetailDrawer";
 const nodeTypes = {
   roadmapNode: RoadmapFlowNode,
 };

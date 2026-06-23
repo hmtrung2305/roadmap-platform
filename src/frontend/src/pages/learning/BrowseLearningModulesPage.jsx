@@ -11,7 +11,7 @@ import {
   ModuleCard,
   ModuleEmptyState,
   ModulePageShell,
-} from "../../components/learningModules/learningModuleUi";
+} from "../../features/learningModules/components/learningModuleUi";
 
 const difficultyFilters = ["all", "beginner", "intermediate", "advanced"];
 
