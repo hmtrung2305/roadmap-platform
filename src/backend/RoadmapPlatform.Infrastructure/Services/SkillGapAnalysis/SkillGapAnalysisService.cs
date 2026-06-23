@@ -175,6 +175,8 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 LevelName = level.Name,
                 LevelSlug = level.Slug,
                 CareerRoleName = careerRole.Name,
+                RoadmapVersionNumber = roadmapVersion.VersionNumber,
+                RoadmapVersionTitle = roadmapVersion.Title,
                 Groups = resultGroups
             };
         }
@@ -216,12 +218,12 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
 
             if (latestHistory != null)
             {
-                var nextAnalyzeAt = latestHistory.CreatedAt.AddDays(7);
+                var nextAnalyzeAt = latestHistory.CreatedAt.AddDays(3);
 
                 if (nextAnalyzeAt > DateTime.UtcNow)
                 {
-                    throw new Exception(
-                        $"You can analyze this role again after {nextAnalyzeAt:yyyy-MM-dd}");
+
+                    throw new ConflictException($"You can analyze again after {nextAnalyzeAt:yyyy-MM-dd HH:mm} UTC.");
                 }
             }
 
@@ -370,6 +372,8 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 CareerRoleName = careerRole.Name,
                 LevelName = level.Name,
                 LevelSlug = level.Slug,
+                RoadmapVersionNumber = roadmapVersion.VersionNumber,
+                RoadmapVersionTitle = roadmapVersion.Title,
                 TotalGroups = totalGroups,
                 CompletedGroups = completedGroups,
                 MissingGroups = missingGroups,
@@ -390,10 +394,14 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 CareerRoleName = careerRole.Name,
                 LevelSlug = level.Slug,
                 LevelName = level.Name,
+                RoadmapVersionNumber = roadmapVersion.VersionNumber,
+                RoadmapVersionTitle = roadmapVersion.Title,
                 MatchedSkills = matchedSkills,
                 TotalSkills = totalSkills,
                 MissingSkills = missingSkills,
                 SnapshotJson = snapshotJson,
+                IsDeleted = false,
+                DeletedAt = null,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -407,13 +415,15 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
         public async Task<List<SkillGapHistoryDto>> GetHistoryAsync(Guid userId)
         {
             return await _dbContext.SkillGapAnalysisHistories
-                .Where(x => x.UserId == userId)
+                .Where(x => x.UserId == userId && !x.IsDeleted)
                 .OrderByDescending(x => x.CreatedAt)
                 .Select(x => new SkillGapHistoryDto
                 {
                     HistoryId = x.SkillGapAnalysisHistoryId,
                     CareerRoleName = x.CareerRoleName,
                     LevelName = x.LevelName,
+                    RoadmapVersionNumber = x.RoadmapVersionNumber,
+                    RoadmapVersionTitle = x.RoadmapVersionTitle,
                     MatchedSkills = x.MatchedSkills,
                     TotalSkills = x.TotalSkills,
                     MissingSkills = x.MissingSkills,
@@ -429,7 +439,8 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             var history = await _dbContext.SkillGapAnalysisHistories
                 .FirstOrDefaultAsync(x =>
                     x.SkillGapAnalysisHistoryId == historyId &&
-                    x.UserId == userId);
+                    x.UserId == userId &&
+                    !x.IsDeleted);
 
             if (history == null)
             {
@@ -457,14 +468,16 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             var history = await _dbContext.SkillGapAnalysisHistories
                 .FirstOrDefaultAsync(x =>
                     x.SkillGapAnalysisHistoryId == historyId &&
-                    x.UserId == userId);
+                    x.UserId == userId &&
+                    !x.IsDeleted);
 
             if (history == null)
             {
                 throw new NotFoundException("History not found.");
             }
 
-            _dbContext.SkillGapAnalysisHistories.Remove(history);
+            history.IsDeleted = true;
+            history.DeletedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
         }
@@ -542,7 +555,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task<List<AssessmentLevelAdminDto>> GetAssessmentLevelsAdminAsync(
+        public async Task<List<AssessmentLevelContentManagerDto>> GetAssessmentLevelsContentManagerAsync(
             string careerRoleSlug)
         {
             var careerRole = await _dbContext.CareerRoles
@@ -556,7 +569,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
             return await _dbContext.AssessmentLevels
                 .Where(x => x.CareerRoleId == careerRole.CareerRoleId)
                 .OrderBy(x => x.SortOrder)
-                .Select(x => new AssessmentLevelAdminDto
+                .Select(x => new AssessmentLevelContentManagerDto
                 {
                     LevelId = x.AssessmentLevelId,
                     LevelName = x.Name,
@@ -566,7 +579,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 .ToListAsync();
         }
 
-        public async Task<AssessmentLevelGroupsAdminDto> GetAssessmentGroupsByLevelAsync(
+        public async Task<AssessmentLevelGroupsContentManagerDto> GetAssessmentGroupsByLevelContentManagerAsync(
             string careerRoleSlug,
             string levelSlug)
         {
@@ -629,7 +642,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         return null;
                     }
 
-                    return new AssessmentGroupAdminDto
+                    return new AssessmentGroupContentManagerDto
                     {
                         GroupId = group.RoadmapNodeId,
                         GroupName = group.Title,
@@ -640,16 +653,18 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                     };
                 })
                 .Where(x => x != null)
-                .Cast<AssessmentGroupAdminDto>()
+                .Cast<AssessmentGroupContentManagerDto>()
                 .OrderBy(x => x.SortOrder)
                 .ToList();
 
-            return new AssessmentLevelGroupsAdminDto
+            return new AssessmentLevelGroupsContentManagerDto
             {
                 CareerRoleName = level.CareerRole.Name,
                 LevelName = level.Name,
                 LevelSlug = level.Slug,
                 GroupCount = resultGroups.Count,
+                RoadmapVersionNumber = roadmapVersion.VersionNumber,
+                RoadmapVersionTitle = roadmapVersion.Title,
                 Groups = resultGroups
             };
         }
