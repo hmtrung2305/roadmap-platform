@@ -309,8 +309,16 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         .Where(x => topicIds.Contains(x.RoadmapNodeId))
                         .ToList();
 
-                    var groupMatched = groupTopics.Count(x =>
-                        selectedNodeIds.Contains(x.RoadmapNodeId));
+                    var groupMatchedSkills = groupTopics
+                        .Where(x => selectedNodeIds.Contains(x.RoadmapNodeId))
+                        .Select(x => new MissingSkillDto
+                        {
+                            NodeId = x.RoadmapNodeId,
+                            Name = x.Title
+                        })
+                        .ToList();
+
+                    var groupMatched = groupMatchedSkills.Count;
 
                     var groupTotal = groupTopics.Count;
 
@@ -352,6 +360,7 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                         SortOrder = (phase.OrderIndex * 1000) + group.OrderIndex,
                         RequiredCount = group.RequiredCount,
                         IsCompleted = isCompleted,
+                        MatchedSkillItems = groupMatchedSkills,
                         MissingSkills = groupMissingSkills
                     };
                 })
