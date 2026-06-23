@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -42,6 +42,24 @@ import {
   CONTENT_MANAGER_SURFACE_PERMISSIONS,
   LEARNER_SURFACE_PERMISSIONS,
 } from "./constants/permissions";
+
+const ContentManagerRoadmapsPage = lazy(() => import("./pages/content/roadmaps/ContentManagerRoadmapsPage"));
+const ContentManagerRoadmapEditorPage = lazy(() => import("./pages/content/roadmaps/ContentManagerRoadmapEditorPage"));
+
+function ContentRouteLoadingState() {
+  return (
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-4 py-7 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1520px] rounded-xl border border-[#B9D8CC]/80 bg-white/95 p-8 text-center text-sm font-bold text-slate-600 shadow-sm">
+        Loading content workspace...
+      </div>
+    </main>
+  );
+}
+
+function LazyContentPage({ children }) {
+  return <Suspense fallback={<ContentRouteLoadingState />}>{children}</Suspense>;
+}
+
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -210,6 +228,8 @@ export default function App() {
             <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
             <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />
             <Route path="/content/learning-modules/:moduleId/preview" element={<ContentManagerLearningModulePreviewPage />} />
+            <Route path="/content/roadmaps" element={<LazyContentPage><ContentManagerRoadmapsPage /></LazyContentPage>} />
+            <Route path="/content/roadmaps/:roadmapId/edit" element={<LazyContentPage><ContentManagerRoadmapEditorPage /></LazyContentPage>} />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
           </Route>
 

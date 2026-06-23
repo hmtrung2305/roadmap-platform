@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LibraryBig,
   LogOut,
+  Map as MapIcon,
   Settings,
   Shield,
 } from "lucide-react";
@@ -31,6 +32,12 @@ const contentManagerNavGroups = [
         icon: LibraryBig,
         match: (pathname) => pathname.startsWith("/content/learning-modules"),
       },
+      {
+        label: "Roadmaps",
+        path: "/content/roadmaps",
+        icon: MapIcon,
+        match: (pathname) => pathname.startsWith("/content/roadmaps"),
+      },
     ],
   },
 ];
@@ -54,6 +61,10 @@ function getContentManagerPageTitle(pathname) {
 
   if (pathname.startsWith("/content/learning-modules")) {
     return "Learning Modules";
+  }
+
+  if (pathname.startsWith("/content/roadmaps")) {
+    return "Roadmaps";
   }
 
   if (pathname === "/content/settings") {
