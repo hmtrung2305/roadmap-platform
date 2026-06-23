@@ -35,6 +35,7 @@ import ContentManagerLearningModuleEditorPage from "./pages/content/learningModu
 import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
 import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
+import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
@@ -221,6 +222,7 @@ export default function App() {
             }
           >
             <Route path="/admin" element={<AdminHomePage />} />
+            <Route path="/admin/market-pulse" element={<AdminMarketPulsePage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 

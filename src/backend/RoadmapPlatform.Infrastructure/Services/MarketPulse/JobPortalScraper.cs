@@ -112,7 +112,16 @@ public sealed class JobPortalScraper(
         for (var page = 1; page <= maxPages; page++)
         {
             var searchUrl = BuildSearchUrl(source.SearchUrlTemplate, settings.SearchKeyword, page);
-            using var response = await client.GetAsync(searchUrl, cancellationToken);
+            using var response = await SendGetWithRetryAsync(client, searchUrl, settings, cancellationToken);
+
+            if (response is null)
+            {
+                logger.LogWarning(
+                    "Market pulse source {SourceName} failed after retries for {SearchUrl}.",
+                    source.Name,
+                    searchUrl);
+                continue;
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -121,6 +130,16 @@ public sealed class JobPortalScraper(
                     source.Name,
                     response.StatusCode,
                     searchUrl);
+
+                if (IsSoftBlockStatus(response.StatusCode))
+                {
+                    logger.LogWarning(
+                        "Stopping source {SourceName} softly after protected/block response {StatusCode}.",
+                        source.Name,
+                        response.StatusCode);
+                    break;
+                }
+
                 continue;
             }
 
@@ -140,6 +159,8 @@ public sealed class JobPortalScraper(
             {
                 break;
             }
+
+            await DelayBetweenRequestsAsync(settings, cancellationToken);
         }
 
         var postings = new List<ScrapedJobPosting>();
@@ -150,7 +171,7 @@ public sealed class JobPortalScraper(
 
             try
             {
-                var posting = await ScrapePostingAsync(source.Name, url, cancellationToken);
+                var posting = await ScrapePostingAsync(source.Name, url, settings, cancellationToken);
 
                 if (posting != null)
                 {
@@ -162,10 +183,7 @@ public sealed class JobPortalScraper(
                 logger.LogDebug(ex, "Failed to scrape job posting {Url}.", url);
             }
 
-            if (settings.RequestDelaySeconds > 0)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(settings.RequestDelaySeconds), cancellationToken);
-            }
+            await DelayBetweenRequestsAsync(settings, cancellationToken);
         }
 
         return postings;
@@ -174,12 +192,13 @@ public sealed class JobPortalScraper(
     private async Task<ScrapedJobPosting?> ScrapePostingAsync(
         string sourceName,
         string url,
+        MarketPulseSettings settings,
         CancellationToken cancellationToken)
     {
         var client = httpClientFactory.CreateClient("market-pulse");
-        using var response = await client.GetAsync(url, cancellationToken);
+        using var response = await SendGetWithRetryAsync(client, url, settings, cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
+        if (response is null || !response.IsSuccessStatusCode)
         {
             return null;
         }
@@ -203,6 +222,81 @@ public sealed class JobPortalScraper(
             null,
             null);
     }
+
+    private async Task<HttpResponseMessage?> SendGetWithRetryAsync(
+        HttpClient client,
+        string url,
+        MarketPulseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var retryMax = Math.Clamp(settings.RetryMax, 1, 6);
+        var backoffBaseMs = Math.Clamp(settings.BackoffBaseMs, 250, 30_000);
+
+        for (var attempt = 1; attempt <= retryMax; attempt++)
+        {
+            try
+            {
+                var response = await client.GetAsync(
+                    url,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+
+                if (response.IsSuccessStatusCode || IsSoftBlockStatus(response.StatusCode))
+                {
+                    return response;
+                }
+
+                if ((int)response.StatusCode < 500)
+                {
+                    return response;
+                }
+
+                response.Dispose();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogDebug(ex, "Market pulse request failed for {Url} on attempt {Attempt}.", url, attempt);
+            }
+
+            if (attempt < retryMax)
+            {
+                var delayMs = Math.Min(
+                    backoffBaseMs * (int)Math.Pow(2, attempt - 1) + Random.Shared.Next(100, 900),
+                    60_000);
+                await Task.Delay(delayMs, cancellationToken);
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task DelayBetweenRequestsAsync(
+        MarketPulseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var minMs = settings.DelayMinMs > 0
+            ? settings.DelayMinMs
+            : Math.Max(0, settings.RequestDelaySeconds * 1000);
+        var maxMs = settings.DelayMaxMs > 0
+            ? settings.DelayMaxMs
+            : minMs;
+
+        if (maxMs < minMs)
+        {
+            (minMs, maxMs) = (maxMs, minMs);
+        }
+
+        var delayMs = Math.Clamp(Random.Shared.Next(minMs, maxMs + 1), 0, 120_000);
+        if (delayMs > 0)
+        {
+            await Task.Delay(delayMs, cancellationToken);
+        }
+    }
+
+    private static bool IsSoftBlockStatus(HttpStatusCode statusCode) =>
+        statusCode is HttpStatusCode.Forbidden or
+            HttpStatusCode.TooManyRequests or
+            HttpStatusCode.ServiceUnavailable;
 
     private static string BuildSearchUrl(string template, string keyword, int page)
     {

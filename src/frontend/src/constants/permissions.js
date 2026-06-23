@@ -24,6 +24,7 @@ export const PERMISSIONS = Object.freeze({
 
   CAREER_ROLE_VIEW_CATALOG: "career_role.view.catalog",
   MARKET_PULSE_VIEW_CATALOG: "market_pulse.view.catalog",
+  MARKET_PULSE_MANAGE_ANY: "market_pulse.manage.any",
   SKILL_VIEW_CATALOG: "skill.view.catalog",
   SKILL_GAP_ANALYSIS_CREATE_SELF: "skill_gap_analysis.create.self",
 
@@ -112,5 +113,6 @@ export const ADMIN_SURFACE_PERMISSIONS = Object.freeze([
   PERMISSIONS.PERMISSION_VIEW_ANY,
   PERMISSIONS.SKILL_VIEW_ANY,
   PERMISSIONS.SKILL_CREATE_ANY,
+  PERMISSIONS.MARKET_PULSE_MANAGE_ANY,
   PERMISSIONS.SYSTEM_HEALTH_VIEW_ANY,
 ]);
