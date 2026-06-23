@@ -56,6 +56,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
+    public virtual DbSet<PendingLocalRegistration> PendingLocalRegistrations { get; set; }
+
     public virtual DbSet<Permission> Permissions { get; set; }
 
     public virtual DbSet<PermissionRole> PermissionRoles { get; set; }
@@ -296,11 +298,18 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Purpose)
                 .HasMaxLength(50)
                 .HasColumnName("purpose");
+            entity.Property(e => e.PendingLocalRegistrationId).HasColumnName("pending_local_registration_id");
             entity.Property(e => e.UsedAt).HasColumnName("used_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
+            entity.HasOne(d => d.PendingLocalRegistration).WithMany(p => p.EmailVerificationTokens)
+                .HasForeignKey(d => d.PendingLocalRegistrationId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_email_verification_pending_local_registration_id");
+
             entity.HasOne(d => d.User).WithMany(p => p.EmailVerificationTokens)
                 .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_email_verification_user_id");
         });
 
@@ -1018,6 +1027,42 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Invoice).WithMany(p => p.PaymentTransactions)
                 .HasForeignKey(d => d.InvoiceId)
                 .HasConstraintName("fk_payment_transaction_invoice_id");
+        });
+
+        modelBuilder.Entity<PendingLocalRegistration>(entity =>
+        {
+            entity.HasKey(e => e.PendingLocalRegistrationId).HasName("pending_local_registration_pkey");
+
+            entity.ToTable("pending_local_registration");
+
+            entity.HasIndex(e => e.ExpiresAt, "ix_pending_local_registration_expires_at")
+                .HasFilter("(used_at IS NULL)");
+
+            entity.HasIndex(e => e.Email, "uq_pending_local_registration_email_active")
+                .IsUnique()
+                .HasFilter("(used_at IS NULL)");
+
+            entity.Property(e => e.PendingLocalRegistrationId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("pending_local_registration_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Email)
+                .HasMaxLength(254)
+                .HasColumnName("email");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UsedAt).HasColumnName("used_at");
+            entity.Property(e => e.Username)
+                .HasMaxLength(50)
+                .HasColumnName("username");
+            entity.Property(e => e.UsernameNormalized)
+                .HasMaxLength(50)
+                .HasColumnName("username_normalized");
         });
 
         modelBuilder.Entity<Permission>(entity =>
