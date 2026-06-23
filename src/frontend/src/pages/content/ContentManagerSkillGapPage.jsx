@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -157,10 +157,6 @@ export default function ContentManagerSkillGapPage() {
     () => roles.find((role) => role.slug === selectedRoleSlug) || null,
     [roles, selectedRoleSlug],
   );
-  const selectedLevel = useMemo(
-    () => levels.find((level) => level.slug === selectedLevelSlug) || null,
-    [levels, selectedLevelSlug],
-  );
   const selectedSet = useMemo(
     () => new Set(selectedGroupIds),
     [selectedGroupIds],
@@ -260,48 +256,48 @@ export default function ContentManagerSkillGapPage() {
     };
   }, [selectedRoleSlug]);
 
-  const fetchGroups = async () => {
-    if (!selectedRoleSlug || !selectedLevelSlug) {
-      setGroups([]);
-      setSelectedGroupIds([]);
-      return;
-    }
+ const fetchGroups = useCallback(async () => {
+  if (!selectedRoleSlug || !selectedLevelSlug) {
+    setGroups([]);
+    setSelectedGroupIds([]);
+    return;
+  }
 
-    try {
-      setIsLoadingGroups(true);
-      setError("");
-      const response = await skillGapApi.getAdminGroupsByLevel(
-        selectedRoleSlug,
-        selectedLevelSlug,
-      );
-      const groupList = toArray(response?.groups ?? response?.Groups)
-        .map(normalizeAdminGroup)
-        .filter((group) => group.groupId)
-        .sort((a, b) => a.sortOrder - b.sortOrder);
+  try {
+    setIsLoadingGroups(true);
+    setError("");
+    const response = await skillGapApi.getAdminGroupsByLevel(
+      selectedRoleSlug,
+      selectedLevelSlug,
+    );
+    const groupList = toArray(response?.groups ?? response?.Groups)
+      .map(normalizeAdminGroup)
+      .filter((group) => group.groupId)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
 
-      setGroups(groupList);
-      setSelectedGroupIds(
-        groupList
-          .filter((group) => group.selected)
-          .map((group) => group.groupId),
-      );
-    } catch (fetchError) {
-      setGroups([]);
-      setSelectedGroupIds([]);
-      setError(
-        getFriendlyApiErrorMessage(
-          fetchError,
-          "Unable to load groups for this level.",
-        ),
-      );
-    } finally {
-      setIsLoadingGroups(false);
-    }
-  };
+    setGroups(groupList);
+    setSelectedGroupIds(
+      groupList
+        .filter((group) => group.selected)
+        .map((group) => group.groupId),
+    );
+  } catch (fetchError) {
+    setGroups([]);
+    setSelectedGroupIds([]);
+    setError(
+      getFriendlyApiErrorMessage(
+        fetchError,
+        "Unable to load groups for this level.",
+      ),
+    );
+  } finally {
+    setIsLoadingGroups(false);
+  }
+}, [selectedRoleSlug, selectedLevelSlug]);
 
   useEffect(() => {
-    fetchGroups();
-  }, [selectedRoleSlug, selectedLevelSlug]);
+  fetchGroups();
+}, [fetchGroups]);
 
   const toggleGroup = (groupId) => {
     setSelectedGroupIds((current) =>

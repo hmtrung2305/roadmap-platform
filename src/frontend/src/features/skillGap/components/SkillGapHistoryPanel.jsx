@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
@@ -86,7 +86,7 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
     return map;
   }, [historyItems]);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!canViewHistory) return;
 
     try {
@@ -108,11 +108,11 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [canViewHistory]);
 
   useEffect(() => {
     loadHistory();
-  }, [canViewHistory]);
+  }, [loadHistory]);
 
   const openHistoryResult = async (historyId) => {
     if (!historyId) return;
