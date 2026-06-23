@@ -32,6 +32,7 @@ public sealed class MarketPulseService(
     private const string ObservationNew = "new";
     private const string ObservationSeen = "seen";
     private const string ObservationUpdated = "updated";
+    private static readonly SemaphoreSlim RefreshLock = new(1, 1);
 
     public async Task<MarketPulseOverviewDto> GetOverviewAsync(
         MarketPulseOverviewQueryDto query,
@@ -333,8 +334,39 @@ public sealed class MarketPulseService(
     
     public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
     {
-        var rawPostings = await scraper.ScrapeAsync(cancellationToken);
-        return await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
+        if (!await RefreshLock.WaitAsync(0, cancellationToken))
+        {
+            throw new InvalidOperationException("A Market Pulse refresh is already running.");
+        }
+
+        var startedAt = DateTime.UtcNow;
+        var run = await StartCrawlRunAsync("manual", startedAt, cancellationToken);
+
+        try
+        {
+            var rawPostings = await scraper.ScrapeAsync(cancellationToken);
+            var result = await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
+            var status = rawPostings.Count == 0 ? "empty" : "success";
+
+            await FinishCrawlRunAsync(run, result, status, null, cancellationToken);
+
+            result.RunId = run.MarketPulseCrawlRunId;
+            result.StartedAt = run.StartedAt;
+            result.FinishedAt = run.FinishedAt;
+            result.Status = run.Status;
+            result.Mode = run.Mode;
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await RecordRefreshFailureAsync(run, ex, cancellationToken);
+            throw;
+        }
+        finally
+        {
+            RefreshLock.Release();
+        }
     }
 
     public async Task<MarketPulseRefreshResultDto> IngestAsync(
@@ -386,6 +418,7 @@ public sealed class MarketPulseService(
         var newPostings = 0;
         var updatedPostings = 0;
         var seenPostings = 0;
+        var duplicatePostings = 0;
         var expiredPostingsInRun = 0;
         var missingThreshold = Math.Max(1, settings.MissingScansBeforeStale);
         var minimumLifecyclePostings = Math.Max(1, settings.MinimumPostingsForLifecycleCheck);
@@ -394,14 +427,16 @@ public sealed class MarketPulseService(
 
         foreach (var sourceGroup in rawPostings.GroupBy(x => x.SourceName))
         {
+            var sourcePostings = sourceGroup.ToList();
             var sourceSettings = settings.Sources.FirstOrDefault(x =>
                 string.Equals(x.Name, sourceGroup.Key, StringComparison.OrdinalIgnoreCase));
 
             var source = await UpsertSourceAsync(sourceGroup.Key, sourceSettings, now, cancellationToken);
-            var uniquePostings = sourceGroup
+            var uniquePostings = sourcePostings
                 .GroupBy(x => BuildExternalId(source.Name, x), StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.First())
                 .ToList();
+            duplicatePostings += Math.Max(0, sourcePostings.Count - uniquePostings.Count);
             var lookupExternalIds = uniquePostings
                 .SelectMany(x => new[]
                 {
@@ -594,6 +629,8 @@ public sealed class MarketPulseService(
             SourcesScraped = rawPostings.Select(x => x.SourceName).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             PostingsScraped = rawPostings.Count,
             PostingsSaved = savedPostings + updatedPostings + seenPostings,
+            PostingsDuplicated = duplicatePostings,
+            PostingsFailed = 0,
             PostingsInserted = savedPostings,
             PostingsUpdated = updatedPostings,
             PostingsSeen = seenPostings,
@@ -610,6 +647,120 @@ public sealed class MarketPulseService(
         InvalidateOverviewCache();
 
         return result;
+    }
+
+    private async Task<MarketPulseCrawlRun> StartCrawlRunAsync(
+        string mode,
+        DateTime startedAt,
+        CancellationToken cancellationToken)
+    {
+        var run = new MarketPulseCrawlRun
+        {
+            MarketPulseCrawlRunId = Guid.NewGuid(),
+            SourceName = AggregateSourceName,
+            Status = "running",
+            Mode = mode,
+            StartedAt = startedAt,
+            CreatedAt = startedAt
+        };
+
+        dbContext.Set<MarketPulseCrawlRun>().Add(run);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return run;
+    }
+
+    private async Task FinishCrawlRunAsync(
+        MarketPulseCrawlRun run,
+        MarketPulseRefreshResultDto result,
+        string status,
+        string? errorSummary,
+        CancellationToken cancellationToken)
+    {
+        var finishedAt = DateTime.UtcNow;
+        run.Status = status;
+        run.FinishedAt = finishedAt;
+        run.DurationMs = Math.Max(0, (int)Math.Round((finishedAt - run.StartedAt).TotalMilliseconds));
+        run.FetchedCount = result.PostingsScraped;
+        run.SavedCount = result.PostingsSaved;
+        run.DuplicateCount = result.PostingsDuplicated;
+        run.FailedCount = result.PostingsFailed;
+        run.StoppedReason = status is "success" or "empty" ? null : status;
+        run.ErrorSummary = errorSummary;
+
+        await UpsertSourceHealthAsync(AggregateSourceName, run, status, errorSummary, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task RecordRefreshFailureAsync(
+        MarketPulseCrawlRun run,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var errorSummary = TrimTo(exception.Message, 1000);
+
+        run.Status = "failed";
+        run.FinishedAt = now;
+        run.DurationMs = Math.Max(0, (int)Math.Round((now - run.StartedAt).TotalMilliseconds));
+        run.FailedCount = Math.Max(1, run.FailedCount);
+        run.StoppedReason = "exception";
+        run.ErrorSummary = errorSummary;
+
+        dbContext.Set<MarketPulseFailedItem>().Add(new MarketPulseFailedItem
+        {
+            MarketPulseFailedItemId = Guid.NewGuid(),
+            MarketPulseCrawlRunId = run.MarketPulseCrawlRunId,
+            SourceName = AggregateSourceName,
+            Stage = "refresh",
+            ErrorCode = exception.GetType().Name,
+            ErrorMessage = errorSummary ?? "Market Pulse refresh failed.",
+            ErrorDetail = TrimTo(exception.ToString(), 4000),
+            RetryCount = 0,
+            Status = "open",
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        await UpsertSourceHealthAsync(AggregateSourceName, run, "failed", errorSummary, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task UpsertSourceHealthAsync(
+        string sourceName,
+        MarketPulseCrawlRun run,
+        string status,
+        string? errorSummary,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var health = await dbContext.Set<MarketPulseSourceHealth>()
+            .FirstOrDefaultAsync(x => x.SourceName == sourceName, cancellationToken);
+
+        if (health is null)
+        {
+            health = new MarketPulseSourceHealth
+            {
+                MarketPulseSourceHealthId = Guid.NewGuid(),
+                SourceName = sourceName,
+                UpdatedAt = now
+            };
+            dbContext.Set<MarketPulseSourceHealth>().Add(health);
+        }
+
+        health.Status = status;
+        health.LastRunId = run.MarketPulseCrawlRunId;
+        health.LastErrorSummary = errorSummary;
+        health.UpdatedAt = now;
+
+        if (status is "success" or "empty")
+        {
+            health.LastSuccessAt = run.FinishedAt ?? now;
+            health.ConsecutiveFailures = 0;
+            return;
+        }
+
+        health.LastFailureAt = run.FinishedAt ?? now;
+        health.ConsecutiveFailures++;
     }
 
     private async Task<JobPortalSource> UpsertSourceAsync(

@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { MdEmail } from "react-icons/md";
-import SettingsSection from "../../components/settings/SettingsSection";
-import SettingsRow from "../../components/settings/SettingsRow";
+import SettingsSection from "../../features/settings/components/SettingsSection";
+import SettingsRow from "../../features/settings/components/SettingsRow";
 import {
   redirectToGoogleLink,
   redirectToGitHubLink,
@@ -11,12 +11,12 @@ import {
 import { FaGithub, FaKey, FaUser } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { toast } from "react-toastify";
-import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
-import AddLocalLoginModal from "../../components/settings/AddLocalLoginModal";
-import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailModal";
-import EditUsernameModal from "../../components/settings/EditUsernameModal";
-import ConfirmModal from "../../components/settings/ConfirmModal";
-import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
+import ChangePasswordModal from "../../features/settings/components/ChangePasswordModal";
+import AddLocalLoginModal from "../../features/settings/components/AddLocalLoginModal";
+import VerifyLocalEmailModal from "../../features/settings/components/VerifyLocalEmailModal";
+import EditUsernameModal from "../../features/settings/components/EditUsernameModal";
+import ConfirmModal from "../../features/settings/components/ConfirmModal";
+import ChangeEmailModal from "../../features/settings/components/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useAuthProviderStore } from "../../stores/useAuthProviderStore";

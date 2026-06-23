@@ -4,8 +4,8 @@ import { Minus, Plus, Save } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
 import { LEARNING_MODULE_AUTHORING_LIMITS } from "../../../constants/learningModuleAuthoringLimits";
-import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
-import { inputClass, ModuleButton, ModuleCard, ModuleField } from "../../../components/learningModules/learningModuleUi";
+import SkillSearchPicker from "../../../features/learningModules/components/SkillSearchPicker";
+import { inputClass, ModuleButton, ModuleCard, ModuleField } from "../../../features/learningModules/components/learningModuleUi";
 import { CustomSelect, DirtyStateBadge } from "../EditorControls";
 import { hasOverviewDraftChanges } from "../editorUtils";
 

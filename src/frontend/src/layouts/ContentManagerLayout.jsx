@@ -5,12 +5,15 @@ import {
   ChevronUp,
   LayoutDashboard,
   LibraryBig,
+  ListChecks,
   LogOut,
   Settings,
   Shield,
 } from "lucide-react";
 
-import AuthLogo from "../components/auth/AuthLogo";
+import { PERMISSIONS } from "../constants/permissions";
+import { hasPermission } from "../utils/authorizationUtils";
+import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useAccountProfileStore } from "../stores/useAccountProfileStore";
@@ -29,7 +32,15 @@ const contentManagerNavGroups = [
         label: "Learning Modules",
         path: "/content/learning-modules",
         icon: LibraryBig,
+        requiredPermission: PERMISSIONS.LEARNING_MODULE_VIEW_OWN,
         match: (pathname) => pathname.startsWith("/content/learning-modules"),
+      },
+      {
+        label: "Skill Gap Config",
+        path: "/content/skill-gap",
+        icon: ListChecks,
+        requiredPermission: PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY,
+        match: (pathname) => pathname.startsWith("/content/skill-gap"),
       },
     ],
   },
@@ -54,6 +65,10 @@ function getContentManagerPageTitle(pathname) {
 
   if (pathname.startsWith("/content/learning-modules")) {
     return "Learning Modules";
+  }
+
+  if (pathname === "/content/skill-gap") {
+    return "Skill Gap Config";
   }
 
   if (pathname === "/content/settings") {
@@ -134,6 +149,12 @@ export default function ContentManagerLayout() {
   const avatarUrl = accountProfile?.avatarUrl?.trim();
   const showAvatar = Boolean(avatarUrl && !avatarFailed);
 
+  const visibleNavItems = useMemo(() => (
+    contentManagerNavGroups
+      .flatMap((group) => group.items)
+      .filter((item) => !item.requiredPermission || hasPermission(user, item.requiredPermission))
+  ), [user]);
+
   const goToSettings = () => {
     setIsUserMenuOpen(false);
     navigate("/content/settings");
@@ -159,7 +180,7 @@ export default function ContentManagerLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-5">
-          {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.match(location.pathname);
 
@@ -279,7 +300,7 @@ export default function ContentManagerLayout() {
             </div>
 
             <div className="hidden items-center gap-2 md:flex lg:hidden">
-              {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.match(location.pathname);
 
@@ -340,7 +361,7 @@ export default function ContentManagerLayout() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto border-t border-[#B9D8CC]/70 px-4 py-2 md:hidden">
-            {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = item.match(location.pathname);
 

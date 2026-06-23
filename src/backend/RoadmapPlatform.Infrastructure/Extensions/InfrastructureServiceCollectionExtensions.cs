@@ -77,6 +77,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
+            services.PostConfigure<MarketPulseSettings>(settings => settings.ApplyEnvironmentAliases());
 
             // File Storage Settings
             services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
@@ -118,6 +119,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<JobsApiClient>();
             services.AddScoped<IJobPortalScraper, JobPortalScraper>();
             services.AddScoped<IMarketPulseService, MarketPulseService>();
+            services.AddScoped<IMarketPulseAdminService, MarketPulseAdminService>();
             services.AddHostedService<MarketPulseHostedService>();
             services.AddHttpClient("market-pulse", client =>
             {

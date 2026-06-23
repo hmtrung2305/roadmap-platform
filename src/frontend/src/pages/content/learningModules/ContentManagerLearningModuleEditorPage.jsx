@@ -1,10 +1,10 @@
 import { ArrowLeft, Loader2 } from "lucide-react";
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
   ModuleCard,
   ModuleEmptyState,
   ModulePageShell,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../../features/learningModules/components/learningModuleUi";
 import ModuleEditorTabs from "../../../features/learningModuleEditor/ModuleEditorTabs";
 import useLearningModuleEditor from "../../../features/learningModuleEditor/hooks/useLearningModuleEditor";
 import ModuleLessonsTab from "../../../features/learningModuleEditor/tabs/ModuleLessonsTab";

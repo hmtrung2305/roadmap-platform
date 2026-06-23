@@ -63,14 +63,14 @@ function ExtraTagPopover({ hiddenTags }) {
         +{hiddenTags.length}
       </span>
 
-      <span className="pointer-events-none absolute top-full left-0 !z-[999] mb-2 hidden w-[400px] max-w-[calc(100vw-48px)] rounded-md border border-[#B9D8CC] bg-white px-4 py-3 text-xs font-bold leading-5 text-[#18332D] shadow-[0_18px_44px_rgba(31,111,95,0.18)] group-hover/extra:block">
+      <span className="pointer-events-none absolute top-full left-0 z-999! mb-2 hidden w-100 max-w-[calc(100vw-48px)] rounded-md border border-[#B9D8CC] bg-white px-4 py-3 text-xs font-bold leading-5 text-[#18332D] shadow-[0_18px_44px_rgba(31,111,95,0.18)] group-hover/extra:block">
         <span className="mb-2 block h-0.5 w-14 rounded-md bg-[#2FA084]" />
 
         <span className="flex flex-wrap gap-1.5">
           {hiddenTags.map((tag) => (
             <span
               key={tag}
-              className="whitespace-normal break-words rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2.5 py-1 text-xs font-semibold leading-5 text-slate-700"
+              className="whitespace-normal wrap-break-word rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2.5 py-1 text-xs font-semibold leading-5 text-slate-700"
             >
               {tag}
             </span>
@@ -104,7 +104,7 @@ export default function PortfolioRepositoryCard({ repository }) {
   } = getVisibleTags(tags, 4);
 
   return (
-    <article className="group relative z-1 hover:z-2 flex min-h-[250px] flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
+    <article className="group relative z-1 hover:z-2 flex min-h-62.5 flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="line-clamp-1 text-lg font-extrabold text-[#18332D]">
@@ -130,7 +130,7 @@ export default function PortfolioRepositoryCard({ repository }) {
         )}
       </div>
 
-      <div className="group/summary relative mt-4 min-h-[3rem]">
+      <div className="group/summary relative mt-4 min-h-12">
         <p className="line-clamp-2 cursor-help text-sm font-medium leading-6 text-slate-600">
           {description}
         </p>

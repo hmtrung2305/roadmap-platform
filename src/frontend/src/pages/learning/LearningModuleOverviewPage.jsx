@@ -12,7 +12,7 @@ import {
   ModuleCard,
   ModuleEmptyState,
   ModulePageShell,
-} from "../../components/learningModules/learningModuleUi";
+} from "../../features/learningModules/components/learningModuleUi";
 
 export default function LearningModuleOverviewPage() {
   const { slug } = useParams();

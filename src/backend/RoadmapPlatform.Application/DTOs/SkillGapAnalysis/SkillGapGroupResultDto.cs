@@ -13,15 +13,11 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 
         public int SortOrder { get; set; }
         public int TotalSkills { get; set; }
-
         public int MatchedSkills { get; set; }
-
-        public string? SelectionType { get; set; } = string.Empty;
-
+        public string SelectionType { get; set; } = string.Empty;
         public int? RequiredCount { get; set; }
-
         public bool IsCompleted { get; set; }
-
+        public List<MissingSkillDto> MatchedSkillItems { get; set; } = [];
         public List<MissingSkillDto> MissingSkills { get; set; } = [];
     }
 }
