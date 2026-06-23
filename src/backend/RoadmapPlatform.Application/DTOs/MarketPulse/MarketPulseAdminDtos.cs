@@ -13,6 +13,17 @@ public sealed class MarketPulseAdminQueryDto
     public int Limit { get; set; } = 50;
 }
 
+public sealed class MarketPulseRefreshRequestDto
+{
+    public int? MaxPagesPerSource { get; set; }
+
+    public int? MaxPostingsPerSource { get; set; }
+
+    public int? JobsApiPageSize { get; set; }
+
+    public int? JobsApiMaxPages { get; set; }
+}
+
 public sealed class MarketPulseCrawlRunDto
 {
     public Guid RunId { get; set; }

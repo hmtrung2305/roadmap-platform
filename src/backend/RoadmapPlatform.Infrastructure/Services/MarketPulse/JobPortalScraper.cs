@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using RoadmapPlatform.Application.DTOs.MarketPulse;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Models.MarketPulse;
@@ -10,6 +11,10 @@ namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 public interface IJobPortalScraper
 {
     Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken);
 }
 
 public sealed class JobPortalScraper(
@@ -29,9 +34,15 @@ public sealed class JobPortalScraper(
         "<title[^>]*>(?<title>.*?)</title>|<h1[^>]*>(?<title>.*?)</h1>",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
 
-    public async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken) =>
+        ScrapeAsync(null, cancellationToken);
+
+    public async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken)
     {
         var settings = options.Value;
+        var effectiveSettings = ResolveEffectiveSettings(settings, request);
         var postings = new List<ScrapedJobPosting>();
         var enabledSources = ResolveEnabledSources(settings).ToList();
 
@@ -49,9 +60,9 @@ public sealed class JobPortalScraper(
             {
                 var sourcePostings = source.Kind switch
                 {
-                    JobsApiSourceKind => await ScrapeJobsApiSourceAsync(source, settings, cancellationToken),
-                    HtmlSourceKind => await ScrapeHtmlSourceAsync(source, settings, cancellationToken),
-                    _ => await ScrapeHtmlSourceAsync(source, settings, cancellationToken)
+                    JobsApiSourceKind => await ScrapeJobsApiSourceAsync(source, effectiveSettings, cancellationToken),
+                    HtmlSourceKind => await ScrapeHtmlSourceAsync(source, settings, effectiveSettings, cancellationToken),
+                    _ => await ScrapeHtmlSourceAsync(source, settings, effectiveSettings, cancellationToken)
                 };
 
                 postings.AddRange(sourcePostings);
@@ -162,16 +173,16 @@ public sealed class JobPortalScraper(
 
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeJobsApiSourceAsync(
         MarketPulseSourceSettings source,
-        MarketPulseSettings settings,
+        EffectiveScrapeSettings effectiveSettings,
         CancellationToken cancellationToken)
     {
-        var maxPostings = Math.Max(1, settings.MaxPostingsPerSource);
+        var maxPostings = effectiveSettings.MaxPostingsPerSource;
         var result = await jobsApiClient.FetchAsync(
             source.SearchUrlTemplate,
             new JobsApiFetchOptions(
                 maxPostings,
-                Math.Max(1, settings.JobsApiPageSize),
-                Math.Max(1, settings.JobsApiMaxPages)),
+                effectiveSettings.JobsApiPageSize,
+                effectiveSettings.JobsApiMaxPages),
             cancellationToken);
 
         return result.Jobs
@@ -204,11 +215,12 @@ public sealed class JobPortalScraper(
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeHtmlSourceAsync(
         MarketPulseSourceSettings source,
         MarketPulseSettings settings,
+        EffectiveScrapeSettings effectiveSettings,
         CancellationToken cancellationToken)
     {
         var client = httpClientFactory.CreateClient("market-pulse");
         var links = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var maxPages = Math.Max(1, settings.MaxPagesPerSource);
+        var maxPages = effectiveSettings.MaxPagesPerSource;
 
         for (var page = 1; page <= maxPages; page++)
         {
@@ -250,13 +262,13 @@ public sealed class JobPortalScraper(
             {
                 links.Add(link);
 
-                if (links.Count >= settings.MaxPostingsPerSource)
+                if (links.Count >= effectiveSettings.MaxPostingsPerSource)
                 {
                     break;
                 }
             }
 
-            if (links.Count >= settings.MaxPostingsPerSource)
+            if (links.Count >= effectiveSettings.MaxPostingsPerSource)
             {
                 break;
             }
@@ -266,7 +278,7 @@ public sealed class JobPortalScraper(
 
         var postings = new List<ScrapedJobPosting>();
 
-        foreach (var url in links.Take(Math.Max(1, settings.MaxPostingsPerSource)))
+        foreach (var url in links.Take(effectiveSettings.MaxPostingsPerSource))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -399,6 +411,18 @@ public sealed class JobPortalScraper(
             HttpStatusCode.TooManyRequests or
             HttpStatusCode.ServiceUnavailable;
 
+    private static EffectiveScrapeSettings ResolveEffectiveSettings(
+        MarketPulseSettings settings,
+        MarketPulseRefreshRequestDto? request) =>
+        new(
+            ClampPositive(request?.MaxPagesPerSource ?? settings.MaxPagesPerSource, 1, 100),
+            ClampPositive(request?.MaxPostingsPerSource ?? settings.MaxPostingsPerSource, 1, 5_000),
+            ClampPositive(request?.JobsApiPageSize ?? settings.JobsApiPageSize, 1, 500),
+            ClampPositive(request?.JobsApiMaxPages ?? settings.JobsApiMaxPages, 1, 100));
+
+    private static int ClampPositive(int value, int min, int max) =>
+        Math.Clamp(value, min, max);
+
     private static string BuildSearchUrl(string template, string keyword, int page)
     {
         return template
@@ -518,3 +542,9 @@ public sealed record ScrapedJobPosting(
     IReadOnlyList<string>? Specialties = null,
     IReadOnlyList<string>? Benefits = null,
     IReadOnlyList<string>? Skills = null);
+
+internal sealed record EffectiveScrapeSettings(
+    int MaxPagesPerSource,
+    int MaxPostingsPerSource,
+    int JobsApiPageSize,
+    int JobsApiMaxPages);

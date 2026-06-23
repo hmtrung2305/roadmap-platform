@@ -34,6 +34,13 @@ const emptyMappingForm = {
   isEnabled: true,
 };
 
+const defaultRefreshOptions = {
+  jobsApiPageSize: 100,
+  jobsApiMaxPages: 10,
+  maxPostingsPerSource: 500,
+  maxPagesPerSource: 4,
+};
+
 export default function AdminMarketPulsePage() {
   const [runs, setRuns] = useState([]);
   const [failedItems, setFailedItems] = useState([]);
@@ -48,6 +55,7 @@ export default function AdminMarketPulsePage() {
   const [classifierText, setClassifierText] = useState("");
   const [classifierResult, setClassifierResult] = useState(null);
   const [refreshResult, setRefreshResult] = useState(null);
+  const [refreshOptions, setRefreshOptions] = useState(defaultRefreshOptions);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSavingMapping, setIsSavingMapping] = useState(false);
@@ -117,7 +125,7 @@ export default function AdminMarketPulsePage() {
     setRefreshResult(null);
 
     try {
-      const result = await marketPulseApi.refresh();
+      const result = await marketPulseApi.refresh(normalizeRefreshOptions(refreshOptions));
       setRefreshResult(result);
       setRefreshCooldownUntil(Date.now() + 30_000);
       await loadAdminData();
@@ -140,6 +148,10 @@ export default function AdminMarketPulsePage() {
     if (!ids.length) return;
     await marketPulseApi.ignoreFailedItems(ids);
     await loadFailedItems();
+  };
+
+  const updateRefreshOption = (key, value) => {
+    setRefreshOptions((current) => ({ ...current, [key]: value }));
   };
 
   const toggleFailedSelection = (id) => {
@@ -262,6 +274,43 @@ export default function AdminMarketPulsePage() {
             <AdminMetric icon={Database} label="Fetched" value={formatNumber(runs[0]?.fetchedCount)} />
             <AdminMetric icon={CheckCircle2} label="Saved" value={formatNumber(runs[0]?.savedCount)} />
             <AdminMetric icon={XCircle} label="Open failed" value={formatNumber(failedItems.filter((item) => item.status === "open").length)} />
+          </div>
+
+          <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2 text-sm font-black text-slate-800">
+              <SlidersHorizontal size={16} />
+              Refresh options
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <RefreshOptionInput
+                label="Jobs API page size"
+                value={refreshOptions.jobsApiPageSize}
+                min={1}
+                max={500}
+                onChange={(value) => updateRefreshOption("jobsApiPageSize", value)}
+              />
+              <RefreshOptionInput
+                label="Jobs API max pages"
+                value={refreshOptions.jobsApiMaxPages}
+                min={1}
+                max={100}
+                onChange={(value) => updateRefreshOption("jobsApiMaxPages", value)}
+              />
+              <RefreshOptionInput
+                label="Max postings"
+                value={refreshOptions.maxPostingsPerSource}
+                min={1}
+                max={5000}
+                onChange={(value) => updateRefreshOption("maxPostingsPerSource", value)}
+              />
+              <RefreshOptionInput
+                label="HTML max pages"
+                value={refreshOptions.maxPagesPerSource}
+                min={1}
+                max={100}
+                onChange={(value) => updateRefreshOption("maxPagesPerSource", value)}
+              />
+            </div>
           </div>
 
           {refreshResult && (
@@ -587,6 +636,23 @@ function FilterRow({ filters, onChange, onApply, statusOptions }) {
   );
 }
 
+function RefreshOptionInput({ label, value, min, max, onChange }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-extrabold uppercase text-slate-500">{label}</span>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step="1"
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none"
+      />
+    </label>
+  );
+}
+
 function DataTable({ headers, rows }) {
   if (!rows.length) {
     return <EmptyState message="No rows for the current filter." />;
@@ -668,6 +734,14 @@ function normalizeDateFilters(filters) {
     from: filters.from ? new Date(`${filters.from}T00:00:00`).toISOString() : "",
     to: filters.to ? new Date(`${filters.to}T23:59:59`).toISOString() : "",
   };
+}
+
+function normalizeRefreshOptions(options) {
+  return Object.fromEntries(
+    Object.entries(options)
+      .map(([key, value]) => [key, Math.trunc(Number(value))])
+      .filter(([, value]) => Number.isFinite(value) && value > 0)
+  );
 }
 
 function formatNumber(value) {

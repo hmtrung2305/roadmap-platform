@@ -10,6 +10,10 @@ public interface IMarketPulseService
 
     Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken);
 
+    Task<MarketPulseRefreshResultDto> RefreshAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken);
+
     Task<MarketPulseRefreshResultDto> IngestAsync(
         MarketPulseIngestRequestDto request,
         CancellationToken cancellationToken);

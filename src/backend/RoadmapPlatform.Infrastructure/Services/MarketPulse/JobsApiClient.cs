@@ -372,7 +372,7 @@ public sealed record JobsApiFetchOptions(int MaxItems, int PageSize, int MaxPage
     public static JobsApiFetchOptions Default { get; } = new(160, 100, 2);
 
     public JobsApiFetchOptions Normalize() => new(
-        Math.Clamp(MaxItems, 1, 2_000),
+        Math.Clamp(MaxItems, 1, 5_000),
         Math.Clamp(PageSize, 1, 500),
         Math.Clamp(MaxPages, 1, 100));
 }
