@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
@@ -18,11 +19,13 @@ public sealed class MarketPulseAdminController(
     [HttpPost("refresh")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(MarketPulseApiEnvelopeDto<MarketPulseRefreshResultDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    public async Task<IActionResult> Refresh(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var result = await marketPulseService.RefreshAsync(cancellationToken);
+            var result = await marketPulseService.RefreshAsync(request, cancellationToken);
             return Ok(MarketPulseApiEnvelopeDto<MarketPulseRefreshResultDto>.Success(result));
         }
         catch (InvalidOperationException ex) when (
@@ -55,18 +58,25 @@ public sealed class MarketPulseAdminController(
         [FromQuery] int limit = 50,
         CancellationToken cancellationToken = default)
     {
-        var runs = await adminService.GetCrawlRunsAsync(
-            new MarketPulseAdminQueryDto
-            {
-                Status = status,
-                Source = source,
-                From = from,
-                To = to,
-                Limit = limit
-            },
-            cancellationToken);
+        try
+        {
+            var runs = await adminService.GetCrawlRunsAsync(
+                new MarketPulseAdminQueryDto
+                {
+                    Status = status,
+                    Source = source,
+                    From = from,
+                    To = to,
+                    Limit = limit
+                },
+                cancellationToken);
 
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseCrawlRunDto>>.Success(runs));
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseCrawlRunDto>>.Success(runs));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpGet("failed-items")]
@@ -79,18 +89,25 @@ public sealed class MarketPulseAdminController(
         [FromQuery] int limit = 50,
         CancellationToken cancellationToken = default)
     {
-        var items = await adminService.GetFailedItemsAsync(
-            new MarketPulseAdminQueryDto
-            {
-                Status = status,
-                Source = source,
-                From = from,
-                To = to,
-                Limit = limit
-            },
-            cancellationToken);
+        try
+        {
+            var items = await adminService.GetFailedItemsAsync(
+                new MarketPulseAdminQueryDto
+                {
+                    Status = status,
+                    Source = source,
+                    From = from,
+                    To = to,
+                    Limit = limit
+                },
+                cancellationToken);
 
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPost("failed-items/{failedItemId:guid}/retry")]
@@ -99,8 +116,15 @@ public sealed class MarketPulseAdminController(
         Guid failedItemId,
         CancellationToken cancellationToken)
     {
-        var items = await adminService.RetryFailedItemsAsync([failedItemId], cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        try
+        {
+            var items = await adminService.RetryFailedItemsAsync([failedItemId], cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPost("failed-items/retry")]
@@ -109,8 +133,15 @@ public sealed class MarketPulseAdminController(
         [FromBody] MarketPulseBulkActionRequestDto request,
         CancellationToken cancellationToken)
     {
-        var items = await adminService.RetryFailedItemsAsync(request.FailedItemIds, cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        try
+        {
+            var items = await adminService.RetryFailedItemsAsync(request.FailedItemIds, cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPost("failed-items/{failedItemId:guid}/ignore")]
@@ -119,8 +150,15 @@ public sealed class MarketPulseAdminController(
         Guid failedItemId,
         CancellationToken cancellationToken)
     {
-        var items = await adminService.IgnoreFailedItemsAsync([failedItemId], cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        try
+        {
+            var items = await adminService.IgnoreFailedItemsAsync([failedItemId], cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPost("failed-items/ignore")]
@@ -129,22 +167,43 @@ public sealed class MarketPulseAdminController(
         [FromBody] MarketPulseBulkActionRequestDto request,
         CancellationToken cancellationToken)
     {
-        var items = await adminService.IgnoreFailedItemsAsync(request.FailedItemIds, cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        try
+        {
+            var items = await adminService.IgnoreFailedItemsAsync(request.FailedItemIds, cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpGet("classifier/categories")]
     public async Task<IActionResult> GetClassifierCategories(CancellationToken cancellationToken)
     {
-        var categories = await adminService.GetCategoriesAsync(cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<string>>.Success(categories));
+        try
+        {
+            var categories = await adminService.GetCategoriesAsync(cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<string>>.Success(categories));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpGet("classifier/mappings")]
     public async Task<IActionResult> GetClassifierMappings(CancellationToken cancellationToken)
     {
-        var mappings = await adminService.GetClassifierMappingsAsync(cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseClassifierMappingDto>>.Success(mappings));
+        try
+        {
+            var mappings = await adminService.GetClassifierMappingsAsync(cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseClassifierMappingDto>>.Success(mappings));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPost("classifier/mappings")]
@@ -153,8 +212,15 @@ public sealed class MarketPulseAdminController(
         [FromBody] MarketPulseClassifierMappingRequestDto request,
         CancellationToken cancellationToken)
     {
-        var mapping = await adminService.CreateClassifierMappingAsync(request, cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<MarketPulseClassifierMappingDto>.Success(mapping));
+        try
+        {
+            var mapping = await adminService.CreateClassifierMappingAsync(request, cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<MarketPulseClassifierMappingDto>.Success(mapping));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPut("classifier/mappings/{mappingId:guid}")]
@@ -164,8 +230,15 @@ public sealed class MarketPulseAdminController(
         [FromBody] MarketPulseClassifierMappingRequestDto request,
         CancellationToken cancellationToken)
     {
-        var mapping = await adminService.UpdateClassifierMappingAsync(mappingId, request, cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<MarketPulseClassifierMappingDto>.Success(mapping));
+        try
+        {
+            var mapping = await adminService.UpdateClassifierMappingAsync(mappingId, request, cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<MarketPulseClassifierMappingDto>.Success(mapping));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpDelete("classifier/mappings/{mappingId:guid}")]
@@ -174,8 +247,15 @@ public sealed class MarketPulseAdminController(
         Guid mappingId,
         CancellationToken cancellationToken)
     {
-        await adminService.DeleteClassifierMappingAsync(mappingId, cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<object>.Success(new { deleted = true }));
+        try
+        {
+            await adminService.DeleteClassifierMappingAsync(mappingId, cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<object>.Success(new { deleted = true }));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpPost("classifier/test")]
@@ -183,14 +263,61 @@ public sealed class MarketPulseAdminController(
         [FromBody] MarketPulseClassifierTestRequestDto request,
         CancellationToken cancellationToken)
     {
-        var result = await adminService.TestClassifierAsync(request, cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<MarketPulseClassifierTestResultDto>.Success(result));
+        try
+        {
+            var result = await adminService.TestClassifierAsync(request, cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<MarketPulseClassifierTestResultDto>.Success(result));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
     }
 
     [HttpGet("source-health")]
     public async Task<IActionResult> GetSourceHealth(CancellationToken cancellationToken)
     {
-        var health = await adminService.GetSourceHealthAsync(cancellationToken);
-        return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseSourceHealthDto>>.Success(health));
+        try
+        {
+            var health = await adminService.GetSourceHealthAsync(cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseSourceHealthDto>>.Success(health));
+        }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
+    }
+
+    private static ObjectResult MarketPulseAdminSchemaMissingResult(Exception exception)
+    {
+        return new ObjectResult(MarketPulseApiEnvelopeDto<object>.Failure(
+            "MARKET_PULSE_ADMIN_SCHEMA_MISSING",
+            "Market Pulse admin database objects are missing or out of date. Apply database/migrations/023-market-pulse-admin-ops.sql to the Render PostgreSQL database, then restart the backend.",
+            new
+            {
+                migration = "database/migrations/023-market-pulse-admin-ops.sql",
+                hint = "Run the migration against the same DATABASE_URL used by the Render backend.",
+                providerMessage = exception.Message
+            }))
+        {
+            StatusCode = StatusCodes.Status503ServiceUnavailable
+        };
+    }
+
+    private static bool IsMarketPulseAdminSchemaMissing(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            var typeName = current.GetType().FullName;
+            var sqlState = current.GetType().GetProperty("SqlState")?.GetValue(current)?.ToString();
+
+            if (typeName == "Npgsql.PostgresException" &&
+                (sqlState == "42P01" || sqlState == "42703" || sqlState == "42P07"))
+            {
+                return current.Message.Contains("market_pulse_", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        return false;
     }
 }

@@ -59,8 +59,8 @@ export const marketPulseApi = {
     return unwrapEnvelope(response);
   },
 
-  refresh: async () => {
-    const response = await axiosClient.post("/market-pulse/admin/refresh");
+  refresh: async (options = {}) => {
+    const response = await axiosClient.post("/market-pulse/admin/refresh", options);
     return unwrapEnvelope(response);
   },
 

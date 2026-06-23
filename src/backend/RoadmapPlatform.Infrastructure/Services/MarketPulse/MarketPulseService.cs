@@ -332,7 +332,12 @@ public sealed class MarketPulseService(
         return string.Join(' ', parts.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
     }
     
-    public async Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken)
+    public Task<MarketPulseRefreshResultDto> RefreshAsync(CancellationToken cancellationToken) =>
+        RefreshAsync(null, cancellationToken);
+
+    public async Task<MarketPulseRefreshResultDto> RefreshAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken)
     {
         if (!await RefreshLock.WaitAsync(0, cancellationToken))
         {
@@ -344,7 +349,7 @@ public sealed class MarketPulseService(
 
         try
         {
-            var rawPostings = await scraper.ScrapeAsync(cancellationToken);
+            var rawPostings = await scraper.ScrapeAsync(request, cancellationToken);
             var result = await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
             var status = rawPostings.Count == 0 ? "empty" : "success";
 
