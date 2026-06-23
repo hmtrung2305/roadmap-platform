@@ -133,10 +133,10 @@ export default function RoadmapFlowNode({ data }) {
     <button
       type="button"
       className={[
-        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border px-4 py-3 text-center shadow-sm outline-none transition-colors duration-150 focus-visible:ring-4 focus-visible:ring-[#81E7AF]/35",
+        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border px-4 py-3 text-center shadow-sm outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-[#81E7AF]/35",
         getNodeTypeClass(data.nodeType, data.checkpointType),
         getStatusNodeClass(status, data.nodeType),
-        data.isSelected ? "outline outline-4 outline-[#81E7AF]/50" : "",
+        data.isSelected ? "z-10 ring-4 ring-[#1F6F5F]/35 shadow-[0_0_0_2px_#1F6F5F,0_18px_32px_rgba(31,111,95,0.22)] scale-[1.03]" : "",
       ].join(" ")}
       style={{
         width: NODE_WIDTH,
@@ -160,6 +160,10 @@ export default function RoadmapFlowNode({ data }) {
         className="absolute left-2 top-1.5 h-2.5 w-2.5 rounded-lg border border-white/80"
         style={{ background: getStatusColor(status, data.nodeType) }}
       />
+
+      {data.isSelected && (
+        <span className="absolute right-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#1F6F5F] shadow-sm" />
+      )}
 
       {isLocked && (
         <span
