@@ -33,9 +33,15 @@ public sealed class JobPortalScraper(
     {
         var settings = options.Value;
         var postings = new List<ScrapedJobPosting>();
-        var enabledSources = settings.Sources
-            .Where(x => x.Enabled && !string.IsNullOrWhiteSpace(x.SearchUrlTemplate))
-            .ToList();
+        var enabledSources = ResolveEnabledSources(settings).ToList();
+
+        if (enabledSources.Count == 0)
+        {
+            logger.LogWarning(
+                "No Market Pulse sources are enabled or configured. Set MarketPulse__Sources__0__SearchUrlTemplate, " +
+                "MarketPulse__ActiveJobsApiUrl, or a JobsApi BaseUrl that points to the Jobs API origin.");
+            return postings;
+        }
 
         foreach (var source in enabledSources)
         {
@@ -58,6 +64,101 @@ public sealed class JobPortalScraper(
 
         return postings;
     }
+
+    private IEnumerable<MarketPulseSourceSettings> ResolveEnabledSources(MarketPulseSettings settings)
+    {
+        var resolvedAnySource = false;
+
+        foreach (var source in settings.Sources.Where(x => x.Enabled))
+        {
+            var resolvedSource = ResolveSource(source, settings);
+            if (resolvedSource is null)
+            {
+                logger.LogWarning(
+                    "Skipping Market Pulse source {SourceName} because no search URL is configured.",
+                    string.IsNullOrWhiteSpace(source.Name) ? "(unnamed)" : source.Name);
+                continue;
+            }
+
+            resolvedAnySource = true;
+            yield return resolvedSource;
+        }
+
+        if (!resolvedAnySource && !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl))
+        {
+            yield return new MarketPulseSourceSettings
+            {
+                Name = "Jobs API",
+                Kind = JobsApiSourceKind,
+                BaseUrl = ResolveBaseUrl(settings.ActiveJobsApiUrl),
+                SearchUrlTemplate = settings.ActiveJobsApiUrl.Trim(),
+                Enabled = true,
+                DetailUrlContains = []
+            };
+        }
+    }
+
+    private static MarketPulseSourceSettings? ResolveSource(
+        MarketPulseSourceSettings source,
+        MarketPulseSettings settings)
+    {
+        var searchUrlTemplate = source.SearchUrlTemplate;
+        if (IsJobsApiSource(source) && string.IsNullOrWhiteSpace(searchUrlTemplate))
+        {
+            searchUrlTemplate = FirstNonEmpty(
+                settings.ActiveJobsApiUrl,
+                ResolveJobsApiActiveUrl(source.BaseUrl));
+        }
+
+        if (string.IsNullOrWhiteSpace(searchUrlTemplate))
+        {
+            return null;
+        }
+
+        return new MarketPulseSourceSettings
+        {
+            Name = string.IsNullOrWhiteSpace(source.Name) ? "Jobs API" : source.Name.Trim(),
+            Kind = string.IsNullOrWhiteSpace(source.Kind) ? HtmlSourceKind : source.Kind.Trim(),
+            BaseUrl = FirstNonEmpty(source.BaseUrl, ResolveBaseUrl(searchUrlTemplate)) ?? string.Empty,
+            SearchUrlTemplate = searchUrlTemplate.Trim(),
+            Enabled = true,
+            DetailUrlContains = source.DetailUrlContains ?? []
+        };
+    }
+
+    private static bool IsJobsApiSource(MarketPulseSourceSettings source) =>
+        string.Equals(source.Kind, JobsApiSourceKind, StringComparison.OrdinalIgnoreCase);
+
+    private static string? ResolveJobsApiActiveUrl(string? baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            return null;
+        }
+
+        var trimmed = baseUrl.Trim();
+        if (trimmed.Contains("/api/", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        return Uri.TryCreate(trimmed.TrimEnd('/') + "/", UriKind.Absolute, out var uri)
+            ? new Uri(uri, "api/jobs/active").ToString()
+            : null;
+    }
+
+    private static string ResolveBaseUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return string.Empty;
+        }
+
+        return $"{uri.Scheme}://{uri.Authority}";
+    }
+
+    private static string? FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim();
 
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeJobsApiSourceAsync(
         MarketPulseSourceSettings source,
