@@ -1684,6 +1684,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted");
             entity.Property(e => e.LevelName)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("''::character varying")
@@ -1694,6 +1696,13 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("level_slug");
             entity.Property(e => e.MatchedSkills).HasColumnName("matched_skills");
             entity.Property(e => e.MissingSkills).HasColumnName("missing_skills");
+            entity.Property(e => e.RoadmapVersionNumber)
+                .HasDefaultValue(1)
+                .HasColumnName("roadmap_version_number");
+            entity.Property(e => e.RoadmapVersionTitle)
+                .HasMaxLength(255)
+                .HasDefaultValueSql("''::character varying")
+                .HasColumnName("roadmap_version_title");
             entity.Property(e => e.SnapshotJson)
                 .HasColumnType("jsonb")
                 .HasColumnName("snapshot_json");

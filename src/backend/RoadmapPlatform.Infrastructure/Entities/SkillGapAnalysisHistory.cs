@@ -29,6 +29,14 @@ public partial class SkillGapAnalysisHistory
 
     public int MissingSkills { get; set; }
 
+    public bool IsDeleted { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
+
+    public int RoadmapVersionNumber { get; set; }
+
+    public string RoadmapVersionTitle { get; set; } = null!;
+
     public virtual CareerRole CareerRole { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;

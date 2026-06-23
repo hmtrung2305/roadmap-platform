@@ -25,7 +25,7 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
         {
             var result =
                 await _skillGapAnalysisService
-                    .GetAssessmentLevelsAdminAsync(careerRoleSlug);
+                    .GetAssessmentLevelsContentManagerAsync(careerRoleSlug);
 
             return Ok(result);
         }
@@ -37,7 +37,7 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
         {
             var result =
                 await _skillGapAnalysisService
-                    .GetAssessmentGroupsByLevelAsync(
+                    .GetAssessmentGroupsByLevelContentManagerAsync(
                         careerRoleSlug,
                         levelSlug);
 
@@ -47,7 +47,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 
         [HttpPut("{careerRoleSlug}/levels/{levelSlug}/groups")]
         [RequirePermission(PermissionConstant.SKILL_GAP_CONFIG_UPDATE_ANY)]
-
         public async Task<IActionResult> UpdateAssessmentGroupsByLevel(string careerRoleSlug, string levelSlug, [FromBody] UpdateAssessmentLevelGroupsDto request)
         {
             await _skillGapAnalysisService

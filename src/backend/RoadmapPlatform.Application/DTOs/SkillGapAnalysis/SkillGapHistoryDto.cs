@@ -14,6 +14,10 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
         public string LevelName { get; set; }
             = string.Empty;
 
+        public int RoadmapVersionNumber { get; set; }
+
+        public string RoadmapVersionTitle { get; set; } = string.Empty;
+
         public int MatchedSkills { get; set; }
 
         public int TotalSkills { get; set; }

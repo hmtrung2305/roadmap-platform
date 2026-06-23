@@ -20,12 +20,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
         }
 
 
-
-
-
-
-
-
         [HttpGet("skill-gap/career-roles")]
         [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
         public async Task<IActionResult> GetCareerRoles()
@@ -119,8 +113,8 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
         }
 
 
-        [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
         [HttpGet("skill-gap/{careerRoleSlug}/assessment/{levelSlug}")]
+        [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
         public async Task<IActionResult> GetAssessmentByLevel(string careerRoleSlug, string levelSlug)
         {
             var result =

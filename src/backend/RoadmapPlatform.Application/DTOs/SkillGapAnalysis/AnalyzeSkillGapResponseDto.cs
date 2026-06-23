@@ -23,6 +23,10 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 
         public int MissingGroups { get; set; }
 
+        public int RoadmapVersionNumber { get; set; }
+
+        public string RoadmapVersionTitle { get; set; } = string.Empty;
+
         public List<SkillGapGroupResultDto> Groups { get; set; } = [];
 
     }

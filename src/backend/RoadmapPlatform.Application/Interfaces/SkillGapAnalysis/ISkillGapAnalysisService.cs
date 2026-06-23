@@ -30,10 +30,10 @@ namespace RoadmapPlatform.Application.Interfaces.CareerRoleSkill
 
 
 
-        // ADMIN
+        // ContentManager
         Task UpdateAssessmentLevelGroupsAsync(string careerRoleSlug, string levelSlug, UpdateAssessmentLevelGroupsDto request);
-        Task<List<AssessmentLevelAdminDto>> GetAssessmentLevelsAdminAsync(string careerRoleSlug);
+        Task<List<AssessmentLevelContentManagerDto>> GetAssessmentLevelsContentManagerAsync(string careerRoleSlug);
 
-        Task<AssessmentLevelGroupsAdminDto> GetAssessmentGroupsByLevelAsync(string careerRoleSlug, string levelSlug);
+        Task<AssessmentLevelGroupsContentManagerDto> GetAssessmentGroupsByLevelContentManagerAsync(string careerRoleSlug, string levelSlug);
     }
 }

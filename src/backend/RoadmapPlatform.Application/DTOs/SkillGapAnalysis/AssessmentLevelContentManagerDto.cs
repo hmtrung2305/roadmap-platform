@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
 {
-    public sealed class AssessmentLevelAdminDto
+    public sealed class AssessmentLevelContentManagerDto
     {
         public Guid LevelId { get; set; }
 
