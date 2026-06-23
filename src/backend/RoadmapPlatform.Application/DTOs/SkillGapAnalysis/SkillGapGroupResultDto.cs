@@ -17,7 +17,7 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
         public string SelectionType { get; set; } = string.Empty;
         public int? RequiredCount { get; set; }
         public bool IsCompleted { get; set; }
-        public List<MissingSkillDto>? MatchedSkillItems { get; set; } = [];
+        public List<MissingSkillDto> MatchedSkillItems { get; set; } = [];
         public List<MissingSkillDto> MissingSkills { get; set; } = [];
     }
 }

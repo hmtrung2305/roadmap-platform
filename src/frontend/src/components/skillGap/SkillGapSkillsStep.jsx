@@ -17,8 +17,9 @@ import {
 
 export default function SkillGapSkillsStep({
   role,
+  level,
   groups,
-  selectedSkillSlugs,
+  selectedNodeIds,
   isLoading,
   isAnalyzing,
   onToggleSkill,
@@ -26,7 +27,7 @@ export default function SkillGapSkillsStep({
   onAnalyze,
 }) {
   const [expandedGroupKey, setExpandedGroupKey] = useState("");
-  const selectedSet = useMemo(() => new Set(selectedSkillSlugs), [selectedSkillSlugs]);
+  const selectedSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -49,11 +50,11 @@ export default function SkillGapSkillsStep({
           <p className="text-xs font-extrabold uppercase tracking-wide text-[#1F6F5F]">Step 2</p>
           <h2 className="mt-1 text-xl font-extrabold text-[#18332D]">Mark the skills you already have</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-            Target role: <span className="text-[#1F6F5F]">{role?.name}</span>. Open one group at a time so the checklist stays focused.
+            Target role: <span className="text-[#1F6F5F]">{role?.name}</span> · Level: <span className="text-[#1F6F5F]">{level?.levelName || level?.name}</span>. Open one group at a time so the checklist stays focused.
           </p>
         </div>
         <div className="rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-1.5 text-xs font-extrabold text-[#1F6F5F]">
-          {selectedSkillSlugs.length} skills marked
+          {selectedNodeIds.length} skills marked
         </div>
       </div>
 
@@ -67,10 +68,10 @@ export default function SkillGapSkillsStep({
           {groups.map((group) => {
             const groupKey = String(group.skillGroupId || group.groupName);
             const skills = toArray(group.skills);
-            const matchedCount = skills.filter((skill) => selectedSet.has(skill.slug)).length;
+            const matchedCount = skills.filter((skill) => selectedSet.has(skill.nodeId)).length;
             const total = skills.length;
             const percent = total ? Math.round((matchedCount / total) * 100) : 0;
-            const isCompleted = isGroupCompleted(group, selectedSkillSlugs);
+            const isCompleted = isGroupCompleted(group, selectedNodeIds);
             const isExpanded = expandedGroupKey === groupKey;
             const priority = getPriorityStyle(group.priority);
 
@@ -123,13 +124,13 @@ export default function SkillGapSkillsStep({
                   <div className="overflow-hidden">
                     <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-4">
                       {skills.map((skill) => {
-                        const selected = selectedSet.has(skill.slug);
+                        const selected = selectedSet.has(skill.nodeId);
 
                         return (
                           <button
-                            key={skill.skillId || skill.slug}
+                            key={skill.nodeId || skill.skillId || skill.slug}
                             type="button"
-                            onClick={() => onToggleSkill(skill.slug)}
+                            onClick={() => onToggleSkill(skill.nodeId)}
                             disabled={isAnalyzing || isLoading}
                             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 ${
                               selected

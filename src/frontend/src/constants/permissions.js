@@ -26,6 +26,10 @@ export const PERMISSIONS = Object.freeze({
   MARKET_PULSE_VIEW_CATALOG: "market_pulse.view.catalog",
   SKILL_VIEW_CATALOG: "skill.view.catalog",
   SKILL_GAP_ANALYSIS_CREATE_SELF: "skill_gap_analysis.create.self",
+  SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF: "skill_gap_analysis_history.view.self",
+  SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF: "skill_gap_analysis_history.delete.self",
+  SKILL_GAP_CONFIG_VIEW_ANY: "skill_gap_config.view.any",
+  SKILL_GAP_CONFIG_UPDATE_ANY: "skill_gap_config.update.any",
 
   ROADMAP_VIEW_PUBLISHED: "roadmap.view.published",
   ROADMAP_NODE_VIEW_PUBLISHED: "roadmap_node.view.published",
@@ -104,6 +108,7 @@ export const LEARNER_SURFACE_PERMISSIONS = Object.freeze([
 export const CONTENT_MANAGER_SURFACE_PERMISSIONS = Object.freeze([
   PERMISSIONS.LEARNING_MODULE_VIEW_OWN,
   PERMISSIONS.LEARNING_MODULE_CREATE_OWN,
+  PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY,
 ]);
 
 export const ADMIN_SURFACE_PERMISSIONS = Object.freeze([
