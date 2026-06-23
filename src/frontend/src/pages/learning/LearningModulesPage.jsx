@@ -12,7 +12,7 @@ import {
   ModuleEmptyState,
   ModulePageShell,
   prettyEnrollmentStatus,
-} from "../../components/learningModules/learningModuleUi";
+} from "../../features/learningModules/components/learningModuleUi";
 
 const moduleStatusTabs = ["in_progress", "completed"];
 

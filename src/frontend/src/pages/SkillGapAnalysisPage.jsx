@@ -8,8 +8,8 @@ import {
   SkillGapRoleStep,
   SkillGapSkillsStep,
   SkillGapStepper,
-} from "../components/skillGap";
-import { useSkillGapAnalysis } from "../hooks/useSkillGapAnalysis";
+} from "../features/skillGap/components";
+import { useSkillGapAnalysis } from "../features/skillGap/hooks/useSkillGapAnalysis";
 
 function SurfaceTabs({ activeTab, onChange }) {
   const tabs = [

@@ -22,14 +22,25 @@ import {
   ModuleEmptyState,
   ModulePageShell,
   inputClass,
-} from "../../components/learningModules/learningModuleUi";
+} from "../../features/learningModules/components/learningModuleUi";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
-import { getAssessmentLevelStyle, normalizeCareerRoles, normalizeId, toArray } from "../../components/skillGap/skillGapUtils";
+import {
+  getAssessmentLevelStyle,
+  normalizeCareerRoles,
+  normalizeId,
+  toArray,
+} from "../../features/skillGap/utils/skillGapUtils";
 
 function normalizeAdminLevel(level) {
   const levelId = level?.levelId ?? level?.LevelId;
-  const levelName = level?.levelName ?? level?.LevelName ?? level?.name ?? level?.Name ?? "Assessment level";
-  const slug = level?.slug ?? level?.Slug ?? level?.levelSlug ?? level?.LevelSlug ?? "";
+  const levelName =
+    level?.levelName ??
+    level?.LevelName ??
+    level?.name ??
+    level?.Name ??
+    "Assessment level";
+  const slug =
+    level?.slug ?? level?.Slug ?? level?.levelSlug ?? level?.LevelSlug ?? "";
 
   return {
     ...level,
@@ -43,7 +54,9 @@ function normalizeAdminLevel(level) {
 }
 
 function normalizeAdminGroup(group) {
-  const groupId = normalizeId(group?.groupId ?? group?.GroupId ?? group?.id ?? group?.Id);
+  const groupId = normalizeId(
+    group?.groupId ?? group?.GroupId ?? group?.id ?? group?.Id,
+  );
 
   return {
     ...group,
@@ -105,8 +118,12 @@ function StatCard({ icon: Icon, label, value }) {
           <Icon size={18} />
         </div>
         <div className="min-w-0">
-          <div className="text-2xl font-extrabold leading-tight text-[#18332D]">{value}</div>
-          <div className="mt-1 text-xs font-extrabold uppercase tracking-wide text-slate-500">{label}</div>
+          <div className="text-2xl font-extrabold leading-tight text-[#18332D]">
+            {value}
+          </div>
+          <div className="mt-1 text-xs font-extrabold uppercase tracking-wide text-slate-500">
+            {label}
+          </div>
         </div>
       </div>
     </ModuleCard>
@@ -144,11 +161,16 @@ export default function ContentManagerSkillGapPage() {
     () => levels.find((level) => level.slug === selectedLevelSlug) || null,
     [levels, selectedLevelSlug],
   );
-  const selectedSet = useMemo(() => new Set(selectedGroupIds), [selectedGroupIds]);
+  const selectedSet = useMemo(
+    () => new Set(selectedGroupIds),
+    [selectedGroupIds],
+  );
 
   const filteredGroups = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    const orderedGroups = groups.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+    const orderedGroups = groups
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder);
 
     if (!keyword) return orderedGroups;
 
@@ -159,8 +181,13 @@ export default function ContentManagerSkillGapPage() {
     });
   }, [groups, searchTerm]);
 
-  const phaseGroups = useMemo(() => Array.from(groupByPhase(filteredGroups).entries()), [filteredGroups]);
-  const selectedVisibleGroupIds = filteredGroups.filter((group) => selectedSet.has(group.groupId)).map((group) => group.groupId);
+  const phaseGroups = useMemo(
+    () => Array.from(groupByPhase(filteredGroups).entries()),
+    [filteredGroups],
+  );
+  const selectedVisibleGroupIds = filteredGroups
+    .filter((group) => selectedSet.has(group.groupId))
+    .map((group) => group.groupId);
   const dirtySelectedCount = selectedGroupIds.length;
 
   const fetchRoles = async () => {
@@ -171,7 +198,9 @@ export default function ContentManagerSkillGapPage() {
       setRoles(roleList);
       setSelectedRoleSlug((current) => current || roleList[0]?.slug || "");
     } catch (fetchError) {
-      setError(getFriendlyApiErrorMessage(fetchError, "Unable to load career roles."));
+      setError(
+        getFriendlyApiErrorMessage(fetchError, "Unable to load career roles."),
+      );
     } finally {
       setIsLoadingRoles(false);
     }
@@ -195,7 +224,9 @@ export default function ContentManagerSkillGapPage() {
       try {
         setIsLoadingLevels(true);
         setError("");
-        const levelList = toArray(await skillGapApi.getAdminAssessmentLevels(selectedRoleSlug))
+        const levelList = toArray(
+          await skillGapApi.getAdminAssessmentLevels(selectedRoleSlug),
+        )
           .map(normalizeAdminLevel)
           .filter((level) => level.slug);
 
@@ -211,7 +242,12 @@ export default function ContentManagerSkillGapPage() {
         setLevels([]);
         setSelectedLevelSlug("");
         setGroups([]);
-        setError(getFriendlyApiErrorMessage(fetchError, "Unable to load assessment levels."));
+        setError(
+          getFriendlyApiErrorMessage(
+            fetchError,
+            "Unable to load assessment levels.",
+          ),
+        );
       } finally {
         if (isActive) setIsLoadingLevels(false);
       }
@@ -234,18 +270,30 @@ export default function ContentManagerSkillGapPage() {
     try {
       setIsLoadingGroups(true);
       setError("");
-      const response = await skillGapApi.getAdminGroupsByLevel(selectedRoleSlug, selectedLevelSlug);
+      const response = await skillGapApi.getAdminGroupsByLevel(
+        selectedRoleSlug,
+        selectedLevelSlug,
+      );
       const groupList = toArray(response?.groups ?? response?.Groups)
         .map(normalizeAdminGroup)
         .filter((group) => group.groupId)
         .sort((a, b) => a.sortOrder - b.sortOrder);
 
       setGroups(groupList);
-      setSelectedGroupIds(groupList.filter((group) => group.selected).map((group) => group.groupId));
+      setSelectedGroupIds(
+        groupList
+          .filter((group) => group.selected)
+          .map((group) => group.groupId),
+      );
     } catch (fetchError) {
       setGroups([]);
       setSelectedGroupIds([]);
-      setError(getFriendlyApiErrorMessage(fetchError, "Unable to load groups for this level."));
+      setError(
+        getFriendlyApiErrorMessage(
+          fetchError,
+          "Unable to load groups for this level.",
+        ),
+      );
     } finally {
       setIsLoadingGroups(false);
     }
@@ -256,21 +304,25 @@ export default function ContentManagerSkillGapPage() {
   }, [selectedRoleSlug, selectedLevelSlug]);
 
   const toggleGroup = (groupId) => {
-    setSelectedGroupIds((current) => (
+    setSelectedGroupIds((current) =>
       current.includes(groupId)
         ? current.filter((item) => item !== groupId)
-        : [...current, groupId]
-    ));
+        : [...current, groupId],
+    );
   };
 
   const selectAllVisible = () => {
     const visibleIds = filteredGroups.map((group) => group.groupId);
-    setSelectedGroupIds((current) => Array.from(new Set([...current, ...visibleIds])));
+    setSelectedGroupIds((current) =>
+      Array.from(new Set([...current, ...visibleIds])),
+    );
   };
 
   const clearVisible = () => {
     const visibleIds = new Set(filteredGroups.map((group) => group.groupId));
-    setSelectedGroupIds((current) => current.filter((groupId) => !visibleIds.has(groupId)));
+    setSelectedGroupIds((current) =>
+      current.filter((groupId) => !visibleIds.has(groupId)),
+    );
   };
 
   const saveGroups = async () => {
@@ -287,13 +339,20 @@ export default function ContentManagerSkillGapPage() {
       toast.success("Skill gap level groups updated.");
       await Promise.all([
         skillGapApi.getAdminAssessmentLevels(selectedRoleSlug).then((data) => {
-          const levelList = toArray(data).map(normalizeAdminLevel).filter((level) => level.slug);
+          const levelList = toArray(data)
+            .map(normalizeAdminLevel)
+            .filter((level) => level.slug);
           setLevels(levelList);
         }),
         fetchGroups(),
       ]);
     } catch (saveError) {
-      setError(getFriendlyApiErrorMessage(saveError, "Unable to save group configuration."));
+      setError(
+        getFriendlyApiErrorMessage(
+          saveError,
+          "Unable to save group configuration.",
+        ),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -317,9 +376,21 @@ export default function ContentManagerSkillGapPage() {
         )}
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <StatCard icon={Target} label="Career roles" value={roles.length || "—"} />
-          <StatCard icon={Layers3} label="Levels" value={levels.length || "—"} />
-          <StatCard icon={CheckCircle2} label="Selected groups" value={`${dirtySelectedCount}/${groups.length || 0}`} />
+          <StatCard
+            icon={Target}
+            label="Career roles"
+            value={roles.length || "—"}
+          />
+          <StatCard
+            icon={Layers3}
+            label="Levels"
+            value={levels.length || "—"}
+          />
+          <StatCard
+            icon={CheckCircle2}
+            label="Selected groups"
+            value={`${dirtySelectedCount}/${groups.length || 0}`}
+          />
         </div>
 
         {isLoadingRoles ? (
@@ -331,7 +402,8 @@ export default function ContentManagerSkillGapPage() {
           </ModuleCard>
         ) : roles.length === 0 ? (
           <ModuleEmptyState title="No career roles found">
-            Career roles must exist before content managers can configure skill gap assessment levels.
+            Career roles must exist before content managers can configure skill
+            gap assessment levels.
           </ModuleEmptyState>
         ) : (
           <div className="grid items-stretch gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
@@ -375,11 +447,22 @@ export default function ContentManagerSkillGapPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <ModuleButton variant="secondary" onClick={fetchGroups} disabled={isBusy || !selectedLevelSlug}>
+                    <ModuleButton
+                      variant="secondary"
+                      onClick={fetchGroups}
+                      disabled={isBusy || !selectedLevelSlug}
+                    >
                       <RefreshCw size={14} /> Reload
                     </ModuleButton>
-                    <ModuleButton onClick={saveGroups} disabled={isBusy || isSaving || !selectedLevelSlug}>
-                      {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                    <ModuleButton
+                      onClick={saveGroups}
+                      disabled={isBusy || isSaving || !selectedLevelSlug}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        <Save size={14} />
+                      )}
                       Save
                     </ModuleButton>
                   </div>
@@ -388,40 +471,49 @@ export default function ContentManagerSkillGapPage() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   {isLoadingLevels ? (
                     <div className="col-span-full flex items-center gap-2 rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 p-4 text-sm font-bold text-slate-600">
-                      <Loader2 className="animate-spin text-[#2FA084]" size={17} />
+                      <Loader2
+                        className="animate-spin text-[#2FA084]"
+                        size={17}
+                      />
                       Loading levels...
                     </div>
                   ) : levels.length === 0 ? (
                     <div className="col-span-full rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 p-4 text-sm font-bold text-slate-600">
                       No levels are configured for this role.
                     </div>
-                  ) : levels.map((level) => {
-                    const active = level.slug === selectedLevelSlug;
-                    const style = getAssessmentLevelStyle(level.slug);
+                  ) : (
+                    levels.map((level) => {
+                      const active = level.slug === selectedLevelSlug;
+                      const style = getAssessmentLevelStyle(level.slug);
 
-                    return (
-                      <button
-                        key={level.levelId || level.slug}
-                        type="button"
-                        onClick={() => setSelectedLevelSlug(level.slug)}
-                        className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
-                          active
-                            ? `${style.panel} border-[#2FA084] shadow-sm`
-                            : "border-[#B9D8CC]/80 bg-white hover:border-[#2FA084]"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${style.badge}`}>
-                            {level.levelName}
-                          </span>
-                          {active && <Check size={15} className="text-[#1F6F5F]" />}
-                        </div>
-                        <p className="mt-3 text-xs font-bold text-slate-600">
-                          {level.groupCount} selected groups
-                        </p>
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={level.levelId || level.slug}
+                          type="button"
+                          onClick={() => setSelectedLevelSlug(level.slug)}
+                          className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
+                            active
+                              ? `${style.panel} border-[#2FA084] shadow-sm`
+                              : "border-[#B9D8CC]/80 bg-white hover:border-[#2FA084]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${style.badge}`}
+                            >
+                              {level.levelName}
+                            </span>
+                            {active && (
+                              <Check size={15} className="text-[#1F6F5F]" />
+                            )}
+                          </div>
+                          <p className="mt-3 text-xs font-bold text-slate-600">
+                            {level.groupCount} selected groups
+                          </p>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </ModuleCard>
 
@@ -433,24 +525,38 @@ export default function ContentManagerSkillGapPage() {
                         Select roadmap choice groups
                       </h3>
                       <p className="mt-1 text-xs font-extrabold text-[#1F6F5F]">
-                        {selectedVisibleGroupIds.length}/{filteredGroups.length} visible groups selected
+                        {selectedVisibleGroupIds.length}/{filteredGroups.length}{" "}
+                        visible groups selected
                       </p>
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <div className="relative min-w-60">
-                        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search
+                          size={15}
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
                         <input
                           value={searchTerm}
-                          onChange={(event) => setSearchTerm(event.target.value)}
+                          onChange={(event) =>
+                            setSearchTerm(event.target.value)
+                          }
                           placeholder="Search group or phase"
                           className={`${inputClass} pl-9`}
                         />
                       </div>
-                      <ModuleButton variant="secondary" onClick={selectAllVisible} disabled={isBusy || filteredGroups.length === 0}>
+                      <ModuleButton
+                        variant="secondary"
+                        onClick={selectAllVisible}
+                        disabled={isBusy || filteredGroups.length === 0}
+                      >
                         Select visible
                       </ModuleButton>
-                      <ModuleButton variant="ghost" onClick={clearVisible} disabled={isBusy || filteredGroups.length === 0}>
+                      <ModuleButton
+                        variant="ghost"
+                        onClick={clearVisible}
+                        disabled={isBusy || filteredGroups.length === 0}
+                      >
                         Clear visible
                       </ModuleButton>
                     </div>
@@ -460,14 +566,18 @@ export default function ContentManagerSkillGapPage() {
                 {isLoadingGroups ? (
                   <div className="grid min-h-72 place-items-center p-8 text-sm font-bold text-slate-600">
                     <div className="flex items-center gap-2">
-                      <Loader2 className="animate-spin text-[#2FA084]" size={18} />
+                      <Loader2
+                        className="animate-spin text-[#2FA084]"
+                        size={18}
+                      />
                       Loading groups...
                     </div>
                   </div>
                 ) : groups.length === 0 ? (
                   <div className="p-5">
                     <ModuleEmptyState title="No groups available">
-                      This role needs a published roadmap with choice groups before it can be configured.
+                      This role needs a published roadmap with choice groups
+                      before it can be configured.
                     </ModuleEmptyState>
                   </div>
                 ) : filteredGroups.length === 0 ? (
@@ -479,13 +589,21 @@ export default function ContentManagerSkillGapPage() {
                 ) : (
                   <div className="skill-gap-admin-hidden-scrollbar grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-4">
                     {phaseGroups.map(([phaseName, phaseItems]) => (
-                      <section key={phaseName} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                      <section
+                        key={phaseName}
+                        className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3"
+                      >
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                           <div className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
                             {phaseName}
                           </div>
                           <ModuleBadge tone="slate">
-                            {phaseItems.filter((group) => selectedSet.has(group.groupId)).length}/{phaseItems.length} selected
+                            {
+                              phaseItems.filter((group) =>
+                                selectedSet.has(group.groupId),
+                              ).length
+                            }
+                            /{phaseItems.length} selected
                           </ModuleBadge>
                         </div>
 
@@ -504,7 +622,9 @@ export default function ContentManagerSkillGapPage() {
                                     : "border-slate-200 bg-white hover:border-[#B9D8CC]"
                                 }`}
                               >
-                                <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-[#2FA084] bg-[#2FA084] text-white" : "border-slate-300 bg-white text-transparent"}`}>
+                                <span
+                                  className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-[#2FA084] bg-[#2FA084] text-white" : "border-slate-300 bg-white text-transparent"}`}
+                                >
                                   <Check size={13} />
                                 </span>
                                 <span className="min-w-0 flex-1">

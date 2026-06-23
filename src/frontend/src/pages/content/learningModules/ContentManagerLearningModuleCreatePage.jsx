@@ -6,14 +6,14 @@ import {
   contentManagerLearningModuleApi,
   getLearningModuleRouteSegment,
 } from "../../../api/learningModuleApi";
-import SkillSearchPicker from "../../../components/learningModules/SkillSearchPicker";
+import SkillSearchPicker from "../../../features/learningModules/components/SkillSearchPicker";
 import {
   inputClass,
   ModuleButton,
   ModuleCard,
   ModuleField,
   ModulePageShell,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../../features/learningModules/components/learningModuleUi";
 
 function CustomSelect({ value, onChange, options, placeholder = "Select an option" }) {
   const [isOpen, setIsOpen] = useState(false);

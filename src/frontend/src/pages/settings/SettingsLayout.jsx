@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import TopNavbar from "../../components/layout/TopNavBar";
 import Footer from "../../components/layout/Footer";
-import SettingsSidebar from "../../components/settings/SettingsSidebar";
+import SettingsSidebar from "../../features/settings/components/SettingsSidebar";
 
 export default function SettingsLayout() {
   return (

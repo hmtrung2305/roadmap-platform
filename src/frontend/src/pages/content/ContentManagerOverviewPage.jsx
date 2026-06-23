@@ -24,7 +24,7 @@ import {
   ModulePageShell,
   getStatusTone,
   prettyModuleStatus,
-} from "../../components/learningModules/learningModuleUi";
+} from "../../features/learningModules/components/learningModuleUi";
 
 const emptyOverview = {
   metrics: {

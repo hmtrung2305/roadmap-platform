@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import RoadmapCard from "../components/roadmap/RoadmapCard";
-import CareerMentorWidget from "../components/mentor/CareerMentorWidget";
+import CareerMentorWidget from "../features/mentor/components/CareerMentorWidget";
 import { getRoadmapVersionId, useRoadmapStore } from "../stores/useRoadmapStore";
 
 export default function RoadmapSelectionPage() {

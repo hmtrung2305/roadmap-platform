@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import AuthLogo from "../components/auth/AuthLogo";
+import AuthLogo from "../features/auth/components/AuthLogo";
 import { useAuthStore } from "../stores/useAuthStore";
 import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
 

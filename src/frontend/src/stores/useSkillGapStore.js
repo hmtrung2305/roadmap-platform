@@ -7,7 +7,7 @@ import {
   normalizeCareerRoles,
   normalizeId,
   normalizeSkillGapResult,
-} from "../components/skillGap/skillGapUtils";
+} from "../features/skillGap/utils/skillGapUtils";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import {
   cachedRequest,
@@ -43,7 +43,9 @@ function getRoleSlug(role) {
 }
 
 function getLevelSlug(level) {
-  return normalizeSlug(level?.slug || level?.Slug || level?.levelSlug || level?.LevelSlug);
+  return normalizeSlug(
+    level?.slug || level?.Slug || level?.levelSlug || level?.LevelSlug,
+  );
 }
 
 function getLevelsCacheKey(roleSlug) {
@@ -51,18 +53,34 @@ function getLevelsCacheKey(roleSlug) {
 }
 
 function getGroupsCacheKey(roleSlug, levelSlug) {
-  return [GROUPS_CACHE_PREFIX, normalizeSlug(roleSlug), normalizeSlug(levelSlug)].join(":");
+  return [
+    GROUPS_CACHE_PREFIX,
+    normalizeSlug(roleSlug),
+    normalizeSlug(levelSlug),
+  ].join(":");
 }
 
 function createAnalysisKey(roleSlug, levelSlug, selectedNodeIds = []) {
-  const normalizedNodes = [...new Set(selectedNodeIds.map(normalizeId).filter(Boolean))].sort();
+  const normalizedNodes = [
+    ...new Set(selectedNodeIds.map(normalizeId).filter(Boolean)),
+  ].sort();
 
-  return ["skill-gap", "analysis", normalizeSlug(roleSlug), normalizeSlug(levelSlug), normalizedNodes.join(",")].join(":");
+  return [
+    "skill-gap",
+    "analysis",
+    normalizeSlug(roleSlug),
+    normalizeSlug(levelSlug),
+    normalizedNodes.join(","),
+  ].join(":");
 }
 
 function hasSameSelection(left = [], right = []) {
-  const normalizedLeft = [...new Set(left.map(normalizeId).filter(Boolean))].sort();
-  const normalizedRight = [...new Set(right.map(normalizeId).filter(Boolean))].sort();
+  const normalizedLeft = [
+    ...new Set(left.map(normalizeId).filter(Boolean)),
+  ].sort();
+  const normalizedRight = [
+    ...new Set(right.map(normalizeId).filter(Boolean)),
+  ].sort();
 
   if (normalizedLeft.length !== normalizedRight.length) return false;
   return normalizedLeft.every((item, index) => item === normalizedRight[index]);
@@ -114,7 +132,10 @@ export const useSkillGapStore = create((set, get) => ({
       if (requestVersion !== skillGapRequestVersion) return [];
 
       set({
-        error: getFriendlyApiErrorMessage(error, "Unable to load career roles."),
+        error: getFriendlyApiErrorMessage(
+          error,
+          "Unable to load career roles.",
+        ),
         isRolesLoading: false,
       });
 
@@ -167,7 +188,10 @@ export const useSkillGapStore = create((set, get) => ({
     try {
       const levels = await cachedRequest(
         getLevelsCacheKey(roleSlug),
-        async () => normalizeAssessmentLevels(await skillGapApi.getAssessmentLevels(roleSlug)),
+        async () =>
+          normalizeAssessmentLevels(
+            await skillGapApi.getAssessmentLevels(roleSlug),
+          ),
         { ttlMs: LEVELS_CACHE_MS, force },
       );
 
@@ -201,7 +225,10 @@ export const useSkillGapStore = create((set, get) => ({
       }
 
       set({
-        error: getFriendlyApiErrorMessage(error, "Unable to load assessment levels for this role."),
+        error: getFriendlyApiErrorMessage(
+          error,
+          "Unable to load assessment levels for this role.",
+        ),
       });
 
       return [];
@@ -259,7 +286,10 @@ export const useSkillGapStore = create((set, get) => ({
     try {
       const groups = await cachedRequest(
         cacheKey,
-        async () => normalizeAssessmentGroups(await skillGapApi.getAssessmentByLevel(roleSlug, levelSlug)),
+        async () =>
+          normalizeAssessmentGroups(
+            await skillGapApi.getAssessmentByLevel(roleSlug, levelSlug),
+          ),
         { ttlMs: GROUPS_CACHE_MS, force },
       );
 
@@ -294,7 +324,10 @@ export const useSkillGapStore = create((set, get) => ({
       }
 
       set({
-        error: getFriendlyApiErrorMessage(error, "Unable to load assessment skills for this level."),
+        error: getFriendlyApiErrorMessage(
+          error,
+          "Unable to load assessment skills for this level.",
+        ),
       });
 
       return [];
@@ -402,7 +435,10 @@ export const useSkillGapStore = create((set, get) => ({
       }
 
       set({
-        error: getFriendlyApiErrorMessage(error, "Unable to analyze your skill gap."),
+        error: getFriendlyApiErrorMessage(
+          error,
+          "Unable to analyze your skill gap.",
+        ),
       });
 
       return null;
@@ -418,7 +454,9 @@ export const useSkillGapStore = create((set, get) => ({
   },
 
   goToSkillStep: () => {
-    const hasRoleAndLevel = Boolean(getRoleSlug(get().selectedRole) && getLevelSlug(get().selectedLevel));
+    const hasRoleAndLevel = Boolean(
+      getRoleSlug(get().selectedRole) && getLevelSlug(get().selectedLevel),
+    );
 
     set({
       step: hasRoleAndLevel ? 2 : 1,

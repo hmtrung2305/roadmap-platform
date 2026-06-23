@@ -5,13 +5,17 @@ import { ArrowLeft, Bot, Clock, FileText, PanelLeftOpen } from "lucide-react";
 import { toast } from "react-toastify";
 
 import DocumentLoading from "../components/document/DocumentLoading";
-import LearningModuleLessonReader from "../components/learningModules/LearningModuleLessonReader";
-import StudyLessonSidebar from "../components/studyRoom/StudyLessonSidebar";
-import StudyQuiz from "../components/studyRoom/StudyQuiz";
-import StudyRoomChatPanel from "../components/studyRoom/StudyRoomChatPanel";
-import StudyRoomHeader from "../components/studyRoom/StudyRoomHeader";
-import { areAllLessonsCompleted, HEADER_HEIGHT, PAGE_GAP } from "../components/studyRoom/studyRoomUtils";
-import { useStudyRoomLayout } from "../hooks/useStudyRoomLayout";
+import LearningModuleLessonReader from "../features/learningModules/components/LearningModuleLessonReader";
+import StudyLessonSidebar from "../features/studyRoom/components/StudyLessonSidebar";
+import StudyQuiz from "../features/studyRoom/components/StudyQuiz";
+import StudyRoomChatPanel from "../features/studyRoom/components/StudyRoomChatPanel";
+import StudyRoomHeader from "../features/studyRoom/components/StudyRoomHeader";
+import {
+  areAllLessonsCompleted,
+  HEADER_HEIGHT,
+  PAGE_GAP,
+} from "../features/studyRoom/utils/studyRoomUtils";
+import { useStudyRoomLayout } from "../features/studyRoom/hooks/useStudyRoomLayout";
 import { useLearningModuleStore } from "../stores/useLearningModuleStore";
 import { useStreakStore } from "../stores/useStreakStore";
 import {
@@ -20,7 +24,7 @@ import {
   getLessonProgress,
   ModuleBadge,
   ModuleButton,
-} from "../components/learningModules/learningModuleUi";
+} from "../features/learningModules/components/learningModuleUi";
 
 export default function StudyRoomPage() {
   const { slug } = useParams();
@@ -29,36 +33,65 @@ export default function StudyRoomPage() {
   const [isStarting, setIsStarting] = useState(false);
   const hasTrackedLearningStreakRef = useRef(false);
 
-  const module = useLearningModuleStore((state) => state.getModuleSnapshot(slug));
-  const moduleLoaded = useLearningModuleStore((state) => state.getModuleLoaded(slug));
-  const isLoadingModule = useLearningModuleStore((state) => state.getModuleLoading(slug));
-  const moduleError = useLearningModuleStore((state) => state.getModuleError(slug));
-  const loadModuleBySlug = useLearningModuleStore((state) => state.loadModuleBySlug);
+  const module = useLearningModuleStore((state) =>
+    state.getModuleSnapshot(slug),
+  );
+  const moduleLoaded = useLearningModuleStore((state) =>
+    state.getModuleLoaded(slug),
+  );
+  const isLoadingModule = useLearningModuleStore((state) =>
+    state.getModuleLoading(slug),
+  );
+  const moduleError = useLearningModuleStore((state) =>
+    state.getModuleError(slug),
+  );
+  const loadModuleBySlug = useLearningModuleStore(
+    (state) => state.loadModuleBySlug,
+  );
   const enrollModule = useLearningModuleStore((state) => state.enrollModule);
-  const loadLessonContent = useLearningModuleStore((state) => state.loadLessonContent);
-  const updateLessonProgress = useLearningModuleStore((state) => state.updateLessonProgress);
-  const trackStreakIfNeeded = useStreakStore((state) => state.trackStreakIfNeeded);
+  const loadLessonContent = useLearningModuleStore(
+    (state) => state.loadLessonContent,
+  );
+  const updateLessonProgress = useLearningModuleStore(
+    (state) => state.updateLessonProgress,
+  );
+  const trackStreakIfNeeded = useStreakStore(
+    (state) => state.trackStreakIfNeeded,
+  );
 
   const activeLesson = useMemo(() => {
     if (!module?.lessons?.length) return null;
 
     return (
-      module.lessons.find((lesson) => lesson.skillModuleLessonId === activeLessonId) ||
-      module.lessons[0]
+      module.lessons.find(
+        (lesson) => lesson.skillModuleLessonId === activeLessonId,
+      ) || module.lessons[0]
     );
   }, [module, activeLessonId]);
 
   const lessonContent = useLearningModuleStore((state) =>
-    state.getLessonContent(module?.skillModuleId, activeLesson?.skillModuleLessonId),
+    state.getLessonContent(
+      module?.skillModuleId,
+      activeLesson?.skillModuleLessonId,
+    ),
   );
   const isLoadingLesson = useLearningModuleStore((state) =>
-    state.getLessonLoading(module?.skillModuleId, activeLesson?.skillModuleLessonId),
+    state.getLessonLoading(
+      module?.skillModuleId,
+      activeLesson?.skillModuleLessonId,
+    ),
   );
   const lessonError = useLearningModuleStore((state) =>
-    state.getLessonError(module?.skillModuleId, activeLesson?.skillModuleLessonId),
+    state.getLessonError(
+      module?.skillModuleId,
+      activeLesson?.skillModuleLessonId,
+    ),
   );
   const isUpdatingActiveLessonProgress = useLearningModuleStore((state) =>
-    state.getProgressUpdating(module?.skillModuleId, activeLesson?.skillModuleLessonId),
+    state.getProgressUpdating(
+      module?.skillModuleId,
+      activeLesson?.skillModuleLessonId,
+    ),
   );
 
   const {
@@ -109,20 +142,34 @@ export default function StudyRoomPage() {
       null;
 
     setActiveLessonId((current) => {
-      if (current && module.lessons.some((lesson) => lesson.skillModuleLessonId === current)) {
+      if (
+        current &&
+        module.lessons.some((lesson) => lesson.skillModuleLessonId === current)
+      ) {
         return current;
       }
 
       return nextLessonId;
     });
-  }, [module?.skillModuleId, module?.enrollment?.lastAccessedLessonId, module?.lessons]);
+  }, [
+    module?.skillModuleId,
+    module?.enrollment?.lastAccessedLessonId,
+    module?.lessons,
+  ]);
 
   useEffect(() => {
-    if (!module?.skillModuleId || !activeLesson?.skillModuleLessonId || showQuiz) {
+    if (
+      !module?.skillModuleId ||
+      !activeLesson?.skillModuleLessonId ||
+      showQuiz
+    ) {
       return;
     }
 
-    loadLessonContent(module.skillModuleId, activeLesson.skillModuleLessonId).catch(() => {});
+    loadLessonContent(
+      module.skillModuleId,
+      activeLesson.skillModuleLessonId,
+    ).catch(() => {});
   }, [
     module?.skillModuleId,
     activeLesson?.skillModuleLessonId,
@@ -131,11 +178,19 @@ export default function StudyRoomPage() {
   ]);
 
   useEffect(() => {
-    if (!module?.skillModuleId || !module?.enrollment || !activeLesson?.skillModuleLessonId || showQuiz) {
+    if (
+      !module?.skillModuleId ||
+      !module?.enrollment ||
+      !activeLesson?.skillModuleLessonId ||
+      showQuiz
+    ) {
       return;
     }
 
-    const currentStatus = getLessonProgress(module.enrollment, activeLesson.skillModuleLessonId);
+    const currentStatus = getLessonProgress(
+      module.enrollment,
+      activeLesson.skillModuleLessonId,
+    );
 
     if (currentStatus) {
       return;
@@ -175,9 +230,17 @@ export default function StudyRoomPage() {
   };
 
   const handleCompleteLesson = async () => {
-    if (!module?.skillModuleId || !activeLesson || isUpdatingActiveLessonProgress) return;
+    if (
+      !module?.skillModuleId ||
+      !activeLesson ||
+      isUpdatingActiveLessonProgress
+    )
+      return;
 
-    if (getLessonProgress(module.enrollment, activeLesson.skillModuleLessonId) === "completed") {
+    if (
+      getLessonProgress(module.enrollment, activeLesson.skillModuleLessonId) ===
+      "completed"
+    ) {
       return;
     }
 
@@ -196,7 +259,8 @@ export default function StudyRoomPage() {
     }
   };
 
-  const refreshModule = () => loadModuleBySlug(slug, { force: true }).catch(() => {});
+  const refreshModule = () =>
+    loadModuleBySlug(slug, { force: true }).catch(() => {});
 
   if (isLoadingModule || (!moduleLoaded && !moduleError)) {
     return (
@@ -251,7 +315,11 @@ export default function StudyRoomPage() {
           </div>
 
           <div className="mt-7">
-            <ModuleButton size="md" onClick={handleStartModule} disabled={isStarting}>
+            <ModuleButton
+              size="md"
+              onClick={handleStartModule}
+              disabled={isStarting}
+            >
               {isStarting ? "Starting..." : "Start module"}
             </ModuleButton>
           </div>
@@ -331,12 +399,17 @@ export default function StudyRoomPage() {
         <section className="mx-auto min-w-0 max-w-5xl">
           {module.status === "archived" && (
             <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800 shadow-sm">
-              This module is archived. You can still access lessons, quiz attempts, and module chat.
+              This module is archived. You can still access lessons, quiz
+              attempts, and module chat.
             </div>
           )}
 
           {showQuiz ? (
-            <StudyQuiz module={module} canStartQuiz={isQuizUnlocked} onProgressChanged={refreshModule} />
+            <StudyQuiz
+              module={module}
+              canStartQuiz={isQuizUnlocked}
+              onProgressChanged={refreshModule}
+            />
           ) : isLoadingLesson ? (
             <DocumentLoading />
           ) : lessonError ? (

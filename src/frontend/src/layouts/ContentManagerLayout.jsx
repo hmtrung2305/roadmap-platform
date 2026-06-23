@@ -13,7 +13,7 @@ import {
 
 import { PERMISSIONS } from "../constants/permissions";
 import { hasPermission } from "../utils/authorizationUtils";
-import AuthLogo from "../components/auth/AuthLogo";
+import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useAccountProfileStore } from "../stores/useAccountProfileStore";
