@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 
 namespace RoadmapPlatform.Application.DTOs.ContentRoadmaps;
@@ -98,6 +99,7 @@ public sealed class ContentRoadmapNodeDto
     public int? RequiredCount { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? Reason { get; set; }
     public int OrderIndex { get; set; }
     public string LayoutRole { get; set; } = string.Empty;
     public string? LayoutGroup { get; set; }
@@ -107,6 +109,9 @@ public sealed class ContentRoadmapNodeDto
     public string? DifficultyLevel { get; set; }
     public bool IsRequired { get; set; }
     public bool IsTrackable { get; set; }
+    public JsonElement? Metadata { get; set; }
+    public List<string> LearningOutcomes { get; set; } = [];
+    public List<string> CompletionCriteria { get; set; } = [];
     public List<SkillDto> Skills { get; set; } = [];
     public List<LearningResourceDto> Resources { get; set; } = [];
 }
@@ -134,8 +139,30 @@ public sealed class UpdateRoadmapNodeMetadataRequestDto
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? Reason { get; set; }
     public int? EstimatedHours { get; set; }
     public string? DifficultyLevel { get; set; }
+    public List<string>? LearningOutcomes { get; set; }
+    public List<string>? CompletionCriteria { get; set; }
+    public UpdateRoadmapNodeGuideRequestDto? Guide { get; set; }
+}
+
+public sealed class UpdateRoadmapNodeGuideRequestDto
+{
+    public string? Focus { get; set; }
+    public List<string>? Practice { get; set; }
+    public string? ProjectBrief { get; set; }
+    public List<string>? SuggestedSteps { get; set; }
+    public List<string>? ExpectedEvidence { get; set; }
+    public string? ReviewFocus { get; set; }
+    public List<string>? ReviewQuestions { get; set; }
+    public List<string>? NextActions { get; set; }
+    public string? WhenToChoose { get; set; }
+    public string? ChoiceGuidance { get; set; }
+    public List<string>? SelectionNotes { get; set; }
+    public string? PhaseFocus { get; set; }
+    public List<string>? Milestones { get; set; }
+    public string? Purpose { get; set; }
 }
 
 public sealed class AddRoadmapNodeResourceRequestDto

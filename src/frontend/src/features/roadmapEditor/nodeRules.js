@@ -1,4 +1,6 @@
-export const LEARNING_NODE_TYPES = new Set(["topic", "project"]);
+export const ACTIONABLE_NODE_TYPES = new Set(["topic", "choice_option", "checkpoint", "project"]);
+export const MAPPING_NODE_TYPES = new Set(["topic", "choice_option", "project"]);
+export const GUIDE_NODE_TYPES = new Set(["checkpoint", "project"]);
 export const STRUCTURAL_NODE_TYPES = new Set(["phase", "group", "choice_group", "resource_group"]);
 
 export function normalizeNodeType(node) {
@@ -6,17 +8,24 @@ export function normalizeNodeType(node) {
 }
 
 export function canEditLearningFields(node) {
-  return LEARNING_NODE_TYPES.has(normalizeNodeType(node));
+  return ACTIONABLE_NODE_TYPES.has(normalizeNodeType(node));
 }
 
 export function canEditMappings(node) {
-  return canEditLearningFields(node);
+  return MAPPING_NODE_TYPES.has(normalizeNodeType(node));
+}
+
+export function canEditGuideMetadata(node) {
+  return GUIDE_NODE_TYPES.has(normalizeNodeType(node));
 }
 
 export function getNodeKindLabel(node) {
-  if (canEditLearningFields(node)) return "Learning node";
-  if (STRUCTURAL_NODE_TYPES.has(normalizeNodeType(node))) return "Container";
-  if (node?.isTrackable) return "Trackable node";
+  const nodeType = normalizeNodeType(node);
+  if (nodeType === "checkpoint") return "Checkpoint";
+  if (nodeType === "project") return "Project";
+  if (MAPPING_NODE_TYPES.has(nodeType)) return "Learning node";
+  if (STRUCTURAL_NODE_TYPES.has(nodeType)) return "Container";
+  if (node?.isTrackable) return "Actionable node";
   return "Node";
 }
 

@@ -97,6 +97,7 @@ internal static class ContentRoadmapMapper
             RequiredCount = node.RequiredCount,
             Title = node.Title,
             Description = node.Description,
+            Reason = node.Reason,
             OrderIndex = node.OrderIndex,
             LayoutRole = node.LayoutRole,
             LayoutGroup = node.LayoutGroup,
@@ -106,6 +107,9 @@ internal static class ContentRoadmapMapper
             DifficultyLevel = node.DifficultyLevel,
             IsRequired = node.IsRequired,
             IsTrackable = node.IsTrackable,
+            Metadata = ContentRoadmapNodeContent.ToJsonElement(node.Metadata),
+            LearningOutcomes = ContentRoadmapNodeContent.DeserializeStringArray(node.LearningOutcomes),
+            CompletionCriteria = ContentRoadmapNodeContent.DeserializeStringArray(node.CompletionCriteria),
             Skills = skills,
             Resources = resources
         };

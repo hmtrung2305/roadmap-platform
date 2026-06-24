@@ -167,3 +167,58 @@ export function countMissingMappings(nodes) {
 export function countTrackableNodes(nodes) {
   return normalizeNodes(nodes).filter((node) => node.isTrackable).length;
 }
+
+export function normalizeTextList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
+export function listToText(value) {
+  return normalizeTextList(value).join("\n");
+}
+
+export function textToList(value) {
+  return normalizeTextList(value);
+}
+
+export function getMetadataValue(metadata, key) {
+  if (!metadata || !key) return undefined;
+  if (Object.prototype.hasOwnProperty.call(metadata, key)) return metadata[key];
+
+  const lowerKey = key.toLowerCase();
+  const match = Object.keys(metadata).find((candidate) => candidate.toLowerCase() === lowerKey);
+  return match ? metadata[match] : undefined;
+}
+
+export function getFirstMetadataText(metadata, keys) {
+  for (const key of keys) {
+    const value = getMetadataValue(metadata, key);
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return "";
+}
+
+export function getFirstMetadataList(metadata, keys) {
+  for (const key of keys) {
+    const list = normalizeTextList(getMetadataValue(metadata, key));
+    if (list.length > 0) return list;
+  }
+
+  return [];
+}
+
+export function areTextListsEqual(left, right) {
+  const leftList = normalizeTextList(left);
+  const rightList = normalizeTextList(right);
+
+  if (leftList.length !== rightList.length) return false;
+  return leftList.every((item, index) => item === rightList[index]);
+}

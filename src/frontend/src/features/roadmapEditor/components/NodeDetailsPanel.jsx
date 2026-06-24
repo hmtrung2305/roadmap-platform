@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, Plus, Save, Tag } from "lucide-react";
+import { BookOpenText, HelpCircle, Plus, Save, Tag } from "lucide-react";
 
 import { DirtyStateBadge } from "../../learningModuleEditor/EditorControls";
 import {
@@ -25,6 +25,8 @@ import {
 } from "../nodeRules";
 import MappingList from "./MappingList";
 import MappingSearchModal from "./MappingSearchModal";
+import NodeContentFields from "./NodeContentFields";
+import NodeEditorGuideModal from "./NodeEditorGuideModal";
 
 export default function NodeDetailsPanel({
   selectedNode,
@@ -52,10 +54,12 @@ export default function NodeDetailsPanel({
 }) {
   const [panelMode, setPanelMode] = useState("details");
   const [mappingModal, setMappingModal] = useState(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   useEffect(() => {
     setPanelMode("details");
     setMappingModal(null);
+    setIsGuideOpen(false);
   }, [selectedNode?.roadmapNodeId]);
 
   if (!selectedNode) {
@@ -100,20 +104,32 @@ export default function NodeDetailsPanel({
                 </span>
               </div>
             </div>
-            <ModuleButton onClick={onSaveNode} disabled={isSavingNode || !isDirty}>
-              <Save size={14} /> {isSavingNode ? "Saving" : "Save"}
-            </ModuleButton>
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuleButton variant="secondary" size="xs" onClick={() => setIsGuideOpen(true)}>
+                <HelpCircle size={14} /> Guide
+              </ModuleButton>
+              <ModuleButton onClick={onSaveNode} disabled={isSavingNode || !isDirty}>
+                <Save size={14} /> {isSavingNode ? "Saving" : "Save"}
+              </ModuleButton>
+            </div>
           </div>
         </div>
 
         <div className="border-b border-[#B9D8CC]/70 bg-[#F7F1E8]/45 p-2">
-          <div className="grid grid-cols-3 gap-2 rounded-xl bg-white p-1 ring-1 ring-[#B9D8CC]/70">
+          <div className="grid grid-cols-4 gap-2 rounded-xl bg-white p-1 ring-1 ring-[#B9D8CC]/70">
             <button
               type="button"
               onClick={() => setPanelMode("details")}
               className={tabButtonClass("details")}
             >
               Details
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanelMode("content")}
+              className={tabButtonClass("content")}
+            >
+              Content
             </button>
             <button
               type="button"
@@ -155,6 +171,15 @@ export default function NodeDetailsPanel({
                     className={`${inputClass} min-h-32 resize-y`}
                   />
                 </ModuleField>
+
+                <ModuleField label="Reason">
+                  <textarea
+                    value={nodeForm.reason}
+                    onChange={(event) => setNodeForm((current) => ({ ...current, reason: event.target.value }))}
+                    rows={3}
+                    className={`${inputClass} min-h-24 resize-y`}
+                  />
+                </ModuleField>
               </section>
 
               {canEditLearning ? (
@@ -185,7 +210,16 @@ export default function NodeDetailsPanel({
                   </div>
                 </section>
               ) : null}
+
             </div>
+          )}
+
+          {panelMode === "content" && (
+            <NodeContentFields
+              selectedNode={selectedNode}
+              nodeForm={nodeForm}
+              setNodeForm={setNodeForm}
+            />
           )}
 
           {panelMode === "skills" && canMapLearning && (
@@ -239,6 +273,8 @@ export default function NodeDetailsPanel({
           )}
         </div>
       </ModuleCard>
+
+      <NodeEditorGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
 
       <MappingSearchModal
         isOpen={mappingModal === "skills"}

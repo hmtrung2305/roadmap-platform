@@ -5,16 +5,101 @@ import { toast } from "react-toastify";
 import { contentManagerRoadmapApi } from "../../../api/contentRoadmapApi";
 import { skillApi } from "../../../api/skillApi";
 import {
+  areTextListsEqual,
   countMissingMappings,
   fromFormNumber,
   isCanceledRequest,
+  getFirstMetadataList,
+  getFirstMetadataText,
   isSameNullableNumber,
+  listToText,
   normalizeComparableText,
   normalizeNodes,
   prettyStatus,
+  textToList,
   toFormNumber,
 } from "../roadmapEditorUtils";
-import { canEditLearningFields, canEditMappings } from "../nodeRules";
+import { canEditGuideMetadata, canEditLearningFields, canEditMappings, normalizeNodeType } from "../nodeRules";
+
+function createNodeGuideForm(node) {
+  const metadata = node?.metadata || {};
+
+  return {
+    focus: getFirstMetadataText(metadata, ["focus", "topicFocus", "purpose", "summary"]),
+    practiceText: listToText(getFirstMetadataList(metadata, ["practice", "practiceIdeas", "suggestedPractice"])),
+    projectBrief: getFirstMetadataText(metadata, ["projectBrief", "brief", "goal", "objective", "purpose"]),
+    suggestedStepsText: listToText(getFirstMetadataList(metadata, ["suggestedSteps", "buildSteps", "implementationSteps", "steps", "practiceSteps"])),
+    expectedEvidenceText: listToText(getFirstMetadataList(metadata, ["expectedEvidence", "evidence", "deliverables", "artifacts", "outputs", "reviewEvidence"])),
+    reviewFocus: getFirstMetadataText(metadata, ["reviewFocus", "checkpointFocus", "focus", "purpose", "reviewPurpose"]),
+    reviewQuestionsText: listToText(getFirstMetadataList(metadata, ["reviewQuestions", "questions", "reflectionQuestions", "selfCheckQuestions"])),
+    nextActionsText: listToText(getFirstMetadataList(metadata, ["nextActions", "followUpActions", "followUps", "nextSteps"])),
+    whenToChoose: getFirstMetadataText(metadata, ["whenToChoose", "optionUseCase", "useCase", "purpose", "focus"]),
+    choiceGuidance: getFirstMetadataText(metadata, ["choiceGuidance", "guidance", "purpose", "selectionGuidance"]),
+    selectionNotesText: listToText(getFirstMetadataList(metadata, ["selectionNotes", "options", "considerations"])),
+    phaseFocus: getFirstMetadataText(metadata, ["phaseFocus", "focus", "purpose", "summary"]),
+    milestonesText: listToText(getFirstMetadataList(metadata, ["milestones", "phaseMilestones", "reviewPoints"])),
+    purpose: getFirstMetadataText(metadata, ["purpose", "summary", "resourcePurpose", "focus"]),
+  };
+}
+
+function createNodeForm(node = null) {
+  return {
+    title: node?.title || "",
+    description: node?.description || "",
+    reason: node?.reason || "",
+    estimatedHours: toFormNumber(node?.estimatedHours),
+    difficultyLevel: node?.difficultyLevel || "",
+    learningOutcomesText: listToText(node?.learningOutcomes),
+    completionCriteriaText: listToText(node?.completionCriteria),
+    guide: createNodeGuideForm(node),
+  };
+}
+
+function areGuideFormsEqual(left = {}, right = {}, node = null) {
+  const nodeType = normalizeNodeType(node);
+
+  if (nodeType === "project") {
+    return (
+      normalizeComparableText(left.projectBrief) === normalizeComparableText(right.projectBrief)
+      && areTextListsEqual(left.suggestedStepsText, right.suggestedStepsText)
+      && areTextListsEqual(left.expectedEvidenceText, right.expectedEvidenceText)
+    );
+  }
+
+  if (nodeType === "checkpoint") {
+    return (
+      normalizeComparableText(left.reviewFocus) === normalizeComparableText(right.reviewFocus)
+      && areTextListsEqual(left.expectedEvidenceText, right.expectedEvidenceText)
+      && areTextListsEqual(left.reviewQuestionsText, right.reviewQuestionsText)
+      && areTextListsEqual(left.nextActionsText, right.nextActionsText)
+    );
+  }
+
+  return true;
+}
+
+function buildGuidePayload(guide = {}, node = null) {
+  const nodeType = normalizeNodeType(node);
+
+  if (nodeType === "project") {
+    return {
+      projectBrief: guide.projectBrief || null,
+      suggestedSteps: textToList(guide.suggestedStepsText),
+      expectedEvidence: textToList(guide.expectedEvidenceText),
+    };
+  }
+
+  if (nodeType === "checkpoint") {
+    return {
+      reviewFocus: guide.reviewFocus || null,
+      expectedEvidence: textToList(guide.expectedEvidenceText),
+      reviewQuestions: textToList(guide.reviewQuestionsText),
+      nextActions: textToList(guide.nextActionsText),
+    };
+  }
+
+  return null;
+}
 
 export default function useContentRoadmapEditor(roadmapId) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,7 +108,7 @@ export default function useContentRoadmapEditor(roadmapId) {
   const [detail, setDetail] = useState(null);
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [metadataForm, setMetadataForm] = useState({ title: "", description: "", estimatedTotalHours: "" });
-  const [nodeForm, setNodeForm] = useState({ title: "", description: "", estimatedHours: "", difficultyLevel: "" });
+  const [nodeForm, setNodeForm] = useState(createNodeForm());
   const [graphFocusRequest, setGraphFocusRequest] = useState(null);
   const [skillSearch, setSkillSearch] = useState("");
   const [skillResults, setSkillResults] = useState([]);
@@ -100,12 +185,7 @@ export default function useContentRoadmapEditor(roadmapId) {
   );
 
   useEffect(() => {
-    setNodeForm({
-      title: selectedNode?.title || "",
-      description: selectedNode?.description || "",
-      estimatedHours: toFormNumber(selectedNode?.estimatedHours),
-      difficultyLevel: selectedNode?.difficultyLevel || "",
-    });
+    setNodeForm(createNodeForm(selectedNode));
     setSkillResults([]);
     setResourceResults([]);
     setSkillSearch("");
@@ -144,6 +224,10 @@ export default function useContentRoadmapEditor(roadmapId) {
     const baseChanged = (
       normalizeComparableText(nodeForm.title) !== normalizeComparableText(selectedNode.title)
       || normalizeComparableText(nodeForm.description) !== normalizeComparableText(selectedNode.description)
+      || normalizeComparableText(nodeForm.reason) !== normalizeComparableText(selectedNode.reason)
+      || !areTextListsEqual(nodeForm.learningOutcomesText, selectedNode.learningOutcomes)
+      || !areTextListsEqual(nodeForm.completionCriteriaText, selectedNode.completionCriteria)
+      || !areGuideFormsEqual(nodeForm.guide, createNodeGuideForm(selectedNode), selectedNode)
     );
 
     if (!canEditLearningFields(selectedNode)) {
@@ -155,7 +239,7 @@ export default function useContentRoadmapEditor(roadmapId) {
       || !isSameNullableNumber(nodeForm.estimatedHours, toFormNumber(selectedNode.estimatedHours))
       || normalizeComparableText(nodeForm.difficultyLevel) !== normalizeComparableText(selectedNode.difficultyLevel)
     );
-  }, [nodeForm.description, nodeForm.difficultyLevel, nodeForm.estimatedHours, nodeForm.title, selectedNode]);
+  }, [nodeForm, selectedNode]);
 
   const updateNodeInDetail = (updatedNode) => {
     setDetail((current) => {
@@ -204,7 +288,14 @@ export default function useContentRoadmapEditor(roadmapId) {
     const payload = {
       title: nodeForm.title,
       description: nodeForm.description,
+      reason: nodeForm.reason,
+      learningOutcomes: textToList(nodeForm.learningOutcomesText),
+      completionCriteria: textToList(nodeForm.completionCriteriaText),
     };
+
+    if (canEditGuideMetadata(selectedNode)) {
+      payload.guide = buildGuidePayload(nodeForm.guide, selectedNode);
+    }
 
     if (canEditLearningFields(selectedNode)) {
       payload.estimatedHours = fromFormNumber(nodeForm.estimatedHours);

@@ -66,6 +66,19 @@ public sealed class ContentRoadmapMetadataService(
 
         node.Title = title;
         node.Description = ContentRoadmapText.NormalizeOptionalText(request.Description);
+        node.Reason = ContentRoadmapText.NormalizeOptionalText(request.Reason);
+
+        if (request.LearningOutcomes != null)
+        {
+            node.LearningOutcomes = ContentRoadmapNodeContent.SerializeStringArray(request.LearningOutcomes);
+        }
+
+        if (request.CompletionCriteria != null)
+        {
+            node.CompletionCriteria = ContentRoadmapNodeContent.SerializeStringArray(request.CompletionCriteria);
+        }
+
+        node.Metadata = ContentRoadmapNodeContent.UpdateMetadata(node.Metadata, node.NodeType, request.Guide);
 
         if (ContentRoadmapNodeRules.CanHaveLearningMetadata(node.NodeType))
         {
@@ -74,7 +87,7 @@ public sealed class ContentRoadmapMetadataService(
         }
         else if (request.EstimatedHours.HasValue || !string.IsNullOrWhiteSpace(request.DifficultyLevel))
         {
-            throw new ArgumentException("Only topic and project nodes can have estimated hours or difficulty.");
+            throw new ArgumentException("Only topic, choice option, checkpoint, and project nodes can have estimated hours or difficulty.");
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
