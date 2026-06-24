@@ -1,7 +1,7 @@
 using System.Text.Json;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 
-namespace RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+namespace RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 
 public sealed class ContentRoadmapListQueryDto
 {
@@ -47,6 +47,7 @@ public sealed class ContentRoadmapSummaryDto
     public int ResourceMappingCount { get; set; }
     public int SkillMappingCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
 }
@@ -67,6 +68,7 @@ public sealed class ContentRoadmapDetailDto
     public string LayoutDirection { get; set; } = string.Empty;
     public string? LayoutAlgorithm { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
     public List<ContentRoadmapVersionSummaryDto> Versions { get; set; } = [];
@@ -163,6 +165,52 @@ public sealed class UpdateRoadmapNodeGuideRequestDto
     public string? PhaseFocus { get; set; }
     public List<string>? Milestones { get; set; }
     public string? Purpose { get; set; }
+}
+
+
+public sealed class CloneRoadmapVersionDraftRequestDto
+{
+    public string? Title { get; set; }
+}
+
+public sealed class CreateRoadmapNodeRequestDto
+{
+    public string NodeType { get; set; } = string.Empty;
+    public Guid? ParentNodeId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Reason { get; set; }
+    public int? EstimatedHours { get; set; }
+    public string? DifficultyLevel { get; set; }
+    public string? CheckpointType { get; set; }
+    public string? Position { get; set; }
+    public Guid? ReferenceNodeId { get; set; }
+}
+
+public sealed class MoveRoadmapNodeRequestDto
+{
+    public string Direction { get; set; } = string.Empty;
+}
+
+public sealed class ContentRoadmapStructureMutationResultDto
+{
+    public ContentRoadmapDetailDto Roadmap { get; set; } = new();
+    public Guid? FocusNodeId { get; set; }
+}
+
+public sealed class ContentRoadmapValidationResultDto
+{
+    public bool IsValid { get; set; }
+    public List<ContentRoadmapValidationItemDto> Errors { get; set; } = [];
+    public List<ContentRoadmapValidationItemDto> Warnings { get; set; } = [];
+}
+
+public sealed class ContentRoadmapValidationItemDto
+{
+    public string Code { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public Guid? RoadmapNodeId { get; set; }
+    public string? NodeTitle { get; set; }
 }
 
 public sealed class AddRoadmapNodeResourceRequestDto

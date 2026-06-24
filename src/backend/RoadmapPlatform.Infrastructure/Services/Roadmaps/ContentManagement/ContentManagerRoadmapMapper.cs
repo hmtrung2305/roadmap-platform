@@ -1,11 +1,11 @@
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-internal static class ContentRoadmapMapper
+internal static class ContentManagerRoadmapMapper
 {
     public static ContentRoadmapSummaryDto MapSummary(
         Roadmap roadmap,
@@ -30,6 +30,7 @@ internal static class ContentRoadmapMapper
             ResourceMappingCount = aggregate?.ResourceMappingCount ?? 0,
             SkillMappingCount = aggregate?.SkillMappingCount ?? 0,
             CreatedAt = version.CreatedAt,
+            UpdatedAt = roadmap.UpdatedAt,
             PublishedAt = version.PublishedAt,
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole)
         };
@@ -58,6 +59,7 @@ internal static class ContentRoadmapMapper
             LayoutDirection = version.LayoutDirection,
             LayoutAlgorithm = version.LayoutAlgorithm,
             CreatedAt = version.CreatedAt,
+            UpdatedAt = roadmap.UpdatedAt,
             PublishedAt = version.PublishedAt,
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole),
             Versions = roadmap.RoadmapVersions
@@ -107,9 +109,9 @@ internal static class ContentRoadmapMapper
             DifficultyLevel = node.DifficultyLevel,
             IsRequired = node.IsRequired,
             IsTrackable = node.IsTrackable,
-            Metadata = ContentRoadmapNodeContent.ToJsonElement(node.Metadata),
-            LearningOutcomes = ContentRoadmapNodeContent.DeserializeStringArray(node.LearningOutcomes),
-            CompletionCriteria = ContentRoadmapNodeContent.DeserializeStringArray(node.CompletionCriteria),
+            Metadata = ContentManagerRoadmapNodeContent.ToJsonElement(node.Metadata),
+            LearningOutcomes = ContentManagerRoadmapNodeContent.DeserializeStringArray(node.LearningOutcomes),
+            CompletionCriteria = ContentManagerRoadmapNodeContent.DeserializeStringArray(node.CompletionCriteria),
             Skills = skills,
             Resources = resources
         };

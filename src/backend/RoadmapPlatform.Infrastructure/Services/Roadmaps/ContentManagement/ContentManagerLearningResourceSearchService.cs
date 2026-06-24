@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-public sealed class ContentLearningResourceSearchService(ApplicationDbContext dbContext)
+public sealed class ContentManagerLearningResourceSearchService(ApplicationDbContext dbContext)
 {
     public async Task<IReadOnlyList<ContentLearningResourceSearchResultDto>> SearchLearningResourcesAsync(
         string? search,
@@ -17,10 +17,10 @@ public sealed class ContentLearningResourceSearchService(ApplicationDbContext db
             .AsNoTracking()
             .AsQueryable();
 
-        var normalizedSearch = ContentRoadmapText.NormalizeOptionalText(search);
+        var normalizedSearch = ContentManagerRoadmapText.NormalizeOptionalText(search);
         if (normalizedSearch is not null)
         {
-            var pattern = ContentRoadmapText.BuildContainsPattern(normalizedSearch);
+            var pattern = ContentManagerRoadmapText.BuildContainsPattern(normalizedSearch);
 
             query = query.Where(resource =>
                 EF.Functions.ILike(resource.Title, pattern, "\\")

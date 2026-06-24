@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-public sealed class ContentRoadmapMappingService(
+public sealed class ContentManagerRoadmapMappingService(
     ApplicationDbContext dbContext,
-    ContentRoadmapQueryService queryService)
+    ContentManagerRoadmapQueryService queryService)
 {
     public async Task<ContentRoadmapNodeDto> AddResourceToNodeAsync(
         Guid roadmapNodeId,
@@ -25,7 +25,7 @@ public sealed class ContentRoadmapMappingService(
         }
 
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
-        ContentRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var resourceExists = await dbContext.Set<LearningResource>()
             .AnyAsync(resource => resource.LearningResourceId == request.LearningResourceId, cancellationToken);
@@ -74,7 +74,7 @@ public sealed class ContentRoadmapMappingService(
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
-        ContentRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var mapping = await dbContext.Set<RoadmapNodeResource>()
             .Where(item =>
@@ -107,7 +107,7 @@ public sealed class ContentRoadmapMappingService(
         }
 
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
-        ContentRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var skillExists = await dbContext.Set<Skill>()
             .AnyAsync(skill => skill.SkillId == request.SkillId, cancellationToken);
@@ -143,7 +143,7 @@ public sealed class ContentRoadmapMappingService(
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
-        ContentRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var mapping = await dbContext.Set<RoadmapNodeSkill>()
             .Where(item =>

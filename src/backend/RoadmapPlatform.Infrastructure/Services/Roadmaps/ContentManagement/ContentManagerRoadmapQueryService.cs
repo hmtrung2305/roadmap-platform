@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
+public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbContext)
 {
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 100;
@@ -17,8 +17,8 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
     {
         var safePage = Math.Max(query.Page, 1);
         var safePageSize = Math.Clamp(query.PageSize <= 0 ? DefaultPageSize : query.PageSize, 1, MaxPageSize);
-        var status = ContentRoadmapText.NormalizeOptionalText(query.Status)?.ToLowerInvariant();
-        var sort = ContentRoadmapText.NormalizeOptionalText(query.Sort)?.ToLowerInvariant() ?? "updated_desc";
+        var status = ContentManagerRoadmapText.NormalizeOptionalText(query.Status)?.ToLowerInvariant();
+        var sort = ContentManagerRoadmapText.NormalizeOptionalText(query.Sort)?.ToLowerInvariant() ?? "updated_desc";
 
         if (status is not null and not ("draft" or "published" or "archived"))
         {
@@ -36,10 +36,10 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
             .Include(roadmap => roadmap.RoadmapVersions)
             .AsQueryable();
 
-        var search = ContentRoadmapText.NormalizeOptionalText(query.Search);
+        var search = ContentManagerRoadmapText.NormalizeOptionalText(query.Search);
         if (search is not null)
         {
-            var pattern = ContentRoadmapText.BuildContainsPattern(search);
+            var pattern = ContentManagerRoadmapText.BuildContainsPattern(search);
 
             roadmapsQuery = roadmapsQuery.Where(roadmap =>
                 EF.Functions.ILike(roadmap.Title, pattern, "\\")
@@ -50,27 +50,31 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
 
         var roadmaps = await roadmapsQuery.ToListAsync(cancellationToken);
 
-        var latestRows = roadmaps
+        var statusRows = roadmaps
+            .SelectMany(roadmap => roadmap.RoadmapVersions
+                .GroupBy(version => version.Status)
+                .Select(group => new RoadmapVersionRow(roadmap, group
+                    .OrderByDescending(version => version.VersionNumber)
+                    .First())))
+            .GroupBy(row => row.Version.Status)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+
+        var filteredRows = roadmaps
             .Select(roadmap => new
             {
                 Roadmap = roadmap,
-                Version = roadmap.RoadmapVersions
-                    .OrderByDescending(version => version.VersionNumber)
-                    .FirstOrDefault()
+                Version = status is null
+                    ? roadmap.RoadmapVersions
+                        .OrderByDescending(version => version.VersionNumber)
+                        .FirstOrDefault()
+                    : roadmap.RoadmapVersions
+                        .Where(version => version.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(version => version.VersionNumber)
+                        .FirstOrDefault()
             })
             .Where(row => row.Version != null)
             .Select(row => new RoadmapVersionRow(row.Roadmap, row.Version!))
             .ToList();
-
-        var statusRows = latestRows
-            .GroupBy(row => row.Version.Status)
-            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
-
-        var filteredRows = status is null
-            ? latestRows
-            : latestRows
-                .Where(row => row.Version.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
-                .ToList();
 
         filteredRows = sort switch
         {
@@ -111,7 +115,7 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
         return new ContentRoadmapListResultDto
         {
             Items = pageRows
-                .Select(row => ContentRoadmapMapper.MapSummary(row.Roadmap, row.Version, aggregates.GetValueOrDefault(row.Version.RoadmapVersionId)))
+                .Select(row => ContentManagerRoadmapMapper.MapSummary(row.Roadmap, row.Version, aggregates.GetValueOrDefault(row.Version.RoadmapVersionId)))
                 .ToList(),
             TotalCount = totalCount,
             Page = effectivePage,
@@ -167,7 +171,7 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
             nodes.Sum(node => node.Resources.Count),
             nodes.Sum(node => node.Skills.Count));
 
-        return ContentRoadmapMapper.MapDetail(roadmap, version, nodes, edges, aggregate);
+        return ContentManagerRoadmapMapper.MapDetail(roadmap, version, nodes, edges, aggregate);
     }
 
     public async Task<ContentRoadmapNodeDto> LoadNodeAsync(
@@ -187,7 +191,7 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
         var skillsByNodeId = await LoadSkillsByNodeIdAsync([roadmapNodeId], cancellationToken);
         var resourcesByNodeId = await LoadResourcesByNodeIdAsync([roadmapNodeId], cancellationToken);
 
-        return ContentRoadmapMapper.MapNode(
+        return ContentManagerRoadmapMapper.MapNode(
             node,
             skillsByNodeId.GetValueOrDefault(roadmapNodeId) ?? [],
             resourcesByNodeId.GetValueOrDefault(roadmapNodeId) ?? []);
@@ -211,7 +215,7 @@ public sealed class ContentRoadmapQueryService(ApplicationDbContext dbContext)
         var resourcesByNodeId = await LoadResourcesByNodeIdAsync(nodeIds, cancellationToken);
 
         return nodes
-            .Select(node => ContentRoadmapMapper.MapNode(
+            .Select(node => ContentManagerRoadmapMapper.MapNode(
                 node,
                 skillsByNodeId.GetValueOrDefault(node.RoadmapNodeId) ?? [],
                 resourcesByNodeId.GetValueOrDefault(node.RoadmapNodeId) ?? []))

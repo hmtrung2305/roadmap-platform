@@ -1,6 +1,6 @@
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 
-namespace RoadmapPlatform.Application.Interfaces.ContentRoadmaps;
+namespace RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
 public interface IContentManagerRoadmapService
 {
@@ -16,6 +16,38 @@ public interface IContentManagerRoadmapService
     Task<ContentRoadmapDetailDto> UpdateRoadmapVersionMetadataAsync(
         Guid roadmapVersionId,
         UpdateRoadmapVersionMetadataRequestDto request,
+        CancellationToken cancellationToken);
+
+
+    Task<ContentRoadmapDetailDto> CloneRoadmapVersionToDraftAsync(
+        Guid roadmapVersionId,
+        CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapDetailDto> PublishRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken);
+
+    Task DeleteDraftVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapStructureMutationResultDto> CreateNodeAsync(
+        Guid roadmapVersionId,
+        CreateRoadmapNodeRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapStructureMutationResultDto> MoveNodeAsync(
+        Guid roadmapNodeId,
+        MoveRoadmapNodeRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapStructureMutationResultDto> DeleteNodeAsync(
+        Guid roadmapNodeId,
         CancellationToken cancellationToken);
 
     Task<ContentRoadmapNodeDto> UpdateRoadmapNodeMetadataAsync(

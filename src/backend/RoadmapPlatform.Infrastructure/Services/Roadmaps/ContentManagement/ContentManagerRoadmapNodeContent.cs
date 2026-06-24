@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-internal static class ContentRoadmapNodeContent
+internal static class ContentManagerRoadmapNodeContent
 {
     public static JsonElement? ToJsonElement(string? json)
     {
@@ -55,7 +55,7 @@ internal static class ContentRoadmapNodeContent
         }
 
         var metadata = ParseObject(existingMetadata);
-        var normalizedNodeType = ContentRoadmapText.NormalizeOptionalText(nodeType)?.ToLowerInvariant();
+        var normalizedNodeType = ContentManagerRoadmapText.NormalizeOptionalText(nodeType)?.ToLowerInvariant();
 
         switch (normalizedNodeType)
         {
@@ -96,7 +96,7 @@ internal static class ContentRoadmapNodeContent
 
     private static void SetText(JsonObject metadata, string key, string? value)
     {
-        var normalized = ContentRoadmapText.NormalizeOptionalText(value);
+        var normalized = ContentManagerRoadmapText.NormalizeOptionalText(value);
         if (normalized == null)
         {
             metadata.Remove(key);
@@ -137,7 +137,7 @@ internal static class ContentRoadmapNodeContent
         }
 
         return values
-            .Select(ContentRoadmapText.NormalizeOptionalText)
+            .Select(ContentManagerRoadmapText.NormalizeOptionalText)
             .Where(value => value != null)
             .Select(value => value!)
             .Distinct(StringComparer.OrdinalIgnoreCase)

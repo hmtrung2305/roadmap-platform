@@ -1,8 +1,8 @@
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-internal static class ContentRoadmapNodeRules
+internal static class ContentManagerRoadmapNodeRules
 {
     private static readonly HashSet<string> ManualLearningNodeTypes = new(StringComparer.OrdinalIgnoreCase)
     {

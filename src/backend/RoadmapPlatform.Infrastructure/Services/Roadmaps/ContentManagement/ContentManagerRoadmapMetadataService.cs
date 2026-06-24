@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
-public sealed class ContentRoadmapMetadataService(
+public sealed class ContentManagerRoadmapMetadataService(
     ApplicationDbContext dbContext,
-    ContentRoadmapQueryService queryService)
+    ContentManagerRoadmapQueryService queryService)
 {
     public async Task<ContentRoadmapDetailDto> UpdateRoadmapVersionMetadataAsync(
         Guid roadmapVersionId,
@@ -19,7 +19,7 @@ public sealed class ContentRoadmapMetadataService(
             throw new ArgumentException("Roadmap version was not provided.", nameof(roadmapVersionId));
         }
 
-        var title = ContentRoadmapText.NormalizeRequiredText(request.Title, "Roadmap title is required.");
+        var title = ContentManagerRoadmapText.NormalizeRequiredText(request.Title, "Roadmap title is required.");
 
         var version = await dbContext.Set<RoadmapVersion>()
             .Include(item => item.Roadmap)
@@ -32,10 +32,15 @@ public sealed class ContentRoadmapMetadataService(
         }
 
         version.Title = title;
-        version.Description = ContentRoadmapText.NormalizeOptionalText(request.Description);
+        version.Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
         version.EstimatedTotalHours = request.EstimatedTotalHours;
-        version.Roadmap.Title = title;
-        version.Roadmap.Description = version.Description;
+
+        if (version.Status.Equals("published", StringComparison.OrdinalIgnoreCase))
+        {
+            version.Roadmap.Title = title;
+            version.Roadmap.Description = version.Description;
+        }
+
         version.Roadmap.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -53,7 +58,7 @@ public sealed class ContentRoadmapMetadataService(
             throw new ArgumentException("Roadmap node was not provided.", nameof(roadmapNodeId));
         }
 
-        var title = ContentRoadmapText.NormalizeRequiredText(request.Title, "Node title is required.");
+        var title = ContentManagerRoadmapText.NormalizeRequiredText(request.Title, "Node title is required.");
 
         var node = await dbContext.Set<RoadmapNode>()
             .Where(item => item.RoadmapNodeId == roadmapNodeId)
@@ -65,25 +70,25 @@ public sealed class ContentRoadmapMetadataService(
         }
 
         node.Title = title;
-        node.Description = ContentRoadmapText.NormalizeOptionalText(request.Description);
-        node.Reason = ContentRoadmapText.NormalizeOptionalText(request.Reason);
+        node.Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
+        node.Reason = ContentManagerRoadmapText.NormalizeOptionalText(request.Reason);
 
         if (request.LearningOutcomes != null)
         {
-            node.LearningOutcomes = ContentRoadmapNodeContent.SerializeStringArray(request.LearningOutcomes);
+            node.LearningOutcomes = ContentManagerRoadmapNodeContent.SerializeStringArray(request.LearningOutcomes);
         }
 
         if (request.CompletionCriteria != null)
         {
-            node.CompletionCriteria = ContentRoadmapNodeContent.SerializeStringArray(request.CompletionCriteria);
+            node.CompletionCriteria = ContentManagerRoadmapNodeContent.SerializeStringArray(request.CompletionCriteria);
         }
 
-        node.Metadata = ContentRoadmapNodeContent.UpdateMetadata(node.Metadata, node.NodeType, request.Guide);
+        node.Metadata = ContentManagerRoadmapNodeContent.UpdateMetadata(node.Metadata, node.NodeType, request.Guide);
 
-        if (ContentRoadmapNodeRules.CanHaveLearningMetadata(node.NodeType))
+        if (ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(node.NodeType))
         {
             node.EstimatedHours = request.EstimatedHours;
-            node.DifficultyLevel = ContentRoadmapText.NormalizeOptionalText(request.DifficultyLevel)?.ToLowerInvariant();
+            node.DifficultyLevel = ContentManagerRoadmapText.NormalizeOptionalText(request.DifficultyLevel)?.ToLowerInvariant();
         }
         else if (request.EstimatedHours.HasValue || !string.IsNullOrWhiteSpace(request.DifficultyLevel))
         {

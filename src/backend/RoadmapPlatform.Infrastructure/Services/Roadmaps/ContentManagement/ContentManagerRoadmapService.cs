@@ -1,13 +1,16 @@
-using RoadmapPlatform.Application.DTOs.ContentRoadmaps;
-using RoadmapPlatform.Application.Interfaces.ContentRoadmaps;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
+using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
-namespace RoadmapPlatform.Infrastructure.Services.ContentRoadmaps;
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
 public sealed class ContentManagerRoadmapService(
-    ContentRoadmapQueryService queryService,
-    ContentRoadmapMetadataService metadataService,
-    ContentRoadmapMappingService mappingService,
-    ContentLearningResourceSearchService resourceSearchService) : IContentManagerRoadmapService
+    ContentManagerRoadmapQueryService queryService,
+    ContentManagerRoadmapMetadataService metadataService,
+    ContentManagerRoadmapMappingService mappingService,
+    ContentManagerRoadmapStructureService structureService,
+    ContentManagerRoadmapDraftService draftService,
+    ContentManagerRoadmapValidationService validationService,
+    ContentManagerLearningResourceSearchService resourceSearchService) : IContentManagerRoadmapService
 {
     public Task<ContentRoadmapListResultDto> GetRoadmapsAsync(
         ContentRoadmapListQueryDto query,
@@ -22,6 +25,58 @@ public sealed class ContentManagerRoadmapService(
         CancellationToken cancellationToken)
     {
         return queryService.GetRoadmapDetailAsync(roadmapId, roadmapVersionId, cancellationToken);
+    }
+
+    public Task<ContentRoadmapDetailDto> CloneRoadmapVersionToDraftAsync(
+        Guid roadmapVersionId,
+        CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return draftService.CloneRoadmapVersionToDraftAsync(roadmapVersionId, request, cancellationToken);
+    }
+
+    public Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        return validationService.ValidateRoadmapVersionAsync(roadmapVersionId, cancellationToken);
+    }
+
+    public Task<ContentRoadmapDetailDto> PublishRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        return draftService.PublishRoadmapVersionAsync(roadmapVersionId, cancellationToken);
+    }
+
+    public Task DeleteDraftVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        return draftService.DeleteDraftVersionAsync(roadmapVersionId, cancellationToken);
+    }
+
+    public Task<ContentRoadmapStructureMutationResultDto> CreateNodeAsync(
+        Guid roadmapVersionId,
+        CreateRoadmapNodeRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return structureService.CreateNodeAsync(roadmapVersionId, request, cancellationToken);
+    }
+
+    public Task<ContentRoadmapStructureMutationResultDto> MoveNodeAsync(
+        Guid roadmapNodeId,
+        MoveRoadmapNodeRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return structureService.MoveNodeAsync(roadmapNodeId, request, cancellationToken);
+    }
+
+    public Task<ContentRoadmapStructureMutationResultDto> DeleteNodeAsync(
+        Guid roadmapNodeId,
+        CancellationToken cancellationToken)
+    {
+        return structureService.DeleteNodeAsync(roadmapNodeId, cancellationToken);
     }
 
     public Task<ContentRoadmapDetailDto> UpdateRoadmapVersionMetadataAsync(
