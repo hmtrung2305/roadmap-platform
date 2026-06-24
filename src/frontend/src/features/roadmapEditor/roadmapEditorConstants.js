@@ -28,3 +28,24 @@ export const difficultyOptions = [
   { value: "intermediate", label: "Intermediate" },
   { value: "advanced", label: "Advanced" },
 ];
+
+
+export const draftNodeTypeOptions = [
+  { value: "phase", label: "Phase" },
+  { value: "resource_group", label: "Group" },
+  { value: "topic", label: "Topic" },
+  { value: "project", label: "Project" },
+  { value: "checkpoint", label: "Checkpoint" },
+];
+
+export const draftNodePositionOptions = [
+  { value: "end", label: "At the end" },
+  { value: "before", label: "Before selected item" },
+  { value: "after", label: "After selected item" },
+];
+
+export const checkpointTypeOptions = [
+  { value: "review", label: "Review" },
+  { value: "assessment", label: "Assessment" },
+  { value: "gate", label: "Gate" },
+];

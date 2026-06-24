@@ -165,6 +165,12 @@ export default function RoadmapFlowNode({ data }) {
         <span className="absolute right-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#1F6F5F] shadow-sm" />
       )}
 
+      {data.isNew && (
+        <span className="absolute right-1.5 bottom-1.5 rounded-full border border-white/80 bg-[#F7F1E8] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#1F6F5F] shadow-sm">
+          New
+        </span>
+      )}
+
       {isLocked && (
         <span
           className="absolute right-2 top-1 text-xs font-black text-[#111827]"

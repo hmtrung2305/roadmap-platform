@@ -11,7 +11,6 @@ import "@xyflow/react/dist/style.css";
 
 import BalancedRoadmapEdge from "../../../components/roadmap/BalancedRoadmapEdge";
 import RoadmapFlowNode from "../../../components/roadmap/RoadmapFlowNode";
-import RoadmapLegend from "../../../components/roadmap/RoadmapLegend";
 import {
   NODE_HEIGHT,
   NODE_WIDTH,
@@ -66,12 +65,12 @@ const RoadmapGraphCanvas = memo(function RoadmapGraphCanvas({
   nodes: sourceNodes,
   selectedNodeId,
   focusNodeRequest,
+  newNodeIds = [],
   onSelect,
 }) {
   const flowWrapperRef = useRef(null);
   const [flowInstance, setFlowInstance] = useState(null);
   const [isViewportReady, setIsViewportReady] = useState(false);
-  const [isLegendOpen, setIsLegendOpen] = useState(false);
   const focusedRoadmapKeyRef = useRef(null);
   const selectedNodeIdRef = useRef(selectedNodeId);
 
@@ -92,37 +91,42 @@ const RoadmapGraphCanvas = memo(function RoadmapGraphCanvas({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  const newNodeIdSet = useMemo(() => new Set(newNodeIds.map(String)), [newNodeIds]);
+
   useEffect(() => {
     setNodes(baseFlowNodes.map((node) => ({
       ...node,
       data: {
         ...node.data,
         isSelected: node.id === selectedNodeIdRef.current,
+        isNew: newNodeIdSet.has(String(node.id)),
       },
     })));
     setEdges(flowEdges);
-  }, [baseFlowNodes, flowEdges, setNodes, setEdges]);
+  }, [baseFlowNodes, flowEdges, newNodeIdSet, setNodes, setEdges]);
 
   useEffect(() => {
     setNodes((currentNodes) => currentNodes.map((node) => {
       const isSelected = node.id === selectedNodeId;
+      const isNew = newNodeIdSet.has(String(node.id));
 
-      if (node.data?.isSelected === isSelected) return node;
+      if (node.data?.isSelected === isSelected && node.data?.isNew === isNew) return node;
 
       return {
         ...node,
         data: {
           ...node.data,
           isSelected,
+          isNew,
         },
       };
     }));
-  }, [selectedNodeId, setNodes]);
+  }, [selectedNodeId, newNodeIdSet, setNodes]);
 
-  const viewportKey = useMemo(() => {
-    const nodeKey = normalizeNodes(sourceNodes).map(getNodeId).join(",");
-    return `${detail?.roadmapVersionId || detail?.slug || "roadmap"}:${nodeKey}`;
-  }, [detail?.roadmapVersionId, detail?.slug, sourceNodes]);
+  const viewportKey = useMemo(
+    () => `${detail?.roadmapVersionId || detail?.slug || "roadmap"}`,
+    [detail?.roadmapVersionId, detail?.slug],
+  );
 
   useEffect(() => {
     if (focusedRoadmapKeyRef.current !== viewportKey) {
@@ -206,10 +210,9 @@ const RoadmapGraphCanvas = memo(function RoadmapGraphCanvas({
               className="!rounded-lg !border-2 !border-[#B9D8CC] !bg-white !shadow-sm"
             />
           )}
-          <Controls className="!rounded-lg !border !border-[#B9D8CC] !bg-white !shadow-sm" />
-          <RoadmapLegend
-            isOpen={isLegendOpen}
-            onToggle={() => setIsLegendOpen((current) => !current)}
+          <Controls
+            showInteractive={false}
+            className="!rounded-lg !border !border-[#B9D8CC] !bg-white !shadow-sm"
           />
         </ReactFlow>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, HelpCircle, Plus, Save, Tag } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpenText, Plus, Save, Tag, Trash2 } from "lucide-react";
+import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
 
 import { DirtyStateBadge } from "../../learningModuleEditor/EditorControls";
 import {
@@ -15,6 +16,7 @@ import { difficultyOptions } from "../roadmapEditorConstants";
 import { getNodeTone } from "../roadmapEditorUtils";
 import {
   canEditLearningFields,
+  canCreateChildNodes,
   canEditMappings,
   getNodeKindLabel,
   getNodeLabel,
@@ -26,7 +28,6 @@ import {
 import MappingList from "./MappingList";
 import MappingSearchModal from "./MappingSearchModal";
 import NodeContentFields from "./NodeContentFields";
-import NodeEditorGuideModal from "./NodeEditorGuideModal";
 
 export default function NodeDetailsPanel({
   selectedNode,
@@ -51,15 +52,21 @@ export default function NodeDetailsPanel({
   onOpenResourceSearch,
   onAddResource,
   onRemoveResource,
+  isDraft = false,
+  isMutatingDraft = false,
+  onMoveNode,
+  onDeleteNode,
+  childNodeCount = 0,
+  onOpenCreateChild,
 }) {
   const [panelMode, setPanelMode] = useState("details");
   const [mappingModal, setMappingModal] = useState(null);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     setPanelMode("details");
     setMappingModal(null);
-    setIsGuideOpen(false);
+    setIsDeleteConfirmOpen(false);
   }, [selectedNode?.roadmapNodeId]);
 
   if (!selectedNode) {
@@ -78,6 +85,7 @@ export default function NodeDetailsPanel({
   ));
   const canEditLearning = canEditLearningFields(selectedNode);
   const canMapLearning = canEditMappings(selectedNode);
+  const canAddChildNode = isDraft && canCreateChildNodes(selectedNode);
   const skillCount = selectedNode.skills?.length || 0;
   const resourceCount = selectedNode.resources?.length || 0;
 
@@ -105,14 +113,36 @@ export default function NodeDetailsPanel({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuleButton variant="secondary" size="xs" onClick={() => setIsGuideOpen(true)}>
-                <HelpCircle size={14} /> Guide
-              </ModuleButton>
+              {isDraft && (
+                <ModuleButton
+                  variant="primary"
+                  size="xs"
+                  className="bg-[#2FA084] text-white hover:bg-[#1F6F5F]"
+                  onClick={onOpenCreateChild}
+                  disabled={isMutatingDraft || !canAddChildNode}
+                >
+                  <Plus size={14} /> Add node
+                </ModuleButton>
+              )}
               <ModuleButton onClick={onSaveNode} disabled={isSavingNode || !isDirty}>
                 <Save size={14} /> {isSavingNode ? "Saving" : "Save"}
               </ModuleButton>
             </div>
           </div>
+
+          {isDraft && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[#B9D8CC]/70 bg-[#F7F1E8]/45 p-2">
+              <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("up")} disabled={isMutatingDraft}>
+                <ArrowUp size={13} /> Move up
+              </ModuleButton>
+              <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("down")} disabled={isMutatingDraft}>
+                <ArrowDown size={13} /> Move down
+              </ModuleButton>
+              <ModuleButton size="xs" variant="danger" className="hover:border-rose-500 hover:bg-rose-100 hover:text-rose-800" onClick={() => setIsDeleteConfirmOpen(true)} disabled={isMutatingDraft}>
+                <Trash2 size={13} /> Delete
+              </ModuleButton>
+            </div>
+          )}
         </div>
 
         <div className="border-b border-[#B9D8CC]/70 bg-[#F7F1E8]/45 p-2">
@@ -274,7 +304,21 @@ export default function NodeDetailsPanel({
         </div>
       </ModuleCard>
 
-      <NodeEditorGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+      <ConfirmActionDialog
+        isOpen={isDeleteConfirmOpen}
+        title="Delete node"
+        description={childNodeCount > 0
+          ? `This will remove this node and ${childNodeCount} child ${childNodeCount === 1 ? "node" : "nodes"}. You can restore it from deletion history before applying changes.`
+          : "This removes the selected draft node. You can restore it from deletion history before applying changes."}
+        confirmLabel="Delete node"
+        cancelLabel="Keep node"
+        isConfirming={isMutatingDraft}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={async () => {
+          await onDeleteNode?.();
+          setIsDeleteConfirmOpen(false);
+        }}
+      />
 
       <MappingSearchModal
         isOpen={mappingModal === "skills"}
