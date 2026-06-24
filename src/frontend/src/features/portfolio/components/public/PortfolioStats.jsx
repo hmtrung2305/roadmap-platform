@@ -27,7 +27,7 @@ export default function PortfolioStats({ portfolio }) {
 
 function StatCard({ value, label, text = false }) {
   return (
-    <div className="rounded-lg border border-[#B9D8CC] bg-white p-6 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(31,111,95,0.12)]">
+    <div className="rounded-2xl border border-[#B9D8CC]/75 bg-white p-5 shadow-[0_8px_18px_rgba(31,111,95,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md">
       <p className={`${text ? "text-base" : "text-3xl"} font-extrabold text-[#18332D]`}>
         {value}
       </p>
