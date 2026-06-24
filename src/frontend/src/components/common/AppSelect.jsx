@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 
 export default function AppSelect({
@@ -8,11 +9,15 @@ export default function AppSelect({
   ariaLabel,
   className = "",
   disabled = false,
+  dropdownMode = "absolute",
+  buttonClassName = "",
+  optionClassName = "",
 }) {
   const listboxId = useId();
   const rootRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [fixedRect, setFixedRect] = useState(null);
 
   const selectedIndex = useMemo(
     () =>
@@ -24,21 +29,44 @@ export default function AppSelect({
   );
   const selectedOption = options[selectedIndex] || options[0];
 
+  const updateFixedRect = () => {
+    if (dropdownMode !== "fixed" || !rootRef.current) return;
+    const rect = rootRef.current.getBoundingClientRect();
+    setFixedRect({
+      left: rect.left,
+      top: rect.bottom + 8,
+      width: rect.width,
+    });
+  };
+
   useEffect(() => {
     if (!isOpen) return undefined;
 
     const handlePointerDown = (event) => {
-      if (!rootRef.current?.contains(event.target)) {
+      const dropdownTarget = event.target?.closest?.(`[data-select-listbox="${listboxId}"]`);
+      if (!rootRef.current?.contains(event.target) && !dropdownTarget) {
         setIsOpen(false);
       }
     };
 
+    updateFixedRect();
+
+    const handleViewportChange = () => updateFixedRect();
+
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isOpen]);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [isOpen, dropdownMode]);
 
   const openSelect = () => {
     setActiveIndex(selectedIndex);
+    updateFixedRect();
     setIsOpen(true);
   };
 
@@ -118,7 +146,7 @@ export default function AppSelect({
           isOpen
             ? "border-[#2FA084] ring-2 ring-[#6FCF97]/20"
             : "border-[#B9D8CC] hover:border-[#2FA084]"
-        }`}
+        } ${buttonClassName}`}
       >
         <span className="truncate">{selectedOption?.label || "Select"}</span>
         <ChevronDown
@@ -129,12 +157,52 @@ export default function AppSelect({
         />
       </button>
 
-      {isOpen && (
-        <div
+      {isOpen && (dropdownMode === "fixed" && fixedRect
+        ? createPortal(
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={ariaLabel}
+            data-select-listbox={listboxId}
+            style={{ left: fixedRect.left, top: fixedRect.top, width: fixedRect.width }}
+            className="fixed z-[80] max-h-60 overflow-y-auto rounded-xl border border-[#B9D8CC] bg-white p-1.5 shadow-[0_18px_45px_rgba(24,51,45,0.16)] scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC]"
+          >
+            {options.map((option, index) => {
+              const isSelected = option.value === value;
+              const isActive = index === activeIndex;
+
+              return (
+                <button
+                  key={option.value}
+                  id={`${listboxId}-option-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  disabled={option.disabled}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => chooseOption(option)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    isSelected
+                      ? "bg-[#6FCF97]/20 text-[#1F6F5F]"
+                      : isActive
+                        ? "bg-[#F7F1E8] text-[#18332D]"
+                        : "text-slate-700 hover:bg-[#F7F1E8] hover:text-[#18332D]"
+                  } ${optionClassName}`}
+                >
+                  <span>{option.label}</span>
+                  {isSelected && <Check size={16} className="shrink-0" />}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )
+        : <div
           id={listboxId}
           role="listbox"
           aria-label={ariaLabel}
-          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-[#B9D8CC] bg-white p-1.5 shadow-[0_18px_45px_rgba(24,51,45,0.16)]"
+          data-select-listbox={listboxId}
+          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-xl border border-[#B9D8CC] bg-white p-1.5 shadow-[0_18px_45px_rgba(24,51,45,0.16)] scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC]"
         >
           {options.map((option, index) => {
             const isSelected = option.value === value;
@@ -156,7 +224,7 @@ export default function AppSelect({
                     : isActive
                       ? "bg-[#F7F1E8] text-[#18332D]"
                       : "text-slate-700 hover:bg-[#F7F1E8] hover:text-[#18332D]"
-                }`}
+                } ${optionClassName}`}
               >
                 <span>{option.label}</span>
                 {isSelected && <Check size={16} className="shrink-0" />}
