@@ -55,6 +55,76 @@ function createNodeForm(node = null) {
   };
 }
 
+
+function getNodeId(node) {
+  return node?.roadmapNodeId || node?.id || "";
+}
+
+function getDescendantIds(rootId, nodes = []) {
+  if (!rootId) return [];
+
+  const childrenByParent = new Map();
+  normalizeNodes(nodes).forEach((node) => {
+    const parentId = node.parentNodeId ? String(node.parentNodeId) : "";
+    if (!parentId) return;
+    const list = childrenByParent.get(parentId) || [];
+    list.push(node);
+    childrenByParent.set(parentId, list);
+  });
+
+  const orderedIds = [];
+  const visit = (nodeId) => {
+    const normalizedId = String(nodeId);
+    if (orderedIds.includes(normalizedId)) return;
+    orderedIds.push(normalizedId);
+    (childrenByParent.get(normalizedId) || []).forEach((child) => visit(getNodeId(child)));
+  };
+
+  visit(rootId);
+  return orderedIds;
+}
+
+function getEdgeNodeIds(edge = {}) {
+  return {
+    sourceId: edge.fromNodeId || edge.sourceNodeId || edge.source || edge.sourceId,
+    targetId: edge.toNodeId || edge.targetNodeId || edge.target || edge.targetId,
+  };
+}
+
+function removeNodesFromDetail(detail, deletedIds = []) {
+  if (!detail) return detail;
+
+  const deletedSet = new Set(deletedIds.map(String));
+  return {
+    ...detail,
+    nodes: normalizeNodes(detail.nodes).filter((node) => !deletedSet.has(String(getNodeId(node)))),
+    edges: Array.isArray(detail.edges)
+      ? detail.edges.filter((edge) => {
+        const { sourceId, targetId } = getEdgeNodeIds(edge);
+        return !deletedSet.has(String(sourceId)) && !deletedSet.has(String(targetId));
+      })
+      : detail.edges,
+  };
+}
+
+function restoreDeletedItems(detail, deletedNodes = [], deletedEdges = []) {
+  if (!detail) return detail;
+
+  const existingNodeIds = new Set(normalizeNodes(detail.nodes).map((node) => String(getNodeId(node))));
+  const restoredNodes = deletedNodes.filter((node) => !existingNodeIds.has(String(getNodeId(node))));
+  const existingEdgeIds = new Set((detail.edges || []).map((edge) => String(edge.roadmapEdgeId || edge.id || `${edge.fromNodeId || edge.sourceNodeId}-${edge.toNodeId || edge.targetNodeId}-${edge.edgeType || edge.type}`)));
+  const restoredEdges = deletedEdges.filter((edge) => {
+    const edgeId = String(edge.roadmapEdgeId || edge.id || `${edge.fromNodeId || edge.sourceNodeId}-${edge.toNodeId || edge.targetNodeId}-${edge.edgeType || edge.type}`);
+    return !existingEdgeIds.has(edgeId);
+  });
+
+  return {
+    ...detail,
+    nodes: [...normalizeNodes(detail.nodes), ...restoredNodes],
+    edges: [...(Array.isArray(detail.edges) ? detail.edges : []), ...restoredEdges],
+  };
+}
+
 function areGuideFormsEqual(left = {}, right = {}, node = null) {
   const nodeType = normalizeNodeType(node);
 
@@ -110,6 +180,7 @@ export default function useContentRoadmapEditor(roadmapId) {
   const [metadataForm, setMetadataForm] = useState({ title: "", description: "", estimatedTotalHours: "" });
   const [nodeForm, setNodeForm] = useState(createNodeForm());
   const [graphFocusRequest, setGraphFocusRequest] = useState(null);
+  const [newNodeIds, setNewNodeIds] = useState([]);
   const [skillSearch, setSkillSearch] = useState("");
   const [skillResults, setSkillResults] = useState([]);
   const [resourceSearch, setResourceSearch] = useState("");
@@ -122,6 +193,9 @@ export default function useContentRoadmapEditor(roadmapId) {
   const [isSearchingResources, setIsSearchingResources] = useState(false);
   const [error, setError] = useState("");
   const [workspaceMode, setWorkspaceMode] = useState("nodes");
+  const [isMutatingDraft, setIsMutatingDraft] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
+  const [pendingNodeDeletions, setPendingNodeDeletions] = useState([]);
 
   useEffect(() => {
     if (!roadmapId) return undefined;
@@ -197,6 +271,10 @@ export default function useContentRoadmapEditor(roadmapId) {
       setSelectedNodeId(allNodes[0].roadmapNodeId);
     }
   }, [allNodes, selectedNode]);
+  const selectedNodeChildCount = useMemo(() => {
+    if (!selectedNode?.roadmapNodeId) return 0;
+    return getDescendantIds(selectedNode.roadmapNodeId, allNodes).length - 1;
+  }, [allNodes, selectedNode?.roadmapNodeId]);
 
   const missingMappingCount = useMemo(() => countMissingMappings(allNodes.filter(canEditMappings)), [allNodes]);
   const versionOptions = useMemo(() => {
@@ -252,6 +330,31 @@ export default function useContentRoadmapEditor(roadmapId) {
         )),
       };
     });
+  };
+
+  const applyRoadmapDetail = (updatedDetail, focusNodeId = null) => {
+    if (!updatedDetail) return;
+
+    setDetail(updatedDetail);
+    setMetadataForm({
+      title: updatedDetail?.title || "",
+      description: updatedDetail?.description || "",
+      estimatedTotalHours: toFormNumber(updatedDetail?.estimatedTotalHours),
+    });
+
+    if (updatedDetail?.roadmapVersionId) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("versionId", updatedDetail.roadmapVersionId);
+      setSearchParams(next, { replace: true });
+    }
+
+    const availableNodes = normalizeNodes(updatedDetail?.nodes);
+    if (focusNodeId && availableNodes.some((node) => node.roadmapNodeId === focusNodeId)) {
+      setSelectedNodeId(focusNodeId);
+      setGraphFocusRequest({ id: focusNodeId, requestId: Date.now() });
+    } else if (!availableNodes.some((node) => node.roadmapNodeId === selectedNodeId)) {
+      setSelectedNodeId(availableNodes[0]?.roadmapNodeId || "");
+    }
   };
 
   const saveMetadata = async () => {
@@ -427,6 +530,180 @@ export default function useContentRoadmapEditor(roadmapId) {
     }
   };
 
+  const cloneDraft = async () => {
+    if (!detail?.roadmapVersionId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const updated = await contentManagerRoadmapApi.cloneVersionToDraft(detail.roadmapVersionId, {});
+      applyRoadmapDetail(updated);
+      setWorkspaceMode("nodes");
+      toast.success("Draft opened.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to create draft.");
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const validateDraft = async () => {
+    if (!detail?.roadmapVersionId) return null;
+
+    try {
+      setIsMutatingDraft(true);
+      const result = await contentManagerRoadmapApi.validateVersion(detail.roadmapVersionId);
+      setValidationResult(result);
+      return result;
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to validate draft.");
+      return null;
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const publishDraft = async () => {
+    if (!detail?.roadmapVersionId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const updated = await contentManagerRoadmapApi.publishVersion(detail.roadmapVersionId);
+      applyRoadmapDetail(updated);
+      setValidationResult(null);
+      toast.success("Draft published.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to publish draft.");
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const createNode = async (payload) => {
+    if (!detail?.roadmapVersionId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const result = await contentManagerRoadmapApi.createNode(detail.roadmapVersionId, payload);
+      const focusNodeId = result?.focusNodeId;
+      applyRoadmapDetail(result?.roadmap, focusNodeId);
+      if (focusNodeId) {
+        setNewNodeIds((current) => Array.from(new Set([...current, focusNodeId])));
+        window.setTimeout(() => {
+          setNewNodeIds((current) => current.filter((id) => id !== focusNodeId));
+        }, 12000);
+      }
+      toast.success("Node added.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to add node.");
+      throw actionError;
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const moveNode = async (direction) => {
+    if (!selectedNode?.roadmapNodeId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const result = await contentManagerRoadmapApi.moveNode(selectedNode.roadmapNodeId, direction);
+      applyRoadmapDetail(result?.roadmap, result?.focusNodeId || selectedNode.roadmapNodeId);
+      toast.success("Node moved.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to move node.");
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const deleteNode = async () => {
+    if (!selectedNode?.roadmapNodeId || !detail) return;
+
+    const deletedNode = selectedNode;
+    const deletedNodeId = selectedNode.roadmapNodeId;
+    const deletedIds = getDescendantIds(deletedNodeId, allNodes);
+    const deletedIdSet = new Set(deletedIds.map(String));
+    const deletedNodes = allNodes.filter((node) => deletedIdSet.has(String(getNodeId(node))));
+    const deletedEdges = Array.isArray(detail.edges)
+      ? detail.edges.filter((edge) => {
+        const { sourceId, targetId } = getEdgeNodeIds(edge);
+        return deletedIdSet.has(String(sourceId)) || deletedIdSet.has(String(targetId));
+      })
+      : [];
+
+    const remainingNodes = allNodes.filter((node) => !deletedIdSet.has(String(getNodeId(node))));
+    const siblingFallback = remainingNodes.find((node) => node.parentNodeId === deletedNode.parentNodeId)?.roadmapNodeId;
+    const parentFallback = remainingNodes.find((node) => node.roadmapNodeId === deletedNode.parentNodeId)?.roadmapNodeId;
+    const focusNodeId = siblingFallback || parentFallback || remainingNodes[0]?.roadmapNodeId || "";
+
+    setDetail((current) => removeNodesFromDetail(current, deletedIds));
+    setSelectedNodeId(focusNodeId);
+
+    setPendingNodeDeletions((current) => [
+      ...current,
+      {
+        actionId: `${deletedNodeId}-${Date.now()}`,
+        rootNodeId: deletedNodeId,
+        nodeLabel: deletedNode.title || "Node",
+        deletedCount: deletedNodes.length,
+        deletedNodes,
+        deletedEdges,
+        restoreSelectedNodeId: deletedNodeId,
+      },
+    ]);
+    toast.info("Node staged for deletion.");
+  };
+
+  const undoNodeDelete = (actionId) => {
+    const action = pendingNodeDeletions.find((item) => item.actionId === actionId);
+    if (!action) return;
+
+    setDetail((current) => restoreDeletedItems(current, action.deletedNodes, action.deletedEdges));
+    setSelectedNodeId(action.restoreSelectedNodeId);
+    setPendingNodeDeletions((current) => current.filter((item) => item.actionId !== actionId));
+    toast.info("Node restored.");
+  };
+
+  const restoreAllPendingNodeDeletions = () => {
+    if (pendingNodeDeletions.length === 0) return;
+
+    setDetail((current) => pendingNodeDeletions.reduce(
+      (nextDetail, action) => restoreDeletedItems(nextDetail, action.deletedNodes, action.deletedEdges),
+      current,
+    ));
+    const lastRestoredNodeId = pendingNodeDeletions[pendingNodeDeletions.length - 1]?.restoreSelectedNodeId || "";
+    if (lastRestoredNodeId) {
+      setSelectedNodeId(lastRestoredNodeId);
+    }
+    setPendingNodeDeletions([]);
+    toast.info("Nodes restored.");
+  };
+
+  const commitPendingNodeDeletions = async () => {
+    if (pendingNodeDeletions.length === 0) return true;
+
+    try {
+      setIsMutatingDraft(true);
+      let latestResult = null;
+
+      for (const action of pendingNodeDeletions) {
+        latestResult = await contentManagerRoadmapApi.deleteNode(action.rootNodeId);
+      }
+
+      setPendingNodeDeletions([]);
+      if (latestResult?.roadmap) {
+        applyRoadmapDetail(latestResult.roadmap, latestResult.focusNodeId);
+      }
+      toast.success("Deletions applied.");
+      return true;
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to apply deletions.");
+      return false;
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
   const handleVersionChange = (versionId) => {
     const next = new URLSearchParams(searchParams.toString());
     if (versionId) {
@@ -454,6 +731,7 @@ export default function useContentRoadmapEditor(roadmapId) {
     nodeForm,
     setNodeForm,
     graphFocusRequest,
+    newNodeIds,
     skillSearch,
     setSkillSearch,
     skillResults,
@@ -466,6 +744,11 @@ export default function useContentRoadmapEditor(roadmapId) {
     isSavingNode,
     isSearchingSkills,
     isSearchingResources,
+    isMutatingDraft,
+    validationResult,
+    setValidationResult,
+    pendingNodeDeletions,
+    selectedNodeChildCount,
     error,
     workspaceMode,
     setWorkspaceMode,
@@ -476,6 +759,15 @@ export default function useContentRoadmapEditor(roadmapId) {
     hasNodeDetailsChanges,
     saveMetadata,
     saveNode,
+    cloneDraft,
+    validateDraft,
+    publishDraft,
+    createNode,
+    moveNode,
+    deleteNode,
+    undoNodeDelete,
+    restoreAllPendingNodeDeletions,
+    commitPendingNodeDeletions,
     loadSkillSuggestions,
     loadResourceSuggestions,
     searchSkills,

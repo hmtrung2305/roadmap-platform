@@ -49,6 +49,59 @@ export const contentManagerRoadmapApi = {
     return response.data;
   },
 
+
+  cloneVersionToDraft: async (roadmapVersionId, payload = {}) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/clone-draft`,
+      payload,
+    );
+
+    return response.data;
+  },
+
+  validateVersion: async (roadmapVersionId) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/validate`,
+    );
+
+    return response.data;
+  },
+
+  publishVersion: async (roadmapVersionId) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/publish`,
+    );
+
+    return response.data;
+  },
+
+  deleteDraftVersion: async (roadmapVersionId) => {
+    await axiosClient.delete(`/content/roadmap-versions/${encode(roadmapVersionId)}`);
+  },
+
+  createNode: async (roadmapVersionId, payload) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/nodes`,
+      payload,
+    );
+
+    return response.data;
+  },
+
+  moveNode: async (roadmapNodeId, direction) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-nodes/${encode(roadmapNodeId)}/move`,
+      { direction },
+    );
+
+    return response.data;
+  },
+
+  deleteNode: async (roadmapNodeId) => {
+    const response = await axiosClient.delete(`/content/roadmap-nodes/${encode(roadmapNodeId)}`);
+
+    return response.data;
+  },
   updateVersionMetadata: async (roadmapVersionId, payload) => {
     const response = await axiosClient.patch(
       `/content/roadmap-versions/${encode(roadmapVersionId)}/metadata`,
