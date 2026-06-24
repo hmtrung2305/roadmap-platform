@@ -53,6 +53,14 @@ function getRepositorySelection(repositories) {
   return getInitiallySelectedIds(repositories);
 }
 
+function filterSelectedIdsForRepositories(selectedIds, repositories) {
+  const repositoryIdSet = new Set(
+    repositories.map(getRepositoryId).filter(Boolean),
+  );
+
+  return selectedIds.filter((repositoryId) => repositoryIdSet.has(repositoryId));
+}
+
 function getInsightRepositoryId(repository, fallbackId) {
   return getRepositoryId(repository) || fallbackId;
 }
@@ -309,13 +317,13 @@ export const usePortfolioEditorStore = create((set, get) => ({
       setCachedRequestData(REPOSITORIES_CACHE_KEY, repositories);
       usePortfolioStore.getState().invalidatePortfolioView();
 
-      set({
+      set((state) => ({
         repositories,
-        selectedIds: getRepositorySelection(repositories),
+        selectedIds: filterSelectedIdsForRepositories(state.selectedIds, repositories),
         isGitHubLinked: true,
         githubConnectionAction: "connected",
-        repoSuccess: "Repositories synced. Choose the projects you want to show, then save.",
-      });
+        repoSuccess: "Repositories synced. Review the list and save your selection.",
+      }));
 
       return repositories;
     } catch (error) {
@@ -357,7 +365,7 @@ export const usePortfolioEditorStore = create((set, get) => ({
       const repositories = await get().loadRepositories({ force: true, resetSelection: true });
 
       if (requestVersion === portfolioEditorRequestVersion) {
-        set({ repoSuccess: "Saved repository selection reloaded." });
+        set({ repoSuccess: "Saved repository selection restored." });
       }
 
       return repositories;

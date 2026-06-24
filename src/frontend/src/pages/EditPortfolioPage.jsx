@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -8,14 +8,12 @@ import { useAuthProviderStore } from "../stores/useAuthProviderStore";
 import { usePortfolioEditorStore } from "../stores/usePortfolioEditorStore";
 import { useProfileStore } from "../stores/useProfileStore";
 import EditPortfolioErrorState from "../features/portfolio/components/editor/EditPortfolioErrorState";
-import EditPortfolioGitHubSource from "../features/portfolio/components/editor/EditPortfolioGitHubSource";
+import EditPortfolioBioPreview from "../features/portfolio/components/editor/EditPortfolioBioPreview";
 import EditPortfolioHero from "../features/portfolio/components/editor/EditPortfolioHero";
 import EditPortfolioLoadingState from "../features/portfolio/components/editor/EditPortfolioLoadingState";
 import EditPortfolioProfileDetails from "../features/portfolio/components/editor/EditPortfolioProfileDetails";
 import EditPortfolioRepositoryManager from "../features/portfolio/components/editor/EditPortfolioRepositoryManager";
 import EditPortfolioStatsGrid from "../features/portfolio/components/editor/EditPortfolioStatsGrid";
-import EditPortfolioStatusBar from "../features/portfolio/components/editor/EditPortfolioStatusBar";
-import { MAX_SHOWCASE_REPOSITORIES } from "../features/portfolio/constants/portfolioLimits";
 import { useAiCreditStore } from "../stores/useAiCreditStore";
 import { getCurrentReturnUrl } from "../utils/navigationUtils";
 
@@ -56,10 +54,8 @@ export default function EditPortfolioPage() {
 
 
   const [copied, setCopied] = useState(false);
-  const leftColumnRef = useRef(null);
   const lastRepoErrorToastRef = useRef("");
   const lastRepoSuccessToastRef = useRef("");
-  const [managerHeight, setManagerHeight] = useState(null);
 
   const username = useMemo(() => {
     return (
@@ -94,11 +90,6 @@ export default function EditPortfolioPage() {
     isGitHubLinked ||
     providerActionLoading ||
     isSocialProviderActionLocked;
-  const totalStars = repositories.reduce(
-    (sum, repo) => sum + Number(repo?.stars ?? repo?.starCount ?? 0),
-    0,
-  );
-
   const publicLink = username
     ? `${window.location.origin}/portfolio/${encodeURIComponent(username)}`
     : "";
@@ -139,28 +130,6 @@ export default function EditPortfolioPage() {
     lastRepoSuccessToastRef.current = repoSuccess;
   }, [repoSuccess]);
 
-  useLayoutEffect(() => {
-    if (!leftColumnRef.current) return;
-
-    function updateManagerHeight() {
-      const nextHeight = leftColumnRef.current?.getBoundingClientRect().height;
-      if (!nextHeight) return;
-      setManagerHeight(Math.round(nextHeight));
-    }
-
-    updateManagerHeight();
-
-    const observer = new ResizeObserver(updateManagerHeight);
-    observer.observe(leftColumnRef.current);
-
-    window.addEventListener("resize", updateManagerHeight);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateManagerHeight);
-    };
-  }, [portfolio, isGitHubLinked, repositories.length, syncing, reloadingSelection, saving]);
-
   const handleSync = () => {
     if (repositoryLoading || syncing || reloadingSelection || saving) return;
 
@@ -175,13 +144,6 @@ export default function EditPortfolioPage() {
 
   const handleToggleRepository = (repositoryId) => {
     if (repositoryLoading || syncing || reloadingSelection || saving) return;
-
-    const isAlreadySelected = selectedIds.includes(repositoryId);
-
-    if (!isAlreadySelected && selectedIds.length >= MAX_SHOWCASE_REPOSITORIES) {
-      toast.warning(`You can showcase up to ${MAX_SHOWCASE_REPOSITORIES} repositories.`);
-      return;
-    }
 
     toggleRepository(repositoryId);
   };
@@ -233,11 +195,6 @@ export default function EditPortfolioPage() {
   };
 
   const handleSave = () => {
-    if (selectedIds.length > MAX_SHOWCASE_REPOSITORIES) {
-      toast.warning(`You can showcase up to ${MAX_SHOWCASE_REPOSITORIES} repositories.`);
-      return;
-    }
-
     saveSelection().catch(() => {});
   };
 
@@ -266,25 +223,18 @@ export default function EditPortfolioPage() {
         }
 
         .portfolio-repo-list-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: #8BA39B transparent;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
 
         .portfolio-repo-list-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .portfolio-repo-list-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .portfolio-repo-list-scroll::-webkit-scrollbar-thumb {
-          background: #8BA39B;
-          border-radius: 999px;
+          display: none;
+          width: 0;
+          height: 0;
         }
       `}</style>
 
-      <div className="tm-soft-enter mx-auto max-w-7xl space-y-5">
+      <div className="tm-soft-enter mx-auto max-w-7xl space-y-4">
         <EditPortfolioHero
           portfolio={portfolio}
           displayName={displayName}
@@ -293,33 +243,29 @@ export default function EditPortfolioPage() {
           onCopyPublicLink={handleCopyPublicLink}
         />
 
-        <EditPortfolioStatusBar selectedCount={selectedCount} availableCount={availableCount} />
+        <EditPortfolioBioPreview portfolio={portfolio} />
 
         <EditPortfolioStatsGrid
-          username={username}
           isGitHubLinked={isGitHubLinked}
           isPortfolioPublic={isPortfolioPublic}
           selectedCount={selectedCount}
-          totalStars={totalStars}
+          availableCount={availableCount}
           onManageVisibility={() => navigate("/settings/privacy")}
+          syncing={syncing}
+          reloadingSelection={reloadingSelection}
+          saving={saving}
+          repositoryLoading={repositoryLoading}
+          onSync={handleSync}
+          onReloadSelection={handleReloadSavedSelection}
+          connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
+          connectingGitHub={isConnectingGitHub}
+          connectDisabled={disableGitHubConnect}
+          onConnectGitHub={handleGitHubRedirect}
         />
 
-        <section className="tm-animate-item grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
-          <aside ref={leftColumnRef} className="flex flex-col gap-5 pr-1">
+        <section className="tm-animate-item grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">
+          <aside className="flex flex-col gap-5 pr-1">
             <EditPortfolioProfileDetails portfolio={portfolio} displayName={displayName} headline={headline} />
-            <EditPortfolioGitHubSource
-              isGitHubLinked={isGitHubLinked}
-              syncing={syncing}
-              reloadingSelection={reloadingSelection}
-              saving={saving}
-              repositoryLoading={repositoryLoading}
-              onSync={handleSync}
-              onReloadSelection={handleReloadSavedSelection}
-              connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-              connectingGitHub={isConnectingGitHub}
-              connectDisabled={disableGitHubConnect}
-              onConnectGitHub={handleGitHubRedirect}
-            />
           </aside>
 
           <EditPortfolioRepositoryManager
@@ -333,15 +279,9 @@ export default function EditPortfolioPage() {
             saving={saving}
             analyzingRepositoryIds={analyzingRepositoryIds}
             username={username}
-            portfolio={portfolio}
             onSave={handleSave}
             onToggleRepository={handleToggleRepository}
             onGenerateInsight={handleGenerateInsight}
-            connectionAction={githubConnectionAction === "reconnect" ? "reconnect" : "connect"}
-            connectingGitHub={isConnectingGitHub}
-            connectDisabled={disableGitHubConnect}
-            onConnectGitHub={handleGitHubRedirect}
-            managerHeight={managerHeight}
             creditStatus={creditStatus}
             isLoadingCreditStatus={isLoadingCreditStatus}
           />

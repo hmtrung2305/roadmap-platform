@@ -6,9 +6,7 @@ import {
 
 export default function RoadmapCard({ roadmap, onOpen, index = 0 }) {
   const progressPercent = getRoadmapProgressPercent(roadmap);
-  const title = cleanRoadmapTitle(
-    roadmap.careerRole?.name || roadmap.title || "Roadmap",
-  );
+  const title = cleanRoadmapTitle(roadmap.careerRole?.name || roadmap.title || "Roadmap");
   const enrollment = getRoadmapEnrollment(roadmap);
 
   function handleKeyDown(event) {
@@ -25,7 +23,7 @@ export default function RoadmapCard({ roadmap, onOpen, index = 0 }) {
       aria-label={`Open ${title}`}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group relative flex min-h-[86px] cursor-pointer items-center overflow-hidden rounded-2xl border border-[#B9D8CC]/75 bg-white px-5 py-4 text-left outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md focus-visible:border-[#2FA084] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15"
+      className="group relative flex min-h-[88px] cursor-pointer items-center overflow-hidden rounded-lg border border-[#B9D8CC]/65 bg-white px-5 py-4 shadow-[0_8px_10px_rgba(31,111,95,0.04)] outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#8FCBBA] hover:shadow-sm focus-visible:border-[#2FA084] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15"
       style={{
         animation: "roadmapCardIn 420ms ease-out both",
         animationDelay: `${Math.min(index, 9) * 55}ms`,
