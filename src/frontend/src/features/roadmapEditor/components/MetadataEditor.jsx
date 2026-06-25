@@ -7,7 +7,7 @@ import {
   ModuleCard,
   ModuleField,
   numberInputClass,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../learningModules/components/learningModuleUi";
 
 export default function MetadataEditor({ detail, form, setForm, isSaving, isDirty, onSave }) {
   return (

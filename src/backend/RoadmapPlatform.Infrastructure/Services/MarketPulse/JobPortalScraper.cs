@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using RoadmapPlatform.Application.DTOs.MarketPulse;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Models.MarketPulse;
@@ -10,6 +11,10 @@ namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 public interface IJobPortalScraper
 {
     Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken);
 }
 
 public sealed class JobPortalScraper(
@@ -29,13 +34,25 @@ public sealed class JobPortalScraper(
         "<title[^>]*>(?<title>.*?)</title>|<h1[^>]*>(?<title>.*?)</h1>",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
 
-    public async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken) =>
+        ScrapeAsync(null, cancellationToken);
+
+    public async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken)
     {
         var settings = options.Value;
+        var effectiveSettings = ResolveEffectiveSettings(settings, request);
         var postings = new List<ScrapedJobPosting>();
-        var enabledSources = settings.Sources
-            .Where(x => x.Enabled && !string.IsNullOrWhiteSpace(x.SearchUrlTemplate))
-            .ToList();
+        var enabledSources = ResolveEnabledSources(settings).ToList();
+
+        if (enabledSources.Count == 0)
+        {
+            logger.LogWarning(
+                "No Market Pulse sources are enabled or configured. Set MarketPulse__Sources__0__SearchUrlTemplate, " +
+                "MarketPulse__ActiveJobsApiUrl, or a JobsApi BaseUrl that points to the Jobs API origin.");
+            return postings;
+        }
 
         foreach (var source in enabledSources)
         {
@@ -43,9 +60,9 @@ public sealed class JobPortalScraper(
             {
                 var sourcePostings = source.Kind switch
                 {
-                    JobsApiSourceKind => await ScrapeJobsApiSourceAsync(source, settings, cancellationToken),
-                    HtmlSourceKind => await ScrapeHtmlSourceAsync(source, settings, cancellationToken),
-                    _ => await ScrapeHtmlSourceAsync(source, settings, cancellationToken)
+                    JobsApiSourceKind => await ScrapeJobsApiSourceAsync(source, effectiveSettings, cancellationToken),
+                    HtmlSourceKind => await ScrapeHtmlSourceAsync(source, settings, effectiveSettings, cancellationToken),
+                    _ => await ScrapeHtmlSourceAsync(source, settings, effectiveSettings, cancellationToken)
                 };
 
                 postings.AddRange(sourcePostings);
@@ -59,18 +76,113 @@ public sealed class JobPortalScraper(
         return postings;
     }
 
+    private IEnumerable<MarketPulseSourceSettings> ResolveEnabledSources(MarketPulseSettings settings)
+    {
+        var resolvedAnySource = false;
+
+        foreach (var source in settings.Sources.Where(x => x.Enabled))
+        {
+            var resolvedSource = ResolveSource(source, settings);
+            if (resolvedSource is null)
+            {
+                logger.LogWarning(
+                    "Skipping Market Pulse source {SourceName} because no search URL is configured.",
+                    string.IsNullOrWhiteSpace(source.Name) ? "(unnamed)" : source.Name);
+                continue;
+            }
+
+            resolvedAnySource = true;
+            yield return resolvedSource;
+        }
+
+        if (!resolvedAnySource && !string.IsNullOrWhiteSpace(settings.ActiveJobsApiUrl))
+        {
+            yield return new MarketPulseSourceSettings
+            {
+                Name = "Jobs API",
+                Kind = JobsApiSourceKind,
+                BaseUrl = ResolveBaseUrl(settings.ActiveJobsApiUrl),
+                SearchUrlTemplate = settings.ActiveJobsApiUrl.Trim(),
+                Enabled = true,
+                DetailUrlContains = []
+            };
+        }
+    }
+
+    private static MarketPulseSourceSettings? ResolveSource(
+        MarketPulseSourceSettings source,
+        MarketPulseSettings settings)
+    {
+        var searchUrlTemplate = source.SearchUrlTemplate;
+        if (IsJobsApiSource(source) && string.IsNullOrWhiteSpace(searchUrlTemplate))
+        {
+            searchUrlTemplate = FirstNonEmpty(
+                settings.ActiveJobsApiUrl,
+                ResolveJobsApiActiveUrl(source.BaseUrl));
+        }
+
+        if (string.IsNullOrWhiteSpace(searchUrlTemplate))
+        {
+            return null;
+        }
+
+        return new MarketPulseSourceSettings
+        {
+            Name = string.IsNullOrWhiteSpace(source.Name) ? "Jobs API" : source.Name.Trim(),
+            Kind = string.IsNullOrWhiteSpace(source.Kind) ? HtmlSourceKind : source.Kind.Trim(),
+            BaseUrl = FirstNonEmpty(source.BaseUrl, ResolveBaseUrl(searchUrlTemplate)) ?? string.Empty,
+            SearchUrlTemplate = searchUrlTemplate.Trim(),
+            Enabled = true,
+            DetailUrlContains = source.DetailUrlContains ?? []
+        };
+    }
+
+    private static bool IsJobsApiSource(MarketPulseSourceSettings source) =>
+        string.Equals(source.Kind, JobsApiSourceKind, StringComparison.OrdinalIgnoreCase);
+
+    private static string? ResolveJobsApiActiveUrl(string? baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            return null;
+        }
+
+        var trimmed = baseUrl.Trim();
+        if (trimmed.Contains("/api/", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        return Uri.TryCreate(trimmed.TrimEnd('/') + "/", UriKind.Absolute, out var uri)
+            ? new Uri(uri, "api/jobs/active").ToString()
+            : null;
+    }
+
+    private static string ResolveBaseUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return string.Empty;
+        }
+
+        return $"{uri.Scheme}://{uri.Authority}";
+    }
+
+    private static string? FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim();
+
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeJobsApiSourceAsync(
         MarketPulseSourceSettings source,
-        MarketPulseSettings settings,
+        EffectiveScrapeSettings effectiveSettings,
         CancellationToken cancellationToken)
     {
-        var maxPostings = Math.Max(1, settings.MaxPostingsPerSource);
+        var maxPostings = effectiveSettings.MaxPostingsPerSource;
         var result = await jobsApiClient.FetchAsync(
             source.SearchUrlTemplate,
             new JobsApiFetchOptions(
                 maxPostings,
-                Math.Max(1, settings.JobsApiPageSize),
-                Math.Max(1, settings.JobsApiMaxPages)),
+                effectiveSettings.JobsApiPageSize,
+                effectiveSettings.JobsApiMaxPages),
             cancellationToken);
 
         return result.Jobs
@@ -103,16 +215,26 @@ public sealed class JobPortalScraper(
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeHtmlSourceAsync(
         MarketPulseSourceSettings source,
         MarketPulseSettings settings,
+        EffectiveScrapeSettings effectiveSettings,
         CancellationToken cancellationToken)
     {
         var client = httpClientFactory.CreateClient("market-pulse");
         var links = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var maxPages = Math.Max(1, settings.MaxPagesPerSource);
+        var maxPages = effectiveSettings.MaxPagesPerSource;
 
         for (var page = 1; page <= maxPages; page++)
         {
             var searchUrl = BuildSearchUrl(source.SearchUrlTemplate, settings.SearchKeyword, page);
-            using var response = await client.GetAsync(searchUrl, cancellationToken);
+            using var response = await SendGetWithRetryAsync(client, searchUrl, settings, cancellationToken);
+
+            if (response is null)
+            {
+                logger.LogWarning(
+                    "Market pulse source {SourceName} failed after retries for {SearchUrl}.",
+                    source.Name,
+                    searchUrl);
+                continue;
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -121,6 +243,16 @@ public sealed class JobPortalScraper(
                     source.Name,
                     response.StatusCode,
                     searchUrl);
+
+                if (IsSoftBlockStatus(response.StatusCode))
+                {
+                    logger.LogWarning(
+                        "Stopping source {SourceName} softly after protected/block response {StatusCode}.",
+                        source.Name,
+                        response.StatusCode);
+                    break;
+                }
+
                 continue;
             }
 
@@ -130,27 +262,29 @@ public sealed class JobPortalScraper(
             {
                 links.Add(link);
 
-                if (links.Count >= settings.MaxPostingsPerSource)
+                if (links.Count >= effectiveSettings.MaxPostingsPerSource)
                 {
                     break;
                 }
             }
 
-            if (links.Count >= settings.MaxPostingsPerSource)
+            if (links.Count >= effectiveSettings.MaxPostingsPerSource)
             {
                 break;
             }
+
+            await DelayBetweenRequestsAsync(settings, cancellationToken);
         }
 
         var postings = new List<ScrapedJobPosting>();
 
-        foreach (var url in links.Take(Math.Max(1, settings.MaxPostingsPerSource)))
+        foreach (var url in links.Take(effectiveSettings.MaxPostingsPerSource))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
-                var posting = await ScrapePostingAsync(source.Name, url, cancellationToken);
+                var posting = await ScrapePostingAsync(source.Name, url, settings, cancellationToken);
 
                 if (posting != null)
                 {
@@ -162,10 +296,7 @@ public sealed class JobPortalScraper(
                 logger.LogDebug(ex, "Failed to scrape job posting {Url}.", url);
             }
 
-            if (settings.RequestDelaySeconds > 0)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(settings.RequestDelaySeconds), cancellationToken);
-            }
+            await DelayBetweenRequestsAsync(settings, cancellationToken);
         }
 
         return postings;
@@ -174,12 +305,13 @@ public sealed class JobPortalScraper(
     private async Task<ScrapedJobPosting?> ScrapePostingAsync(
         string sourceName,
         string url,
+        MarketPulseSettings settings,
         CancellationToken cancellationToken)
     {
         var client = httpClientFactory.CreateClient("market-pulse");
-        using var response = await client.GetAsync(url, cancellationToken);
+        using var response = await SendGetWithRetryAsync(client, url, settings, cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
+        if (response is null || !response.IsSuccessStatusCode)
         {
             return null;
         }
@@ -203,6 +335,93 @@ public sealed class JobPortalScraper(
             null,
             null);
     }
+
+    private async Task<HttpResponseMessage?> SendGetWithRetryAsync(
+        HttpClient client,
+        string url,
+        MarketPulseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var retryMax = Math.Clamp(settings.RetryMax, 1, 6);
+        var backoffBaseMs = Math.Clamp(settings.BackoffBaseMs, 250, 30_000);
+
+        for (var attempt = 1; attempt <= retryMax; attempt++)
+        {
+            try
+            {
+                var response = await client.GetAsync(
+                    url,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+
+                if (response.IsSuccessStatusCode || IsSoftBlockStatus(response.StatusCode))
+                {
+                    return response;
+                }
+
+                if ((int)response.StatusCode < 500)
+                {
+                    return response;
+                }
+
+                response.Dispose();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogDebug(ex, "Market pulse request failed for {Url} on attempt {Attempt}.", url, attempt);
+            }
+
+            if (attempt < retryMax)
+            {
+                var delayMs = Math.Min(
+                    backoffBaseMs * (int)Math.Pow(2, attempt - 1) + Random.Shared.Next(100, 900),
+                    60_000);
+                await Task.Delay(delayMs, cancellationToken);
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task DelayBetweenRequestsAsync(
+        MarketPulseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var minMs = settings.DelayMinMs > 0
+            ? settings.DelayMinMs
+            : Math.Max(0, settings.RequestDelaySeconds * 1000);
+        var maxMs = settings.DelayMaxMs > 0
+            ? settings.DelayMaxMs
+            : minMs;
+
+        if (maxMs < minMs)
+        {
+            (minMs, maxMs) = (maxMs, minMs);
+        }
+
+        var delayMs = Math.Clamp(Random.Shared.Next(minMs, maxMs + 1), 0, 120_000);
+        if (delayMs > 0)
+        {
+            await Task.Delay(delayMs, cancellationToken);
+        }
+    }
+
+    private static bool IsSoftBlockStatus(HttpStatusCode statusCode) =>
+        statusCode is HttpStatusCode.Forbidden or
+            HttpStatusCode.TooManyRequests or
+            HttpStatusCode.ServiceUnavailable;
+
+    private static EffectiveScrapeSettings ResolveEffectiveSettings(
+        MarketPulseSettings settings,
+        MarketPulseRefreshRequestDto? request) =>
+        new(
+            ClampPositive(request?.MaxPagesPerSource ?? settings.MaxPagesPerSource, 1, 100),
+            ClampPositive(request?.MaxPostingsPerSource ?? settings.MaxPostingsPerSource, 1, 5_000),
+            ClampPositive(request?.JobsApiPageSize ?? settings.JobsApiPageSize, 1, 500),
+            ClampPositive(request?.JobsApiMaxPages ?? settings.JobsApiMaxPages, 1, 100));
+
+    private static int ClampPositive(int value, int min, int max) =>
+        Math.Clamp(value, min, max);
 
     private static string BuildSearchUrl(string template, string keyword, int page)
     {
@@ -323,3 +542,9 @@ public sealed record ScrapedJobPosting(
     IReadOnlyList<string>? Specialties = null,
     IReadOnlyList<string>? Benefits = null,
     IReadOnlyList<string>? Skills = null);
+
+internal sealed record EffectiveScrapeSettings(
+    int MaxPagesPerSource,
+    int MaxPostingsPerSource,
+    int JobsApiPageSize,
+    int JobsApiMaxPages);

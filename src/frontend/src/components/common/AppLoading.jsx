@@ -1,5 +1,5 @@
 import { Loader2, Sparkles } from "lucide-react";
-import AuthLogo from "../auth/AuthLogo";
+import AuthLogo from "../../features/auth/components/AuthLogo";
 
 export default function AppLoading({
   title = "Loading workspace",

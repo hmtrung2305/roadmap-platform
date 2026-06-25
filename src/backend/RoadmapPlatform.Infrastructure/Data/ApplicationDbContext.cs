@@ -44,7 +44,15 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<LearningResourceSkill> LearningResourceSkills { get; set; }
 
+    public virtual DbSet<MarketPulseClassifierKeywordMapping> MarketPulseClassifierKeywordMappings { get; set; }
+
+    public virtual DbSet<MarketPulseCrawlRun> MarketPulseCrawlRuns { get; set; }
+
+    public virtual DbSet<MarketPulseFailedItem> MarketPulseFailedItems { get; set; }
+
     public virtual DbSet<MarketPulseInsightSnapshot> MarketPulseInsightSnapshots { get; set; }
+
+    public virtual DbSet<MarketPulseSourceHealth> MarketPulseSourceHealths { get; set; }
 
     public virtual DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
@@ -269,8 +277,6 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("email_verification_token");
 
-            entity.HasIndex(e => e.PendingLocalRegistrationId, "ix_email_verification_token_pending_local_registration_id");
-
             entity.Property(e => e.VerificationId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("verification_id");
@@ -286,13 +292,13 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValue(5)
                 .HasColumnName("max_attempts");
             entity.Property(e => e.OtpHash).HasColumnName("otp_hash");
-            entity.Property(e => e.PendingLocalRegistrationId).HasColumnName("pending_local_registration_id");
             entity.Property(e => e.Provider)
                 .HasMaxLength(50)
                 .HasColumnName("provider");
             entity.Property(e => e.Purpose)
                 .HasMaxLength(50)
                 .HasColumnName("purpose");
+            entity.Property(e => e.PendingLocalRegistrationId).HasColumnName("pending_local_registration_id");
             entity.Property(e => e.UsedAt).HasColumnName("used_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
@@ -427,11 +433,19 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("job_posting");
 
+            entity.HasIndex(e => new { e.IsActive, e.LastSeenAt }, "ix_job_posting_active_last_seen");
+
             entity.HasIndex(e => e.Category, "ix_job_posting_category");
+
+            entity.HasIndex(e => e.LifecycleStatus, "ix_job_posting_lifecycle_status");
 
             entity.HasIndex(e => e.PublishedAt, "ix_job_posting_published_at");
 
+            entity.HasIndex(e => e.ScrapedAt, "ix_job_posting_scraped_at");
+
             entity.HasIndex(e => e.SourceJobId, "ix_job_posting_source_job_id");
+
+            entity.HasIndex(e => e.Title, "ix_job_posting_title");
 
             entity.HasIndex(e => new { e.JobPortalSourceId, e.ExternalId }, "uq_job_posting_source_external").IsUnique();
 
@@ -530,6 +544,8 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.JobPostingDailySnapshotId).HasName("job_posting_daily_snapshot_pkey");
 
             entity.ToTable("job_posting_daily_snapshot");
+
+            entity.HasIndex(e => e.SnapshotDate, "ix_job_posting_daily_snapshot_date");
 
             entity.HasIndex(e => new { e.JobPostingId, e.SnapshotDate }, "uq_job_posting_daily_snapshot").IsUnique();
 
@@ -779,6 +795,134 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_learning_resource_skill_skill");
         });
 
+        modelBuilder.Entity<MarketPulseClassifierKeywordMapping>(entity =>
+        {
+            entity.HasKey(e => e.MarketPulseClassifierKeywordMappingId).HasName("market_pulse_classifier_keyword_mapping_pkey");
+
+            entity.ToTable("market_pulse_classifier_keyword_mapping");
+
+            entity.HasIndex(e => new { e.IsEnabled, e.Category }, "ix_market_pulse_classifier_enabled_category");
+
+            entity.HasIndex(e => new { e.Keyword, e.Category }, "uq_market_pulse_classifier_keyword_category").IsUnique();
+
+            entity.Property(e => e.MarketPulseClassifierKeywordMappingId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("market_pulse_classifier_keyword_mapping_id");
+            entity.Property(e => e.Category)
+                .HasMaxLength(100)
+                .HasColumnName("category");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.IsEnabled)
+                .HasDefaultValue(true)
+                .HasColumnName("is_enabled");
+            entity.Property(e => e.Keyword)
+                .HasMaxLength(160)
+                .HasColumnName("keyword");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Weight)
+                .HasPrecision(8, 2)
+                .HasDefaultValue(1m)
+                .HasColumnName("weight");
+        });
+
+        modelBuilder.Entity<MarketPulseCrawlRun>(entity =>
+        {
+            entity.HasKey(e => e.MarketPulseCrawlRunId).HasName("market_pulse_crawl_run_pkey");
+
+            entity.ToTable("market_pulse_crawl_run");
+
+            entity.HasIndex(e => e.SourceName, "ix_market_pulse_crawl_run_source");
+
+            entity.HasIndex(e => new { e.StartedAt, e.Status }, "ix_market_pulse_crawl_run_started_status").IsDescending(true, false);
+
+            entity.Property(e => e.MarketPulseCrawlRunId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("market_pulse_crawl_run_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DuplicateCount).HasColumnName("duplicate_count");
+            entity.Property(e => e.DurationMs).HasColumnName("duration_ms");
+            entity.Property(e => e.ErrorSummary).HasColumnName("error_summary");
+            entity.Property(e => e.FailedCount).HasColumnName("failed_count");
+            entity.Property(e => e.FetchedCount).HasColumnName("fetched_count");
+            entity.Property(e => e.FinishedAt).HasColumnName("finished_at");
+            entity.Property(e => e.Mode)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'scheduled'::character varying")
+                .HasColumnName("mode");
+            entity.Property(e => e.SavedCount).HasColumnName("saved_count");
+            entity.Property(e => e.SourceName)
+                .HasMaxLength(80)
+                .HasDefaultValueSql("'all'::character varying")
+                .HasColumnName("source_name");
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("started_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'running'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.StoppedReason).HasColumnName("stopped_reason");
+        });
+
+        modelBuilder.Entity<MarketPulseFailedItem>(entity =>
+        {
+            entity.HasKey(e => e.MarketPulseFailedItemId).HasName("market_pulse_failed_item_pkey");
+
+            entity.ToTable("market_pulse_failed_item");
+
+            entity.HasIndex(e => new { e.SourceName, e.Stage }, "ix_market_pulse_failed_item_source_stage");
+
+            entity.HasIndex(e => new { e.Status, e.CreatedAt }, "ix_market_pulse_failed_item_status_created").IsDescending(false, true);
+
+            entity.Property(e => e.MarketPulseFailedItemId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("market_pulse_failed_item_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ErrorCode)
+                .HasMaxLength(80)
+                .HasDefaultValueSql("'UNKNOWN'::character varying")
+                .HasColumnName("error_code");
+            entity.Property(e => e.ErrorDetail).HasColumnName("error_detail");
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.LastRetryAt).HasColumnName("last_retry_at");
+            entity.Property(e => e.MarketPulseCrawlRunId).HasColumnName("market_pulse_crawl_run_id");
+            entity.Property(e => e.RawPayload)
+                .HasColumnType("jsonb")
+                .HasColumnName("raw_payload");
+            entity.Property(e => e.RetryCount).HasColumnName("retry_count");
+            entity.Property(e => e.SourceName)
+                .HasMaxLength(80)
+                .HasDefaultValueSql("'unknown'::character varying")
+                .HasColumnName("source_name");
+            entity.Property(e => e.Stage)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'unknown'::character varying")
+                .HasColumnName("stage");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'open'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Url)
+                .HasMaxLength(500)
+                .HasColumnName("url");
+
+            entity.HasOne(d => d.MarketPulseCrawlRun).WithMany(p => p.MarketPulseFailedItems)
+                .HasForeignKey(d => d.MarketPulseCrawlRunId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("market_pulse_failed_item_market_pulse_crawl_run_id_fkey");
+        });
+
         modelBuilder.Entity<MarketPulseInsightSnapshot>(entity =>
         {
             entity.HasKey(e => e.MarketPulseInsightSnapshotId).HasName("market_pulse_insight_snapshot_pkey");
@@ -823,6 +967,34 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("source_name");
         });
 
+        modelBuilder.Entity<MarketPulseSourceHealth>(entity =>
+        {
+            entity.HasKey(e => e.MarketPulseSourceHealthId).HasName("market_pulse_source_health_pkey");
+
+            entity.ToTable("market_pulse_source_health");
+
+            entity.HasIndex(e => e.SourceName, "uq_market_pulse_source_health_source").IsUnique();
+
+            entity.Property(e => e.MarketPulseSourceHealthId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("market_pulse_source_health_id");
+            entity.Property(e => e.ConsecutiveFailures).HasColumnName("consecutive_failures");
+            entity.Property(e => e.LastErrorSummary).HasColumnName("last_error_summary");
+            entity.Property(e => e.LastFailureAt).HasColumnName("last_failure_at");
+            entity.Property(e => e.LastRunId).HasColumnName("last_run_id");
+            entity.Property(e => e.LastSuccessAt).HasColumnName("last_success_at");
+            entity.Property(e => e.SourceName)
+                .HasMaxLength(80)
+                .HasColumnName("source_name");
+            entity.Property(e => e.Status)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'unknown'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+        });
+
         modelBuilder.Entity<PaymentTransaction>(entity =>
         {
             entity.HasKey(e => e.TransactionId).HasName("payment_transaction_pkey");
@@ -863,7 +1035,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("pending_local_registration");
 
-            entity.HasIndex(e => e.ExpiresAt, "ix_pending_local_registration_expires_at").HasFilter("(used_at IS NULL)");
+            entity.HasIndex(e => e.ExpiresAt, "ix_pending_local_registration_expires_at")
+                .HasFilter("(used_at IS NULL)");
 
             entity.HasIndex(e => e.Email, "uq_pending_local_registration_email_active")
                 .IsUnique()
@@ -1511,6 +1684,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted");
             entity.Property(e => e.LevelName)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("''::character varying")
@@ -1521,6 +1696,13 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("level_slug");
             entity.Property(e => e.MatchedSkills).HasColumnName("matched_skills");
             entity.Property(e => e.MissingSkills).HasColumnName("missing_skills");
+            entity.Property(e => e.RoadmapVersionNumber)
+                .HasDefaultValue(1)
+                .HasColumnName("roadmap_version_number");
+            entity.Property(e => e.RoadmapVersionTitle)
+                .HasMaxLength(255)
+                .HasDefaultValueSql("''::character varying")
+                .HasColumnName("roadmap_version_title");
             entity.Property(e => e.SnapshotJson)
                 .HasColumnType("jsonb")
                 .HasColumnName("snapshot_json");
@@ -1696,6 +1878,8 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.SkillModuleLessonId).HasName("skill_module_lesson_pkey");
 
             entity.ToTable("skill_module_lesson");
+
+            entity.HasIndex(e => new { e.SkillModuleId, e.IndexingStatus }, "ix_skill_module_lesson_indexing_status");
 
             entity.HasIndex(e => new { e.SkillModuleId, e.OrderIndex }, "ix_skill_module_lesson_module_order");
 
@@ -1978,6 +2162,8 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
 
             entity.ToTable("skill_trend_snapshot");
+
+            entity.HasIndex(e => e.SnapshotDate, "ix_skill_trend_snapshot_date");
 
             entity.HasIndex(e => new { e.SkillSlug, e.SnapshotDate, e.SourceName }, "uq_skill_trend_snapshot").IsUnique();
 

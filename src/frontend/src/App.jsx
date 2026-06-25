@@ -34,13 +34,16 @@ import ContentManagerLearningModuleCreatePage from "./pages/content/learningModu
 import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
 import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
 import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
+import ContentManagerSkillGapPage from "./pages/content/ContentManagerSkillGapPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
+import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
   ADMIN_SURFACE_PERMISSIONS,
   CONTENT_MANAGER_SURFACE_PERMISSIONS,
   LEARNER_SURFACE_PERMISSIONS,
+  PERMISSIONS,
 } from "./constants/permissions";
 
 const ContentManagerRoadmapsPage = lazy(() => import("./pages/content/roadmaps/ContentManagerRoadmapsPage"));
@@ -231,6 +234,14 @@ export default function App() {
             <Route path="/content/roadmaps" element={<LazyContentPage><ContentManagerRoadmapsPage /></LazyContentPage>} />
             <Route path="/content/roadmaps/:roadmapId/edit" element={<LazyContentPage><ContentManagerRoadmapEditorPage /></LazyContentPage>} />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
+            <Route
+              path="/content/skill-gap"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY]}>
+                  <ContentManagerSkillGapPage />
+                </RequirePermission>
+              }
+            />
           </Route>
 
           <Route
@@ -241,6 +252,7 @@ export default function App() {
             }
           >
             <Route path="/admin" element={<AdminHomePage />} />
+            <Route path="/admin/market-pulse" element={<AdminMarketPulsePage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 

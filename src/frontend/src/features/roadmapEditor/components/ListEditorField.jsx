@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 
-import { ModuleButton, ModuleField } from "../../../components/learningModules/learningModuleUi";
+import { ModuleButton, ModuleField } from "../../learningModules/components/learningModuleUi";
 import { listToText, normalizeTextList } from "../roadmapEditorUtils";
 
 function updateItem(items, index, value) {

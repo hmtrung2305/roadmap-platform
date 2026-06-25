@@ -75,7 +75,7 @@ database/migrations/016-market-pulse-analytical-schema.sql
 
 The refresh job writes `job_posting`, `job_posting_version`, `job_posting_observation`, `skill_taxonomy`, `job_skill_mention`, `job_market_daily_snapshot`, and `market_pulse_insight_snapshot`.
 
-## Step 3: Required Repository Variables
+## Step 3: Jobs API Repository Variables
 
 Create variables under:
 
@@ -83,29 +83,36 @@ Create variables under:
 Settings -> Secrets and variables -> Actions -> Variables
 ```
 
-Supported variables:
+Required variable:
 
 ```text
-MARKET_PULSE_ACTIVE_JOBS_API_URL
-MARKET_PULSE_TODAY_JOBS_API_URL
 MARKET_PULSE_JOBS_API_BASE_URL
 ```
 
-Example values:
+Example value:
+
+```text
+MARKET_PULSE_JOBS_API_BASE_URL=https://<jobs-api-domain>
+```
+
+The workflow derives these URLs from the base URL when they are not set:
 
 ```text
 MARKET_PULSE_ACTIVE_JOBS_API_URL=https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc
 MARKET_PULSE_TODAY_JOBS_API_URL=https://<jobs-api-domain>/api/v1/jobs/today
-MARKET_PULSE_JOBS_API_BASE_URL=https://<jobs-api-domain>
 ```
 
-The workflow fails clearly when any required URL is missing. It does not fall back to a hardcoded localhost or tunnel URL.
-Repository variables are literal values. Do not use Windows CMD interpolation
-such as `%jobsApi%` here; paste the full production URL into each variable.
+You can still define either URL explicitly as a repository variable when you
+need a custom query. Manual workflow runs can also override the base URL or the
+full active/today URLs. Repository variables are literal values. Do not use
+Windows CMD interpolation such as `%jobsApi%` here; paste the full production
+URL into each variable.
 
 Optional variables:
 
 ```text
+MARKET_PULSE_ACTIVE_JOBS_API_URL
+MARKET_PULSE_TODAY_JOBS_API_URL
 MARKET_PULSE_MAX_POSTINGS
 MARKET_PULSE_JOBS_API_PAGE_SIZE
 MARKET_PULSE_JOBS_API_MAX_PAGES

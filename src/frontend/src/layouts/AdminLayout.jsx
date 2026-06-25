@@ -5,11 +5,12 @@ import {
   ChevronUp,
   LayoutDashboard,
   LogOut,
+  Activity,
   Settings,
   Shield,
 } from "lucide-react";
 
-import AuthLogo from "../components/auth/AuthLogo";
+import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useProfileStore } from "../stores/useProfileStore";
@@ -20,6 +21,12 @@ const adminNavItems = [
     path: "/admin",
     icon: LayoutDashboard,
     match: (pathname) => pathname === "/admin",
+  },
+  {
+    label: "Market Pulse",
+    path: "/admin/market-pulse",
+    icon: Activity,
+    match: (pathname) => pathname === "/admin/market-pulse",
   },
   {
     label: "Settings",
@@ -36,6 +43,10 @@ function getAdminPageTitle(pathname) {
 
   if (pathname === "/admin/settings") {
     return "Settings";
+  }
+
+  if (pathname === "/admin/market-pulse") {
+    return "Market Pulse";
   }
 
   return "Admin";

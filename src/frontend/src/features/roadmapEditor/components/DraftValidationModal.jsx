@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AlertCircle, CheckCircle2, X } from "lucide-react";
 
-import { ModuleButton } from "../../../components/learningModules/learningModuleUi";
+import { ModuleButton } from "../../learningModules/components/learningModuleUi";
 
 function ValidationList({ title, items, tone }) {
   if (!items?.length) return null;

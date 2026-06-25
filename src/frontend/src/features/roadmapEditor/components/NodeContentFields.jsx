@@ -1,5 +1,5 @@
-import { ModuleField } from "../../../components/learningModules/learningModuleUi";
-import { inputClass } from "../../../components/learningModules/learningModuleUi";
+import { ModuleField } from "../../learningModules/components/learningModuleUi";
+import { inputClass } from "../../learningModules/components/learningModuleUi";
 import { normalizeNodeType } from "../nodeRules";
 import ListEditorField from "./ListEditorField";
 

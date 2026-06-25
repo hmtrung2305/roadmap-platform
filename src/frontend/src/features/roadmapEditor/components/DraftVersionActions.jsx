@@ -1,7 +1,7 @@
 import { GitBranch, Loader2, Send, ShieldCheck, ArrowRight, History } from "lucide-react";
 
 import AppSelect from "../../../components/common/AppSelect";
-import { ModuleButton, ModuleCard } from "../../../components/learningModules/learningModuleUi";
+import { ModuleButton, ModuleCard } from "../../learningModules/components/learningModuleUi";
 import { prettyStatus } from "../roadmapEditorUtils";
 
 function getMaxVersionNumber(versions = []) {

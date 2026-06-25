@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 
-import { ModuleButton } from "../../../components/learningModules/learningModuleUi";
+import { ModuleButton } from "../../learningModules/components/learningModuleUi";
 
 export default function MappingList({ title, icon: Icon, items, getId, getLabel, emptyText, onRemove }) {
   return (

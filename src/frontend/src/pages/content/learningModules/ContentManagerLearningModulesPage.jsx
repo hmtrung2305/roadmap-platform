@@ -21,7 +21,7 @@ import {
   getLearningModuleRouteSegment,
 } from "../../../api/learningModuleApi";
 import AppSelect from "../../../components/common/AppSelect";
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
   getStatusTone,
   ModuleBadge,
@@ -30,7 +30,7 @@ import {
   ModuleEmptyState,
   ModulePageShell,
   prettyModuleStatus,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../../features/learningModules/components/learningModuleUi";
 
 const statuses = ["draft", "published", "archived"];
 const pageSize = 15;

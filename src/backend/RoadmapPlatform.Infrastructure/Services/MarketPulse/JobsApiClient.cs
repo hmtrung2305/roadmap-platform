@@ -3,12 +3,15 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Models.MarketPulse;
+using RoadmapPlatform.Infrastructure.Configurations;
 
 namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
 public sealed class JobsApiClient(
     IHttpClientFactory httpClientFactory,
+    IOptions<MarketPulseSettings> settings,
     ILogger<JobsApiClient> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -59,6 +62,7 @@ public sealed class JobsApiClient(
                 }
 
                 jobs.AddRange(nextPage.Jobs);
+                await DelayBetweenRequestsAsync(cancellationToken);
             }
 
             return new JobsApiResult(
@@ -85,10 +89,13 @@ public sealed class JobsApiClient(
         request.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
         request.Headers.TryAddWithoutValidation("Accept", "application/json");
 
-        using var response = await client.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        using var response = await SendWithRetryAsync(client, request, cancellationToken);
+
+        if (response is null)
+        {
+            logger.LogWarning("Jobs API failed after retries for {Url}.", url);
+            return null;
+        }
 
         if (!response.IsSuccessStatusCode)
         {
@@ -120,6 +127,81 @@ public sealed class JobsApiClient(
             logger.LogWarning(ex, "Could not read Jobs API data from {Url}.", url);
             return null;
         }
+    }
+
+    private async Task<HttpResponseMessage?> SendWithRetryAsync(
+        HttpClient client,
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var retryMax = Math.Clamp(settings.Value.RetryMax, 1, 6);
+        var backoffBaseMs = Math.Clamp(settings.Value.BackoffBaseMs, 250, 30_000);
+
+        for (var attempt = 1; attempt <= retryMax; attempt++)
+        {
+            using var attemptRequest = CloneRequest(request);
+
+            try
+            {
+                var response = await client.SendAsync(
+                    attemptRequest,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+
+                if (response.IsSuccessStatusCode ||
+                    response.StatusCode is System.Net.HttpStatusCode.Forbidden or
+                        System.Net.HttpStatusCode.TooManyRequests or
+                        System.Net.HttpStatusCode.ServiceUnavailable ||
+                    (int)response.StatusCode < 500)
+                {
+                    return response;
+                }
+
+                response.Dispose();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogDebug(ex, "Jobs API request failed for {Url} on attempt {Attempt}.", request.RequestUri, attempt);
+            }
+
+            if (attempt < retryMax)
+            {
+                var delayMs = Math.Min(
+                    backoffBaseMs * (int)Math.Pow(2, attempt - 1) + Random.Shared.Next(100, 900),
+                    60_000);
+                await Task.Delay(delayMs, cancellationToken);
+            }
+        }
+
+        return null;
+    }
+
+    private async Task DelayBetweenRequestsAsync(CancellationToken cancellationToken)
+    {
+        var minMs = settings.Value.DelayMinMs;
+        var maxMs = settings.Value.DelayMaxMs;
+
+        if (maxMs < minMs)
+        {
+            (minMs, maxMs) = (maxMs, minMs);
+        }
+
+        var delayMs = Math.Clamp(Random.Shared.Next(Math.Max(0, minMs), Math.Max(0, maxMs) + 1), 0, 120_000);
+        if (delayMs > 0)
+        {
+            await Task.Delay(delayMs, cancellationToken);
+        }
+    }
+
+    private static HttpRequestMessage CloneRequest(HttpRequestMessage request)
+    {
+        var clone = new HttpRequestMessage(request.Method, request.RequestUri);
+        foreach (var header in request.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        return clone;
     }
 
     private static JobMarketPosting ToJobMarketPosting(JobsApiJob job)
@@ -290,7 +372,7 @@ public sealed record JobsApiFetchOptions(int MaxItems, int PageSize, int MaxPage
     public static JobsApiFetchOptions Default { get; } = new(160, 100, 2);
 
     public JobsApiFetchOptions Normalize() => new(
-        Math.Clamp(MaxItems, 1, 2_000),
+        Math.Clamp(MaxItems, 1, 5_000),
         Math.Clamp(PageSize, 1, 500),
         Math.Clamp(MaxPages, 1, 100));
 }

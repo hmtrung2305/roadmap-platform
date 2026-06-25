@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, History, Layers3, Loader2, Map as MapIcon } from "lucide-react";
 
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
   ModuleCard,
   ModuleEmptyState,
   ModulePageShell,
   ModuleButton,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../../features/learningModules/components/learningModuleUi";
 import DraftValidationModal from "../../../features/roadmapEditor/components/DraftValidationModal";
 import DraftVersionActions from "../../../features/roadmapEditor/components/DraftVersionActions";
 import MetadataEditor from "../../../features/roadmapEditor/components/MetadataEditor";

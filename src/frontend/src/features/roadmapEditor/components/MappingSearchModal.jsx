@@ -5,7 +5,7 @@ import { Loader2, Search, X } from "lucide-react";
 import {
   ModuleButton,
   ModuleEmptyState,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../learningModules/components/learningModuleUi";
 
 export default function MappingSearchModal({
   isOpen,

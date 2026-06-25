@@ -14,7 +14,7 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis
         public string GroupSlug { get; set; }
             = string.Empty;
 
-        public string SelectionType { get; set; }
+        public string? SelectionType { get; set; }
             = string.Empty;
 
         public string PhaseName { get; set; }

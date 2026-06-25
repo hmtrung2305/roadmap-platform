@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Mail } from "lucide-react";
 import { toast } from "react-toastify";
 
-import SettingsSection from "../../components/settings/SettingsSection";
-import SettingsRow from "../../components/settings/SettingsRow";
-import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
-import AddLocalLoginModal from "../../components/settings/AddLocalLoginModal";
-import VerifyLocalEmailModal from "../../components/settings/VerifyLocalEmailModal";
-import ChangeEmailModal from "../../components/settings/ChangeEmailModal";
+import SettingsSection from "../../features/settings/components/SettingsSection";
+import SettingsRow from "../../features/settings/components/SettingsRow";
+import ChangePasswordModal from "../../features/settings/components/ChangePasswordModal";
+import AddLocalLoginModal from "../../features/settings/components/AddLocalLoginModal";
+import VerifyLocalEmailModal from "../../features/settings/components/VerifyLocalEmailModal";
+import ChangeEmailModal from "../../features/settings/components/ChangeEmailModal";
 import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useAuthProviderStore } from "../../stores/useAuthProviderStore";

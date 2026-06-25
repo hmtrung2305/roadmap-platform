@@ -24,8 +24,13 @@ export const PERMISSIONS = Object.freeze({
 
   CAREER_ROLE_VIEW_CATALOG: "career_role.view.catalog",
   MARKET_PULSE_VIEW_CATALOG: "market_pulse.view.catalog",
+  MARKET_PULSE_MANAGE_ANY: "market_pulse.manage.any",
   SKILL_VIEW_CATALOG: "skill.view.catalog",
   SKILL_GAP_ANALYSIS_CREATE_SELF: "skill_gap_analysis.create.self",
+  SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF: "skill_gap_analysis_history.view.self",
+  SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF: "skill_gap_analysis_history.delete.self",
+  SKILL_GAP_CONFIG_VIEW_ANY: "skill_gap_config.view.any",
+  SKILL_GAP_CONFIG_UPDATE_ANY: "skill_gap_config.update.any",
 
   ROADMAP_VIEW_PUBLISHED: "roadmap.view.published",
   ROADMAP_NODE_VIEW_PUBLISHED: "roadmap_node.view.published",
@@ -104,6 +109,7 @@ export const LEARNER_SURFACE_PERMISSIONS = Object.freeze([
 export const CONTENT_MANAGER_SURFACE_PERMISSIONS = Object.freeze([
   PERMISSIONS.LEARNING_MODULE_VIEW_OWN,
   PERMISSIONS.LEARNING_MODULE_CREATE_OWN,
+  PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY,
 ]);
 
 export const ADMIN_SURFACE_PERMISSIONS = Object.freeze([
@@ -112,5 +118,6 @@ export const ADMIN_SURFACE_PERMISSIONS = Object.freeze([
   PERMISSIONS.PERMISSION_VIEW_ANY,
   PERMISSIONS.SKILL_VIEW_ANY,
   PERMISSIONS.SKILL_CREATE_ANY,
+  PERMISSIONS.MARKET_PULSE_MANAGE_ANY,
   PERMISSIONS.SYSTEM_HEALTH_VIEW_ANY,
 ]);

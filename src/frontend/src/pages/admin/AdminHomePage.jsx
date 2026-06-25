@@ -1,15 +1,18 @@
 import {
   KeyRound,
+  Activity,
   ShieldCheck,
   SlidersHorizontal,
   UsersRound,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const adminAreas = [
   { title: "Users", icon: UsersRound },
   { title: "Roles", icon: ShieldCheck },
   { title: "Permissions", icon: KeyRound },
   { title: "Skills", icon: SlidersHorizontal },
+  { title: "Market Pulse", icon: Activity, href: "/admin/market-pulse" },
 ];
 
 export default function AdminHomePage() {
@@ -32,9 +35,10 @@ export default function AdminHomePage() {
           const Icon = area.icon;
 
           return (
-            <div
+            <Link
               key={area.title}
-              className="rounded-xl border border-[#B9D8CC] bg-white p-5 shadow-sm"
+              to={area.href || "/admin"}
+              className="block rounded-xl border border-[#B9D8CC] bg-white p-5 shadow-sm transition hover:border-[#6FCF97]"
             >
               <div className="grid h-11 w-11 place-items-center rounded-lg bg-[#6FCF97]/20 text-[#1F6F5F]">
                 <Icon size={21} />
@@ -42,7 +46,7 @@ export default function AdminHomePage() {
               <h2 className="mt-4 text-base font-extrabold text-[#18332D]">
                 {area.title}
               </h2>
-            </div>
+            </Link>
           );
         })}
       </section>

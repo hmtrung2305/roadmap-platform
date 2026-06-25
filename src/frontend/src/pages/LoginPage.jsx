@@ -2,13 +2,13 @@ import { useCallback, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { startGitHubLogin, startGoogleLogin } from "../api/authApi";
 import { CAPTCHA_ENABLED } from "../api/apiConfig";
-import AuthLogo from "../components/auth/AuthLogo";
-import AuthRoadmapPanel from "../components/auth/AuthRoadmapPanel";
+import AuthLogo from "../features/auth/components/AuthLogo";
+import AuthRoadmapPanel from "../features/auth/components/AuthRoadmapPanel";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useAuthStore } from "../stores/useAuthStore";
-import MotionWrapper from "../components/auth/MotionWrapper";
+import MotionWrapper from "../features/auth/components/MotionWrapper";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { resolvePostLoginRedirect } from "../utils/navigationUtils";
 

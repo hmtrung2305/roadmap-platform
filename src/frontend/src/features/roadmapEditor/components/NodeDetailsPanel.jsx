@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, BookOpenText, Plus, Save, Tag, Trash2 } from "lucide-react";
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
+import ConfirmActionDialog from "../../learningModules/components/ConfirmActionDialog";
 
 import { DirtyStateBadge } from "../../learningModuleEditor/EditorControls";
 import {
@@ -11,7 +11,7 @@ import {
   ModuleEmptyState,
   ModuleField,
   numberInputClass,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../learningModules/components/learningModuleUi";
 import { difficultyOptions } from "../roadmapEditorConstants";
 import { getNodeTone } from "../roadmapEditorUtils";
 import {

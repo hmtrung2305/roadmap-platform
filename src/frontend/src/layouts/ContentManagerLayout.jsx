@@ -5,13 +5,16 @@ import {
   ChevronUp,
   LayoutDashboard,
   LibraryBig,
+  ListChecks,
   LogOut,
   Map as MapIcon,
   Settings,
   Shield,
 } from "lucide-react";
 
-import AuthLogo from "../components/auth/AuthLogo";
+import { PERMISSIONS } from "../constants/permissions";
+import { hasPermission } from "../utils/authorizationUtils";
+import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useAccountProfileStore } from "../stores/useAccountProfileStore";
@@ -24,12 +27,14 @@ const contentManagerNavGroups = [
         label: "Overview",
         path: "/content/overview",
         icon: LayoutDashboard,
-        match: (pathname) => pathname === "/content" || pathname === "/content/overview",
+        match: (pathname) =>
+          pathname === "/content" || pathname === "/content/overview",
       },
       {
         label: "Learning Modules",
         path: "/content/learning-modules",
         icon: LibraryBig,
+        requiredPermission: PERMISSIONS.LEARNING_MODULE_VIEW_OWN,
         match: (pathname) => pathname.startsWith("/content/learning-modules"),
       },
       {
@@ -37,6 +42,13 @@ const contentManagerNavGroups = [
         path: "/content/roadmaps",
         icon: MapIcon,
         match: (pathname) => pathname.startsWith("/content/roadmaps"),
+      },
+      {
+        label: "Skill Gap Config",
+        path: "/content/skill-gap",
+        icon: ListChecks,
+        requiredPermission: PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY,
+        match: (pathname) => pathname.startsWith("/content/skill-gap"),
       },
     ],
   },
@@ -66,6 +78,9 @@ function getContentManagerPageTitle(pathname) {
   if (pathname.startsWith("/content/roadmaps")) {
     return "Roadmaps";
   }
+  if (pathname === "/content/skill-gap") {
+    return "Skill Gap Config";
+  }
 
   if (pathname === "/content/settings") {
     return "Settings";
@@ -76,12 +91,12 @@ function getContentManagerPageTitle(pathname) {
 
 function getDisplayName(user, accountProfile) {
   return (
-    accountProfile?.displayName
-    || user?.fullName
-    || user?.displayName
-    || user?.name
-    || user?.username
-    || "Content Manager"
+    accountProfile?.displayName ||
+    user?.fullName ||
+    user?.displayName ||
+    user?.name ||
+    user?.username ||
+    "Content Manager"
   );
 }
 
@@ -145,6 +160,18 @@ export default function ContentManagerLayout() {
   const avatarUrl = accountProfile?.avatarUrl?.trim();
   const showAvatar = Boolean(avatarUrl && !avatarFailed);
 
+  const visibleNavItems = useMemo(
+    () =>
+      contentManagerNavGroups
+        .flatMap((group) => group.items)
+        .filter(
+          (item) =>
+            !item.requiredPermission ||
+            hasPermission(user, item.requiredPermission),
+        ),
+    [user],
+  );
+
   const goToSettings = () => {
     setIsUserMenuOpen(false);
     navigate("/content/settings");
@@ -170,7 +197,7 @@ export default function ContentManagerLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-5">
-          {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.match(location.pathname);
 
@@ -192,7 +219,10 @@ export default function ContentManagerLayout() {
           })}
         </nav>
 
-        <div ref={userMenuRef} className="relative border-t border-[#B9D8CC] p-3">
+        <div
+          ref={userMenuRef}
+          className="relative border-t border-[#B9D8CC] p-3"
+        >
           {isUserMenuOpen && (
             <div className="absolute bottom-[72px] left-3 right-3 z-50 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-xl">
               <button
@@ -290,7 +320,7 @@ export default function ContentManagerLayout() {
             </div>
 
             <div className="hidden items-center gap-2 md:flex lg:hidden">
-              {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.match(location.pathname);
 
@@ -351,7 +381,7 @@ export default function ContentManagerLayout() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto border-t border-[#B9D8CC]/70 px-4 py-2 md:hidden">
-            {contentManagerNavGroups.flatMap((group) => group.items).map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = item.match(location.pathname);
 

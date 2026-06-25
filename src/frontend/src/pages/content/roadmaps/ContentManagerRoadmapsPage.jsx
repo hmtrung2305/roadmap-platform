@@ -19,14 +19,14 @@ import { toast } from "react-toastify";
 
 import { contentManagerRoadmapApi } from "../../../api/contentRoadmapApi";
 import AppSelect from "../../../components/common/AppSelect";
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
   ModuleBadge,
   ModuleButton,
   ModuleCard,
   ModuleEmptyState,
   ModulePageShell,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../../features/learningModules/components/learningModuleUi";
 import {
   initialRoadmapListResult,
   roadmapPageSize,
@@ -75,8 +75,8 @@ function RoadmapActionsMenu({ roadmap, onDelete }) {
 
     const onPointerDown = (event) => {
       if (
-        menuRef.current?.contains(event.target)
-        || buttonRef.current?.contains(event.target)
+        menuRef.current?.contains(event.target) ||
+        buttonRef.current?.contains(event.target)
       ) {
         return;
       }
@@ -97,38 +97,45 @@ function RoadmapActionsMenu({ roadmap, onDelete }) {
     };
   }, [isOpen]);
 
-  const menu = isOpen && menuPosition ? createPortal(
-    <div
-      ref={menuRef}
-      style={{ top: menuPosition.top, left: menuPosition.left, width: menuPosition.width }}
-      className="fixed z-[90] rounded-xl border border-[#B9D8CC] bg-white p-1 shadow-xl"
-    >
-      <div className="group/tooltip relative">
-        <button
-          type="button"
-          aria-disabled={!isDraft}
-          onClick={() => {
-            if (!isDraft) return;
-            setIsOpen(false);
-            onDelete(roadmap);
-          }}
-          className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold transition ${
-            isDraft
-              ? "text-rose-700 hover:bg-rose-50"
-              : "cursor-not-allowed text-slate-400"
-          }`}
-        >
-          <Trash2 size={14} /> Delete
-        </button>
-        {!isDraft && (
-          <div className="pointer-events-none absolute right-full top-1/2 z-[95] mr-2 hidden w-56 -translate-y-1/2 rounded-lg border border-[#B9D8CC] bg-[#18332D] px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/tooltip:block">
-            Only draft roadmap versions can be deleted.
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body,
-  ) : null;
+  const menu =
+    isOpen && menuPosition
+      ? createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              top: menuPosition.top,
+              left: menuPosition.left,
+              width: menuPosition.width,
+            }}
+            className="fixed z-[90] rounded-xl border border-[#B9D8CC] bg-white p-1 shadow-xl"
+          >
+            <div className="group/tooltip relative">
+              <button
+                type="button"
+                aria-disabled={!isDraft}
+                onClick={() => {
+                  if (!isDraft) return;
+                  setIsOpen(false);
+                  onDelete(roadmap);
+                }}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold transition ${
+                  isDraft
+                    ? "text-rose-700 hover:bg-rose-50"
+                    : "cursor-not-allowed text-slate-400"
+                }`}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+              {!isDraft && (
+                <div className="pointer-events-none absolute right-full top-1/2 z-[95] mr-2 hidden w-56 -translate-y-1/2 rounded-lg border border-[#B9D8CC] bg-[#18332D] px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/tooltip:block">
+                  Only draft roadmap versions can be deleted.
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="relative z-30">
@@ -156,32 +163,40 @@ function RoadmapCard({ roadmap, onEdit, onDelete }) {
       transition={{ duration: 0.18 }}
     >
       <ModuleCard className="overflow-visible transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="space-y-4 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <ModuleBadge tone={getStatusTone(roadmap.status)}>{prettyStatus(roadmap.status)}</ModuleBadge>
+        <div className="space-y-4 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <ModuleBadge tone={getStatusTone(roadmap.status)}>
+                  {prettyStatus(roadmap.status)}
+                </ModuleBadge>
+              </div>
+
+              <h2 className="truncate text-lg font-extrabold text-[#18332D]">
+                {roadmap.title}
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                Career Role: {roadmap.careerRole?.name || roadmap.slug}
+              </p>
             </div>
+          </div>
 
-            <h2 className="truncate text-lg font-extrabold text-[#18332D]">{roadmap.title}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">
-              Career Role: {roadmap.careerRole?.name || roadmap.slug}
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B9D8CC]/70 pt-4">
+            <span className="text-xs font-bold text-slate-500">
+              Updated {formatDate(roadmap.updatedAt || roadmap.createdAt)}
+            </span>
+            <div className="flex items-center gap-2">
+              <ModuleButton
+                className="h-9 min-w-[132px] px-3"
+                onClick={() => onEdit(roadmap)}
+              >
+                <Edit3 size={14} className="shrink-0" />{" "}
+                <span>Open editor</span>
+              </ModuleButton>
+              <RoadmapActionsMenu roadmap={roadmap} onDelete={onDelete} />
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B9D8CC]/70 pt-4">
-          <span className="text-xs font-bold text-slate-500">
-            Updated {formatDate(roadmap.updatedAt || roadmap.createdAt)}
-          </span>
-          <div className="flex items-center gap-2">
-            <ModuleButton className="h-9 min-w-[132px] px-3" onClick={() => onEdit(roadmap)}>
-              <Edit3 size={14} className="shrink-0" /> <span>Open editor</span>
-            </ModuleButton>
-            <RoadmapActionsMenu roadmap={roadmap} onDelete={onDelete} />
-          </div>
-        </div>
-      </div>
       </ModuleCard>
     </motion.div>
   );
@@ -204,28 +219,36 @@ function RoadmapList({ roadmaps, onEdit, onDelete }) {
             key={`${roadmap.roadmapId}-${roadmap.roadmapVersionId}`}
             className="grid gap-3 border-b border-[#B9D8CC]/60 px-4 py-4 last:border-b-0 xl:grid-cols-[minmax(280px,1.6fr)_220px_120px_150px_190px] xl:items-center"
           >
-          <div className="min-w-0">
-            <div className="truncate text-base font-extrabold text-[#18332D]">{roadmap.title}</div>
-          </div>
+            <div className="min-w-0">
+              <div className="truncate text-base font-extrabold text-[#18332D]">
+                {roadmap.title}
+              </div>
+            </div>
 
-          <div className="text-sm font-bold text-slate-700">
-            {roadmap.careerRole?.name || roadmap.slug}
-          </div>
+            <div className="text-sm font-bold text-slate-700">
+              {roadmap.careerRole?.name || roadmap.slug}
+            </div>
 
-          <div>
-            <ModuleBadge tone={getStatusTone(roadmap.status)}>{prettyStatus(roadmap.status)}</ModuleBadge>
-          </div>
+            <div>
+              <ModuleBadge tone={getStatusTone(roadmap.status)}>
+                {prettyStatus(roadmap.status)}
+              </ModuleBadge>
+            </div>
 
-          <div className="text-sm font-bold text-slate-600">
-            {formatDate(roadmap.updatedAt || roadmap.createdAt)}
-          </div>
+            <div className="text-sm font-bold text-slate-600">
+              {formatDate(roadmap.updatedAt || roadmap.createdAt)}
+            </div>
 
-          <div className="flex justify-start gap-2 xl:justify-end">
-            <ModuleButton className="h-9 min-w-[132px] px-3" onClick={() => onEdit(roadmap)}>
-              <Edit3 size={14} className="shrink-0" /> <span>Open editor</span>
-            </ModuleButton>
-            <RoadmapActionsMenu roadmap={roadmap} onDelete={onDelete} />
-          </div>
+            <div className="flex justify-start gap-2 xl:justify-end">
+              <ModuleButton
+                className="h-9 min-w-[132px] px-3"
+                onClick={() => onEdit(roadmap)}
+              >
+                <Edit3 size={14} className="shrink-0" />{" "}
+                <span>Open editor</span>
+              </ModuleButton>
+              <RoadmapActionsMenu roadmap={roadmap} onDelete={onDelete} />
+            </div>
           </div>
         ))}
       </div>
@@ -238,14 +261,20 @@ export default function ContentManagerRoadmapsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const requestedStatus = searchParams.get("status");
-  const activeStatus = roadmapStatuses.includes(requestedStatus) ? requestedStatus : "draft";
+  const activeStatus = roadmapStatuses.includes(requestedStatus)
+    ? requestedStatus
+    : "draft";
   const searchQuery = searchParams.get("q") || "";
   const requestedSort = searchParams.get("sort") || "updated_desc";
-  const sort = roadmapSortOptions.some((option) => option.value === requestedSort)
+  const sort = roadmapSortOptions.some(
+    (option) => option.value === requestedSort,
+  )
     ? requestedSort
     : "updated_desc";
   const requestedView = searchParams.get("view") || "list";
-  const viewMode = viewModes.some((option) => option.value === requestedView) ? requestedView : "list";
+  const viewMode = viewModes.some((option) => option.value === requestedView)
+    ? requestedView
+    : "list";
   const requestedPage = parsePage(searchParams.get("page"));
   const searchParamsString = searchParams.toString();
 
@@ -339,7 +368,15 @@ export default function ContentManagerRoadmapsPage() {
     loadRoadmaps();
 
     return () => controller.abort();
-  }, [activeStatus, requestedPage, reloadToken, searchQuery, searchParamsString, setSearchParams, sort]);
+  }, [
+    activeStatus,
+    requestedPage,
+    reloadToken,
+    searchQuery,
+    searchParamsString,
+    setSearchParams,
+    sort,
+  ]);
 
   const pageRange = useMemo(() => {
     if (result.totalCount === 0) return null;
@@ -358,7 +395,9 @@ export default function ContentManagerRoadmapsPage() {
   };
 
   const openEditor = (roadmap) => {
-    const versionQuery = roadmap.roadmapVersionId ? `?versionId=${roadmap.roadmapVersionId}` : "";
+    const versionQuery = roadmap.roadmapVersionId
+      ? `?versionId=${roadmap.roadmapVersionId}`
+      : "";
     navigate(`/content/roadmaps/${roadmap.roadmapId}/edit${versionQuery}`);
   };
 
@@ -367,7 +406,9 @@ export default function ContentManagerRoadmapsPage() {
 
     try {
       setIsDeletingDraft(true);
-      await contentManagerRoadmapApi.deleteDraftVersion(roadmapToDelete.roadmapVersionId);
+      await contentManagerRoadmapApi.deleteDraftVersion(
+        roadmapToDelete.roadmapVersionId,
+      );
       setRoadmapToDelete(null);
       setReloadToken((current) => current + 1);
       toast.success("Draft deleted.");
@@ -396,7 +437,6 @@ export default function ContentManagerRoadmapsPage() {
                 </h1>
               </div>
             </div>
-
           </div>
         </section>
 
@@ -409,7 +449,12 @@ export default function ContentManagerRoadmapsPage() {
               <button
                 key={status}
                 type="button"
-                onClick={() => setQueryValues({ status: status === "draft" ? null : status, page: null })}
+                onClick={() =>
+                  setQueryValues({
+                    status: status === "draft" ? null : status,
+                    page: null,
+                  })
+                }
                 className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-extrabold transition ${
                   isActive
                     ? "border-[#2FA084] bg-[#6FCF97]/24 text-[#1F6F5F] shadow-sm"
@@ -417,9 +462,12 @@ export default function ContentManagerRoadmapsPage() {
                 }`}
               >
                 {prettyStatus(status)}
-                <span className={`rounded-full px-2 py-0.5 text-[11px] ${
-                  isActive ? "bg-white/75 text-[#1F6F5F]" : "bg-slate-100 text-slate-600"
-                }`}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] ${
+                    isActive
+                      ? "bg-white/75 text-[#1F6F5F]"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
                 >
                   {count}
                 </span>
@@ -449,10 +497,12 @@ export default function ContentManagerRoadmapsPage() {
               value={sort}
               options={roadmapSortOptions}
               ariaLabel="Filter by updated time"
-              onChange={(nextSort) => setQueryValues({
-                sort: nextSort === "updated_desc" ? null : nextSort,
-                page: null,
-              })}
+              onChange={(nextSort) =>
+                setQueryValues({
+                  sort: nextSort === "updated_desc" ? null : nextSort,
+                  page: null,
+                })
+              }
             />
 
             <div className="inline-flex h-10 w-fit items-center rounded-lg border border-[#B9D8CC] bg-white p-1 shadow-sm">
@@ -464,7 +514,12 @@ export default function ContentManagerRoadmapsPage() {
                   <button
                     key={mode.value}
                     type="button"
-                    onClick={() => setQueryValues({ view: mode.value === "list" ? null : mode.value, page: null })}
+                    onClick={() =>
+                      setQueryValues({
+                        view: mode.value === "list" ? null : mode.value,
+                        page: null,
+                      })
+                    }
                     className={`grid h-8 w-8 place-items-center rounded-md transition ${
                       isActive
                         ? "bg-[#6FCF97]/20 text-[#1F6F5F]"
@@ -493,10 +548,22 @@ export default function ContentManagerRoadmapsPage() {
           </ModuleCard>
         ) : result.items.length === 0 ? (
           <ModuleEmptyState
-            title={hasFilters ? "No matching roadmaps" : `No ${prettyStatus(activeStatus).toLowerCase()} roadmaps`}
-            action={hasFilters ? <ModuleButton onClick={resetFilters}>Clear filters</ModuleButton> : null}
+            title={
+              hasFilters
+                ? "No matching roadmaps"
+                : `No ${prettyStatus(activeStatus).toLowerCase()} roadmaps`
+            }
+            action={
+              hasFilters ? (
+                <ModuleButton onClick={resetFilters}>
+                  Clear filters
+                </ModuleButton>
+              ) : null
+            }
           >
-            {hasFilters ? "Try another search." : "Roadmaps will appear here after they are created."}
+            {hasFilters
+              ? "Try another search."
+              : "Roadmaps will appear here after they are created."}
           </ModuleEmptyState>
         ) : viewMode === "card" ? (
           <div className="grid gap-4 xl:grid-cols-2">
@@ -512,7 +579,11 @@ export default function ContentManagerRoadmapsPage() {
             </AnimatePresence>
           </div>
         ) : (
-          <RoadmapList roadmaps={result.items} onEdit={openEditor} onDelete={setRoadmapToDelete} />
+          <RoadmapList
+            roadmaps={result.items}
+            onEdit={openEditor}
+            onDelete={setRoadmapToDelete}
+          />
         )}
 
         {pageRange && (
@@ -528,7 +599,11 @@ export default function ContentManagerRoadmapsPage() {
                   variant="secondary"
                   size="xs"
                   disabled={result.page <= 1}
-                  onClick={() => setQueryValues({ page: result.page > 2 ? result.page - 1 : null })}
+                  onClick={() =>
+                    setQueryValues({
+                      page: result.page > 2 ? result.page - 1 : null,
+                    })
+                  }
                 >
                   <ChevronLeft size={13} /> Previous
                 </ModuleButton>

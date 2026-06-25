@@ -9,8 +9,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import BalancedRoadmapEdge from "../../../components/roadmap/BalancedRoadmapEdge";
-import RoadmapFlowNode from "../../../components/roadmap/RoadmapFlowNode";
+import BalancedRoadmapEdge from "../../roadmaps/components/BalancedRoadmapEdge";
+import RoadmapFlowNode from "../../roadmaps/components/RoadmapFlowNode";
 import {
   NODE_HEIGHT,
   NODE_WIDTH,
@@ -19,8 +19,8 @@ import {
   getNodeId,
   getStartFlowNode,
   normalizeRoadmap,
-} from "../../../components/roadmap/roadmapUtils";
-import { ModuleEmptyState } from "../../../components/learningModules/learningModuleUi";
+} from "../../roadmaps/utils/roadmapUtils";
+import { ModuleEmptyState } from "../../learningModules/components/learningModuleUi";
 import { normalizeNodes } from "../roadmapEditorUtils";
 
 const nodeTypes = {

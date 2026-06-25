@@ -7,7 +7,7 @@ import {
   ModuleButton,
   ModuleField,
   numberInputClass,
-} from "../../../components/learningModules/learningModuleUi";
+} from "../../learningModules/components/learningModuleUi";
 import {
   checkpointTypeOptions,
   difficultyOptions,

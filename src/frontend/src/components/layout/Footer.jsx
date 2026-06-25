@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import AuthLogo from "../auth/AuthLogo";
+import AuthLogo from "../../features/auth/components/AuthLogo";
 
 export default function Footer() {
   const navigate = useNavigate();
@@ -12,7 +12,8 @@ export default function Footer() {
             <AuthLogo compact showTagline={false} />
           </button>
           <p className="mt-4 max-w-sm leading-6 text-slate-600">
-            Build a role-based learning path, track repositories, and publish a portfolio that proves your work.
+            Build a role-based learning path, track repositories, and publish a
+            portfolio that proves your work.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 import { History, RotateCcw, X } from "lucide-react";
 
-import { ModuleButton } from "../../../components/learningModules/learningModuleUi";
+import { ModuleButton } from "../../learningModules/components/learningModuleUi";
 
 export default function NodeDeletionHistoryModal({
   isOpen,

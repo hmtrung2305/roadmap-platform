@@ -4,10 +4,10 @@ import { Eye, FileUp, GripVertical, Loader2, MoreVertical, Save, Trash2, Upload 
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
 import { LEARNING_MODULE_AUTHORING_LIMITS, formatFileSize } from "../../../constants/learningModuleAuthoringLimits";
-import MarkdownRenderer from "../../../components/learningModules/MarkdownRenderer";
+import MarkdownRenderer from "../../../features/learningModules/components/MarkdownRenderer";
 import { titleFromMarkdown } from "../../../utils/markdownUtils";
-import ConfirmActionDialog from "../../../components/learningModules/ConfirmActionDialog";
-import { inputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../../components/learningModules/learningModuleUi";
+import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
+import { inputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../../features/learningModules/components/learningModuleUi";
 import { DirtyStateBadge } from "../EditorControls";
 import { canRetryLessonIndexing, getEditorStorageKey, getLessonIndexingMeta, getUploadedLessons, hasLessonDraftChanges, hasLessonOrderChanges, readSessionValue, removeSessionValue, shouldPollLessonIndexing, showBulkUploadResultToast, writeSessionValue } from "../editorUtils";
 
