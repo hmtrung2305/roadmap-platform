@@ -186,6 +186,12 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             .ToDictionary(
                 g => g.Key,
                 g => g
+                    .GroupBy(nr => GetResourceDeduplicationKey(nr.LearningResource))
+                    .Select(resourceGroup => resourceGroup
+                        .OrderBy(nr => nr.LearningResource.ResourceType)
+                        .ThenBy(nr => nr.LearningResource.Title)
+                        .ThenBy(nr => nr.LearningResource.LearningResourceId)
+                        .First())
                     .OrderBy(nr => nr.LearningResource.ResourceType)
                     .ThenBy(nr => nr.LearningResource.Title)
                     .Select(nr => new LearningResourceDto
@@ -200,6 +206,13 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
                         LanguageCode = nr.LearningResource.LanguageCode
                     })
                     .ToList());
+    }
+
+    private static string GetResourceDeduplicationKey(LearningResource resource)
+    {
+        return string.IsNullOrWhiteSpace(resource.Url)
+            ? resource.LearningResourceId.ToString()
+            : resource.Url.Trim().ToUpperInvariant();
     }
 
     private static RoadmapNodeDto MapNode(
