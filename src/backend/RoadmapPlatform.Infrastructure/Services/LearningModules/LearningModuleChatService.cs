@@ -98,10 +98,12 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
             }
         }
 
+        var retrievalQuery = BuildRetrievalQuery(request);
+
         var ragSources = await _ragIndexingService.SearchRelevantChunksAsync(
             skillModuleId,
             request.SkillModuleLessonId,
-            request.Message,
+            retrievalQuery,
             _ragSettings.MaxChunks,
             cancellationToken);
 
@@ -176,12 +178,13 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
         IReadOnlyList<SkillModuleChunk> chunks,
         CancellationToken cancellationToken)
     {
-        var systemInstruction = "You are a learning module chat assistant. " +
-                                "Answer using only the provided module lesson context. " +
-                                "If the context does not contain the answer, say that the module content does not cover it. " +
-                                "Keep the answer clear and useful for a learner. " +
-                                "Do not invent facts outside the module content. " +
-                                "Do not mention internal chunk IDs.";
+        var systemInstruction = "You are a learning module chat assistant.\n\n" +
+                        "Use the provided module lesson context as the primary source of truth.\n" +
+                        "You may explain concepts, connect related ideas, infer simple relationships, and provide small examples when they are consistent with the module context.\n\n" +
+                        "Do not invent unsupported project-specific facts, APIs, requirements, file names, code behavior, or claims that are not grounded in the module context.\n\n" +
+                        "If the module context does not contain enough information to answer the question, say that the module does not fully cover it instead of guessing.\n\n" +
+                        "Keep the answer clear, practical, and useful for a learner.\n" +
+                        "Do not mention internal chunk IDs.";
 
         var prompt = BuildPrompt(request, chunks);
 
@@ -257,6 +260,51 @@ public sealed class LearningModuleChatService : ILearningModuleChatService
         builder.AppendLine(request.Message.Trim());
 
         return builder.ToString();
+    }
+    private static string BuildRetrievalQuery(LearningModuleChatRequestDto request)
+    {
+        var builder = new StringBuilder();
+
+        var recentMessages = request.RecentMessages
+            .Where(message =>
+                !string.IsNullOrWhiteSpace(message.Content)
+                && IsAllowedRole(message.Role))
+            .TakeLast(4)
+            .ToList();
+
+        if (recentMessages.Count > 0)
+        {
+            builder.AppendLine("Recent conversation:");
+
+            foreach (var message in recentMessages)
+            {
+                var role = NormalizeRole(message.Role);
+                var content = TrimForRetrieval(message.Content);
+
+                builder.AppendLine($"{role}: {content}");
+            }
+
+            builder.AppendLine();
+        }
+
+        builder.AppendLine("Current question:");
+        builder.AppendLine(request.Message.Trim());
+
+        return builder.ToString().Trim();
+    }
+
+    private static string TrimForRetrieval(string content)
+    {
+        const int maxCharacters = 600;
+
+        var normalized = content.Trim();
+
+        if (normalized.Length <= maxCharacters)
+        {
+            return normalized;
+        }
+
+        return normalized[..maxCharacters];
     }
 
     private static bool IsAllowedRole(string? role)

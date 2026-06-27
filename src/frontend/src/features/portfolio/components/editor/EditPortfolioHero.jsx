@@ -23,7 +23,7 @@ export default function EditPortfolioHero({
         <div className="absolute inset-0 bg-gradient-to-r from-[#18332D]/15 via-transparent to-white/10" />
       </div>
 
-      <div className="relative px-5 pb-6 pt-0 sm:px-6">
+      <div className="relative px-5 pb-4 pt-0 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end">
             <div className="-mt-12 grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg border-4 border-white bg-[#F7F1E8] text-[#1F6F5F] shadow-[0_12px_28px_rgba(31,111,95,0.16)] sm:size-28">

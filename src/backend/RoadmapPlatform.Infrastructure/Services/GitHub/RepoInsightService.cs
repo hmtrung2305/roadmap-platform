@@ -20,6 +20,11 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
         private const int MaxReadmeCharacters = 12000;
         private const string CompletedStatus = "completed";
         private const string FailedStatus = "failed";
+        private const int MinReadmeCharacters = 400;
+        private const int MinReadmeWords = 70;
+        private const int MinReadmeEvidenceSignals = 2;
+        private const string InsufficientReadmeMessage =
+    "README does not contain enough meaningful information to generate a reliable repository insight.";
 
         private readonly ApplicationDbContext _dbContext;
         private readonly IGitHubApiClient _gitHubApiClient;
@@ -85,6 +90,20 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             var cleanedReadme = CleanReadme(readme);
             var readmeHash = ComputeSha256Hash(cleanedReadme);
+
+            var quality = EvaluateReadmeQuality(cleanedReadme);
+
+            if (!quality.IsSufficient)
+            {
+                var insufficientInsight = UpsertInsufficientReadmeInsight(
+                    repository,
+                    existingInsight,
+                    quality.Message,
+                    readmeHash);
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return ToDto(insufficientInsight);
+            }
 
             if (!force &&
                 existingInsight != null &&
@@ -217,6 +236,41 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             return insight;
         }
 
+        private static RepoInsight UpsertInsufficientReadmeInsight(
+            Repository repository,
+            RepoInsight? existingInsight,
+            string errorMessage,
+            string readmeHash)
+        {
+            var now = DateTime.UtcNow;
+
+            var insight = existingInsight ?? new RepoInsight
+            {
+                RepositoryId = repository.RepositoryId,
+                Repository = repository
+            };
+
+            insight.Summary = null;
+            insight.TechStack = SerializeStringList(new List<string>());
+            insight.DetectedSkills = SerializeStringList(new List<string>());
+            insight.ProjectType = null;
+            insight.AnalysisStatus = FailedStatus;
+            insight.ReadmeHash = readmeHash;
+            insight.ReadmeTruncated = false;
+            insight.AiModel = null;
+            insight.ErrorMessage = errorMessage;
+            insight.AnalyzedAt = now;
+            insight.UpdatedAt = now;
+
+            if (existingInsight == null)
+            {
+                repository.RepoInsight = insight;
+            }
+
+            return insight;
+        }
+
+
         private static (string Owner, string RepoName) ParseRepositoryFullName(string fullName)
         {
             var parts = fullName.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -228,6 +282,93 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
 
             return (parts[0], parts[1]);
         }
+
+        private static string NormalizeReadmeForQualityCheck(string readme)
+        {
+            var normalized = Regex.Replace(readme, @"```.*?```", " ", RegexOptions.Singleline);
+            normalized = Regex.Replace(normalized, @"`[^`]*`", " ");
+            normalized = Regex.Replace(normalized, @"<[^>]+>", " ");
+            normalized = Regex.Replace(normalized, @"[#>*_\-\[\]\(\)!|]", " ");
+            normalized = Regex.Replace(normalized, @"https?://\S+", " ");
+            normalized = Regex.Replace(normalized, @"\s+", " ");
+
+            return normalized.Trim();
+        }
+
+        private static int CountReadmeEvidenceSignals(string readme)
+        {
+            var signals = 0;
+
+            if (Regex.Matches(
+                    readme,
+                    @"(?m)^\s{0,3}#{1,6}\s+\S+")
+                .Count >= 2)
+            {
+                signals++;
+            }
+
+            if (Regex.IsMatch(
+                    readme,
+                    @"(?im)^\s{0,3}#{1,6}\s+(overview|description|features?|usage|installation|getting started|setup|tech stack|technologies|architecture|api|demo|screenshots?)\b"))
+            {
+                signals++;
+            }
+
+            if (Regex.IsMatch(readme, @"```[\s\S]*?```"))
+            {
+                signals++;
+            }
+
+            if (Regex.Matches(
+                    readme,
+                    @"(?m)^\s*[-*+]\s+\S+")
+                .Count >= 3)
+            {
+                signals++;
+            }
+
+            if (Regex.IsMatch(
+                    readme,
+                    @"(?i)\b(npm|yarn|pnpm|dotnet|docker|pip|maven|gradle|composer|cargo|react|vite|next\.js|asp\.net|spring|express|postgres|mysql|mongodb)\b"))
+            {
+                signals++;
+            }
+
+            return signals;
+        }
+
+        private static ReadmeQualityResult EvaluateReadmeQuality(string readme)
+        {
+            var meaningfulText = NormalizeReadmeForQualityCheck(readme);
+
+            var characterCount = meaningfulText.Count(character => !char.IsWhiteSpace(character));
+            var wordCount = Regex.Matches(
+                    meaningfulText,
+                    @"[\p{L}\p{N}][\p{L}\p{N}\-+#.]*",
+                    RegexOptions.IgnoreCase)
+                .Count;
+
+            var evidenceSignals = CountReadmeEvidenceSignals(readme);
+
+            var isSufficient =
+                characterCount >= MinReadmeCharacters &&
+                wordCount >= MinReadmeWords &&
+                evidenceSignals >= MinReadmeEvidenceSignals;
+
+            if (isSufficient)
+            {
+                return new ReadmeQualityResult(true, string.Empty);
+            }
+
+            var message =
+                $"{InsufficientReadmeMessage} "; 
+            //+
+            //    $"Found {wordCount} meaningful words, {characterCount} meaningful characters, " +
+            //    $"and {evidenceSignals} content evidence signal(s).";
+
+            return new ReadmeQualityResult(false, message);
+        }
+
 
         private static string CleanReadme(string readme)
         {
@@ -302,5 +443,9 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 return new List<string>();
             }
         }
+
+        private sealed record ReadmeQualityResult(
+            bool IsSufficient,
+            string Message);
     }
 }

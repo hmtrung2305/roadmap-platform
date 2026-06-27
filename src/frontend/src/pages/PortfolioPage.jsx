@@ -74,10 +74,10 @@ export default function PortfolioPage() {
 
   return (
     <main className="min-h-[calc(100vh-4rem)] px-6 py-12">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-4">
         <PortfolioHeader portfolio={portfolio} username={username} isOwnPortfolio={isOwnPortfolio} />
-        <PortfolioStats portfolio={portfolio} />
         <PortfolioAbout portfolio={portfolio} />
+        <PortfolioStats portfolio={portfolio} />
         <PortfolioRepositoryList repositories={portfolio?.repositories || []} />
         <PortfolioDetectedTechnologies repositories={portfolio?.repositories || []} />
         <PortfolioSkillGroups skillGroups={portfolio?.skillGroups || []} />
@@ -123,7 +123,7 @@ function PortfolioDetectedTechnologies({ repositories = [] }) {
   if (tags.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+    <section className="rounded-2xl border border-[#B9D8CC]/75 bg-white p-5 shadow-[0_8px_18px_rgba(31,111,95,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md">
       <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
         Languages & technologies
       </p>
