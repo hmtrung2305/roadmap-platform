@@ -76,11 +76,21 @@ internal static class ContentManagerRoadmapStructureRules
             return;
         }
 
-        if (normalizedNodeType is "topic" or "project" or "checkpoint")
+        if (normalizedNodeType == "topic")
         {
             if (parentType is not ("resource_group" or "choice_group"))
             {
-                throw new ArgumentException("A learning node must be added inside a group.");
+                throw new ArgumentException("A topic must be added inside a group.");
+            }
+
+            return;
+        }
+
+        if (normalizedNodeType is "project" or "checkpoint")
+        {
+            if (parentType is not ("phase" or "resource_group" or "choice_group"))
+            {
+                throw new ArgumentException("This node must be added inside a phase or group.");
             }
         }
     }

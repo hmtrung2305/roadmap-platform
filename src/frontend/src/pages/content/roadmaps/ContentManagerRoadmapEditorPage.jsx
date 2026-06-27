@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, History, Layers3, Loader2, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, History, Layers3, Loader2, Map as MapIcon, Plus } from "lucide-react";
 
 import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
@@ -26,6 +26,7 @@ export default function ContentManagerRoadmapEditorPage() {
   const { roadmapId } = useParams();
   const editor = useContentRoadmapEditor(roadmapId);
   const [isCreateNodeOpen, setIsCreateNodeOpen] = useState(false);
+  const [createNodeMode, setCreateNodeMode] = useState("child");
   const [isValidationOpen, setIsValidationOpen] = useState(false);
   const [isCloneConfirmOpen, setIsCloneConfirmOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -334,6 +335,19 @@ export default function ContentManagerRoadmapEditorPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {isDraft && (
+                    <ModuleButton
+                      size="xs"
+                      className="bg-[#2FA084] text-white hover:bg-[#1F6F5F]"
+                      onClick={() => {
+                        setCreateNodeMode("phase");
+                        setIsCreateNodeOpen(true);
+                      }}
+                      disabled={isMutatingDraft}
+                    >
+                      <Plus size={14} /> Add phase
+                    </ModuleButton>
+                  )}
                   <NodeSearchCombobox nodes={allNodes} onSelect={focusNodeFromSearch} />
                 </div>
               </div>
@@ -392,7 +406,10 @@ export default function ContentManagerRoadmapEditorPage() {
                 onMoveNode={moveNode}
                 onDeleteNode={deleteNode}
                 childNodeCount={selectedNodeChildCount}
-                onOpenCreateChild={() => setIsCreateNodeOpen(true)}
+                onOpenCreateChild={() => {
+                  setCreateNodeMode("child");
+                  setIsCreateNodeOpen(true);
+                }}
               />
             </div>
           </ModuleCard>
@@ -431,6 +448,7 @@ export default function ContentManagerRoadmapEditorPage() {
         isOpen={isCreateNodeOpen}
         nodes={allNodes}
         selectedNode={selectedNode}
+        createMode={createNodeMode}
         isSaving={isMutatingDraft}
         onClose={() => setIsCreateNodeOpen(false)}
         onCreate={createNode}

@@ -3,6 +3,7 @@ export const MAPPING_NODE_TYPES = new Set(["topic", "choice_option", "project"])
 export const GUIDE_NODE_TYPES = new Set(["checkpoint", "project"]);
 export const STRUCTURAL_NODE_TYPES = new Set(["phase", "group", "choice_group", "resource_group"]);
 export const CHILD_CONTAINER_NODE_TYPES = new Set(["phase", "group", "choice_group", "resource_group"]);
+export const LEAF_NODE_TYPES = new Set(["topic", "choice_option", "checkpoint", "project"]);
 
 export function normalizeNodeType(node) {
   const value = String(node?.nodeType || "").trim().toLowerCase();
@@ -29,7 +30,7 @@ export function getAllowedChildNodeTypes(parentNode) {
   const parentType = normalizeNodeType(parentNode);
 
   if (parentType === "phase") {
-    return ["resource_group"];
+    return ["resource_group", "project", "checkpoint"];
   }
 
   if (parentType === "resource_group" || parentType === "group") {
