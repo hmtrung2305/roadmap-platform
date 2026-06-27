@@ -144,7 +144,7 @@ export default function RoadmapDetailDrawer({
   );
   const lockedReason = getLockedReason(node);
   const isOptional = node.isRequired === false;
-  const description = buildDescription(node, metadata);
+  const description = buildDescription(node);
 
   function handleStatusChange(nextStatus) {
     if (!nextStatus || nextStatus === status || !canTrack) return;
@@ -725,25 +725,8 @@ function getStatusOptions(status, isOptional) {
   return baseOptions;
 }
 
-function buildDescription(node, metadata) {
-  const description = getDisplayText(node.description || "");
-  const reason = getDisplayText(
-    node.reason || metadata?.why || metadata?.whyItMatters || "",
-  );
-
-  if (!reason) return description;
-
-  const cleanedReason = reason
-    .replace(/^why\s+this\s+matters:?\s*/i, "")
-    .trim();
-  const sentence = cleanedReason.endsWith(".")
-    ? cleanedReason
-    : `${cleanedReason}.`;
-
-  if (!description)
-    return `This item helps you understand ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
-
-  return `${description} In practice, this helps you see where the idea is useful: ${sentence}`;
+function buildDescription(node) {
+  return getDisplayText(node.description || "");
 }
 
 function Section({ title, badge, children }) {

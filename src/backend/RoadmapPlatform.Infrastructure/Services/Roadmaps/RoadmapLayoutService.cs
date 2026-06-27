@@ -34,7 +34,6 @@ public sealed class RoadmapLayoutService(
         }
 
         var version = await dbContext.Set<RoadmapVersion>()
-            .Include(v => v.RoadmapNodes)
             .FirstOrDefaultAsync(v => v.RoadmapVersionId == roadmapVersionId, cancellationToken);
 
         if (version == null)
@@ -46,19 +45,6 @@ public sealed class RoadmapLayoutService(
         version.LayoutAlgorithm = string.IsNullOrWhiteSpace(request.LayoutAlgorithm)
             ? null
             : request.LayoutAlgorithm.Trim();
-
-        var nodeById = version.RoadmapNodes.ToDictionary(n => n.RoadmapNodeId);
-
-        foreach (var item in request.Nodes)
-        {
-            if (!nodeById.TryGetValue(item.RoadmapNodeId, out var node))
-            {
-                throw new KeyNotFoundException($"Roadmap node was not found: {item.RoadmapNodeId}");
-            }
-
-            node.PositionX = item.PositionX;
-            node.PositionY = item.PositionY;
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
