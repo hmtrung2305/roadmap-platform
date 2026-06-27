@@ -1,6 +1,6 @@
 -- ============================================================
 -- Consolidated database schema
--- Represents the final schema after migrations 002 through 023.
+-- Represents the final schema after migrations 002 through 025.
 -- Intended for provisioning a new PostgreSQL database.
 -- ============================================================
 
@@ -824,8 +824,6 @@ CREATE TABLE IF NOT EXISTS public.roadmap
     owner_user_id uuid,
     title varchar(200) NOT NULL,
     description text,
-    roadmap_type varchar(30) NOT NULL DEFAULT 'template',
-    source_type varchar(30) NOT NULL DEFAULT 'static',
     visibility varchar(30) NOT NULL DEFAULT 'public',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -839,12 +837,6 @@ CREATE TABLE IF NOT EXISTS public.roadmap
         FOREIGN KEY (owner_user_id)
         REFERENCES public."user"(user_id)
         ON DELETE SET NULL,
-
-    CONSTRAINT chk_roadmap_type
-        CHECK (roadmap_type IN ('template', 'personal', 'fork')),
-
-    CONSTRAINT chk_roadmap_source_type
-        CHECK (source_type IN ('static', 'ai')),
 
     CONSTRAINT chk_roadmap_visibility
         CHECK (visibility IN ('public', 'private'))
@@ -861,12 +853,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
     estimated_total_hours int,
     layout_direction varchar(20) NOT NULL DEFAULT 'TB',
     layout_algorithm varchar(50),
-    generated_by_user_id uuid,
-    generation_prompt text,
-    generation_model varchar(100),
-    generation_status varchar(30) NOT NULL DEFAULT 'none',
-    generation_context jsonb NOT NULL DEFAULT '{}'::jsonb,
-    generation_error text,
+    created_by_user_id uuid,
     published_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
 
@@ -875,8 +862,8 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
         REFERENCES public.roadmap(roadmap_id)
         ON DELETE CASCADE,
 
-    CONSTRAINT fk_roadmap_version_generated_by_user
-        FOREIGN KEY (generated_by_user_id)
+    CONSTRAINT fk_roadmap_version_created_by_user
+        FOREIGN KEY (created_by_user_id)
         REFERENCES public."user"(user_id)
         ON DELETE SET NULL,
 
@@ -891,9 +878,6 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
 
     CONSTRAINT chk_roadmap_version_layout_algorithm
         CHECK (layout_algorithm IS NULL OR layout_algorithm IN ('manual', 'dagre', 'elk', 'custom')),
-
-    CONSTRAINT chk_roadmap_version_generation_status
-        CHECK (generation_status IN ('none', 'generating', 'published', 'failed')),
 
     CONSTRAINT chk_roadmap_version_estimated_total_hours
         CHECK (estimated_total_hours IS NULL OR estimated_total_hours > 0)
@@ -911,17 +895,10 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node
     required_count int,
     title varchar(200) NOT NULL,
     description text,
-    reason text,
     order_index int NOT NULL DEFAULT 0,
     layout_role varchar(30) NOT NULL DEFAULT 'side',
-    layout_group varchar(80),
-    layout_rank int,
-    layout_order int NOT NULL DEFAULT 0,
     estimated_hours int,
     difficulty_level varchar(30),
-    priority int NOT NULL DEFAULT 0,
-    position_x numeric(10,2),
-    position_y numeric(10,2),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     is_required boolean NOT NULL DEFAULT true,
     is_trackable boolean NOT NULL DEFAULT true,
@@ -1069,8 +1046,6 @@ CREATE TABLE IF NOT EXISTS public.roadmap_node_resource
     roadmap_node_resource_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     roadmap_node_id uuid NOT NULL,
     learning_resource_id uuid NOT NULL,
-    order_index int NOT NULL DEFAULT 0,
-    is_primary boolean NOT NULL DEFAULT false,
 
     CONSTRAINT fk_roadmap_node_resource_node
         FOREIGN KEY (roadmap_node_id)
@@ -1123,8 +1098,6 @@ CREATE TABLE IF NOT EXISTS public.user_node_progress
     roadmap_enrollment_id uuid NOT NULL,
     roadmap_node_id uuid NOT NULL,
     status varchar(30) NOT NULL DEFAULT 'pending',
-    evidence_url text,
-    learner_note text,
     started_at timestamptz,
     completed_at timestamptz,
     skipped_at timestamptz,
@@ -1217,11 +1190,7 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_career_role_id
 CREATE INDEX IF NOT EXISTS ix_roadmap_owner_user_id
     ON public.roadmap(owner_user_id);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_type_visibility
-    ON public.roadmap(roadmap_type, visibility);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_source_type
-    ON public.roadmap(source_type);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_roadmap_id
     ON public.roadmap_version(roadmap_id);
@@ -1229,11 +1198,9 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_version_roadmap_id
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_status
     ON public.roadmap_version(status);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_version_generation_status
-    ON public.roadmap_version(generation_status);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_version_generated_by_user_id
-    ON public.roadmap_version(generated_by_user_id);
+CREATE INDEX IF NOT EXISTS ix_roadmap_version_created_by_user_id
+    ON public.roadmap_version(created_by_user_id);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_node_version_id
     ON public.roadmap_node(roadmap_version_id);
@@ -1250,17 +1217,11 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_node_type
 CREATE INDEX IF NOT EXISTS ix_roadmap_node_layout_role
     ON public.roadmap_node(layout_role);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_node_layout_group
-    ON public.roadmap_node(roadmap_version_id, layout_group);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_node_layout_rank_order
-    ON public.roadmap_node(roadmap_version_id, layout_rank, layout_order);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_node_checkpoint_type
     ON public.roadmap_node(checkpoint_type);
 
-CREATE INDEX IF NOT EXISTS ix_roadmap_node_position
-    ON public.roadmap_node(roadmap_version_id, position_x, position_y);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_node_skill_node
     ON public.roadmap_node_skill(roadmap_node_id);

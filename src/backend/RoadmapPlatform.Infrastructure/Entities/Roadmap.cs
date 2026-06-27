@@ -15,10 +15,6 @@ public partial class Roadmap
 
     public string? Description { get; set; }
 
-    public string RoadmapType { get; set; } = null!;
-
-    public string SourceType { get; set; } = null!;
-
     public string Visibility { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }

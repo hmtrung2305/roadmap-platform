@@ -73,13 +73,10 @@ public sealed class RoadmapQueryService(
             Slug = x.CareerRole.Slug,
             Title = x.PublishedVersion.Title,
             Description = x.PublishedVersion.Description ?? x.Roadmap.Description,
-            RoadmapType = x.Roadmap.RoadmapType,
-            SourceType = x.Roadmap.SourceType,
             Visibility = x.Roadmap.Visibility,
             EstimatedTotalHours = x.PublishedVersion.EstimatedTotalHours,
             EstimatedRequiredHours = estimatedTimeByVersionId.GetValueOrDefault(x.PublishedVersion.RoadmapVersionId)?.EstimatedRequiredHours ?? 0,
             EstimatedOptionalHours = estimatedTimeByVersionId.GetValueOrDefault(x.PublishedVersion.RoadmapVersionId)?.EstimatedOptionalHours ?? 0,
-            GenerationStatus = x.PublishedVersion.GenerationStatus,
             LayoutDirection = x.PublishedVersion.LayoutDirection,
             LayoutAlgorithm = x.PublishedVersion.LayoutAlgorithm,
             NodeCount = nodesLookup.GetValueOrDefault(x.PublishedVersion.RoadmapVersionId)?.Count ?? 0,
@@ -255,12 +252,7 @@ public sealed class RoadmapQueryService(
                 Title = n.Title,
                 OrderIndex = n.OrderIndex,
                 LayoutRole = n.LayoutRole,
-                LayoutGroup = n.LayoutGroup,
-                LayoutRank = n.LayoutRank,
-                LayoutOrder = n.LayoutOrder,
                 EstimatedHours = n.EstimatedHours,
-                PositionX = n.PositionX,
-                PositionY = n.PositionY,
                 IsRequired = n.IsRequired,
                 IsTrackable = n.IsTrackable
             })
@@ -324,14 +316,11 @@ public sealed class RoadmapQueryService(
             Slug = roadmap.CareerRole.Slug,
             Title = version.Title,
             Description = version.Description ?? roadmap.Description,
-            RoadmapType = roadmap.RoadmapType,
-            SourceType = roadmap.SourceType,
             Visibility = roadmap.Visibility,
             VersionNumber = version.VersionNumber,
             EstimatedTotalHours = version.EstimatedTotalHours,
             EstimatedRequiredHours = estimatedTime.EstimatedRequiredHours,
             EstimatedOptionalHours = estimatedTime.EstimatedOptionalHours,
-            GenerationStatus = version.GenerationStatus,
             LayoutDirection = version.LayoutDirection,
             LayoutAlgorithm = version.LayoutAlgorithm,
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole),
@@ -340,11 +329,7 @@ public sealed class RoadmapQueryService(
             CompletedNodeCount = progressSummary.CompletedUnits,
             ProgressPercent = enrollment?.ProgressPercent ?? progressSummary.ProgressPercent,
             Nodes = nodes
-                .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-                .ThenBy(n => n.LayoutOrder)
-                .ThenBy(n => n.PositionY ?? 0)
-                .ThenBy(n => n.PositionX ?? 0)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .ThenBy(n => n.Title)
                 .Select(n => MapGraphNode(
                     n,
@@ -418,7 +403,14 @@ public sealed class RoadmapQueryService(
             .ToDictionary(
                 g => g.Key,
                 g => g
-                    .OrderBy(nr => nr.OrderIndex)
+                    .GroupBy(nr => GetResourceDeduplicationKey(nr.LearningResource))
+                    .Select(resourceGroup => resourceGroup
+                        .OrderBy(nr => nr.LearningResource.ResourceType)
+                        .ThenBy(nr => nr.LearningResource.Title)
+                        .ThenBy(nr => nr.LearningResource.LearningResourceId)
+                        .First())
+                    .OrderBy(nr => nr.LearningResource.ResourceType)
+                    .ThenBy(nr => nr.LearningResource.Title)
                     .Select(nr => new LearningResourceDto
                     {
                         ResourceId = nr.LearningResource.LearningResourceId,
@@ -431,6 +423,13 @@ public sealed class RoadmapQueryService(
                         LanguageCode = nr.LearningResource.LanguageCode
                     })
                     .ToList());
+    }
+
+    private static string GetResourceDeduplicationKey(LearningResource resource)
+    {
+        return string.IsNullOrWhiteSpace(resource.Url)
+            ? resource.LearningResourceId.ToString()
+            : resource.Url.Trim().ToUpperInvariant();
     }
 
 
@@ -486,13 +485,8 @@ public sealed class RoadmapQueryService(
             Title = node.Title,
             OrderIndex = node.OrderIndex,
             LayoutRole = node.LayoutRole,
-            LayoutGroup = node.LayoutGroup,
-            LayoutRank = node.LayoutRank,
-            LayoutOrder = node.LayoutOrder,
             EstimatedRequiredHours = estimatedTime?.EstimatedRequiredHours ?? 0,
             EstimatedOptionalHours = estimatedTime?.EstimatedOptionalHours ?? 0,
-            PositionX = node.PositionX,
-            PositionY = node.PositionY,
             IsRequired = node.IsRequired,
             IsTrackable = node.IsTrackable,
             Progress = MapNodeProgress(node.RoadmapNodeId, progress, effectiveStatus)
@@ -536,12 +530,10 @@ public sealed class RoadmapQueryService(
             RequiredCount = node.RequiredCount,
             Title = node.Title,
             Description = node.Description,
-            Reason = node.Reason,
             EstimatedHours = node.EstimatedHours,
             EstimatedRequiredHours = estimatedTime?.EstimatedRequiredHours ?? 0,
             EstimatedOptionalHours = estimatedTime?.EstimatedOptionalHours ?? 0,
             DifficultyLevel = node.DifficultyLevel,
-            Priority = node.Priority,
             Metadata = ToJsonElement(node.Metadata),
             IsRequired = node.IsRequired,
             IsTrackable = node.IsTrackable,
@@ -552,8 +544,7 @@ public sealed class RoadmapQueryService(
             LearningModules = learningModules.ToList(),
             Children = children
                 .Where(n => n.IsRequired)
-                .OrderBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .Select(n => new RoadmapChildSummaryDto
                 {
                     RoadmapNodeId = n.RoadmapNodeId,
@@ -590,8 +581,6 @@ public sealed class RoadmapQueryService(
             RoadmapNodeId = progress.RoadmapNodeId,
             Status = effectiveStatus,
             IsComputed = progress.Status != effectiveStatus,
-            EvidenceUrl = progress.EvidenceUrl,
-            LearnerNote = progress.LearnerNote,
             StartedAt = progress.StartedAt,
             CompletedAt = progress.CompletedAt,
             SkippedAt = progress.SkippedAt,

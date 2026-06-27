@@ -79,16 +79,11 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             Slug = roadmap.CareerRole.Slug,
             Title = version.Title,
             Description = version.Description ?? roadmap.Description,
-            RoadmapType = roadmap.RoadmapType,
-            SourceType = roadmap.SourceType,
             Visibility = roadmap.Visibility,
             VersionNumber = version.VersionNumber,
             EstimatedTotalHours = version.EstimatedTotalHours,
             EstimatedRequiredHours = estimatedTime.EstimatedRequiredHours,
             EstimatedOptionalHours = estimatedTime.EstimatedOptionalHours,
-            GenerationStatus = version.GenerationStatus,
-            GenerationModel = version.GenerationModel,
-            GenerationError = version.GenerationError,
             LayoutDirection = version.LayoutDirection,
             LayoutAlgorithm = version.LayoutAlgorithm,
             CareerRole = MapCareerRole(roadmap.CareerRole),
@@ -97,11 +92,7 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             CompletedNodeCount = progressSummary.CompletedUnits,
             ProgressPercent = enrollment?.ProgressPercent ?? progressSummary.ProgressPercent,
             Nodes = nodes
-                .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-                .ThenBy(n => n.LayoutOrder)
-                .ThenBy(n => n.PositionY ?? 0)
-                .ThenBy(n => n.PositionX ?? 0)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .ThenBy(n => n.Title)
                 .Select(n => MapNode(
                     n,
@@ -195,7 +186,14 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             .ToDictionary(
                 g => g.Key,
                 g => g
-                    .OrderBy(nr => nr.OrderIndex)
+                    .GroupBy(nr => GetResourceDeduplicationKey(nr.LearningResource))
+                    .Select(resourceGroup => resourceGroup
+                        .OrderBy(nr => nr.LearningResource.ResourceType)
+                        .ThenBy(nr => nr.LearningResource.Title)
+                        .ThenBy(nr => nr.LearningResource.LearningResourceId)
+                        .First())
+                    .OrderBy(nr => nr.LearningResource.ResourceType)
+                    .ThenBy(nr => nr.LearningResource.Title)
                     .Select(nr => new LearningResourceDto
                     {
                         ResourceId = nr.LearningResource.LearningResourceId,
@@ -208,6 +206,13 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
                         LanguageCode = nr.LearningResource.LanguageCode
                     })
                     .ToList());
+    }
+
+    private static string GetResourceDeduplicationKey(LearningResource resource)
+    {
+        return string.IsNullOrWhiteSpace(resource.Url)
+            ? resource.LearningResourceId.ToString()
+            : resource.Url.Trim().ToUpperInvariant();
     }
 
     private static RoadmapNodeDto MapNode(
@@ -231,19 +236,12 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             RequiredCount = node.RequiredCount,
             Title = node.Title,
             Description = node.Description,
-            Reason = node.Reason,
             OrderIndex = node.OrderIndex,
             LayoutRole = node.LayoutRole,
-            LayoutGroup = node.LayoutGroup,
-            LayoutRank = node.LayoutRank,
-            LayoutOrder = node.LayoutOrder,
             EstimatedHours = node.EstimatedHours,
             EstimatedRequiredHours = estimatedTime?.EstimatedRequiredHours ?? 0,
             EstimatedOptionalHours = estimatedTime?.EstimatedOptionalHours ?? 0,
             DifficultyLevel = node.DifficultyLevel,
-            Priority = node.Priority,
-            PositionX = node.PositionX,
-            PositionY = node.PositionY,
             Metadata = ToJsonElement(node.Metadata),
             IsRequired = node.IsRequired,
             IsTrackable = node.IsTrackable,
@@ -290,8 +288,6 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             RoadmapNodeId = progress.RoadmapNodeId,
             Status = effectiveStatus,
             IsComputed = progress.Status != effectiveStatus,
-            EvidenceUrl = progress.EvidenceUrl,
-            LearnerNote = progress.LearnerNote,
             StartedAt = progress.StartedAt,
             CompletedAt = progress.CompletedAt,
             SkippedAt = progress.SkippedAt,

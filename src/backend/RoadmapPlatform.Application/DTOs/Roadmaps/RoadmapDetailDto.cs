@@ -7,16 +7,11 @@ public sealed class RoadmapDetailDto
     public string Slug { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string RoadmapType { get; set; } = string.Empty;
-    public string SourceType { get; set; } = string.Empty;
     public string Visibility { get; set; } = string.Empty;
     public int VersionNumber { get; set; }
     public int? EstimatedTotalHours { get; set; }
     public decimal EstimatedRequiredHours { get; set; }
     public decimal EstimatedOptionalHours { get; set; }
-    public string GenerationStatus { get; set; } = string.Empty;
-    public string? GenerationModel { get; set; }
-    public string? GenerationError { get; set; }
     public string LayoutDirection { get; set; } = string.Empty;
     public string? LayoutAlgorithm { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
