@@ -361,9 +361,10 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             }
 
             var message =
-                $"{InsufficientReadmeMessage} " +
-                $"Found {wordCount} meaningful words, {characterCount} meaningful characters, " +
-                $"and {evidenceSignals} content evidence signal(s).";
+                $"{InsufficientReadmeMessage} "; 
+            //+
+            //    $"Found {wordCount} meaningful words, {characterCount} meaningful characters, " +
+            //    $"and {evidenceSignals} content evidence signal(s).";
 
             return new ReadmeQualityResult(false, message);
         }

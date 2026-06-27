@@ -5,6 +5,7 @@ import PortfolioEmptyState from "../shared/PortfolioEmptyState";
 import AiCreditStatus from "./AiCreditStatus";
 import EditPortfolioRepositoryCard from "./EditPortfolioRepositoryCard";
 import { getRepositoryId } from "../../utils/portfolioEditUtils";
+import { MAX_SHOWCASE_REPOSITORIES } from "../../constants/portfolioLimits";
 
 export default function EditPortfolioRepositoryManager({
   repositories,
@@ -27,6 +28,8 @@ export default function EditPortfolioRepositoryManager({
     repositoryLoading || syncing || reloadingSelection || saving,
   );
 
+  const isSelectionLimitReached = selectedCount >= MAX_SHOWCASE_REPOSITORIES;
+
   return (
     <section className="flex h-full min-h-[620px] flex-col overflow-hidden rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[0_18px_45px_rgba(31,111,95,0.08)] lg:h-[640px] lg:min-h-[640px]">
       <div className="flex shrink-0 flex-col gap-2 border-b border-[#DCEBE5] pb-3 xl:flex-row xl:items-center xl:justify-between">
@@ -35,9 +38,15 @@ export default function EditPortfolioRepositoryManager({
             Repository manager
           </p>
           <p className="mt-1.5 !text-[12px] font-semibold leading-4 text-[#667A73]">
-            Toggle which repositories appear on your portfolio preview and
-            public page. {selectedCount} projects selected.
+            Choose up to {MAX_SHOWCASE_REPOSITORIES} repositories to feature on
+            your portfolio preview and public page.
           </p>
+          {isSelectionLimitReached && (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 !text-[12px] font-semibold text-amber-700 ring-1 ring-amber-200">
+              You have selected the maximum of {MAX_SHOWCASE_REPOSITORIES}{" "}
+              repositories. Unselect one to choose another.
+            </p>
+          )}
         </div>
 
         {isGitHubLinked && (
@@ -58,7 +67,10 @@ export default function EditPortfolioRepositoryManager({
       </div>
 
       {isGitHubLinked && (
-        <AiCreditStatus status={creditStatus} isLoading={isLoadingCreditStatus} />
+        <AiCreditStatus
+          status={creditStatus}
+          isLoading={isLoadingCreditStatus}
+        />
       )}
 
       {!isGitHubLinked ? (
@@ -68,8 +80,8 @@ export default function EditPortfolioRepositoryManager({
             Connect GitHub to manage repositories
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#667A73]">
-            Use the GitHub source card above to connect or reconnect your account.
-            Your repositories will appear here after syncing.
+            Use the GitHub source card above to connect or reconnect your
+            account. Your repositories will appear here after syncing.
           </p>
         </div>
       ) : repositoryLoading ? (
@@ -86,14 +98,25 @@ export default function EditPortfolioRepositoryManager({
           <div className="grid gap-3 md:grid-cols-2">
             {repositories.map((repo) => {
               const repositoryId = getRepositoryId(repo);
+              const isSelected = selectedIds.includes(repositoryId);
+              const selectionDisabled =
+                repositoryActionLocked ||
+                (!isSelected && isSelectionLimitReached);
+
               return (
                 <EditPortfolioRepositoryCard
                   key={repositoryId}
                   repository={repo}
                   username={username}
-                  isSelected={selectedIds.includes(repositoryId)}
+                  isSelected={isSelected}
                   isAnalyzing={Boolean(analyzingRepositoryIds?.[repositoryId])}
                   actionDisabled={repositoryActionLocked}
+                  selectionDisabled={selectionDisabled}
+                  selectionDisabledReason={
+                    !isSelected && isSelectionLimitReached
+                      ? `You can select up to ${MAX_SHOWCASE_REPOSITORIES} repositories.`
+                      : ""
+                  }
                   aiCreditDisabled={creditStatus?.remainingCreditsToday <= 0}
                   onToggle={() => onToggleRepository(repositoryId)}
                   onGenerateInsight={onGenerateInsight}

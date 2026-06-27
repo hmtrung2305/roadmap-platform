@@ -12,8 +12,14 @@ import {
 import { useAuthProviderStore } from "./useAuthProviderStore";
 import { useAiCreditStore } from "./useAiCreditStore";
 import { usePortfolioStore } from "./usePortfolioStore";
-import { getInitiallySelectedIds, getRepositoryId } from "../features/portfolio/utils/portfolioEditUtils";
-import { getCreditStatus, getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+import {
+  getInitiallySelectedIds,
+  getRepositoryId,
+} from "../features/portfolio/utils/portfolioEditUtils";
+import {
+  getCreditStatus,
+  getFriendlyApiErrorMessage,
+} from "../utils/apiErrorUtils";
 import {
   getGitHubConnectionAction,
   getGitHubErrorMessage,
@@ -27,6 +33,7 @@ import {
   invalidateRequestCacheByPrefix,
   setCachedRequestData,
 } from "../utils/requestCacheUtils";
+import { MAX_SHOWCASE_REPOSITORIES } from "../features/portfolio/constants/portfolioLimits";
 
 const PORTFOLIO_CACHE_KEY = "portfolio-editor:me";
 const REPOSITORIES_CACHE_KEY = "portfolio-editor:github-repositories";
@@ -36,7 +43,9 @@ const REPOSITORIES_CACHE_TTL_MS = 2 * 60 * 1000;
 let portfolioEditorRequestVersion = 0;
 
 function normalizeProviderName(provider) {
-  return String(provider || "").trim().toLowerCase();
+  return String(provider || "")
+    .trim()
+    .toLowerCase();
 }
 
 function getGitHubProvider(providers) {
@@ -50,7 +59,10 @@ function normalizeRepositories(data) {
 }
 
 function getRepositorySelection(repositories) {
-  return getInitiallySelectedIds(repositories);
+  return getInitiallySelectedIds(repositories).slice(
+    0,
+    MAX_SHOWCASE_REPOSITORIES,
+  );
 }
 
 function filterSelectedIdsForRepositories(selectedIds, repositories) {
@@ -58,7 +70,9 @@ function filterSelectedIdsForRepositories(selectedIds, repositories) {
     repositories.map(getRepositoryId).filter(Boolean),
   );
 
-  return selectedIds.filter((repositoryId) => repositoryIdSet.has(repositoryId));
+  return selectedIds
+    .filter((repositoryId) => repositoryIdSet.has(repositoryId))
+    .slice(0, MAX_SHOWCASE_REPOSITORIES);
 }
 
 function getInsightRepositoryId(repository, fallbackId) {
@@ -80,9 +94,10 @@ function patchRepositoryInsight(repositories, repositoryId, insight) {
   });
 }
 
-
 function getRepositoryInsightStatus(insight) {
-  return String(insight?.analysisStatus || insight?.status || "").trim().toLowerCase();
+  return String(insight?.analysisStatus || insight?.status || "")
+    .trim()
+    .toLowerCase();
 }
 
 function getRepositoryInsightErrorMessage(insight) {
@@ -143,19 +158,26 @@ export const usePortfolioEditorStore = create((set, get) => ({
           : state.repositories;
 
         return {
-          portfolio: !force && cachedPortfolio.hit && !state.portfolio
-            ? cachedPortfolio.data
-            : state.portfolio,
-          repositories: !force && cachedRepositories.hit && state.repositories.length === 0
-            ? cachedRepositoryList
-            : state.repositories,
-          selectedIds: !force && cachedRepositories.hit && state.selectedIds.length === 0
-            ? getRepositorySelection(cachedRepositoryList)
-            : state.selectedIds,
-          portfolioLoading: force ? !state.portfolio : !state.portfolio && !cachedPortfolio.hit,
+          portfolio:
+            !force && cachedPortfolio.hit && !state.portfolio
+              ? cachedPortfolio.data
+              : state.portfolio,
+          repositories:
+            !force && cachedRepositories.hit && state.repositories.length === 0
+              ? cachedRepositoryList
+              : state.repositories,
+          selectedIds:
+            !force && cachedRepositories.hit && state.selectedIds.length === 0
+              ? getRepositorySelection(cachedRepositoryList)
+              : state.selectedIds,
+          portfolioLoading: force
+            ? !state.portfolio
+            : !state.portfolio && !cachedPortfolio.hit,
           repositoryLoading: force
             ? state.isGitHubLinked && state.repositories.length === 0
-            : state.isGitHubLinked && state.repositories.length === 0 && !cachedRepositories.hit,
+            : state.isGitHubLinked &&
+              state.repositories.length === 0 &&
+              !cachedRepositories.hit,
           portfolioError: "",
           repoError: "",
           repoSuccess: "",
@@ -196,7 +218,10 @@ export const usePortfolioEditorStore = create((set, get) => ({
         set({
           portfolioError:
             useAuthProviderStore.getState().error ||
-            getFriendlyApiErrorMessage(error, "Could not load your portfolio editor."),
+            getFriendlyApiErrorMessage(
+              error,
+              "Could not load your portfolio editor.",
+            ),
         });
       }
 
@@ -258,7 +283,9 @@ export const usePortfolioEditorStore = create((set, get) => ({
 
       set((state) => ({
         repositories,
-        selectedIds: resetSelection ? getRepositorySelection(repositories) : state.selectedIds,
+        selectedIds: resetSelection
+          ? getRepositorySelection(repositories)
+          : state.selectedIds,
         repositoryLoading: false,
         repoError: "",
       }));
@@ -293,7 +320,12 @@ export const usePortfolioEditorStore = create((set, get) => ({
   syncRepositories: async () => {
     const state = get();
 
-    if (state.syncing || state.saving || state.reloadingSelection || state.repositoryLoading) {
+    if (
+      state.syncing ||
+      state.saving ||
+      state.reloadingSelection ||
+      state.repositoryLoading
+    ) {
       return normalizeRepositories(state.repositories);
     }
 
@@ -314,16 +346,19 @@ export const usePortfolioEditorStore = create((set, get) => ({
       }
 
       const repositories = normalizeRepositories(data);
+      const selectedIds = getRepositorySelection(repositories);
+
       setCachedRequestData(REPOSITORIES_CACHE_KEY, repositories);
       usePortfolioStore.getState().invalidatePortfolioView();
 
-      set((state) => ({
+      set({
         repositories,
-        selectedIds: filterSelectedIdsForRepositories(state.selectedIds, repositories),
+        selectedIds,
         isGitHubLinked: true,
         githubConnectionAction: "connected",
-        repoSuccess: "Repositories synced. Review the list and save your selection.",
-      }));
+        repoSuccess:
+          "Repositories synced. Your featured repository selection has been reset.",
+      });
 
       return repositories;
     } catch (error) {
@@ -354,7 +389,12 @@ export const usePortfolioEditorStore = create((set, get) => ({
   reloadSavedSelection: async () => {
     const state = get();
 
-    if (state.reloadingSelection || state.saving || state.syncing || state.repositoryLoading) {
+    if (
+      state.reloadingSelection ||
+      state.saving ||
+      state.syncing ||
+      state.repositoryLoading
+    ) {
       return normalizeRepositories(state.repositories);
     }
 
@@ -362,7 +402,10 @@ export const usePortfolioEditorStore = create((set, get) => ({
 
     try {
       set({ reloadingSelection: true, repoError: "", repoSuccess: "" });
-      const repositories = await get().loadRepositories({ force: true, resetSelection: true });
+      const repositories = await get().loadRepositories({
+        force: true,
+        resetSelection: true,
+      });
 
       if (requestVersion === portfolioEditorRequestVersion) {
         set({ repoSuccess: "Saved repository selection restored." });
@@ -400,9 +443,20 @@ export const usePortfolioEditorStore = create((set, get) => ({
       return;
     }
 
+    const isSelected = state.selectedIds.includes(repositoryId);
+
+    if (!isSelected && state.selectedIds.length >= MAX_SHOWCASE_REPOSITORIES) {
+      set({
+        repoSuccess: "",
+        repoError: `You can select up to ${MAX_SHOWCASE_REPOSITORIES} repositories for your portfolio.`,
+      });
+      return;
+    }
+
     set((state) => ({
+      repoError: "",
       repoSuccess: "",
-      selectedIds: state.selectedIds.includes(repositoryId)
+      selectedIds: isSelected
         ? state.selectedIds.filter((id) => id !== repositoryId)
         : [...state.selectedIds, repositoryId],
     }));
@@ -423,7 +477,12 @@ export const usePortfolioEditorStore = create((set, get) => ({
     }
 
     const requestVersion = portfolioEditorRequestVersion;
-    const mutationKey = ["portfolio-editor", "repository-insight", repositoryId, force ? "force" : "normal"];
+    const mutationKey = [
+      "portfolio-editor",
+      "repository-insight",
+      repositoryId,
+      force ? "force" : "normal",
+    ];
 
     try {
       set((state) => ({
@@ -435,16 +494,19 @@ export const usePortfolioEditorStore = create((set, get) => ({
         repoSuccess: "",
       }));
 
-      const insight = await guardedMutation(
-        mutationKey,
-        () => generateRepositoryInsightApi(repositoryId, { force }),
+      const insight = await guardedMutation(mutationKey, () =>
+        generateRepositoryInsightApi(repositoryId, { force }),
       );
 
       if (requestVersion !== portfolioEditorRequestVersion) {
         return insight;
       }
 
-      const repositories = patchRepositoryInsight(get().repositories, repositoryId, insight);
+      const repositories = patchRepositoryInsight(
+        get().repositories,
+        repositoryId,
+        insight,
+      );
       const insightCreditStatus = getCreditStatus(insight);
       const insightStatus = getRepositoryInsightStatus(insight);
 
@@ -502,7 +564,9 @@ export const usePortfolioEditorStore = create((set, get) => ({
     } finally {
       if (requestVersion === portfolioEditorRequestVersion) {
         set((state) => {
-          const nextAnalyzingRepositoryIds = { ...state.analyzingRepositoryIds };
+          const nextAnalyzingRepositoryIds = {
+            ...state.analyzingRepositoryIds,
+          };
           delete nextAnalyzingRepositoryIds[repositoryId];
 
           return {
@@ -528,12 +592,19 @@ export const usePortfolioEditorStore = create((set, get) => ({
     const requestVersion = portfolioEditorRequestVersion;
     const selectedIds = state.selectedIds;
 
+    if (selectedIds.length > MAX_SHOWCASE_REPOSITORIES) {
+      set({
+        repoError: `You can select up to ${MAX_SHOWCASE_REPOSITORIES} repositories for your portfolio.`,
+        repoSuccess: "",
+      });
+      return null;
+    }
+
     try {
       set({ saving: true, repoError: "", repoSuccess: "" });
 
-      await guardedMutation(
-        "portfolio-editor:save-selection",
-        () => updatePortfolioRepositoriesApi(selectedIds),
+      await guardedMutation("portfolio-editor:save-selection", () =>
+        updatePortfolioRepositoriesApi(selectedIds),
       );
 
       invalidateRequestCache(REPOSITORIES_CACHE_KEY);
@@ -542,7 +613,10 @@ export const usePortfolioEditorStore = create((set, get) => ({
         return null;
       }
 
-      const patchedRepositories = patchSelectedRepositories(get().repositories, selectedIds);
+      const patchedRepositories = patchSelectedRepositories(
+        get().repositories,
+        selectedIds,
+      );
       setCachedRequestData(REPOSITORIES_CACHE_KEY, patchedRepositories);
 
       set({

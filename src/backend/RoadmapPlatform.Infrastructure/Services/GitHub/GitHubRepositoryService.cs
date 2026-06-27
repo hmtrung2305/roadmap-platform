@@ -63,7 +63,7 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                         Stars = githubRepo.Stars,
                         Forks = githubRepo.Forks,
                         IsPrivate = false,
-                        IsSelectedForPortfolio = true,
+                        IsSelectedForPortfolio = false,
                         GithubCreatedAt = githubRepo.GithubCreatedAt,
                         GithubUpdatedAt = githubRepo.GithubUpdatedAt,
                         SyncedAt = DateTime.UtcNow
@@ -84,6 +84,7 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                     existingRepo.GithubCreatedAt = githubRepo.GithubCreatedAt;
                     existingRepo.GithubUpdatedAt = githubRepo.GithubUpdatedAt;
                     existingRepo.SyncedAt = DateTime.UtcNow;
+                    existingRepo.IsSelectedForPortfolio = false;
                 }
 
             }
