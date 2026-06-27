@@ -1902,16 +1902,12 @@ INSERT INTO seed_edge VALUES
 ('incident-response-lifecycle', 'proj-incident-report', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('scope-rules-engagement', 'proj-pentest-report', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('cloud-iam-logging', 'proj-cloud-security-assessment', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
-('chk-foundation-review', 'ph-networking', 'unlock', 'required', '{"rule":"gate_unlock"}'::jsonb),
-('chk-network-review', 'ph-linux-windows', 'unlock', 'required', '{"rule":"gate_unlock"}'::jsonb),
-('chk-web-security-review', 'ph-crypto-iam', 'unlock', 'required', '{"rule":"gate_unlock"}'::jsonb),
-('chk-soc-review', 'ph-dfir', 'unlock', 'required', '{"rule":"gate_unlock"}'::jsonb),
-('chk-cloud-review', 'ph-governance', 'unlock', 'required', '{"rule":"gate_unlock"}'::jsonb),
 ('chk-final-review', 'proj-cyber-capstone', 'unlock', 'required', '{"rule":"gate_unlock"}'::jsonb),
 ('mitre-attack-mapping', 'threat-hunting', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb),
 ('web-pentesting', 'active-directory-pentesting', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb),
 ('malware-analysis-basics', 'reverse-engineering-basics', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb),
-('security-architecture', 'proj-cyber-capstone', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb);
+('security-architecture', 'proj-cyber-capstone', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type, se.dependency_type, se.condition FROM seed_edge se CROSS JOIN seed_roadmap_map m JOIN public.roadmap_node source ON source.roadmap_version_id = m.roadmap_version_id AND source.slug = se.from_key JOIN public.roadmap_node target ON target.roadmap_version_id = m.roadmap_version_id AND target.slug = se.to_key ON CONFLICT (roadmap_version_id, from_node_id, to_node_id, edge_type) DO UPDATE SET dependency_type = EXCLUDED.dependency_type, condition = EXCLUDED.condition;

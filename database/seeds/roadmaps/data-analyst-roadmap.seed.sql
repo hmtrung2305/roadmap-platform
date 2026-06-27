@@ -992,8 +992,6 @@ INSERT INTO seed_edge VALUES
 ('ph-domain-analytics', 'ph-governance-collaboration', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ph-governance-collaboration', 'ph-advanced-analytics-awareness', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ph-advanced-analytics-awareness', 'ph-portfolio-capstone', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
-('business-questions-and-kpis', 'aggregation-and-grouping', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('spreadsheet-cleaning', 'data-profiling', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('joins-and-relationships', 'sql-data-quality-checks', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('sql-data-quality-checks', 'proj-sql-business-analysis', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('descriptive-statistics-analysis', 'hypothesis-testing-basics', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
@@ -1097,7 +1095,8 @@ INSERT INTO seed_edge VALUES
 ('grp-portfolio-packaging', 'resume-and-project-positioning', 'choice', 'required', '{"rule": "selection_child"}'::jsonb),
 ('ph-portfolio-capstone', 'grp-analytics-interview-readiness', 'contains', 'required', '{"rule": "parent_contains_child"}'::jsonb),
 ('grp-analytics-interview-readiness', 'sql-interview-practice', 'choice', 'required', '{"rule": "selection_child"}'::jsonb),
-('grp-analytics-interview-readiness', 'analytics-case-interviews', 'choice', 'required', '{"rule": "selection_child"}'::jsonb);
+('grp-analytics-interview-readiness', 'analytics-case-interviews', 'choice', 'required', '{"rule": "selection_child"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT DISTINCT ON (m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type)

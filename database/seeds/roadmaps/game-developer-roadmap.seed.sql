@@ -1710,7 +1710,6 @@ INSERT INTO seed_edge VALUES
 ('finite-state-machine-ai', 'behavior-trees-and-utility-ai-awareness', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('finite-state-machines-for-gameplay', 'behavior-trees-awareness', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('fmod-or-wwise-awareness', 'particle-systems-and-vfx-timing', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
-('foundation-readiness-check', 'programming-and-cs-for-games', 'unlock', 'required', '{"isVisual": false, "rule": "checkpoint_unlocks_next_phase"}'::jsonb),
 ('functions-classes-and-composition', 'collections-and-data-structures', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('game-accessibility-guidelines', 'usability-testing-with-players', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('game-ai-core', 'ai-perception-and-target-selection', 'choice', 'required', '{"isVisual": true, "visualRule": "choice_branch"}'::jsonb),
@@ -1915,11 +1914,6 @@ INSERT INTO seed_edge VALUES
 ('reading-engine-api-documentation', 'big-o-and-performance-awareness', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('recursion-and-tree-traversal', 'stacks-queues-and-priority-queues', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('regression-testing-for-builds', 'profiling-cpu-and-frame-time', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
-('required-engine-prototype', 'graphics-rendering-and-animation', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-gameplay-systems-project', 'ui-input-ux-and-accessibility', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-online-feature-project', 'testing-optimization-build-and-release', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-optimized-release-candidate', 'business-platforms-portfolio-and-capstone', 'unlock', 'required', '{"isVisual": false, "rule": "release_candidate_unlocks_portfolio"}'::jsonb),
-('required-programming-mini-game', 'math-physics-and-simulation', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
 ('rigging-and-retargeting-awareness', 'animation-events-and-root-motion', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('rigidbodies-forces-and-impulses', 'collision-detection-and-triggers', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('rpcs-events-and-network-messages', 'bandwidth-tick-rate-and-snapshot-design', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
@@ -1968,7 +1962,8 @@ INSERT INTO seed_edge VALUES
 ('urp-hdrp-or-engine-render-pipelines', 'optimization-for-draw-calls-and-batching', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('variables-types-and-control-flow', 'functions-classes-and-composition', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('vectors-and-vector-operations', 'trigonometry-for-movement-and-aiming', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
-('versioning-and-release-channels', 'ci-builds-for-game-projects', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb);
+('versioning-and-release-channels', 'ci-builds-for-game-projects', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb)
+;
 
 DELETE FROM public.roadmap_edge e
 USING seed_roadmap_map m

@@ -2020,19 +2020,16 @@ INSERT INTO seed_edge VALUES
 ('ph-build-deploy-devops', 'ph-performance-architecture', 'sequence', 'required', '{"rule": "phase_completed"}'::jsonb),
 ('ph-performance-architecture', 'ph-product-collaboration', 'sequence', 'required', '{"rule": "phase_completed"}'::jsonb),
 ('ph-product-collaboration', 'ph-portfolio-capstone', 'sequence', 'required', '{"rule": "phase_completed"}'::jsonb),
-('http-request-response-lifecycle', 'rest-api-design', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('javascript-syntax-data-structures', 'typescript-core-types', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('fetch-json-and-errors', 'api-client-layer-design', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('react-components-and-props', 'react-hooks-and-effects', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('form-state-and-validation', 'proj-react-dashboard', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('rest-api-design', 'proj-fullstack-crud-api', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('sql-query-fundamentals', 'orm-modeling-and-migrations', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('sessions-cookies-and-jwt', 'frontend-auth-state', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('local-login-password-hashing', 'proj-secure-auth-app', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('frontend-unit-and-component-tests', 'end-to-end-testing', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('github-actions-ci', 'proj-deployed-fullstack-app', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('core-web-vitals', 'proj-performance-audit', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('readme-and-case-study-writing', 'proj-fullstack-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb);
+('readme-and-case-study-writing', 'proj-fullstack-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge
 (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)

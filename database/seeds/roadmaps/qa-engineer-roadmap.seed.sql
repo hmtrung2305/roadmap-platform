@@ -2159,12 +2159,9 @@ INSERT INTO seed_edge VALUES
 ('requirements-analysis', 'test-strategy', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('test-case-writing', 'proj-manual-test-suite', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('http-fundamentals', 'rest-api-basics', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('rest-api-basics', 'api-test-scope', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('postman-basics', 'postman-newman', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('openapi-swagger-testing', 'json-schema-validation', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('api-test-scope', 'proj-api-automation-suite', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('oop-for-test-automation', 'page-object-model', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('flaky-test-prevention', 'test-retries-quarantine', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('selectors-locators', 'e2e-scope-strategy', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('waits-synchronization', 'proj-ui-e2e-suite', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('mobile-testing-fundamentals', 'proj-mobile-test-matrix', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
@@ -2178,18 +2175,12 @@ INSERT INTO seed_edge VALUES
 ('test-strategy-portfolio-artifact', 'proj-qa-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('api-automation-portfolio-artifact', 'proj-qa-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ui-automation-portfolio-artifact', 'proj-qa-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('chk-qa-foundations-review', 'ph-manual-testing', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
-('chk-manual-testing-review', 'ph-web-tech', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
-('chk-web-tech-review', 'ph-test-management', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
-('chk-api-testing-review', 'ph-automation-programming', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
-('chk-ui-automation-review', 'ph-mobile-desktop-testing', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
-('chk-performance-review', 'ph-security-accessibility', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
-('chk-testops-review', 'ph-ai-qa', 'unlock', 'required', '{"rule": "gate_unlock"}'::jsonb),
 ('test-pyramid', 'test-automation-architecture', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
 ('exploratory-testing', 'ai-for-test-case-generation', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
 ('api-negative-testing', 'security-qa-specialist', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
 ('performance-metrics', 'observability-for-qa', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
-('accessibility-qa-specialist', 'qa-portfolio-strategy', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb);
+('accessibility-qa-specialist', 'qa-portfolio-strategy', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type, se.dependency_type, se.condition FROM seed_edge se CROSS JOIN seed_roadmap_map m JOIN public.roadmap_node source ON source.roadmap_version_id = m.roadmap_version_id AND source.slug = se.from_key JOIN public.roadmap_node target ON target.roadmap_version_id = m.roadmap_version_id AND target.slug = se.to_key ON CONFLICT (roadmap_version_id, from_node_id, to_node_id, edge_type) DO UPDATE SET dependency_type = EXCLUDED.dependency_type, condition = EXCLUDED.condition;

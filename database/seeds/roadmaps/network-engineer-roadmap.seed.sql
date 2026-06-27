@@ -1712,7 +1712,6 @@ INSERT INTO seed_edge VALUES
 ('firewall-policy-basics', 'secure-device-management', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('floating-static-routes', 'routing-troubleshooting-workflow', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('flow-based-traffic-analysis', 'log-aggregation-and-search', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
-('foundation-readiness-check', 'ip-addressing-and-subnetting', 'unlock', 'required', '{"isVisual": false, "rule": "checkpoint_unlocks_next_phase"}'::jsonb),
 ('git-branching-and-pull-request-workflow', 'environment-variables-and-secrets', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('gnmi-and-streaming-telemetry', 'ci-cd-for-network-changes', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('gns3-or-eve-ng-lab-basics', 'network-diagrams-and-documentation-basics', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
@@ -1839,11 +1838,6 @@ INSERT INTO seed_edge VALUES
 ('qos-classification-marking-and-queuing', 'voip-and-real-time-traffic-basics', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('recursive-lookup-and-next-hop-resolution', 'route-summarization', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('redundancy-and-failure-domains', 'addressing-standards-and-naming-conventions', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
-('required-campus-lan-project', 'routing-fundamentals', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-network-automation-project', 'monitoring-troubleshooting-and-operations', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-routed-network-lab', 'network-services-and-infrastructure', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-secure-branch-network-project', 'wireless-wan-and-isp-technologies', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
-('required-subnetting-drill', 'switching-and-lans', 'unlock', 'required', '{"isVisual": false, "rule": "milestone_unlocks_next_phase"}'::jsonb),
 ('rest-apis-for-network-automation', 'git-branching-and-pull-request-workflow', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('resume-and-linkedin-for-network-roles', 'ccna-or-network-plus-exam-review', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('rf-fundamentals', 'channels-interference-and-roaming', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
@@ -1958,7 +1952,8 @@ INSERT INTO seed_edge VALUES
 ('wireless-wan-and-isp-technologies', 'wireless-wan-design-review', 'contains', 'required', '{"isVisual": true, "visualRule": "phase_milestone"}'::jsonb),
 ('wireshark-packet-analysis', 'tcpdump-capture-filters', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
 ('yang-netconf-and-restconf', 'gnmi-and-streaming-telemetry', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb),
-('zero-trust-networking-basics', 'ddos-and-edge-protection-basics', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb);
+('zero-trust-networking-basics', 'ddos-and-edge-protection-basics', 'recommendation', 'recommended', '{"isVisual": false, "visualRule": "hidden_suggested_order"}'::jsonb)
+;
 
 DELETE FROM public.roadmap_edge e
 USING seed_roadmap_map m

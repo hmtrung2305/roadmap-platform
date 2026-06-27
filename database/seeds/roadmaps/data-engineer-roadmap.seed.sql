@@ -1899,18 +1899,14 @@ INSERT INTO seed_edge VALUES
 ('project-structure', 'demo-data-and-reproducibility', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
 ('sql-interview-practice', 'python-data-interview-practice', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
 ('python-data-interview-practice', 'data-engineering-system-design-interviews', 'recommendation', 'recommended', '{"rule": "recommended_order"}'::jsonb),
-('gate-foundation-review', 'dimensional-modeling', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb),
 ('proj-foundation-sql-python', 'proj-dimensional-model', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('gate-storage-review', 'spark-core-concepts', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb),
 ('proj-batch-pipeline', 'api-ingestion', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('gate-ingestion-review', 'kafka-topics-partitions', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb),
 ('proj-streaming-pipeline', 'aws-data-platform', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('gate-cloud-review', 'dbt-project-structure', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb),
 ('proj-dbt-mart', 'data-tests', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('gate-quality-security', 'docker-for-data', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb),
 ('proj-production-runbook', 'proj-architecture-design-doc', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('gate-production-readiness', 'proj-capstone-data-platform', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb),
-('gate-final-review', 'proj-portfolio-package', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb);
+('gate-final-review', 'proj-portfolio-package', 'unlock', 'required', '{"rule": "gate_unlocks_target"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge
 (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)

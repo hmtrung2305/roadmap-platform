@@ -1732,20 +1732,17 @@ INSERT INTO seed_edge VALUES
 ('ph-gitops-platform-engineering', 'ph-certification-specialization', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ph-certification-specialization', 'ph-capstone', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('linux-filesystem-navigation', 'bash-scripting-basics', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('bash-scripting-basics', 'idempotent-automation', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('dns-records-and-resolution', 'reverse-proxy-routing', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('ci-workflow-basics', 'deployment-pipeline-stages', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('dockerfiles-and-image-builds', 'pods-deployments-and-services', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('pods-deployments-and-services', 'helm-and-kubernetes-packaging', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('cloud-networking-basics', 'terraform-core-workflow', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('terraform-core-workflow', 'terraform-state-and-remote-backends', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('metrics-and-prometheus', 'alert-design-and-noise-reduction', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('secrets-management-practices', 'dependency-and-vulnerability-scanning', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('slos-slis-and-error-budgets', 'availability-and-failure-modes', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('gitops-reconciliation-model', 'environment-promotion-with-gitops', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('capstone-iac-and-cloud', 'proj-devops-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('capstone-cicd-and-gitops', 'proj-devops-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('capstone-observability-and-security', 'proj-devops-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb);
+('capstone-observability-and-security', 'proj-devops-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT DISTINCT ON (m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type)

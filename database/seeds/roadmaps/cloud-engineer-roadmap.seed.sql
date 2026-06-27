@@ -1418,14 +1418,13 @@ INSERT INTO seed_edge VALUES
 ('ph-reliability-cost-architecture', 'ph-migration-hybrid-multicloud', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ph-migration-hybrid-multicloud', 'ph-career-certification', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ph-career-certification', 'ph-cloud-capstone', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
-('ip-subnets-routing-and-nat', 'vpc-vnet-subnet-design', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('iam-users-roles-policies-and-groups', 'service-identities-and-workload-access', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('terraform-workflow', 'terraform-state-backends-and-locking', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('terraform-state-backends-and-locking', 'proj-terraform-cloud-stack', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('backup-restore-and-recovery-testing', 'disaster-recovery-strategies', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('capstone-iac-and-environments', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('capstone-application-hosting', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('capstone-monitoring-cost-and-operations', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb);
+('capstone-monitoring-cost-and-operations', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb)
+;
 INSERT INTO public.roadmap_edge (roadmap_version_id,from_node_id,to_node_id,edge_type,dependency_type,condition) SELECT DISTINCT ON (m.roadmap_version_id,source.roadmap_node_id,target.roadmap_node_id,se.edge_type) m.roadmap_version_id,source.roadmap_node_id,target.roadmap_node_id,se.edge_type,se.dependency_type,se.condition FROM seed_edge se CROSS JOIN seed_roadmap_map m JOIN public.roadmap_node source ON source.roadmap_version_id=m.roadmap_version_id AND source.slug=se.from_key JOIN public.roadmap_node target ON target.roadmap_version_id=m.roadmap_version_id AND target.slug=se.to_key ORDER BY m.roadmap_version_id,source.roadmap_node_id,target.roadmap_node_id,se.edge_type,se.dependency_type ON CONFLICT (roadmap_version_id,from_node_id,to_node_id,edge_type) DO UPDATE SET dependency_type=EXCLUDED.dependency_type,condition=EXCLUDED.condition;
 
 COMMIT;

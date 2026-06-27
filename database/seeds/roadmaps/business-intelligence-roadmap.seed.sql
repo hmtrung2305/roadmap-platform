@@ -1752,18 +1752,12 @@ INSERT INTO seed_edge VALUES
 ('ph-portfolio-career', 'proj-bi-capstone', 'contains', 'required', '{"rule": "parent_contains_child", "isVisual": true, "visualRule": "phase_child"}'::jsonb),
 ('chk-final-bi-review', 'proj-bi-capstone', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('ph-portfolio-career', 'proj-bi-portfolio-site', 'contains', 'optional', '{"rule": "parent_contains_child", "isVisual": true, "visualRule": "phase_child"}'::jsonb),
-('requirements-discovery', 'dashboard-purpose-and-audience', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('kpi-metric-basics', 'metric-definition-governance', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('sql-joins', 'star-schema', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('sql-window-functions', 'cohort-analysis', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('data-grain', 'facts-and-dimensions', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('facts-and-dimensions', 'star-schema', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('star-schema', 'semantic-layer-basics', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('dashboard-purpose-and-audience', 'executive-summary-writing', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('pandas-data-analysis', 'python-data-cleaning', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('data-profiling', 'data-tests', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('data-quality-dimensions', 'quality-monitoring', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('row-level-security', 'dashboard-access-and-permissions', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('forecasting-for-bi', 'proj-forecasting-analysis', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('portfolio-case-study-structure', 'proj-bi-capstone', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
 ('proj-executive-dashboard', 'proj-bi-capstone', 'dependency', 'required', '{"rule": "source_completed", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
@@ -1775,14 +1769,8 @@ INSERT INTO seed_edge VALUES
 ('insight-writing', 'stakeholder-readout', 'recommendation', 'recommended', '{"rule": "recommended_order", "isVisual": false, "visualRule": "hidden_hint"}'::jsonb),
 ('dbt-fundamentals', 'documentation-as-code', 'recommendation', 'recommended', '{"rule": "recommended_order", "isVisual": false, "visualRule": "hidden_hint"}'::jsonb),
 ('natural-language-bi', 'responsible-ai-for-bi', 'recommendation', 'recommended', '{"rule": "recommended_order", "isVisual": false, "visualRule": "hidden_hint"}'::jsonb),
-('sql-interview-practice-bi', 'case-interview-for-analytics', 'recommendation', 'recommended', '{"rule": "recommended_order", "isVisual": false, "visualRule": "hidden_hint"}'::jsonb),
-('chk-bi-foundations-review', 'ph-spreadsheets', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('chk-spreadsheets-review', 'ph-sql-databases', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('chk-sql-review', 'ph-statistics-analysis', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('chk-modeling-review', 'ph-bi-tools', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('chk-bi-tools-review', 'ph-data-visualization-storytelling', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('chk-python-review', 'ph-etl-data-prep', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb),
-('chk-governance-review', 'ph-advanced-analytics', 'unlock', 'required', '{"rule": "gate_unlock", "isVisual": false, "visualRule": "hidden_logic"}'::jsonb);
+('sql-interview-practice-bi', 'case-interview-for-analytics', 'recommendation', 'recommended', '{"rule": "recommended_order", "isVisual": false, "visualRule": "hidden_hint"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type, se.dependency_type, se.condition FROM seed_edge se CROSS JOIN seed_roadmap_map m JOIN public.roadmap_node source ON source.roadmap_version_id = m.roadmap_version_id AND source.slug = se.from_key JOIN public.roadmap_node target ON target.roadmap_version_id = m.roadmap_version_id AND target.slug = se.to_key ON CONFLICT (roadmap_version_id, from_node_id, to_node_id, edge_type) DO UPDATE SET dependency_type = EXCLUDED.dependency_type, condition = EXCLUDED.condition;

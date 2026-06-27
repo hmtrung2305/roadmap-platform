@@ -1810,14 +1810,10 @@ INSERT INTO seed_edge VALUES
 ('ph-devops-infra', 'proj-capstone-backend-platform', 'contains', 'required', '{"rule":"project_practice","requiredProject":true}'::jsonb),
 ('gate-foundations', 'proj-language-api', 'unlock', 'required', '{"rule":"gate_unlocks_project"}'::jsonb),
 ('proj-language-api', 'git-basics', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
-('github-workflow', 'sql-fundamentals', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('proj-crud-sql-api', 'rest-api-design', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('proj-api-contract', 'auth-basics', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('proj-secure-auth-api', 'unit-testing', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
-('integration-testing', 'client-cache', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
-('ci-cd-pipelines', 'docker', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('proj-containerize-api', 'rabbitmq', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
-('instrumentation-telemetry', 'graceful-degradation', 'dependency', 'required', '{"rule":"source_completed"}'::jsonb),
 ('gate-final-review', 'proj-capstone-backend-platform', 'unlock', 'required', '{"rule":"gate_unlocks_capstone"}'::jsonb),
 ('grp-internet-core', 'proj-http-debugger', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb),
 ('internet-how-it-works', 'http-basics', 'recommendation', 'required', '{"rule":"recommended_order"}'::jsonb),
@@ -1923,7 +1919,8 @@ INSERT INTO seed_edge VALUES
 ('throttling-backpressure', 'loadshifting-circuit-breaker', 'recommendation', 'required', '{"rule":"recommended_order"}'::jsonb),
 ('migration-strategies', 'types-of-scaling', 'recommendation', 'required', '{"rule":"recommended_order"}'::jsonb),
 ('grp-infra-devops', 'proj-capstone-backend-platform', 'recommendation', 'required', '{"rule":"recommended_order"}'::jsonb),
-('infrastructure-basics', 'devops-awareness', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb);
+('infrastructure-basics', 'devops-awareness', 'recommendation', 'recommended', '{"rule":"recommended_order"}'::jsonb)
+;
 
 -- Rebuild edges for this roadmap version so older visual edge mistakes do not remain after reruns.
 DELETE FROM public.roadmap_edge e

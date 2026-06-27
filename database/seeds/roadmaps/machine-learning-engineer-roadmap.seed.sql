@@ -2249,17 +2249,15 @@ INSERT INTO seed_edge VALUES
 ('ph-ml-system-design', 'ph-specialization', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ph-specialization', 'ph-capstone', 'sequence', 'required', '{"rule": "source_completed"}'::jsonb),
 ('pandas-dataframes', 'proj-feature-engineering-pipeline', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('data-leakage-detection', 'time-aware-splitting', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('proj-feature-engineering-pipeline', 'proj-tabular-ml-model', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('model-selection', 'proj-experiment-tracking-report', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('training-loops', 'proj-neural-network-classifier', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('experiment-tracking', 'model-registry', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('data-validation-pipelines', 'training-pipelines', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('model-registry', 'cd-for-models', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('online-inference', 'scalable-inference', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('model-monitoring', 'data-drift-detection', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('ml-system-tradeoffs', 'proj-ml-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('capstone-monitoring', 'proj-ml-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb);
+('capstone-monitoring', 'proj-ml-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb)
+;
 
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type, se.dependency_type, se.condition
