@@ -65,16 +65,6 @@ function getRepositorySelection(repositories) {
   );
 }
 
-function filterSelectedIdsForRepositories(selectedIds, repositories) {
-  const repositoryIdSet = new Set(
-    repositories.map(getRepositoryId).filter(Boolean),
-  );
-
-  return selectedIds
-    .filter((repositoryId) => repositoryIdSet.has(repositoryId))
-    .slice(0, MAX_SHOWCASE_REPOSITORIES);
-}
-
 function getInsightRepositoryId(repository, fallbackId) {
   return getRepositoryId(repository) || fallbackId;
 }
@@ -345,8 +335,11 @@ export const usePortfolioEditorStore = create((set, get) => ({
         return normalizeRepositories(data);
       }
 
-      const repositories = normalizeRepositories(data);
-      const selectedIds = getRepositorySelection(repositories);
+      const repositories = patchSelectedRepositories(
+        normalizeRepositories(data),
+        [],
+      );
+      const selectedIds = [];
 
       setCachedRequestData(REPOSITORIES_CACHE_KEY, repositories);
       usePortfolioStore.getState().invalidatePortfolioView();
