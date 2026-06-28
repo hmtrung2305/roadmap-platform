@@ -62,7 +62,7 @@ public sealed class ContentManagerRoadmapStructureService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await RecalculateLayoutAsync(roadmapVersionId, cancellationToken);
-        version.Roadmap.UpdatedAt = DateTime.UtcNow;
+        TouchVersion(version);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ContentRoadmapStructureMutationResultDto
@@ -103,7 +103,7 @@ public sealed class ContentManagerRoadmapStructureService(
 
         await NormalizeSiblingOrdersAsync(node.RoadmapVersionId, node.ParentNodeId, cancellationToken);
         await RecalculateLayoutAsync(node.RoadmapVersionId, cancellationToken);
-        version.Roadmap.UpdatedAt = DateTime.UtcNow;
+        TouchVersion(version);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ContentRoadmapStructureMutationResultDto
@@ -165,7 +165,7 @@ public sealed class ContentManagerRoadmapStructureService(
         await dbContext.SaveChangesAsync(cancellationToken);
         await NormalizeSiblingOrdersAsync(node.RoadmapVersionId, node.ParentNodeId, cancellationToken);
         await RecalculateLayoutAsync(node.RoadmapVersionId, cancellationToken);
-        version.Roadmap.UpdatedAt = DateTime.UtcNow;
+        TouchVersion(version);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ContentRoadmapStructureMutationResultDto
@@ -216,6 +216,12 @@ public sealed class ContentManagerRoadmapStructureService(
         }
 
         return ids;
+    }
+
+    private static void TouchVersion(RoadmapVersion version)
+    {
+        version.UpdatedAt = DateTime.UtcNow;
+        version.Roadmap.UpdatedAt = DateTime.UtcNow;
     }
 
     private async Task<RoadmapVersion> LoadVersionForMutationAsync(

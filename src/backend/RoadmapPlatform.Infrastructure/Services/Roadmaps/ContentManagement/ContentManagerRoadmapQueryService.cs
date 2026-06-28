@@ -3,6 +3,7 @@ using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 
 namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
@@ -53,9 +54,7 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
         var statusRows = roadmaps
             .SelectMany(roadmap => roadmap.RoadmapVersions
                 .GroupBy(version => version.Status)
-                .Select(group => new RoadmapVersionRow(roadmap, group
-                    .OrderByDescending(version => version.VersionNumber)
-                    .First())))
+                .Select(group => new RoadmapVersionRow(roadmap, RoadmapVersionLabels.OrderNewestFirst(group).First())))
             .GroupBy(row => row.Version.Status)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
@@ -64,12 +63,9 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             {
                 Roadmap = roadmap,
                 Version = status is null
-                    ? roadmap.RoadmapVersions
-                        .OrderByDescending(version => version.VersionNumber)
-                        .FirstOrDefault()
-                    : roadmap.RoadmapVersions
-                        .Where(version => version.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
-                        .OrderByDescending(version => version.VersionNumber)
+                    ? RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions).FirstOrDefault()
+                    : RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions
+                        .Where(version => version.Status.Equals(status, StringComparison.OrdinalIgnoreCase)))
                         .FirstOrDefault()
             })
             .Where(row => row.Version != null)
@@ -84,14 +80,20 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
                 .ToList(),
             "title_asc" => filteredRows
                 .OrderBy(row => row.Version.Title)
+                .ThenByDescending(row => row.Version.MajorVersion)
+                .ThenByDescending(row => row.Version.MinorVersion)
+                .ThenByDescending(row => row.Version.PatchVersion)
                 .ThenByDescending(row => row.Version.VersionNumber)
                 .ToList(),
             "title_desc" => filteredRows
                 .OrderByDescending(row => row.Version.Title)
+                .ThenByDescending(row => row.Version.MajorVersion)
+                .ThenByDescending(row => row.Version.MinorVersion)
+                .ThenByDescending(row => row.Version.PatchVersion)
                 .ThenByDescending(row => row.Version.VersionNumber)
                 .ToList(),
             _ => filteredRows
-                .OrderByDescending(row => row.Version.PublishedAt ?? row.Version.CreatedAt)
+                .OrderByDescending(row => row.Version.UpdatedAt)
                 .ThenBy(row => row.Version.Title)
                 .ToList()
         };
@@ -154,8 +156,7 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
 
         var version = roadmapVersionId.HasValue
             ? roadmap.RoadmapVersions.FirstOrDefault(item => item.RoadmapVersionId == roadmapVersionId.Value)
-            : roadmap.RoadmapVersions
-                .OrderByDescending(item => item.VersionNumber)
+            : RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions)
                 .FirstOrDefault();
 
         if (version == null)

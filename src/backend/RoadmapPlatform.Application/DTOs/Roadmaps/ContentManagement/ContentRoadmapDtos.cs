@@ -38,6 +38,12 @@ public sealed class ContentRoadmapSummaryDto
     public string? Description { get; set; }
     public string Visibility { get; set; } = string.Empty;
     public int VersionNumber { get; set; }
+    public int MajorVersion { get; set; }
+    public int MinorVersion { get; set; }
+    public int PatchVersion { get; set; }
+    public string VersionLabel { get; set; } = string.Empty;
+    public string ReleaseType { get; set; } = string.Empty;
+    public Guid? CreatedFromVersionId { get; set; }
     public string Status { get; set; } = string.Empty;
     public int? EstimatedTotalHours { get; set; }
     public int NodeCount { get; set; }
@@ -59,6 +65,12 @@ public sealed class ContentRoadmapDetailDto
     public string? Description { get; set; }
     public string Visibility { get; set; } = string.Empty;
     public int VersionNumber { get; set; }
+    public int MajorVersion { get; set; }
+    public int MinorVersion { get; set; }
+    public int PatchVersion { get; set; }
+    public string VersionLabel { get; set; } = string.Empty;
+    public string ReleaseType { get; set; } = string.Empty;
+    public Guid? CreatedFromVersionId { get; set; }
     public string Status { get; set; } = string.Empty;
     public int? EstimatedTotalHours { get; set; }
     public string LayoutDirection { get; set; } = string.Empty;
@@ -80,8 +92,15 @@ public sealed class ContentRoadmapVersionSummaryDto
 {
     public Guid RoadmapVersionId { get; set; }
     public int VersionNumber { get; set; }
+    public int MajorVersion { get; set; }
+    public int MinorVersion { get; set; }
+    public int PatchVersion { get; set; }
+    public string VersionLabel { get; set; } = string.Empty;
+    public string ReleaseType { get; set; } = string.Empty;
+    public Guid? CreatedFromVersionId { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
+    public DateTime UpdatedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
 }

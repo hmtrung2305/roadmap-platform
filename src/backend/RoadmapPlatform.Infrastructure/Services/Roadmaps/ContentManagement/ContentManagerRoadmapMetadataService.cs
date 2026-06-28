@@ -41,6 +41,7 @@ public sealed class ContentManagerRoadmapMetadataService(
             version.Roadmap.Description = version.Description;
         }
 
+        version.UpdatedAt = DateTime.UtcNow;
         version.Roadmap.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -94,8 +95,27 @@ public sealed class ContentManagerRoadmapMetadataService(
             throw new ArgumentException("Only topic, choice option, checkpoint, and project nodes can have estimated hours or difficulty.");
         }
 
+        await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await queryService.LoadNodeAsync(roadmapNodeId, cancellationToken);
+    }
+
+    private async Task TouchRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        var version = await dbContext.Set<RoadmapVersion>()
+            .Include(item => item.Roadmap)
+            .Where(item => item.RoadmapVersionId == roadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (version == null)
+        {
+            return;
+        }
+
+        version.UpdatedAt = DateTime.UtcNow;
+        version.Roadmap.UpdatedAt = DateTime.UtcNow;
     }
 }

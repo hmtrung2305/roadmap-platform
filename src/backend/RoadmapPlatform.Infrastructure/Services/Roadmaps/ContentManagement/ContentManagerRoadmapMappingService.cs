@@ -49,6 +49,7 @@ public sealed class ContentManagerRoadmapMappingService(
                 LearningResourceId = request.LearningResourceId
             });
 
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -72,6 +73,7 @@ public sealed class ContentManagerRoadmapMappingService(
         if (mapping != null)
         {
             dbContext.Set<RoadmapNodeResource>().Remove(mapping);
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -118,6 +120,7 @@ public sealed class ContentManagerRoadmapMappingService(
                 SkillId = request.SkillId
             });
 
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -141,6 +144,7 @@ public sealed class ContentManagerRoadmapMappingService(
         if (mapping != null)
         {
             dbContext.Set<RoadmapNodeSkill>().Remove(mapping);
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -156,5 +160,23 @@ public sealed class ContentManagerRoadmapMappingService(
             .FirstOrDefaultAsync(cancellationToken);
 
         return node ?? throw new KeyNotFoundException("Roadmap node was not found.");
+    }
+
+    private async Task TouchRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        var version = await dbContext.Set<RoadmapVersion>()
+            .Include(item => item.Roadmap)
+            .Where(item => item.RoadmapVersionId == roadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (version == null)
+        {
+            return;
+        }
+
+        version.UpdatedAt = DateTime.UtcNow;
+        version.Roadmap.UpdatedAt = DateTime.UtcNow;
     }
 }

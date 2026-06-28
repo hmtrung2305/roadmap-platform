@@ -21,6 +21,12 @@ internal static class ContentManagerRoadmapMapper
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,
             VersionNumber = version.VersionNumber,
+            MajorVersion = version.MajorVersion,
+            MinorVersion = version.MinorVersion,
+            PatchVersion = version.PatchVersion,
+            VersionLabel = RoadmapVersionLabels.Format(version),
+            ReleaseType = version.ReleaseType,
+            CreatedFromVersionId = version.CreatedFromVersionId,
             Status = version.Status,
             EstimatedTotalHours = version.EstimatedTotalHours,
             NodeCount = aggregate?.NodeCount ?? 0,
@@ -28,7 +34,7 @@ internal static class ContentManagerRoadmapMapper
             ResourceMappingCount = aggregate?.ResourceMappingCount ?? 0,
             SkillMappingCount = aggregate?.SkillMappingCount ?? 0,
             CreatedAt = version.CreatedAt,
-            UpdatedAt = roadmap.UpdatedAt,
+            UpdatedAt = version.UpdatedAt,
             PublishedAt = version.PublishedAt,
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole)
         };
@@ -50,22 +56,34 @@ internal static class ContentManagerRoadmapMapper
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,
             VersionNumber = version.VersionNumber,
+            MajorVersion = version.MajorVersion,
+            MinorVersion = version.MinorVersion,
+            PatchVersion = version.PatchVersion,
+            VersionLabel = RoadmapVersionLabels.Format(version),
+            ReleaseType = version.ReleaseType,
+            CreatedFromVersionId = version.CreatedFromVersionId,
             Status = version.Status,
             EstimatedTotalHours = version.EstimatedTotalHours,
             LayoutDirection = version.LayoutDirection,
             LayoutAlgorithm = version.LayoutAlgorithm,
             CreatedAt = version.CreatedAt,
-            UpdatedAt = roadmap.UpdatedAt,
+            UpdatedAt = version.UpdatedAt,
             PublishedAt = version.PublishedAt,
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole),
-            Versions = roadmap.RoadmapVersions
-                .OrderByDescending(item => item.VersionNumber)
+            Versions = RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions)
                 .Select(item => new ContentRoadmapVersionSummaryDto
                 {
                     RoadmapVersionId = item.RoadmapVersionId,
                     VersionNumber = item.VersionNumber,
+                    MajorVersion = item.MajorVersion,
+                    MinorVersion = item.MinorVersion,
+                    PatchVersion = item.PatchVersion,
+                    VersionLabel = RoadmapVersionLabels.Format(item),
+                    ReleaseType = item.ReleaseType,
+                    CreatedFromVersionId = item.CreatedFromVersionId,
                     Status = item.Status,
                     Title = item.Title,
+                    UpdatedAt = item.UpdatedAt,
                     CreatedAt = item.CreatedAt,
                     PublishedAt = item.PublishedAt
                 })

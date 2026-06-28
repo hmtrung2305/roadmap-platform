@@ -1521,11 +1521,15 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.CreatedByUserId, "ix_roadmap_version_created_by_user_id");
 
+            entity.HasIndex(e => e.CreatedFromVersionId, "ix_roadmap_version_created_from_version_id");
+
             entity.HasIndex(e => e.RoadmapId, "ix_roadmap_version_roadmap_id");
 
             entity.HasIndex(e => e.Status, "ix_roadmap_version_status");
 
             entity.HasIndex(e => new { e.RoadmapId, e.VersionNumber }, "uq_roadmap_version_number").IsUnique();
+
+            entity.HasIndex(e => new { e.RoadmapId, e.MajorVersion, e.MinorVersion, e.PatchVersion }, "uq_roadmap_version_semver").IsUnique();
 
             entity.Property(e => e.RoadmapVersionId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -1534,6 +1538,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedByUserId).HasColumnName("created_by_user_id");
+            entity.Property(e => e.CreatedFromVersionId).HasColumnName("created_from_version_id");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EstimatedTotalHours).HasColumnName("estimated_total_hours");
             entity.Property(e => e.LayoutAlgorithm)
@@ -1543,7 +1548,16 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'TB'::character varying")
                 .HasColumnName("layout_direction");
+            entity.Property(e => e.MajorVersion)
+                .HasDefaultValue(1)
+                .HasColumnName("major_version");
+            entity.Property(e => e.MinorVersion).HasColumnName("minor_version");
+            entity.Property(e => e.PatchVersion).HasColumnName("patch_version");
             entity.Property(e => e.PublishedAt).HasColumnName("published_at");
+            entity.Property(e => e.ReleaseType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'initial'::character varying")
+                .HasColumnName("release_type");
             entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
@@ -1552,12 +1566,20 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
             entity.Property(e => e.VersionNumber).HasColumnName("version_number");
 
             entity.HasOne(d => d.CreatedByUser).WithMany(p => p.RoadmapVersions)
                 .HasForeignKey(d => d.CreatedByUserId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_roadmap_version_created_by_user");
+
+            entity.HasOne(d => d.CreatedFromVersion).WithMany(p => p.InverseCreatedFromVersion)
+                .HasForeignKey(d => d.CreatedFromVersionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_roadmap_version_created_from_version");
 
             entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapVersions)
                 .HasForeignKey(d => d.RoadmapId)

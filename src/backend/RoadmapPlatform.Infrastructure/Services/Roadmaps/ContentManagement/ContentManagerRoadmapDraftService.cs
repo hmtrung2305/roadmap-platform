@@ -1,8 +1,8 @@
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 
 namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
@@ -44,15 +44,19 @@ public sealed class ContentManagerRoadmapDraftService(
             .Where(version =>
                 version.RoadmapId == sourceVersion.RoadmapId
                 && version.Status == DraftStatus)
-            .OrderByDescending(version => version.VersionNumber)
+            .OrderByDescending(version => version.MajorVersion)
+            .ThenByDescending(version => version.MinorVersion)
+            .ThenByDescending(version => version.PatchVersion)
+            .ThenByDescending(version => version.VersionNumber)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (existingDraft != null)
         {
-            var correctedTitle = WithVersionSuffix(existingDraft.Title, existingDraft.VersionNumber);
-            if (!existingDraft.Title.Equals(correctedTitle, StringComparison.Ordinal))
+            var normalizedDraftTitle = NormalizeRoadmapTitle(existingDraft.Title);
+            if (!existingDraft.Title.Equals(normalizedDraftTitle, StringComparison.Ordinal))
             {
-                existingDraft.Title = correctedTitle;
+                existingDraft.Title = normalizedDraftTitle;
+                existingDraft.UpdatedAt = DateTime.UtcNow;
                 sourceVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
@@ -68,22 +72,33 @@ public sealed class ContentManagerRoadmapDraftService(
             .Select(version => (int?)version.VersionNumber)
             .MaxAsync(cancellationToken) ?? 0;
         var nextVersionNumber = currentMaxVersionNumber + 1;
-        var baseTitle = ContentManagerRoadmapText.NormalizeOptionalText(request.Title) ?? sourceVersion.Title;
+        var currentMaxMajorVersion = await dbContext.Set<RoadmapVersion>()
+            .Where(version => version.RoadmapId == sourceVersion.RoadmapId)
+            .Select(version => (int?)version.MajorVersion)
+            .MaxAsync(cancellationToken) ?? 0;
+        var nextMajorVersion = Math.Max(currentMaxMajorVersion + 1, sourceVersion.MajorVersion + 1);
+        var baseTitle = NormalizeRoadmapTitle(ContentManagerRoadmapText.NormalizeOptionalText(request.Title) ?? sourceVersion.Title);
 
         var draftVersion = new RoadmapVersion
         {
             RoadmapVersionId = Guid.NewGuid(),
             RoadmapId = sourceVersion.RoadmapId,
             VersionNumber = nextVersionNumber,
+            MajorVersion = nextMajorVersion,
+            MinorVersion = 0,
+            PatchVersion = 0,
+            ReleaseType = "major",
+            CreatedFromVersionId = sourceVersion.RoadmapVersionId,
             Status = DraftStatus,
-            Title = WithVersionSuffix(baseTitle, nextVersionNumber),
+            Title = baseTitle,
             Description = sourceVersion.Description,
             EstimatedTotalHours = sourceVersion.EstimatedTotalHours,
             LayoutDirection = sourceVersion.LayoutDirection,
             LayoutAlgorithm = sourceVersion.LayoutAlgorithm,
             CreatedByUserId = sourceVersion.CreatedByUserId,
             PublishedAt = null,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         dbContext.Set<RoadmapVersion>().Add(draftVersion);
@@ -152,10 +167,12 @@ public sealed class ContentManagerRoadmapDraftService(
         foreach (var publishedVersion in publishedVersions)
         {
             publishedVersion.Status = ArchivedStatus;
+            publishedVersion.UpdatedAt = DateTime.UtcNow;
         }
 
         draftVersion.Status = PublishedStatus;
         draftVersion.PublishedAt = DateTime.UtcNow;
+        draftVersion.UpdatedAt = DateTime.UtcNow;
         draftVersion.Roadmap.Title = draftVersion.Title;
         draftVersion.Roadmap.Description = draftVersion.Description;
         draftVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
@@ -232,11 +249,10 @@ public sealed class ContentManagerRoadmapDraftService(
         }
     }
 
-    private static string WithVersionSuffix(string title, int versionNumber)
+    private static string NormalizeRoadmapTitle(string title)
     {
         var baseTitle = ContentManagerRoadmapText.NormalizeRequiredText(title, "Roadmap title is required.");
-        var withoutVersion = Regex.Replace(baseTitle, @"\s+v\d+\s*$", string.Empty, RegexOptions.IgnoreCase).Trim();
-        return $"{withoutVersion} v{versionNumber}";
+        return RoadmapVersionLabels.RemoveLegacyVersionSuffix(baseTitle);
     }
 
     private static RoadmapNode CloneNode(

@@ -29,7 +29,23 @@ public partial class RoadmapVersion
 
     public DateTime CreatedAt { get; set; }
 
+    public int MajorVersion { get; set; }
+
+    public int MinorVersion { get; set; }
+
+    public int PatchVersion { get; set; }
+
+    public string ReleaseType { get; set; } = null!;
+
+    public Guid? CreatedFromVersionId { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
     public virtual User? CreatedByUser { get; set; }
+
+    public virtual RoadmapVersion? CreatedFromVersion { get; set; }
+
+    public virtual ICollection<RoadmapVersion> InverseCreatedFromVersion { get; set; } = new List<RoadmapVersion>();
 
     public virtual Roadmap Roadmap { get; set; } = null!;
 

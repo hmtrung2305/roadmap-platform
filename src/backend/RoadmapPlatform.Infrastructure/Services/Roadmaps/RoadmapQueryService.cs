@@ -32,7 +32,10 @@ public sealed class RoadmapQueryService(
         var rows = allRows
             .GroupBy(x => x.Roadmap.RoadmapId)
             .Select(g => g
-                .OrderByDescending(x => x.PublishedVersion.VersionNumber)
+                .OrderByDescending(x => x.PublishedVersion.MajorVersion)
+                .ThenByDescending(x => x.PublishedVersion.MinorVersion)
+                .ThenByDescending(x => x.PublishedVersion.PatchVersion)
+                .ThenByDescending(x => x.PublishedVersion.VersionNumber)
                 .First())
             .OrderBy(x => x.CareerRole.Name)
             .ThenBy(x => x.Roadmap.Title)
@@ -74,6 +77,13 @@ public sealed class RoadmapQueryService(
             Title = x.PublishedVersion.Title,
             Description = x.PublishedVersion.Description ?? x.Roadmap.Description,
             Visibility = x.Roadmap.Visibility,
+            VersionNumber = x.PublishedVersion.VersionNumber,
+            MajorVersion = x.PublishedVersion.MajorVersion,
+            MinorVersion = x.PublishedVersion.MinorVersion,
+            PatchVersion = x.PublishedVersion.PatchVersion,
+            VersionLabel = RoadmapVersionLabels.Format(x.PublishedVersion),
+            ReleaseType = x.PublishedVersion.ReleaseType,
+            CreatedFromVersionId = x.PublishedVersion.CreatedFromVersionId,
             EstimatedTotalHours = x.PublishedVersion.EstimatedTotalHours,
             EstimatedRequiredHours = estimatedTimeByVersionId.GetValueOrDefault(x.PublishedVersion.RoadmapVersionId)?.EstimatedRequiredHours ?? 0,
             EstimatedOptionalHours = estimatedTimeByVersionId.GetValueOrDefault(x.PublishedVersion.RoadmapVersionId)?.EstimatedOptionalHours ?? 0,
@@ -209,7 +219,10 @@ public sealed class RoadmapQueryService(
             where version.Status == "published" &&
                   roadmap.Visibility == "public" &&
                   careerRole.Slug == normalizedSlug
-            orderby version.VersionNumber descending
+            orderby version.MajorVersion descending,
+                    version.MinorVersion descending,
+                    version.PatchVersion descending,
+                    version.VersionNumber descending
             select version.RoadmapVersionId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -318,6 +331,12 @@ public sealed class RoadmapQueryService(
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,
             VersionNumber = version.VersionNumber,
+            MajorVersion = version.MajorVersion,
+            MinorVersion = version.MinorVersion,
+            PatchVersion = version.PatchVersion,
+            VersionLabel = RoadmapVersionLabels.Format(version),
+            ReleaseType = version.ReleaseType,
+            CreatedFromVersionId = version.CreatedFromVersionId,
             EstimatedTotalHours = version.EstimatedTotalHours,
             EstimatedRequiredHours = estimatedTime.EstimatedRequiredHours,
             EstimatedOptionalHours = estimatedTime.EstimatedOptionalHours,

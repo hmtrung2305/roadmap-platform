@@ -92,7 +92,10 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 .Where(x =>
                     x.RoadmapId == roadmap.RoadmapId &&
                     x.Status == "published")
-                .OrderByDescending(x => x.VersionNumber)
+                .OrderByDescending(x => x.MajorVersion)
+                .ThenByDescending(x => x.MinorVersion)
+                .ThenByDescending(x => x.PatchVersion)
+                .ThenByDescending(x => x.VersionNumber)
                 .FirstOrDefaultAsync();
 
             if (roadmapVersion == null)
@@ -239,7 +242,10 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 .Where(x =>
                     x.RoadmapId == roadmap.RoadmapId &&
                     x.Status == "published")
-                .OrderByDescending(x => x.VersionNumber)
+                .OrderByDescending(x => x.MajorVersion)
+                .ThenByDescending(x => x.MinorVersion)
+                .ThenByDescending(x => x.PatchVersion)
+                .ThenByDescending(x => x.VersionNumber)
                 .FirstOrDefaultAsync();
 
             if (roadmapVersion == null)
@@ -524,7 +530,10 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 .Where(x =>
                     x.RoadmapId == roadmap.RoadmapId &&
                     x.Status == "published")
-                .OrderByDescending(x => x.VersionNumber)
+                .OrderByDescending(x => x.MajorVersion)
+                .ThenByDescending(x => x.MinorVersion)
+                .ThenByDescending(x => x.PatchVersion)
+                .ThenByDescending(x => x.VersionNumber)
                 .FirstOrDefaultAsync();
 
             if (roadmapVersion == null)
@@ -615,7 +624,10 @@ namespace RoadmapPlatform.Infrastructure.Services.CareerRoleSkill
                 .Where(x =>
                     x.RoadmapId == roadmap.RoadmapId &&
                     x.Status == "published")
-                .OrderByDescending(x => x.VersionNumber)
+                .OrderByDescending(x => x.MajorVersion)
+                .ThenByDescending(x => x.MinorVersion)
+                .ThenByDescending(x => x.PatchVersion)
+                .ThenByDescending(x => x.VersionNumber)
                 .FirstOrDefaultAsync();
 
             if (roadmapVersion == null)
