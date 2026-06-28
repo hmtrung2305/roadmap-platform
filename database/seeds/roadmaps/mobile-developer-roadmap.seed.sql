@@ -56,8 +56,21 @@ FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
     INSERT INTO public.roadmap_version
-    (roadmap_id, version_number, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-SELECT roadmap_id, 1, 'published', 'Mobile Developer Roadmap v1', 'A practical mobile developer roadmap that teaches native and cross-platform foundations while guiding learners toward one primary implementation path and a portfolio-ready production mobile app.', 410, 'TB', 'custom', now()
+    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+SELECT
+    roadmap_id,
+    1,
+    1,
+    0,
+    0,
+    'initial',
+    'published',
+    'Mobile Developer Roadmap',
+    'A practical mobile developer roadmap that teaches native and cross-platform foundations while guiding learners toward one primary implementation path and a portfolio-ready production mobile app.',
+    410,
+    'TB',
+    'custom',
+    now()
 FROM inserted_roadmap
     RETURNING roadmap_version_id, roadmap_id
 )

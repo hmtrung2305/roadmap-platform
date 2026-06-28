@@ -80,18 +80,22 @@ WITH role_row AS (
     RETURNING roadmap_id
 ), inserted_version AS (
     INSERT INTO public.roadmap_version
-    (roadmap_id, version_number, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-    SELECT
-        roadmap_id,
-        1,
-        'published',
-        'Backend Developer Roadmap v1',
-        'A practical backend development roadmap that moves from fundamentals to production readiness through phases, guided topics, checkpoints, optional practice projects, and required milestone projects.',
-        360,
-        'TB',
-        'manual',
-        now()
-    FROM inserted_roadmap
+    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+SELECT
+    roadmap_id,
+    1,
+    1,
+    0,
+    0,
+    'initial',
+    'published',
+    'Backend Developer Roadmap',
+    'A practical backend development roadmap that moves from fundamentals to production readiness through phases, guided topics, checkpoints, optional practice projects, and required milestone projects.',
+    360,
+    'TB',
+    'manual',
+    now()
+FROM inserted_roadmap
     RETURNING roadmap_version_id, roadmap_id
 )
 SELECT roadmap_id, roadmap_version_id FROM inserted_version;

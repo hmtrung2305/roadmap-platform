@@ -26,8 +26,22 @@ WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug='clou
 SELECT career_role_id, 'Cloud Engineer Roadmap', 'A structured learning path for becoming a cloud engineer, covering cloud fundamentals, Linux, networking, IAM, compute, storage, databases, serverless, containers, infrastructure as code, monitoring, security, reliability, cost optimization, migration, multi-cloud awareness, and portfolio-ready cloud projects.', 'public'
 FROM role_row RETURNING roadmap_id
 ), inserted_version AS (
-  INSERT INTO public.roadmap_version (roadmap_id, version_number, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-SELECT roadmap_id, 1, 'published', 'Cloud Engineer Roadmap v1', 'A practical cloud engineering roadmap that moves from cloud foundations to secure, reliable, cost-aware, production-ready cloud architecture and operations.', 405, 'TB', 'custom', now()
+  INSERT INTO public.roadmap_version
+    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+SELECT
+    roadmap_id,
+    1,
+    1,
+    0,
+    0,
+    'initial',
+    'published',
+    'Cloud Engineer Roadmap',
+    'A practical cloud engineering roadmap that moves from cloud foundations to secure, reliable, cost-aware, production-ready cloud architecture and operations.',
+    405,
+    'TB',
+    'custom',
+    now()
 FROM inserted_roadmap RETURNING roadmap_version_id,roadmap_id
 ) SELECT roadmap_id, roadmap_version_id FROM inserted_version;
 

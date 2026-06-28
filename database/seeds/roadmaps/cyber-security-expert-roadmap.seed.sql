@@ -32,8 +32,22 @@ SELECT career_role_id, 'Cyber Security Expert Roadmap', 'A structured learning p
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
-    INSERT INTO public.roadmap_version (roadmap_id, version_number, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-SELECT roadmap_id, 1, 'published', 'Cyber Security Expert Roadmap v1', 'A practical cybersecurity roadmap that moves from foundations to specialist-level readiness through guided topics, checkpoints, optional practice projects, and required milestone projects.', 430, 'TB', 'custom', now()
+    INSERT INTO public.roadmap_version
+    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+SELECT
+    roadmap_id,
+    1,
+    1,
+    0,
+    0,
+    'initial',
+    'published',
+    'Cyber Security Expert Roadmap',
+    'A practical cybersecurity roadmap that moves from foundations to specialist-level readiness through guided topics, checkpoints, optional practice projects, and required milestone projects.',
+    430,
+    'TB',
+    'custom',
+    now()
 FROM inserted_roadmap
     RETURNING roadmap_version_id, roadmap_id
 ) SELECT roadmap_id, roadmap_version_id FROM inserted_version;

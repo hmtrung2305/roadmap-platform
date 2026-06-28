@@ -32,8 +32,22 @@ SELECT career_role_id, 'Network Engineer Roadmap', 'A structured learning path f
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
-    INSERT INTO public.roadmap_version (roadmap_id, version_number, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-SELECT roadmap_id, 1, 'published', 'Network Engineer Roadmap v1', 'A practical network engineering roadmap that moves from foundational packet flow and addressing to enterprise routing, switching, security, wireless, cloud networking, automation, operations, and capstone-level design.', 420, 'TB', 'custom', now()
+    INSERT INTO public.roadmap_version
+    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+SELECT
+    roadmap_id,
+    1,
+    1,
+    0,
+    0,
+    'initial',
+    'published',
+    'Network Engineer Roadmap',
+    'A practical network engineering roadmap that moves from foundational packet flow and addressing to enterprise routing, switching, security, wireless, cloud networking, automation, operations, and capstone-level design.',
+    420,
+    'TB',
+    'custom',
+    now()
 FROM inserted_roadmap
     RETURNING roadmap_version_id, roadmap_id
 ) SELECT roadmap_id, roadmap_version_id FROM inserted_version;

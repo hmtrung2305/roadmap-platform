@@ -68,8 +68,21 @@ FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
     INSERT INTO public.roadmap_version
-    (roadmap_id, version_number, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-SELECT roadmap_id, 1, 'published', 'Database Engineer Roadmap v1', 'A curated static roadmap for CS students with phases, topics, checkpoints, projects, direct skills, resources, and validation-safe persisted mappings.', 410, 'TB', 'manual', now()
+    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+SELECT
+    roadmap_id,
+    1,
+    1,
+    0,
+    0,
+    'initial',
+    'published',
+    'Database Engineer Roadmap',
+    'A curated static roadmap for CS students with phases, topics, checkpoints, projects, direct skills, resources, and validation-safe persisted mappings.',
+    410,
+    'TB',
+    'manual',
+    now()
 FROM inserted_roadmap
     RETURNING roadmap_version_id, roadmap_id
 )
