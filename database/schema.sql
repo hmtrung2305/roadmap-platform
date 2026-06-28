@@ -1,6 +1,6 @@
 -- ============================================================
 -- Consolidated database schema
--- Represents the final schema after migrations 002 through 025.
+-- Represents the final schema after migrations 002 through 026.
 -- Intended for provisioning a new PostgreSQL database.
 -- ============================================================
 
@@ -847,20 +847,31 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
     roadmap_version_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     roadmap_id uuid NOT NULL,
     version_number int NOT NULL,
+    major_version int NOT NULL DEFAULT 1,
+    minor_version int NOT NULL DEFAULT 0,
+    patch_version int NOT NULL DEFAULT 0,
+    release_type varchar(30) NOT NULL DEFAULT 'initial',
     status varchar(30) NOT NULL DEFAULT 'draft',
     title varchar(200) NOT NULL,
     description text,
     estimated_total_hours int,
     layout_direction varchar(20) NOT NULL DEFAULT 'TB',
     layout_algorithm varchar(50),
+    created_from_version_id uuid,
     created_by_user_id uuid,
     published_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_roadmap_version_roadmap
         FOREIGN KEY (roadmap_id)
         REFERENCES public.roadmap(roadmap_id)
         ON DELETE CASCADE,
+
+    CONSTRAINT fk_roadmap_version_created_from_version
+        FOREIGN KEY (created_from_version_id)
+        REFERENCES public.roadmap_version(roadmap_version_id)
+        ON DELETE SET NULL,
 
     CONSTRAINT fk_roadmap_version_created_by_user
         FOREIGN KEY (created_by_user_id)
@@ -870,8 +881,21 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
     CONSTRAINT uq_roadmap_version_number
         UNIQUE (roadmap_id, version_number),
 
+    CONSTRAINT uq_roadmap_version_semver
+        UNIQUE (roadmap_id, major_version, minor_version, patch_version),
+
     CONSTRAINT chk_roadmap_version_status
         CHECK (status IN ('draft', 'published', 'archived')),
+
+    CONSTRAINT chk_roadmap_version_release_type
+        CHECK (release_type IN ('initial', 'patch', 'minor', 'major')),
+
+    CONSTRAINT chk_roadmap_version_semver
+        CHECK (
+            major_version >= 1
+            AND minor_version >= 0
+            AND patch_version >= 0
+        ),
 
     CONSTRAINT chk_roadmap_version_layout_direction
         CHECK (layout_direction IN ('TB', 'BT', 'LR', 'RL')),
@@ -1201,6 +1225,9 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_version_status
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_created_by_user_id
     ON public.roadmap_version(created_by_user_id);
+
+CREATE INDEX IF NOT EXISTS ix_roadmap_version_created_from_version_id
+    ON public.roadmap_version(created_from_version_id);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_node_version_id
     ON public.roadmap_node(roadmap_version_id);
