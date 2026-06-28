@@ -7,6 +7,7 @@ import { skillApi } from "../../../api/skillApi";
 import {
   areTextListsEqual,
   countMissingMappings,
+  formatVersionLabel,
   fromFormNumber,
   isCanceledRequest,
   getFirstMetadataList,
@@ -281,7 +282,7 @@ export default function useContentRoadmapEditor(roadmapId) {
 
     return detail.versions.map((version) => ({
       value: version.roadmapVersionId,
-      label: `v${version.versionNumber} · ${prettyStatus(version.status)}`,
+      label: `${formatVersionLabel(version)} · ${prettyStatus(String(version.status || "").toLowerCase())}`,
     }));
   }, [detail?.versions]);
 

@@ -2,16 +2,14 @@ import { GitBranch, Loader2, Send, ShieldCheck, ArrowRight, History } from "luci
 
 import AppSelect from "../../../components/common/AppSelect";
 import { ModuleButton, ModuleCard } from "../../learningModules/components/learningModuleUi";
-import { prettyStatus } from "../roadmapEditorUtils";
-
-function getMaxVersionNumber(versions = []) {
-  return versions.reduce((max, version) => Math.max(max, Number(version.versionNumber || 0)), 0);
-}
+import { formatVersionLabel, getNextMajorVersionLabel, prettyStatus } from "../roadmapEditorUtils";
 
 export default function DraftVersionActions({ detail, versionOptions = [], onVersionChange, isBusy, onCloneDraft, onPublishDraft }) {
   const status = String(detail?.status || "").toLowerCase();
   const existingDraft = detail?.versions?.find((version) => String(version.status).toLowerCase() === "draft");
-  const nextVersionNumber = getMaxVersionNumber(detail?.versions) + 1;
+  const currentVersionLabel = formatVersionLabel(detail);
+  const existingDraftLabel = formatVersionLabel(existingDraft);
+  const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   return (
     <div className="space-y-3">
@@ -22,7 +20,7 @@ export default function DraftVersionActions({ detail, versionOptions = [], onVer
               <History size={14} className="text-[#1F6F5F]" /> Versions
             </div>
             {versionOptions.length > 0 && (
-              <div className="w-52 sm:w-56">
+              <div className="w-44 sm:w-48">
                 <AppSelect
                   className="min-w-0"
                   buttonClassName="!h-11 !px-3 !text-[15px] !font-bold"
@@ -38,8 +36,8 @@ export default function DraftVersionActions({ detail, versionOptions = [], onVer
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#B9D8CC] bg-[#F7F1E8] text-xs font-black text-[#18332D]">
-              v{detail?.versionNumber}
+            <div className="grid h-10 min-w-16 shrink-0 place-items-center rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-3 text-xs font-black text-[#18332D]">
+              {currentVersionLabel}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-extrabold text-[#18332D]">Current version</p>
@@ -81,7 +79,7 @@ export default function DraftVersionActions({ detail, versionOptions = [], onVer
               {isBusy ? <Loader2 size={18} className="animate-spin" /> : <GitBranch size={18} />}
             </div>
             <h2 className="truncate text-sm font-extrabold text-[#18332D]">
-              {existingDraft ? `Open draft v${existingDraft.versionNumber}` : `Create draft for v${nextVersionNumber}`}
+              {existingDraft ? `Open draft ${existingDraftLabel}` : `Create major draft ${nextMajorVersionLabel}`}
             </h2>
           </div>
           <ArrowRight size={18} className="shrink-0 text-[#1F6F5F] transition group-hover:translate-x-1" />

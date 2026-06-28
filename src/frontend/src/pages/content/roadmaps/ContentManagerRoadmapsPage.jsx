@@ -35,6 +35,7 @@ import {
 } from "../../../features/roadmapEditor/roadmapEditorConstants";
 import {
   formatDate,
+  formatVersionLabel,
   getStatusTone,
   isCanceledRequest,
   parsePage,
@@ -170,6 +171,9 @@ function RoadmapCard({ roadmap, onEdit, onDelete }) {
                 <ModuleBadge tone={getStatusTone(roadmap.status)}>
                   {prettyStatus(roadmap.status)}
                 </ModuleBadge>
+                <span className="rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2 py-0.5 text-xs font-black text-[#18332D]">
+                  {formatVersionLabel(roadmap)}
+                </span>
               </div>
 
               <h2 className="truncate text-lg font-extrabold text-[#18332D]">
@@ -229,10 +233,13 @@ function RoadmapList({ roadmaps, onEdit, onDelete }) {
               {roadmap.careerRole?.name || roadmap.slug}
             </div>
 
-            <div>
+            <div className="flex flex-wrap items-center gap-2">
               <ModuleBadge tone={getStatusTone(roadmap.status)}>
                 {prettyStatus(roadmap.status)}
               </ModuleBadge>
+              <span className="rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2 py-0.5 text-xs font-black text-[#18332D]">
+                {formatVersionLabel(roadmap)}
+              </span>
             </div>
 
             <div className="text-sm font-bold text-slate-600">

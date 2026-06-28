@@ -9,6 +9,46 @@ const nodeTypeOrder = {
   project: 4,
 };
 
+
+export function formatVersionLabel(version) {
+  if (!version) return "v-";
+  if (version.versionLabel) return String(version.versionLabel);
+
+  const major = Number(version.majorVersion);
+  const minor = Number(version.minorVersion);
+  const patch = Number(version.patchVersion);
+
+  if (Number.isFinite(major) && Number.isFinite(minor) && Number.isFinite(patch)) {
+    return `v${major}.${minor}.${patch}`;
+  }
+
+  const legacyVersion = Number(version.versionNumber);
+  return Number.isFinite(legacyVersion) && legacyVersion > 0 ? `v${legacyVersion}.0.0` : "v-";
+}
+
+export function getNextMajorVersionLabel(versions = []) {
+  const majorVersions = normalizeNodes(versions)
+    .map((version) => Number(version?.majorVersion))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  if (majorVersions.length > 0) {
+    return `v${Math.max(...majorVersions) + 1}.0.0`;
+  }
+
+  const legacyVersions = normalizeNodes(versions)
+    .map((version) => Number(version?.versionNumber))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  return legacyVersions.length > 0 ? `v${Math.max(...legacyVersions) + 1}.0.0` : "v1.0.0";
+}
+
+export function prettyReleaseType(releaseType) {
+  const normalized = String(releaseType || "").toLowerCase();
+  if (!normalized) return "Release";
+  if (normalized === "initial") return "Initial";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 export function parsePage(value) {
   const parsed = Number.parseInt(value || "1", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;

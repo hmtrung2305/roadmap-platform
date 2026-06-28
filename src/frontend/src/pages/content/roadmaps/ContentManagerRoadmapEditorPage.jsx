@@ -19,7 +19,7 @@ import NodeEditorGuideModal from "../../../features/roadmapEditor/components/Nod
 import NodeSearchCombobox from "../../../features/roadmapEditor/components/NodeSearchCombobox";
 import RoadmapGraphCanvas from "../../../features/roadmapEditor/components/RoadmapGraphCanvas";
 import useContentRoadmapEditor from "../../../features/roadmapEditor/hooks/useContentRoadmapEditor";
-import { formatDate } from "../../../features/roadmapEditor/roadmapEditorUtils";
+import { formatDate, getNextMajorVersionLabel } from "../../../features/roadmapEditor/roadmapEditorUtils";
 
 export default function ContentManagerRoadmapEditorPage() {
   const navigate = useNavigate();
@@ -185,6 +185,7 @@ export default function ContentManagerRoadmapEditorPage() {
 
   const status = String(detail.status || "").toLowerCase();
   const isDraft = status === "draft";
+  const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
     if (pendingNodeDeletions.length > 0) {
@@ -432,8 +433,8 @@ export default function ContentManagerRoadmapEditorPage() {
       <ConfirmActionDialog
         isOpen={isCloneConfirmOpen}
         tone="success"
-        title="Create draft version"
-        description={`Create v${Number(detail.versionNumber || 0) + 1} from the current version.`}
+        title="Create major draft"
+        description={`Create ${nextMajorVersionLabel} from the current version.`}
         confirmLabel="Create draft"
         cancelLabel="Cancel"
         isConfirming={isMutatingDraft}
