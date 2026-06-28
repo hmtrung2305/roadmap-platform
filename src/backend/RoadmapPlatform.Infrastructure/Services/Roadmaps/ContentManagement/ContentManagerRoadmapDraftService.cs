@@ -14,6 +14,7 @@ public sealed class ContentManagerRoadmapDraftService(
     private const string DraftStatus = "draft";
     private const string PublishedStatus = "published";
     private const string ArchivedStatus = "archived";
+    private const string MajorReleaseType = "major";
 
     public async Task<ContentRoadmapDetailDto> CloneRoadmapVersionToDraftAsync(
         Guid roadmapVersionId,
@@ -40,31 +41,47 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new ArgumentException("Only published roadmap versions can be copied into a draft.");
         }
 
-        var existingDraft = await dbContext.Set<RoadmapVersion>()
+        var nextMajorVersion = sourceVersion.MajorVersion + 1;
+
+        var existingMajorDraft = await dbContext.Set<RoadmapVersion>()
             .Where(version =>
                 version.RoadmapId == sourceVersion.RoadmapId
-                && version.Status == DraftStatus)
-            .OrderByDescending(version => version.MajorVersion)
-            .ThenByDescending(version => version.MinorVersion)
-            .ThenByDescending(version => version.PatchVersion)
-            .ThenByDescending(version => version.VersionNumber)
+                && version.Status == DraftStatus
+                && version.ReleaseType == MajorReleaseType
+                && version.MajorVersion == nextMajorVersion
+                && version.MinorVersion == 0
+                && version.PatchVersion == 0)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (existingDraft != null)
+        if (existingMajorDraft != null)
         {
-            var normalizedDraftTitle = NormalizeRoadmapTitle(existingDraft.Title);
-            if (!existingDraft.Title.Equals(normalizedDraftTitle, StringComparison.Ordinal))
+            var normalizedDraftTitle = NormalizeRoadmapTitle(existingMajorDraft.Title);
+            if (!existingMajorDraft.Title.Equals(normalizedDraftTitle, StringComparison.Ordinal))
             {
-                existingDraft.Title = normalizedDraftTitle;
-                existingDraft.UpdatedAt = DateTime.UtcNow;
+                existingMajorDraft.Title = normalizedDraftTitle;
+                existingMajorDraft.UpdatedAt = DateTime.UtcNow;
                 sourceVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
 
             return await queryService.GetRoadmapDetailAsync(
                 sourceVersion.RoadmapId,
-                existingDraft.RoadmapVersionId,
+                existingMajorDraft.RoadmapVersionId,
                 cancellationToken);
+        }
+
+        var conflictingMajorVersion = await dbContext.Set<RoadmapVersion>()
+            .AsNoTracking()
+            .Where(version =>
+                version.RoadmapId == sourceVersion.RoadmapId
+                && version.MajorVersion == nextMajorVersion
+                && version.MinorVersion == 0
+                && version.PatchVersion == 0)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (conflictingMajorVersion != null)
+        {
+            throw new InvalidOperationException($"Roadmap version {RoadmapVersionLabels.Format(conflictingMajorVersion)} already exists.");
         }
 
         var currentMaxVersionNumber = await dbContext.Set<RoadmapVersion>()
@@ -72,11 +89,6 @@ public sealed class ContentManagerRoadmapDraftService(
             .Select(version => (int?)version.VersionNumber)
             .MaxAsync(cancellationToken) ?? 0;
         var nextVersionNumber = currentMaxVersionNumber + 1;
-        var currentMaxMajorVersion = await dbContext.Set<RoadmapVersion>()
-            .Where(version => version.RoadmapId == sourceVersion.RoadmapId)
-            .Select(version => (int?)version.MajorVersion)
-            .MaxAsync(cancellationToken) ?? 0;
-        var nextMajorVersion = Math.Max(currentMaxMajorVersion + 1, sourceVersion.MajorVersion + 1);
         var baseTitle = NormalizeRoadmapTitle(ContentManagerRoadmapText.NormalizeOptionalText(request.Title) ?? sourceVersion.Title);
 
         var draftVersion = new RoadmapVersion
@@ -87,7 +99,7 @@ public sealed class ContentManagerRoadmapDraftService(
             MajorVersion = nextMajorVersion,
             MinorVersion = 0,
             PatchVersion = 0,
-            ReleaseType = "major",
+            ReleaseType = MajorReleaseType,
             CreatedFromVersionId = sourceVersion.RoadmapVersionId,
             Status = DraftStatus,
             Title = baseTitle,
@@ -150,6 +162,7 @@ public sealed class ContentManagerRoadmapDraftService(
         }
 
         EnsureDraftVersion(draftVersion);
+        EnsureStructuralMajorDraftVersion(draftVersion);
 
         var validation = await validationService.ValidateRoadmapVersionAsync(roadmapVersionId, cancellationToken);
         if (!validation.IsValid)
@@ -157,14 +170,32 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new InvalidOperationException("The draft has validation errors and cannot be published.");
         }
 
-        var publishedVersions = await dbContext.Set<RoadmapVersion>()
+        var blockingPublishedVersion = await dbContext.Set<RoadmapVersion>()
+            .AsNoTracking()
             .Where(version =>
                 version.RoadmapId == draftVersion.RoadmapId
                 && version.Status == PublishedStatus
-                && version.RoadmapVersionId != draftVersion.RoadmapVersionId)
+                && version.RoadmapVersionId != draftVersion.RoadmapVersionId
+                && version.MajorVersion >= draftVersion.MajorVersion)
+            .OrderByDescending(version => version.MajorVersion)
+            .ThenByDescending(version => version.MinorVersion)
+            .ThenByDescending(version => version.PatchVersion)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (blockingPublishedVersion != null)
+        {
+            throw new InvalidOperationException($"A published roadmap version at {RoadmapVersionLabels.Format(blockingPublishedVersion)} already exists.");
+        }
+
+        var publishedVersionsToArchive = await dbContext.Set<RoadmapVersion>()
+            .Where(version =>
+                version.RoadmapId == draftVersion.RoadmapId
+                && version.Status == PublishedStatus
+                && version.RoadmapVersionId != draftVersion.RoadmapVersionId
+                && version.MajorVersion < draftVersion.MajorVersion)
             .ToListAsync(cancellationToken);
 
-        foreach (var publishedVersion in publishedVersions)
+        foreach (var publishedVersion in publishedVersionsToArchive)
         {
             publishedVersion.Status = ArchivedStatus;
             publishedVersion.UpdatedAt = DateTime.UtcNow;
@@ -246,6 +277,16 @@ public sealed class ContentManagerRoadmapDraftService(
         if (!version.Status.Equals(DraftStatus, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Only draft roadmap versions can be structurally edited.");
+        }
+    }
+
+    private static void EnsureStructuralMajorDraftVersion(RoadmapVersion version)
+    {
+        if (!version.ReleaseType.Equals(MajorReleaseType, StringComparison.OrdinalIgnoreCase)
+            || version.MinorVersion != 0
+            || version.PatchVersion != 0)
+        {
+            throw new ArgumentException("Only major structural drafts can be published through this workflow.");
         }
     }
 
