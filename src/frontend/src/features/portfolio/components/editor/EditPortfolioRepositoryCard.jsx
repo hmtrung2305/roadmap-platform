@@ -33,7 +33,9 @@ function getInsightStatus(insight) {
     };
   }
 
-  const status = String(insight.analysisStatus || insight.status || "").toLowerCase();
+  const status = String(
+    insight.analysisStatus || insight.status || "",
+  ).toLowerCase();
 
   if (status === "failed") {
     return {
@@ -113,6 +115,8 @@ export default function EditPortfolioRepositoryCard({
   isSelected,
   isAnalyzing,
   actionDisabled = false,
+  selectionDisabled = false,
+  selectionDisabledReason = "",
   aiCreditDisabled = false,
   onToggle,
   onGenerateInsight,
@@ -120,7 +124,9 @@ export default function EditPortfolioRepositoryCard({
   const repositoryId = getRepositoryId(repository);
   const repoName = getRepoName(repository);
   const insight = repository?.insight;
-  const insightAnalysisStatus = String(insight?.analysisStatus || insight?.status || "").toLowerCase();
+  const insightAnalysisStatus = String(
+    insight?.analysisStatus || insight?.status || "",
+  ).toLowerCase();
   const hasCompletedInsight =
     insightAnalysisStatus === "completed" && insight?.summary;
   const description = hasCompletedInsight
@@ -172,13 +178,14 @@ export default function EditPortfolioRepositoryCard({
         <button
           type="button"
           onClick={onToggle}
-          disabled={actionDisabled}
+          disabled={selectionDisabled}
           aria-label={
             isSelected ? "Remove from portfolio" : "Select for portfolio"
           }
           title={
-            actionDisabled
-              ? "Repository actions are temporarily locked."
+            selectionDisabled
+              ? selectionDisabledReason ||
+                "Repository selection is temporarily disabled."
               : isSelected
                 ? "Selected"
                 : "Choose"
@@ -230,7 +237,9 @@ export default function EditPortfolioRepositoryCard({
             onClick={() =>
               onGenerateInsight?.(repositoryId, hasCompletedInsight)
             }
-            disabled={actionDisabled || aiCreditDisabled || isAnalyzing || !repositoryId}
+            disabled={
+              actionDisabled || aiCreditDisabled || isAnalyzing || !repositoryId
+            }
             className={`ml-auto inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full px-2.5 py-0.5 !text-[14px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${insightStatus.className}`}
             title={
               hasCompletedInsight

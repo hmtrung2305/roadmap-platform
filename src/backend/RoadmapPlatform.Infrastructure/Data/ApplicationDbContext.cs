@@ -277,6 +277,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("email_verification_token");
 
+            entity.HasIndex(e => e.PendingLocalRegistrationId, "ix_email_verification_token_pending_local_registration_id");
+
             entity.Property(e => e.VerificationId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("verification_id");
@@ -292,13 +294,13 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValue(5)
                 .HasColumnName("max_attempts");
             entity.Property(e => e.OtpHash).HasColumnName("otp_hash");
+            entity.Property(e => e.PendingLocalRegistrationId).HasColumnName("pending_local_registration_id");
             entity.Property(e => e.Provider)
                 .HasMaxLength(50)
                 .HasColumnName("provider");
             entity.Property(e => e.Purpose)
                 .HasMaxLength(50)
                 .HasColumnName("purpose");
-            entity.Property(e => e.PendingLocalRegistrationId).HasColumnName("pending_local_registration_id");
             entity.Property(e => e.UsedAt).HasColumnName("used_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
@@ -1035,8 +1037,7 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("pending_local_registration");
 
-            entity.HasIndex(e => e.ExpiresAt, "ix_pending_local_registration_expires_at")
-                .HasFilter("(used_at IS NULL)");
+            entity.HasIndex(e => e.ExpiresAt, "ix_pending_local_registration_expires_at").HasFilter("(used_at IS NULL)");
 
             entity.HasIndex(e => e.Email, "uq_pending_local_registration_email_active")
                 .IsUnique()
@@ -1249,10 +1250,6 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.OwnerUserId, "ix_roadmap_owner_user_id");
 
-            entity.HasIndex(e => e.SourceType, "ix_roadmap_source_type");
-
-            entity.HasIndex(e => new { e.RoadmapType, e.Visibility }, "ix_roadmap_type_visibility");
-
             entity.Property(e => e.RoadmapId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("roadmap_id");
@@ -1262,14 +1259,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
-            entity.Property(e => e.RoadmapType)
-                .HasMaxLength(30)
-                .HasDefaultValueSql("'template'::character varying")
-                .HasColumnName("roadmap_type");
-            entity.Property(e => e.SourceType)
-                .HasMaxLength(30)
-                .HasDefaultValueSql("'static'::character varying")
-                .HasColumnName("source_type");
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");
@@ -1392,15 +1381,9 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.CheckpointType, "ix_roadmap_node_checkpoint_type");
 
-            entity.HasIndex(e => new { e.RoadmapVersionId, e.LayoutGroup }, "ix_roadmap_node_layout_group");
-
-            entity.HasIndex(e => new { e.RoadmapVersionId, e.LayoutRank, e.LayoutOrder }, "ix_roadmap_node_layout_rank_order");
-
             entity.HasIndex(e => e.LayoutRole, "ix_roadmap_node_layout_role");
 
             entity.HasIndex(e => e.ParentNodeId, "ix_roadmap_node_parent_id");
-
-            entity.HasIndex(e => new { e.RoadmapVersionId, e.PositionX, e.PositionY }, "ix_roadmap_node_position");
 
             entity.HasIndex(e => new { e.RoadmapVersionId, e.Slug }, "ix_roadmap_node_slug");
 
@@ -1436,11 +1419,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.IsTrackable)
                 .HasDefaultValue(true)
                 .HasColumnName("is_trackable");
-            entity.Property(e => e.LayoutGroup)
-                .HasMaxLength(80)
-                .HasColumnName("layout_group");
-            entity.Property(e => e.LayoutOrder).HasColumnName("layout_order");
-            entity.Property(e => e.LayoutRank).HasColumnName("layout_rank");
             entity.Property(e => e.LayoutRole)
                 .HasMaxLength(30)
                 .HasDefaultValueSql("'side'::character varying")
@@ -1458,14 +1436,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("node_type");
             entity.Property(e => e.OrderIndex).HasColumnName("order_index");
             entity.Property(e => e.ParentNodeId).HasColumnName("parent_node_id");
-            entity.Property(e => e.PositionX)
-                .HasPrecision(10, 2)
-                .HasColumnName("position_x");
-            entity.Property(e => e.PositionY)
-                .HasPrecision(10, 2)
-                .HasColumnName("position_y");
-            entity.Property(e => e.Priority).HasColumnName("priority");
-            entity.Property(e => e.Reason).HasColumnName("reason");
             entity.Property(e => e.RequiredCount).HasColumnName("required_count");
             entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
             entity.Property(e => e.SelectionType)
@@ -1503,9 +1473,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.RoadmapNodeResourceId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("roadmap_node_resource_id");
-            entity.Property(e => e.IsPrimary).HasColumnName("is_primary");
             entity.Property(e => e.LearningResourceId).HasColumnName("learning_resource_id");
-            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
             entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
 
             entity.HasOne(d => d.LearningResource).WithMany(p => p.RoadmapNodeResources)
@@ -1551,9 +1519,7 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("roadmap_version");
 
-            entity.HasIndex(e => e.GeneratedByUserId, "ix_roadmap_version_generated_by_user_id");
-
-            entity.HasIndex(e => e.GenerationStatus, "ix_roadmap_version_generation_status");
+            entity.HasIndex(e => e.CreatedByUserId, "ix_roadmap_version_created_by_user_id");
 
             entity.HasIndex(e => e.RoadmapId, "ix_roadmap_version_roadmap_id");
 
@@ -1567,22 +1533,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.CreatedByUserId).HasColumnName("created_by_user_id");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EstimatedTotalHours).HasColumnName("estimated_total_hours");
-            entity.Property(e => e.GeneratedByUserId).HasColumnName("generated_by_user_id");
-            entity.Property(e => e.GenerationContext)
-                .HasDefaultValueSql("'{}'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("generation_context");
-            entity.Property(e => e.GenerationError).HasColumnName("generation_error");
-            entity.Property(e => e.GenerationModel)
-                .HasMaxLength(100)
-                .HasColumnName("generation_model");
-            entity.Property(e => e.GenerationPrompt).HasColumnName("generation_prompt");
-            entity.Property(e => e.GenerationStatus)
-                .HasMaxLength(30)
-                .HasDefaultValueSql("'none'::character varying")
-                .HasColumnName("generation_status");
             entity.Property(e => e.LayoutAlgorithm)
                 .HasMaxLength(50)
                 .HasColumnName("layout_algorithm");
@@ -1601,10 +1554,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("title");
             entity.Property(e => e.VersionNumber).HasColumnName("version_number");
 
-            entity.HasOne(d => d.GeneratedByUser).WithMany(p => p.RoadmapVersions)
-                .HasForeignKey(d => d.GeneratedByUserId)
+            entity.HasOne(d => d.CreatedByUser).WithMany(p => p.RoadmapVersions)
+                .HasForeignKey(d => d.CreatedByUserId)
                 .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_roadmap_version_generated_by_user");
+                .HasConstraintName("fk_roadmap_version_created_by_user");
 
             entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapVersions)
                 .HasForeignKey(d => d.RoadmapId)
@@ -2344,8 +2297,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("user_node_progress_id");
             entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
-            entity.Property(e => e.EvidenceUrl).HasColumnName("evidence_url");
-            entity.Property(e => e.LearnerNote).HasColumnName("learner_note");
             entity.Property(e => e.RoadmapEnrollmentId).HasColumnName("roadmap_enrollment_id");
             entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
             entity.Property(e => e.SkippedAt).HasColumnName("skipped_at");

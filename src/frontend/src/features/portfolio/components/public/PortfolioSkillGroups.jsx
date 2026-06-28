@@ -21,7 +21,7 @@ export default function PortfolioSkillGroups({ skillGroups = [] }) {
         </p>
       </div>
 
-      <div className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)]">
+      <div className="rounded-2xl border border-[#B9D8CC]/75 bg-white p-5 shadow-[0_8px_18px_rgba(31,111,95,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {normalizedGroups.map((group) => (
             <div key={group.name}>

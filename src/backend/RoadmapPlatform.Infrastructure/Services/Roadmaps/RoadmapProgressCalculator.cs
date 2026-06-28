@@ -210,8 +210,7 @@ internal static class RoadmapProgressCalculator
 
             return children
                 .Where(n => n.IsRequired)
-                .OrderBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex);
+                .OrderBy(n => n.OrderIndex);
         }
     }
 
@@ -223,18 +222,14 @@ internal static class RoadmapProgressCalculator
         var nodeById = nodes.ToDictionary(n => n.RoadmapNodeId);
         var rootNodes = nodes
             .Where(n => n.ParentNodeId == null && n.IsRequired)
-            .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-            .ThenBy(n => n.LayoutOrder)
-            .ThenBy(n => n.OrderIndex)
+            .OrderBy(n => n.OrderIndex)
             .ToList();
 
         if (rootNodes.Count == 0)
         {
             rootNodes = nodes
                 .Where(n => n.IsRequired && n.LayoutRole == "trunk")
-                .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-                .ThenBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .ToList();
         }
 
@@ -327,8 +322,7 @@ internal static class RoadmapProgressCalculator
 
             return children
                 .Where(n => n.IsRequired)
-                .OrderBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex);
+                .OrderBy(n => n.OrderIndex);
         }
     }
 

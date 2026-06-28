@@ -204,9 +204,7 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
         var nodes = await dbContext.Set<RoadmapNode>()
             .AsNoTracking()
             .Where(node => node.RoadmapVersionId == roadmapVersionId)
-            .OrderBy(node => node.LayoutRank ?? int.MaxValue)
-            .ThenBy(node => node.LayoutOrder)
-            .ThenBy(node => node.OrderIndex)
+            .OrderBy(node => node.OrderIndex)
             .ThenBy(node => node.Title)
             .ToListAsync(cancellationToken);
 
@@ -295,7 +293,11 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             .ToDictionary(
                 group => group.Key,
                 group => group
-                    .OrderBy(mapping => mapping.OrderIndex)
+                    .GroupBy(mapping => NormalizeResourceUrl(mapping.LearningResource.Url))
+                    .Select(urlGroup => urlGroup
+                        .OrderBy(mapping => mapping.LearningResource.Title)
+                        .First())
+                    .OrderBy(mapping => mapping.LearningResource.ResourceType)
                     .ThenBy(mapping => mapping.LearningResource.Title)
                     .Select(mapping => new LearningResourceDto
                     {
@@ -309,6 +311,13 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
                         LanguageCode = mapping.LearningResource.LanguageCode
                     })
                     .ToList());
+    }
+
+    private static string NormalizeResourceUrl(string? url)
+    {
+        return string.IsNullOrWhiteSpace(url)
+            ? string.Empty
+            : url.Trim().TrimEnd('/').ToLowerInvariant();
     }
 
     private async Task<Dictionary<Guid, RoadmapVersionAggregate>> LoadAggregatesAsync(

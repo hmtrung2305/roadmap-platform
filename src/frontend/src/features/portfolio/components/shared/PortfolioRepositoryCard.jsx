@@ -104,7 +104,7 @@ export default function PortfolioRepositoryCard({ repository }) {
   } = getVisibleTags(tags, 4);
 
   return (
-    <article className="group relative z-1 hover:z-2 flex min-h-62.5 flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_14px_34px_rgba(31,111,95,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(31,111,95,0.13)]">
+    <article className="group relative z-1 hover:z-2 flex min-h-62.5 flex-col rounded-2xl border border-[#B9D8CC]/75 bg-white p-5 shadow-[0_8px_18px_rgba(31,111,95,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="line-clamp-1 text-lg font-extrabold text-[#18332D]">

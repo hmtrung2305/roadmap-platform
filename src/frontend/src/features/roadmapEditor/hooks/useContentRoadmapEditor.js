@@ -46,7 +46,6 @@ function createNodeForm(node = null) {
   return {
     title: node?.title || "",
     description: node?.description || "",
-    reason: node?.reason || "",
     estimatedHours: toFormNumber(node?.estimatedHours),
     difficultyLevel: node?.difficultyLevel || "",
     learningOutcomesText: listToText(node?.learningOutcomes),
@@ -302,7 +301,6 @@ export default function useContentRoadmapEditor(roadmapId) {
     const baseChanged = (
       normalizeComparableText(nodeForm.title) !== normalizeComparableText(selectedNode.title)
       || normalizeComparableText(nodeForm.description) !== normalizeComparableText(selectedNode.description)
-      || normalizeComparableText(nodeForm.reason) !== normalizeComparableText(selectedNode.reason)
       || !areTextListsEqual(nodeForm.learningOutcomesText, selectedNode.learningOutcomes)
       || !areTextListsEqual(nodeForm.completionCriteriaText, selectedNode.completionCriteria)
       || !areGuideFormsEqual(nodeForm.guide, createNodeGuideForm(selectedNode), selectedNode)
@@ -391,7 +389,6 @@ export default function useContentRoadmapEditor(roadmapId) {
     const payload = {
       title: nodeForm.title,
       description: nodeForm.description,
-      reason: nodeForm.reason,
       learningOutcomes: textToList(nodeForm.learningOutcomesText),
       completionCriteria: textToList(nodeForm.completionCriteriaText),
     };

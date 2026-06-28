@@ -14,7 +14,6 @@ public sealed class SkillLookupService : ISkillLookupService
     private const int DefaultSuggestionLimit = 6;
     private const int MaxSuggestionLimit = 12;
     private const string PublishedVersionStatus = "published";
-    private const string TemplateRoadmapType = "template";
     private const string PublicRoadmapVisibility = "public";
 
     private readonly ApplicationDbContext _context;
@@ -55,7 +54,6 @@ public sealed class SkillLookupService : ISkillLookupService
                 || (skill.Category != null && skill.Category.ToLower().Contains(normalizedSearch))
                 || skill.RoadmapNodeSkills.Any(mapping =>
                     mapping.RoadmapNode.RoadmapVersion.Status == PublishedVersionStatus
-                    && mapping.RoadmapNode.RoadmapVersion.Roadmap.RoadmapType == TemplateRoadmapType
                     && mapping.RoadmapNode.RoadmapVersion.Roadmap.Visibility == PublicRoadmapVisibility
                     && mapping.RoadmapNode.RoadmapVersion.Roadmap.CareerRole.IsActive
                     && mapping.RoadmapNode.RoadmapVersion.Roadmap.CareerRole.Name
@@ -223,13 +221,12 @@ public sealed class SkillLookupService : ISkillLookupService
             .Where(skill => skill.IsActive);
     }
 
-    private IQueryable<RoadmapNodeSkill> BuildPublishedTemplateUsageQuery()
+    private IQueryable<RoadmapNodeSkill> BuildPublishedRoadmapUsageQuery()
     {
         return _context.RoadmapNodeSkills
             .AsNoTracking()
             .Where(mapping =>
                 mapping.RoadmapNode.RoadmapVersion.Status == PublishedVersionStatus
-                && mapping.RoadmapNode.RoadmapVersion.Roadmap.RoadmapType == TemplateRoadmapType
                 && mapping.RoadmapNode.RoadmapVersion.Roadmap.Visibility == PublicRoadmapVisibility
                 && mapping.RoadmapNode.RoadmapVersion.Roadmap.CareerRole.IsActive);
     }
@@ -248,7 +245,7 @@ public sealed class SkillLookupService : ISkillLookupService
             .Distinct()
             .ToArray();
 
-        var usageRows = await BuildPublishedTemplateUsageQuery()
+        var usageRows = await BuildPublishedRoadmapUsageQuery()
             .Where(mapping => skillIds.Contains(mapping.SkillId))
             .Select(mapping => new
             {

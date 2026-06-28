@@ -47,18 +47,14 @@ internal static class RoadmapEstimatedTimeCalculator
 
         var roots = nodes
             .Where(n => n.ParentNodeId == null)
-            .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-            .ThenBy(n => n.LayoutOrder)
-            .ThenBy(n => n.OrderIndex)
+            .OrderBy(n => n.OrderIndex)
             .ToList();
 
         if (roots.Count == 0)
         {
             roots = nodes
                 .Where(n => n.LayoutRole == "trunk")
-                .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-                .ThenBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .ToList();
         }
 
@@ -66,9 +62,7 @@ internal static class RoadmapEstimatedTimeCalculator
         {
             roots = nodes
                 .Where(n => ManualNodeTypes.Contains(n.NodeType))
-                .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-                .ThenBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .ToList();
         }
 
@@ -251,8 +245,7 @@ internal static class RoadmapEstimatedTimeCalculator
                 : nodes.Where(n => n.ParentNodeId == node.RoadmapNodeId);
 
             return children
-                .OrderBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .ThenBy(n => n.Title);
         }
     }

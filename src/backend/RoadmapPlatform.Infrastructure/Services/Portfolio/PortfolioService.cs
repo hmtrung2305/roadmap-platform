@@ -57,6 +57,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
             var selectedRepositoryIds = request.RepositoryIds
                 .Distinct().ToHashSet();
 
+            if(selectedRepositoryIds.Count > 6)
+            {
+                throw new ConflictException("You can select up to 6 repositories for your portfolio");
+            }
+
             var user = await _dbContext.Users
                 .FirstOrDefaultAsync(x => x.UserId == userId);
 
@@ -125,6 +130,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
                     x.IsSelectedForPortfolio &&
                     !x.IsPrivate)
                 .OrderByDescending(x => x.GithubUpdatedAt)
+                .Take(6)
                 .ToListAsync();
 
             var repositoryDtos = repositories

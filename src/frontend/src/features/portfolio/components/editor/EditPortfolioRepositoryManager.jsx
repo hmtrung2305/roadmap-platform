@@ -2,11 +2,10 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 
 import PortfolioEmptyState from "../shared/PortfolioEmptyState";
-import { MAX_SHOWCASE_REPOSITORIES } from "../../constants/portfolioLimits";
 import AiCreditStatus from "./AiCreditStatus";
-import EditPortfolioBioPreview from "./EditPortfolioBioPreview";
 import EditPortfolioRepositoryCard from "./EditPortfolioRepositoryCard";
 import { getRepositoryId } from "../../utils/portfolioEditUtils";
+import { MAX_SHOWCASE_REPOSITORIES } from "../../constants/portfolioLimits";
 
 export default function EditPortfolioRepositoryManager({
   repositories,
@@ -19,56 +18,38 @@ export default function EditPortfolioRepositoryManager({
   saving,
   analyzingRepositoryIds = {},
   username,
-  portfolio,
   onSave,
   onToggleRepository,
   onGenerateInsight,
-  connectionAction = "connect",
-  connectingGitHub = false,
-  connectDisabled = false,
-  onConnectGitHub,
-  managerHeight,
   creditStatus,
   isLoadingCreditStatus = false,
 }) {
-  const lockedHeight = managerHeight || null;
   const repositoryActionLocked = Boolean(
     repositoryLoading || syncing || reloadingSelection || saving,
   );
-  const isReconnect = connectionAction === "reconnect";
-  const connectLabel = connectingGitHub
-    ? isReconnect
-      ? "Reconnecting..."
-      : "Connecting..."
-    : isReconnect
-      ? "Reconnect GitHub"
-      : "Connect GitHub";
+
+  const isSelectionLimitReached = selectedCount >= MAX_SHOWCASE_REPOSITORIES;
 
   return (
-    <section
-      className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[0_18px_45px_rgba(31,111,95,0.08)] lg:self-start"
-      style={
-        lockedHeight
-          ? {
-              height: `${lockedHeight}px`,
-              maxHeight: `${lockedHeight}px`,
-              minHeight: 0,
-            }
-          : undefined
-      }
-    >
+    <section className="flex h-full min-h-[620px] flex-col overflow-hidden rounded-lg border border-[#B9D8CC] bg-white p-4 shadow-[0_18px_45px_rgba(31,111,95,0.08)] lg:h-[640px] lg:min-h-[640px]">
       <div className="flex shrink-0 flex-col gap-2 border-b border-[#DCEBE5] pb-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2FA084]">
             Repository manager
           </p>
           <p className="mt-1.5 !text-[12px] font-semibold leading-4 text-[#667A73]">
-            Toggle which repositories appear on your portfolio preview and
-            public page. {selectedCount}/{MAX_SHOWCASE_REPOSITORIES} projects selected.
+            Choose up to {MAX_SHOWCASE_REPOSITORIES} repositories to feature on
+            your portfolio preview and public page.
           </p>
+          {isSelectionLimitReached && (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 !text-[12px] font-semibold text-amber-700 ring-1 ring-amber-200">
+              You have selected the maximum of {MAX_SHOWCASE_REPOSITORIES}{" "}
+              repositories. Unselect one to choose another.
+            </p>
+          )}
         </div>
 
-        {isGitHubLinked ? (
+        {isGitHubLinked && (
           <button
             type="button"
             onClick={onSave}
@@ -82,47 +63,25 @@ export default function EditPortfolioRepositoryManager({
             )}
             {saving ? "Saving..." : "Save selection"}
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onConnectGitHub}
-            disabled={connectDisabled}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#18332D] px-3 py-1.5 !text-[14px] font-bold text-white transition-colors hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {connectingGitHub ? (
-              <Loader2 className="animate-spin" size={16} />
-            ) : (
-              <FaGithub size={16} />
-            )}
-            {connectLabel}
-          </button>
         )}
       </div>
 
       {isGitHubLinked && (
-        <AiCreditStatus status={creditStatus} isLoading={isLoadingCreditStatus} />
+        <AiCreditStatus
+          status={creditStatus}
+          isLoading={isLoadingCreditStatus}
+        />
       )}
-
-      <div className="shrink-0">
-        <EditPortfolioBioPreview portfolio={portfolio} />
-      </div>
 
       {!isGitHubLinked ? (
         <div className="mt-4 flex min-h-0 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 p-6 text-center">
           <FaGithub className="mx-auto text-[#1F6F5F]" size={30} />
           <p className="mt-3 text-lg font-bold text-[#18332D]">
-            {connectingGitHub
-              ? isReconnect
-                ? "Reconnecting GitHub..."
-                : "Connecting GitHub..."
-              : isReconnect
-                ? "Reconnect GitHub to manage repositories"
-                : "Connect GitHub to manage repositories"}
+            Connect GitHub to manage repositories
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#667A73]">
-            {isReconnect
-              ? "Your GitHub connection needs to be refreshed before repository sync and summaries can continue."
-              : "After connecting, your repositories will appear here for selection and saving."}
+            Use the GitHub source card above to connect or reconnect your
+            account. Your repositories will appear here after syncing.
           </p>
         </div>
       ) : repositoryLoading ? (
@@ -139,14 +98,25 @@ export default function EditPortfolioRepositoryManager({
           <div className="grid gap-3 md:grid-cols-2">
             {repositories.map((repo) => {
               const repositoryId = getRepositoryId(repo);
+              const isSelected = selectedIds.includes(repositoryId);
+              const selectionDisabled =
+                repositoryActionLocked ||
+                (!isSelected && isSelectionLimitReached);
+
               return (
                 <EditPortfolioRepositoryCard
                   key={repositoryId}
                   repository={repo}
                   username={username}
-                  isSelected={selectedIds.includes(repositoryId)}
+                  isSelected={isSelected}
                   isAnalyzing={Boolean(analyzingRepositoryIds?.[repositoryId])}
                   actionDisabled={repositoryActionLocked}
+                  selectionDisabled={selectionDisabled}
+                  selectionDisabledReason={
+                    !isSelected && isSelectionLimitReached
+                      ? `You can select up to ${MAX_SHOWCASE_REPOSITORIES} repositories.`
+                      : ""
+                  }
                   aiCreditDisabled={creditStatus?.remainingCreditsToday <= 0}
                   onToggle={() => onToggleRepository(repositoryId)}
                   onGenerateInsight={onGenerateInsight}

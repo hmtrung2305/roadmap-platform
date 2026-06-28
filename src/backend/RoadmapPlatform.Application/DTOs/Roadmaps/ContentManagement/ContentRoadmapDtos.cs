@@ -36,8 +36,6 @@ public sealed class ContentRoadmapSummaryDto
     public string Slug { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string RoadmapType { get; set; } = string.Empty;
-    public string SourceType { get; set; } = string.Empty;
     public string Visibility { get; set; } = string.Empty;
     public int VersionNumber { get; set; }
     public string Status { get; set; } = string.Empty;
@@ -59,8 +57,6 @@ public sealed class ContentRoadmapDetailDto
     public string Slug { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string RoadmapType { get; set; } = string.Empty;
-    public string SourceType { get; set; } = string.Empty;
     public string Visibility { get; set; } = string.Empty;
     public int VersionNumber { get; set; }
     public string Status { get; set; } = string.Empty;
@@ -101,12 +97,8 @@ public sealed class ContentRoadmapNodeDto
     public int? RequiredCount { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? Reason { get; set; }
     public int OrderIndex { get; set; }
     public string LayoutRole { get; set; } = string.Empty;
-    public string? LayoutGroup { get; set; }
-    public int? LayoutRank { get; set; }
-    public int LayoutOrder { get; set; }
     public int? EstimatedHours { get; set; }
     public string? DifficultyLevel { get; set; }
     public bool IsRequired { get; set; }
@@ -141,7 +133,6 @@ public sealed class UpdateRoadmapNodeMetadataRequestDto
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? Reason { get; set; }
     public int? EstimatedHours { get; set; }
     public string? DifficultyLevel { get; set; }
     public List<string>? LearningOutcomes { get; set; }
@@ -179,7 +170,6 @@ public sealed class CreateRoadmapNodeRequestDto
     public Guid? ParentNodeId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? Reason { get; set; }
     public int? EstimatedHours { get; set; }
     public string? DifficultyLevel { get; set; }
     public string? CheckpointType { get; set; }

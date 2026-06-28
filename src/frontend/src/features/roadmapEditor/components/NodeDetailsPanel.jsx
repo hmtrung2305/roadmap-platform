@@ -201,15 +201,6 @@ export default function NodeDetailsPanel({
                     className={`${inputClass} min-h-32 resize-y`}
                   />
                 </ModuleField>
-
-                <ModuleField label="Reason">
-                  <textarea
-                    value={nodeForm.reason}
-                    onChange={(event) => setNodeForm((current) => ({ ...current, reason: event.target.value }))}
-                    rows={3}
-                    className={`${inputClass} min-h-24 resize-y`}
-                  />
-                </ModuleField>
               </section>
 
               {canEditLearning ? (

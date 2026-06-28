@@ -81,12 +81,7 @@ public sealed class ContentManagerRoadmapDraftService(
             EstimatedTotalHours = sourceVersion.EstimatedTotalHours,
             LayoutDirection = sourceVersion.LayoutDirection,
             LayoutAlgorithm = sourceVersion.LayoutAlgorithm,
-            GeneratedByUserId = sourceVersion.GeneratedByUserId,
-            GenerationPrompt = sourceVersion.GenerationPrompt,
-            GenerationModel = sourceVersion.GenerationModel,
-            GenerationStatus = sourceVersion.GenerationStatus,
-            GenerationContext = sourceVersion.GenerationContext,
-            GenerationError = null,
+            CreatedByUserId = sourceVersion.CreatedByUserId,
             PublishedAt = null,
             CreatedAt = DateTime.UtcNow
         };
@@ -263,17 +258,10 @@ public sealed class ContentManagerRoadmapDraftService(
             RequiredCount = sourceNode.RequiredCount,
             Title = sourceNode.Title,
             Description = sourceNode.Description,
-            Reason = sourceNode.Reason,
             OrderIndex = sourceNode.OrderIndex,
             LayoutRole = sourceNode.LayoutRole,
-            LayoutGroup = sourceNode.LayoutGroup,
-            LayoutRank = sourceNode.LayoutRank,
-            LayoutOrder = sourceNode.LayoutOrder,
             EstimatedHours = sourceNode.EstimatedHours,
             DifficultyLevel = sourceNode.DifficultyLevel,
-            Priority = sourceNode.Priority,
-            PositionX = sourceNode.PositionX,
-            PositionY = sourceNode.PositionY,
             Metadata = sourceNode.Metadata,
             IsRequired = sourceNode.IsRequired,
             IsTrackable = sourceNode.IsTrackable,
@@ -352,9 +340,7 @@ public sealed class ContentManagerRoadmapDraftService(
             {
                 RoadmapNodeResourceId = Guid.NewGuid(),
                 RoadmapNodeId = nodeIdMap[mapping.RoadmapNodeId],
-                LearningResourceId = mapping.LearningResourceId,
-                OrderIndex = mapping.OrderIndex,
-                IsPrimary = mapping.IsPrimary
+                LearningResourceId = mapping.LearningResourceId
             });
         }
     }

@@ -13,10 +13,6 @@ public partial class UserNodeProgress
 
     public string Status { get; set; } = null!;
 
-    public string? EvidenceUrl { get; set; }
-
-    public string? LearnerNote { get; set; }
-
     public DateTime? StartedAt { get; set; }
 
     public DateTime? CompletedAt { get; set; }

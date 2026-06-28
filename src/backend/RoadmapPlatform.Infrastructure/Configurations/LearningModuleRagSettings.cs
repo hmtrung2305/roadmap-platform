@@ -11,4 +11,8 @@ public sealed class LearningModuleRagSettings
     public int TargetChunkCharacters { get; set; } = 1800;
 
     public int MaxChunkCharacters { get; set; } = 2600;
+
+    public int OverlapCharacters { get; set; } = 250;
+
+    public int MaxOverlapBlocks { get; set; } = 1;
 }

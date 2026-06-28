@@ -87,8 +87,6 @@ export function isSameNullableNumber(left, right) {
 
 export function getNodeSortValue(node) {
   return [
-    Number.isFinite(Number(node?.layoutRank)) ? Number(node.layoutRank) : Number.MAX_SAFE_INTEGER,
-    Number.isFinite(Number(node?.layoutOrder)) ? Number(node.layoutOrder) : Number.MAX_SAFE_INTEGER,
     Number.isFinite(Number(node?.orderIndex)) ? Number(node.orderIndex) : Number.MAX_SAFE_INTEGER,
     nodeTypeOrder[node?.nodeType] ?? 99,
     String(node?.title || ""),

@@ -13,19 +13,12 @@ public sealed class RoadmapNodeDto
     public int? RequiredCount { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? Reason { get; set; }
     public int OrderIndex { get; set; }
     public string LayoutRole { get; set; } = string.Empty;
-    public string? LayoutGroup { get; set; }
-    public int? LayoutRank { get; set; }
-    public int LayoutOrder { get; set; }
     public int? EstimatedHours { get; set; }
     public decimal EstimatedRequiredHours { get; set; }
     public decimal EstimatedOptionalHours { get; set; }
     public string? DifficultyLevel { get; set; }
-    public int Priority { get; set; }
-    public decimal? PositionX { get; set; }
-    public decimal? PositionY { get; set; }
     public JsonElement? Metadata { get; set; }
     public bool IsRequired { get; set; }
     public bool IsTrackable { get; set; }

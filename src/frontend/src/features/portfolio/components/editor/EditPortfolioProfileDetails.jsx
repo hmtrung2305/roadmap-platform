@@ -13,7 +13,7 @@ export default function EditPortfolioProfileDetails({ portfolio, displayName, he
   ];
 
   return (
-    <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_18px_45px_rgba(31,111,95,0.08)]">
+    <section className="flex h-full min-h-[620px] flex-col rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-[0_18px_45px_rgba(31,111,95,0.08)] lg:min-h-[640px]">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2FA084]">Profile details</p>
         <GraduationCap className="text-[#1F6F5F]" size={22} />
@@ -41,7 +41,7 @@ export default function EditPortfolioProfileDetails({ portfolio, displayName, he
         )}
       </div>
 
-      <Link to="/settings/profile" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-bold text-[#1F6F5F] transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/20">
+      <Link to="/settings/profile" className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-bold text-[#1F6F5F] transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/20">
         <PencilLine size={16} />
         Edit profile fields
       </Link>

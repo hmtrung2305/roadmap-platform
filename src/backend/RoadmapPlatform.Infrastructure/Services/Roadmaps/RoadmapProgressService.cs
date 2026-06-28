@@ -96,8 +96,6 @@ public sealed class RoadmapProgressService(ApplicationDbContext dbContext) : IRo
         }
 
         progress.Status = request.Status;
-        progress.EvidenceUrl = string.IsNullOrWhiteSpace(request.EvidenceUrl) ? null : request.EvidenceUrl.Trim();
-        progress.LearnerNote = string.IsNullOrWhiteSpace(request.LearnerNote) ? null : request.LearnerNote.Trim();
         progress.UpdatedAt = now;
 
         ApplyProgressTimestamps(progress, request.Status, now);
@@ -193,9 +191,7 @@ public sealed class RoadmapProgressService(ApplicationDbContext dbContext) : IRo
             ProgressPercent = progressSummary.ProgressPercent,
             ChangedNodes = snapshot.Nodes
                 .Where(n => changedNodeIds.Contains(n.RoadmapNodeId))
-                .OrderBy(n => n.LayoutRank ?? int.MaxValue)
-                .ThenBy(n => n.LayoutOrder)
-                .ThenBy(n => n.OrderIndex)
+                .OrderBy(n => n.OrderIndex)
                 .Select(n => MapNodeProgress(
                     n.RoadmapNodeId,
                     snapshot.ProgressByNodeId.GetValueOrDefault(n.RoadmapNodeId),
@@ -226,8 +222,6 @@ public sealed class RoadmapProgressService(ApplicationDbContext dbContext) : IRo
             RoadmapNodeId = progress.RoadmapNodeId,
             Status = effectiveStatus,
             IsComputed = progress.Status != effectiveStatus,
-            EvidenceUrl = progress.EvidenceUrl,
-            LearnerNote = progress.LearnerNote,
             StartedAt = progress.StartedAt,
             CompletedAt = progress.CompletedAt,
             SkippedAt = progress.SkippedAt,

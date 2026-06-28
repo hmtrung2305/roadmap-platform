@@ -43,19 +43,12 @@ public sealed class ContentManagerRoadmapStructureService(
             RequiredCount = null,
             Title = title,
             Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description),
-            Reason = ContentManagerRoadmapText.NormalizeOptionalText(request.Reason),
             OrderIndex = insertionIndex,
             LayoutRole = ContentManagerRoadmapStructureRules.GetDefaultLayoutRole(nodeType),
-            LayoutGroup = parentNode?.Slug,
-            LayoutRank = 0,
-            LayoutOrder = insertionIndex,
             EstimatedHours = ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(nodeType) ? request.EstimatedHours : null,
             DifficultyLevel = ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(nodeType)
                 ? ContentManagerRoadmapText.NormalizeOptionalText(request.DifficultyLevel)?.ToLowerInvariant()
                 : null,
-            Priority = 0,
-            PositionX = null,
-            PositionY = null,
             Metadata = "{}",
             IsRequired = true,
             IsTrackable = ContentManagerRoadmapStructureRules.GetDefaultIsTrackable(nodeType),
@@ -394,22 +387,17 @@ public sealed class ContentManagerRoadmapStructureService(
             .ThenBy(node => node.Title)
             .ToList();
 
-        var phaseRankById = new Dictionary<Guid, int>();
         for (var phaseIndex = 0; phaseIndex < phases.Count; phaseIndex++)
         {
             var phase = phases[phaseIndex];
             phase.OrderIndex = phaseIndex + 1;
             phase.LayoutRole = "trunk";
-            phase.LayoutRank = phaseIndex + 1;
-            phase.LayoutOrder = 0;
-            phase.LayoutGroup = null;
             phase.IsTrackable = false;
-            phaseRankById[phase.RoadmapNodeId] = phaseIndex + 1;
         }
 
         foreach (var phase in phases)
         {
-            ApplyLayoutToChildren(phase, phaseRankById[phase.RoadmapNodeId], childrenByParent, nodes, phase.Slug);
+            ApplyLayoutToChildren(phase, childrenByParent);
         }
 
         await RebuildPhaseSequenceEdgesAsync(roadmapVersionId, phases, cancellationToken);
@@ -417,10 +405,7 @@ public sealed class ContentManagerRoadmapStructureService(
 
     private static void ApplyLayoutToChildren(
         RoadmapNode parent,
-        int phaseRank,
-        Dictionary<Guid, List<RoadmapNode>> childrenByParent,
-        List<RoadmapNode> allNodes,
-        string layoutGroup)
+        Dictionary<Guid, List<RoadmapNode>> childrenByParent)
     {
         var children = childrenByParent.GetValueOrDefault(parent.RoadmapNodeId) ?? [];
         for (var index = 0; index < children.Count; index++)
@@ -428,15 +413,12 @@ public sealed class ContentManagerRoadmapStructureService(
             var child = children[index];
             var childType = ContentManagerRoadmapStructureRules.NormalizeNodeType(child.NodeType);
             child.OrderIndex = index + 1;
-            child.LayoutGroup = layoutGroup;
-            child.LayoutRank = phaseRank;
-            child.LayoutOrder = parent.NodeType == "phase" ? (index + 1) * 100 : (parent.OrderIndex * 100) + index + 1;
             child.LayoutRole = string.IsNullOrWhiteSpace(child.LayoutRole)
                 ? ContentManagerRoadmapStructureRules.GetDefaultLayoutRole(childType)
                 : child.LayoutRole;
             child.IsTrackable = ContentManagerRoadmapStructureRules.GetDefaultIsTrackable(childType) || child.IsTrackable;
 
-            ApplyLayoutToChildren(child, phaseRank, childrenByParent, allNodes, layoutGroup);
+            ApplyLayoutToChildren(child, childrenByParent);
         }
     }
 

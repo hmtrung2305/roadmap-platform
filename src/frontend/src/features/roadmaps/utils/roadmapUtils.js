@@ -985,9 +985,7 @@ export function getEdgeType(edge) {
 }
 
 export function getLayoutSortValue(node) {
-  const rank = node.layoutRank ?? node.rank ?? 999;
-  const order = node.layoutOrder ?? node.orderIndex ?? node.order ?? 0;
-  return rank * 1000 + order;
+  return node.orderIndex ?? node.order ?? 0;
 }
 
 export function getSortedChildren(children) {

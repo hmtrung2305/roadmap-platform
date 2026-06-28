@@ -71,7 +71,6 @@ public sealed class ContentManagerRoadmapMetadataService(
 
         node.Title = title;
         node.Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
-        node.Reason = ContentManagerRoadmapText.NormalizeOptionalText(request.Reason);
 
         if (request.LearningOutcomes != null)
         {

@@ -23,23 +23,13 @@ public partial class RoadmapVersion
 
     public string? LayoutAlgorithm { get; set; }
 
-    public Guid? GeneratedByUserId { get; set; }
-
-    public string? GenerationPrompt { get; set; }
-
-    public string? GenerationModel { get; set; }
-
-    public string GenerationStatus { get; set; } = null!;
-
-    public string GenerationContext { get; set; } = null!;
-
-    public string? GenerationError { get; set; }
+    public Guid? CreatedByUserId { get; set; }
 
     public DateTime? PublishedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
-    public virtual User? GeneratedByUser { get; set; }
+    public virtual User? CreatedByUser { get; set; }
 
     public virtual Roadmap Roadmap { get; set; } = null!;
 

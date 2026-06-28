@@ -43,23 +43,10 @@ public sealed class ContentManagerRoadmapMappingService(
 
         if (!alreadyMapped)
         {
-            var maxOrder = await dbContext.Set<RoadmapNodeResource>()
-                .Where(mapping => mapping.RoadmapNodeId == roadmapNodeId)
-                .Select(mapping => (int?)mapping.OrderIndex)
-                .MaxAsync(cancellationToken) ?? 0;
-
-            var hasPrimary = await dbContext.Set<RoadmapNodeResource>()
-                .AnyAsync(mapping =>
-                    mapping.RoadmapNodeId == roadmapNodeId
-                    && mapping.IsPrimary,
-                    cancellationToken);
-
             dbContext.Set<RoadmapNodeResource>().Add(new RoadmapNodeResource
             {
                 RoadmapNodeId = roadmapNodeId,
-                LearningResourceId = request.LearningResourceId,
-                OrderIndex = maxOrder + 1,
-                IsPrimary = !hasPrimary
+                LearningResourceId = request.LearningResourceId
             });
 
             await dbContext.SaveChangesAsync(cancellationToken);
