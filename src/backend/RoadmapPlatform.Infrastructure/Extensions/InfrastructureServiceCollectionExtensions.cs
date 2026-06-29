@@ -96,6 +96,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // User Services
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IAdminUserService, AdminUserService>();
             services.AddScoped<IAccountProfileService, AccountProfileService>();
 
             // RBAC Services

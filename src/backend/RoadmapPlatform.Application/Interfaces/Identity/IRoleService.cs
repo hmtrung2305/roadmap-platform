@@ -14,5 +14,7 @@ namespace RoadmapPlatform.Application.Interfaces.Identity
         Task<RoleResponseDto> UpdateRoleAsync(Guid roleId, UpdateRoleRequestDto roleRequest);
         Task DeleteRoleAsync(Guid roleId);
         Task<RoleDetailResponseDto> AssignRolePermissionsAsync(Guid roleId, AssignPermissionRoleRequestDto request);
+        Task<RoleDetailResponseDto> GrantRolePermissionAsync(Guid roleId, Guid permissionId);
+        Task<RoleDetailResponseDto> RevokeRolePermissionAsync(Guid roleId, Guid permissionId);
     }
 }

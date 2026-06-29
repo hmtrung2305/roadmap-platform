@@ -1,21 +1,50 @@
 import {
-  KeyRound,
   Activity,
   ShieldCheck,
   SlidersHorizontal,
   UsersRound,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PERMISSIONS } from "../../constants/permissions";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { hasAllPermissions, hasAnyPermission } from "../../utils/authorizationUtils";
 
 const adminAreas = [
-  { title: "Users", icon: UsersRound },
-  { title: "Roles", icon: ShieldCheck },
-  { title: "Permissions", icon: KeyRound },
+  {
+    title: "Users",
+    icon: UsersRound,
+    href: "/admin/users",
+    requiredAllPermissions: [
+      PERMISSIONS.USER_VIEW_ANY,
+      PERMISSIONS.USER_ROLE_VIEW_ANY,
+    ],
+  },
+  {
+    title: "Roles & Permissions",
+    icon: ShieldCheck,
+    href: "/admin/roles",
+    requiredPermissions: [
+      PERMISSIONS.ROLE_VIEW_ANY,
+      PERMISSIONS.PERMISSION_VIEW_ANY,
+      PERMISSIONS.ROLE_PERMISSION_VIEW_ANY,
+    ],
+  },
   { title: "Skills", icon: SlidersHorizontal },
-  { title: "Market Pulse", icon: Activity, href: "/admin/market-pulse" },
+  {
+    title: "Market Pulse",
+    icon: Activity,
+    href: "/admin/market-pulse",
+    requiredPermissions: [PERMISSIONS.MARKET_PULSE_MANAGE_ANY],
+  },
 ];
 
 export default function AdminHomePage() {
+  const user = useAuthStore((state) => state.user);
+  const visibleAdminAreas = adminAreas.filter((area) => (
+    hasAnyPermission(user, area.requiredPermissions || [])
+    && hasAllPermissions(user, area.requiredAllPermissions || [])
+  ));
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
       <section className="rounded-xl border border-[#B9D8CC] bg-white p-6 shadow-sm">
@@ -31,7 +60,7 @@ export default function AdminHomePage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {adminAreas.map((area) => {
+        {visibleAdminAreas.map((area) => {
           const Icon = area.icon;
 
           return (

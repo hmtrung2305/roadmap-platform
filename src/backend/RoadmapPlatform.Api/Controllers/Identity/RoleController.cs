@@ -32,6 +32,7 @@ namespace RoadmapPlatform.Api.Controllers.Identity
         }
 
         [RequirePermission(PermissionConstant.ROLE_VIEW_ANY)]
+        [RequirePermission(PermissionConstant.ROLE_PERMISSION_VIEW_ANY)]
         [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetRoleById(Guid id)
         {
@@ -70,6 +71,34 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             {
                 Success = true,
                 Message = "Update role detail successfully",
+                Data = role
+            });
+        }
+
+        [RequirePermission(PermissionConstant.ROLE_PERMISSION_ASSIGN_ANY)]
+        [HttpPost("{id:guid}/permissions/{permissionId:guid}")]
+        public async Task<ActionResult<RoleDetailResponseDto>> GrantPermission(Guid id, Guid permissionId)
+        {
+            var role = await _roleService.GrantRolePermissionAsync(id, permissionId);
+
+            return Ok(new
+            {
+                Success = true,
+                Message = "Permission assigned to role successfully",
+                Data = role
+            });
+        }
+
+        [RequirePermission(PermissionConstant.ROLE_PERMISSION_REVOKE_ANY)]
+        [HttpDelete("{id:guid}/permissions/{permissionId:guid}")]
+        public async Task<ActionResult<RoleDetailResponseDto>> RevokePermission(Guid id, Guid permissionId)
+        {
+            var role = await _roleService.RevokeRolePermissionAsync(id, permissionId);
+
+            return Ok(new
+            {
+                Success = true,
+                Message = "Permission revoked from role successfully",
                 Data = role
             });
         }

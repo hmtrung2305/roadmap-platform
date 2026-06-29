@@ -86,6 +86,8 @@ Assigned to: `learner`
 |---|---|
 | `career_role.view.catalog` | View authenticated career-role catalog data |
 | `skill_gap_analysis.create.self` | Run own skill-gap analysis |
+| `skill_gap_analysis_history.view.self` | View own skill-gap analysis history |
+| `skill_gap_analysis_history.delete.self` | Delete own skill-gap analysis history |
 | `market_pulse.view.catalog` | View authenticated market pulse catalog data |
 | `skill.view.catalog` | Search/view skills for authenticated app use |
 
@@ -98,6 +100,9 @@ Assigned to: `content_manager`
 | Permission | Purpose |
 |---|---|
 | `skill.view.catalog` | Search/view skills when creating or editing modules |
+| `career_role.view.catalog` | View career-role catalog data when configuring content |
+| `skill_gap_config.view.any` | View skill-gap configuration |
+| `skill_gap_config.update.any` | Update skill-gap configuration |
 
 Content Manager receives catalog skill lookup only. Content Manager should not receive `skill.view.any` because that is platform governance scope.
 
@@ -186,6 +191,7 @@ Assigned to: `admin`
 | `skill.create.any` | Create skills |
 | `skill.update.any` | Update skills |
 | `skill.delete.any` | Delete skills |
+| `market_pulse.manage.any` | Operate Market Pulse admin refreshes, retries, classifier mapping, and source health |
 | `system_health.view.any` | View protected system/database health diagnostics |
 
 ## Explicit non-goals

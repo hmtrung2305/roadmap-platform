@@ -55,14 +55,14 @@ Guard: `RequirePermission(anyPermissions={ADMIN_SURFACE_PERMISSIONS})`
 | Route | Purpose |
 |---|---|
 | `/admin` | Admin console shell/home |
+| `/admin/users` | User role assignment |
+| `/admin/roles` | Role and permission governance |
+| `/admin/market-pulse` | Market Pulse admin operations |
 | `/admin/settings` | Admin console settings |
 
 Future admin pages should be added under `/admin/*`, for example:
 
 ```text
-/admin/users
-/admin/roles
-/admin/permissions
 /admin/skills
 ```
 
@@ -131,12 +131,17 @@ Ownership is still enforced in the service layer.
 
 | Area | Main permissions |
 |---|---|
+| User management | `user.view.any` |
+| User-role viewing | `user.view.any`, `user_role.view.any` |
+| User-role assignment | `user_role.assign.any` |
+| User-role revocation | `user_role.revoke.any` |
 | Role management | `role.*.any` |
 | Permission management | `permission.*.any` |
-| Role-permission assignment | `role_permission.assign.any`, `role_permission.revoke.any` |
-| Future user-role assignment | `user_role.*.any` |
-| Future user management | `user.*.any` |
+| Role-permission viewing | `role.view.any`, `role_permission.view.any` |
+| Role-permission assignment | `role_permission.assign.any` |
+| Role-permission revocation | `role_permission.revoke.any` |
 | Future skill governance | `skill.*.any` |
+| Market Pulse admin operations | `market_pulse.manage.any` |
 | System health diagnostics | `system_health.view.any` |
 
 ## Legacy route cleanup status

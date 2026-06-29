@@ -37,7 +37,9 @@ import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPa
 import ContentManagerSkillGapPage from "./pages/content/ContentManagerSkillGapPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
+import AdminRolesPermissionsPage from "./pages/admin/AdminRolesPermissionsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
   ADMIN_SURFACE_PERMISSIONS,
@@ -252,6 +254,33 @@ export default function App() {
             }
           >
             <Route path="/admin" element={<AdminHomePage />} />
+            <Route
+              path="/admin/users"
+              element={
+                <RequirePermission
+                  allPermissions={[
+                    PERMISSIONS.USER_VIEW_ANY,
+                    PERMISSIONS.USER_ROLE_VIEW_ANY,
+                  ]}
+                >
+                  <AdminUsersPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/admin/roles"
+              element={
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.ROLE_VIEW_ANY,
+                    PERMISSIONS.PERMISSION_VIEW_ANY,
+                    PERMISSIONS.ROLE_PERMISSION_VIEW_ANY,
+                  ]}
+                >
+                  <AdminRolesPermissionsPage />
+                </RequirePermission>
+              }
+            />
             <Route path="/admin/market-pulse" element={<AdminMarketPulsePage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>

@@ -3,17 +3,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronUp,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Activity,
   Settings,
   Shield,
+  UsersRound,
 } from "lucide-react";
 
 import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
+import { PERMISSIONS } from "../constants/permissions";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useProfileStore } from "../stores/useProfileStore";
+import { hasAllPermissions, hasAnyPermission } from "../utils/authorizationUtils";
 
 const adminNavItems = [
   {
@@ -26,7 +30,29 @@ const adminNavItems = [
     label: "Market Pulse",
     path: "/admin/market-pulse",
     icon: Activity,
+    requiredPermissions: [PERMISSIONS.MARKET_PULSE_MANAGE_ANY],
     match: (pathname) => pathname === "/admin/market-pulse",
+  },
+  {
+    label: "Users",
+    path: "/admin/users",
+    icon: UsersRound,
+    requiredAllPermissions: [
+      PERMISSIONS.USER_VIEW_ANY,
+      PERMISSIONS.USER_ROLE_VIEW_ANY,
+    ],
+    match: (pathname) => pathname === "/admin/users",
+  },
+  {
+    label: "Roles & Permissions",
+    path: "/admin/roles",
+    icon: KeyRound,
+    requiredPermissions: [
+      PERMISSIONS.ROLE_VIEW_ANY,
+      PERMISSIONS.PERMISSION_VIEW_ANY,
+      PERMISSIONS.ROLE_PERMISSION_VIEW_ANY,
+    ],
+    match: (pathname) => pathname === "/admin/roles",
   },
   {
     label: "Settings",
@@ -47,6 +73,14 @@ function getAdminPageTitle(pathname) {
 
   if (pathname === "/admin/market-pulse") {
     return "Market Pulse";
+  }
+
+  if (pathname === "/admin/users") {
+    return "Users";
+  }
+
+  if (pathname === "/admin/roles") {
+    return "Roles & Permissions";
   }
 
   return "Admin";
@@ -113,6 +147,14 @@ export default function AdminLayout() {
     [location.pathname],
   );
 
+  const visibleAdminNavItems = useMemo(
+    () => adminNavItems.filter((item) => (
+      hasAnyPermission(user, item.requiredPermissions || [])
+      && hasAllPermissions(user, item.requiredAllPermissions || [])
+    )),
+    [user],
+  );
+
   const displayName = getDisplayName(user, profile);
   const email = getEmail(user, profile);
 
@@ -141,7 +183,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-5">
-          {adminNavItems.map((item) => {
+          {visibleAdminNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.match(location.pathname);
 
