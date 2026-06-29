@@ -94,7 +94,7 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
                 errors.Add(CreateItem("phase_parent_invalid", "Phases must stay at the top level.", node));
             }
 
-            if (nodeType is "resource_group" or "group" && !HasParentOfType(node, nodes, "phase"))
+            if (nodeType is ("choice_group" or "resource_group" or "group") && !HasParentOfType(node, nodes, "phase"))
             {
                 errors.Add(CreateItem("group_parent_invalid", "Groups must belong to a phase.", node));
             }

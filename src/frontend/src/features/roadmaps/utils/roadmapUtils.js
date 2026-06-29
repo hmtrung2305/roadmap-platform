@@ -413,15 +413,12 @@ export function isCenterSpineChildNode(node) {
   const nodeType = getNodeType(node);
   const layoutRole = getLayoutRole(node);
   const checkpointType = node?.checkpointType || node?.checkpoint_type || null;
-  const isRequired = node?.isRequired ?? node?.is_required ?? false;
-
   if (nodeType === "phase") return true;
-  if (nodeType === "checkpoint") return true;
-  if (layoutRole === "checkpoint" || layoutRole === "gate" || layoutRole === "validation") return true;
-  if (checkpointType === "gate" || checkpointType === "assessment" || checkpointType === "review") return true;
+  if (layoutRole === "side" || layoutRole === "side_left" || layoutRole === "side_right" || layoutRole === "hidden") return false;
+  if (nodeType === "checkpoint") return layoutRole === "checkpoint" || layoutRole === "trunk" || layoutRole === "gate" || layoutRole === "validation";
 
   if (nodeType === "project") {
-    return isRequired === true || layoutRole === "required_project" || layoutRole === "validation_project";
+    return false;
   }
 
   return false;
@@ -1154,8 +1151,7 @@ export function getNodeTypeClass(nodeType, checkpointType) {
   if (nodeType === "resource_group") return "border-[#CFE79B] bg-[#E9F5BE] text-[#18332D] hover:bg-[#E0F0AA]";
 
   if (nodeType === "checkpoint") {
-    if (checkpointType === "gate") return "border-[#55C98E] bg-[#81E7AF] text-[#18332D] hover:bg-[#74DEA4]";
-    if (checkpointType === "assessment") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
+    if (checkpointType === "gate" || checkpointType === "assessment") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
     if (checkpointType === "review") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
     if (checkpointType === "project") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
     return "border-[#B9D8CC] bg-[#F8FAFC] text-[#18332D] hover:bg-[#F1F5F9]";

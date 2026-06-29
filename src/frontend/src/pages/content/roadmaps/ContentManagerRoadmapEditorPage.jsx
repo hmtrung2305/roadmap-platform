@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, History, Layers3, Loader2, Map as MapIcon, Plus } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, Layers3, Loader2, Map as MapIcon, Plus } from "lucide-react";
 
 import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
@@ -13,7 +13,6 @@ import DraftValidationModal from "../../../features/roadmapEditor/components/Dra
 import DraftVersionActions from "../../../features/roadmapEditor/components/DraftVersionActions";
 import MetadataEditor from "../../../features/roadmapEditor/components/MetadataEditor";
 import NodeCreateModal from "../../../features/roadmapEditor/components/NodeCreateModal";
-import NodeDeletionHistoryModal from "../../../features/roadmapEditor/components/NodeDeletionHistoryModal";
 import NodeDetailsPanel from "../../../features/roadmapEditor/components/NodeDetailsPanel";
 import NodeEditorGuideModal from "../../../features/roadmapEditor/components/NodeEditorGuideModal";
 import NodeSearchCombobox from "../../../features/roadmapEditor/components/NodeSearchCombobox";
@@ -30,8 +29,6 @@ export default function ContentManagerRoadmapEditorPage() {
   const [isValidationOpen, setIsValidationOpen] = useState(false);
   const [isCloneConfirmOpen, setIsCloneConfirmOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [isDeletionHistoryOpen, setIsDeletionHistoryOpen] = useState(false);
-  const [deletionCommitIntent, setDeletionCommitIntent] = useState(null);
 
   const {
     detail,
@@ -59,7 +56,6 @@ export default function ContentManagerRoadmapEditorPage() {
     isMutatingDraft,
     validationResult,
     setValidationResult,
-    pendingNodeDeletions,
     selectedNodeChildCount,
     error,
     workspaceMode,
@@ -77,9 +73,6 @@ export default function ContentManagerRoadmapEditorPage() {
     createNode,
     moveNode,
     deleteNode,
-    undoNodeDelete,
-    restoreAllPendingNodeDeletions,
-    commitPendingNodeDeletions,
     loadSkillSuggestions,
     loadResourceSuggestions,
     searchSkills,
@@ -92,47 +85,12 @@ export default function ContentManagerRoadmapEditorPage() {
     focusNodeFromSearch,
   } = editor;
 
-  const requestDeletionCommit = ({ title, description, confirmLabel, afterCommit }) => {
-    setDeletionCommitIntent({ title, description, confirmLabel, afterCommit });
-  };
-
-  const handleBackToRoadmaps = async () => {
-    if (pendingNodeDeletions.length > 0) {
-      requestDeletionCommit({
-        title: "Apply staged deletions?",
-        description: `${pendingNodeDeletions.length} staged deletion ${pendingNodeDeletions.length === 1 ? "change" : "changes"} will be applied before leaving the editor.`,
-        confirmLabel: "Apply and leave",
-        afterCommit: () => navigate("/content/roadmaps"),
-      });
-      return;
-    }
-
+  const handleBackToRoadmaps = () => {
     navigate("/content/roadmaps");
   };
 
-  const handleEditorVersionChange = async (versionId) => {
-    if (pendingNodeDeletions.length > 0) {
-      requestDeletionCommit({
-        title: "Apply staged deletions?",
-        description: `${pendingNodeDeletions.length} staged deletion ${pendingNodeDeletions.length === 1 ? "change" : "changes"} will be applied before switching versions.`,
-        confirmLabel: "Apply and switch",
-        afterCommit: () => handleVersionChange(versionId),
-      });
-      return;
-    }
-
+  const handleEditorVersionChange = (versionId) => {
     handleVersionChange(versionId);
-  };
-
-  const confirmDeletionCommit = async () => {
-    if (!deletionCommitIntent) return;
-
-    const intent = deletionCommitIntent;
-    const committed = await commitPendingNodeDeletions();
-    if (!committed) return;
-
-    setDeletionCommitIntent(null);
-    await intent.afterCommit?.();
   };
 
   if (isLoading && !detail) {
@@ -188,37 +146,11 @@ export default function ContentManagerRoadmapEditorPage() {
   const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
-    if (pendingNodeDeletions.length > 0) {
-      requestDeletionCommit({
-        title: "Apply staged deletions?",
-        description: `${pendingNodeDeletions.length} staged deletion ${pendingNodeDeletions.length === 1 ? "change" : "changes"} will be applied before validation.`,
-        confirmLabel: "Apply and validate",
-        afterCommit: async () => {
-          await validateDraft();
-          setIsValidationOpen(true);
-        },
-      });
-      return;
-    }
-
     await validateDraft();
     setIsValidationOpen(true);
   };
 
   const handlePublish = async () => {
-    if (pendingNodeDeletions.length > 0) {
-      requestDeletionCommit({
-        title: "Apply staged deletions?",
-        description: `${pendingNodeDeletions.length} staged deletion ${pendingNodeDeletions.length === 1 ? "change" : "changes"} will be applied before publishing.`,
-        confirmLabel: "Apply and publish",
-        afterCommit: async () => {
-          await publishDraft();
-          setIsValidationOpen(false);
-        },
-      });
-      return;
-    }
-
     await publishDraft();
     setIsValidationOpen(false);
   };
@@ -339,33 +271,21 @@ export default function ContentManagerRoadmapEditorPage() {
                   {isDraft && (
                     <ModuleButton
                       size="xs"
-                      className="bg-[#2FA084] text-white hover:bg-[#1F6F5F]"
+                      variant="secondary"
+                      className="border-[#028C7C] bg-[#03A791]/12 text-[#026B60] hover:border-[#026B60] hover:bg-[#03A791]/20"
                       onClick={() => {
                         setCreateNodeMode("phase");
                         setIsCreateNodeOpen(true);
                       }}
                       disabled={isMutatingDraft}
                     >
-                      <Plus size={14} /> Add phase
+                      <Plus size={14} /> Add Phase Node
                     </ModuleButton>
                   )}
                   <NodeSearchCombobox nodes={allNodes} onSelect={focusNodeFromSearch} />
                 </div>
               </div>
             </div>
-
-            {pendingNodeDeletions.length > 0 && (
-              <div className="border-b border-[#B9D8CC]/70 bg-[#F7F1E8]/55 px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#B9D8CC] bg-white px-3 py-2 shadow-sm">
-                  <span className="text-sm font-bold text-[#18332D]">
-                    {pendingNodeDeletions.length} deletion {pendingNodeDeletions.length === 1 ? "change" : "changes"} staged
-                  </span>
-                  <ModuleButton size="xs" variant="secondary" onClick={() => setIsDeletionHistoryOpen(true)}>
-                    <History size={13} /> Review
-                  </ModuleButton>
-                </div>
-              </div>
-            )}
 
             <div className="grid gap-4 p-4 xl:grid-cols-[minmax(340px,0.72fr)_minmax(560px,1.15fr)]">
               <div className="min-w-0">
@@ -419,18 +339,6 @@ export default function ContentManagerRoadmapEditorPage() {
 
 
       <ConfirmActionDialog
-        isOpen={Boolean(deletionCommitIntent)}
-        tone="warning"
-        title={deletionCommitIntent?.title}
-        description={deletionCommitIntent?.description}
-        confirmLabel={deletionCommitIntent?.confirmLabel || "Apply deletions"}
-        cancelLabel="Cancel"
-        isConfirming={isMutatingDraft}
-        onCancel={() => setDeletionCommitIntent(null)}
-        onConfirm={confirmDeletionCommit}
-      />
-
-      <ConfirmActionDialog
         isOpen={isCloneConfirmOpen}
         tone="success"
         title="Create major draft"
@@ -453,15 +361,6 @@ export default function ContentManagerRoadmapEditorPage() {
         isSaving={isMutatingDraft}
         onClose={() => setIsCreateNodeOpen(false)}
         onCreate={createNode}
-      />
-
-      <NodeDeletionHistoryModal
-        isOpen={isDeletionHistoryOpen}
-        pendingDeletions={pendingNodeDeletions}
-        isBusy={isMutatingDraft}
-        onClose={() => setIsDeletionHistoryOpen(false)}
-        onUndo={undoNodeDelete}
-        onRestoreAll={restoreAllPendingNodeDeletions}
       />
 
       <NodeEditorGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />

@@ -11,6 +11,7 @@ import {
   List,
   Map as MapIcon,
   MoreHorizontal,
+  Plus,
   Search,
   Trash2,
 } from "lucide-react";
@@ -25,7 +26,11 @@ import {
   ModuleButton,
   ModuleCard,
   ModuleEmptyState,
+  ModuleField,
   ModulePageShell,
+  inputClass,
+  numberInputClass,
+  selectClass,
 } from "../../../features/learningModules/components/learningModuleUi";
 import {
   initialRoadmapListResult,
@@ -46,6 +51,152 @@ const viewModes = [
   { value: "list", label: "List", icon: List },
   { value: "card", label: "Cards", icon: Grid2X2 },
 ];
+
+const initialCreateRoadmapForm = {
+  careerRoleId: "",
+  title: "",
+  description: "",
+  estimatedTotalHours: "",
+};
+
+function normalizeCareerRole(role) {
+  return {
+    careerRoleId: role?.careerRoleId || role?.CareerRoleId || "",
+    name: role?.name || role?.Name || "",
+    slug: role?.slug || role?.Slug || "",
+  };
+}
+
+function normalizeCareerRoles(data) {
+  return (Array.isArray(data) ? data : [])
+    .map(normalizeCareerRole)
+    .filter((role) => role.careerRoleId && role.name);
+}
+
+function CreateRoadmapModal({
+  isOpen,
+  form,
+  setForm,
+  careerRoles,
+  isLoadingRoles,
+  isCreating,
+  error,
+  onClose,
+  onCreate,
+}) {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/35 px-4 py-6">
+      <div
+        className="absolute inset-0"
+        aria-hidden="true"
+        onClick={() => {
+          if (!isCreating) onClose();
+        }}
+      />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCreate();
+        }}
+        className="relative z-[101] w-full max-w-xl rounded-2xl border border-[#B9D8CC] bg-white p-5 shadow-2xl"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-[#18332D]">Create roadmap</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isCreating}
+            className="rounded-lg px-2 py-1 text-sm font-black text-slate-500 transition hover:bg-[#F7F1E8] hover:text-[#18332D] disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Close create roadmap modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <ModuleField label="Career role">
+            <select
+              value={form.careerRoleId}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, careerRoleId: event.target.value }))
+              }
+              className={selectClass}
+              disabled={isLoadingRoles || isCreating}
+            >
+              <option value="">
+                {isLoadingRoles ? "Loading roles..." : "Select career role"}
+              </option>
+              {careerRoles.map((role) => (
+                <option key={role.careerRoleId} value={role.careerRoleId}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+          </ModuleField>
+
+          <ModuleField label="Roadmap title">
+            <input
+              type="text"
+              value={form.title}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, title: event.target.value }))
+              }
+              className={inputClass}
+              placeholder="Example: Backend Developer Roadmap"
+              disabled={isCreating}
+              maxLength={200}
+            />
+          </ModuleField>
+
+          <ModuleField label="Description">
+            <textarea
+              value={form.description}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, description: event.target.value }))
+              }
+              className={`${inputClass} min-h-24 resize-y`}
+              disabled={isCreating}
+            />
+          </ModuleField>
+
+          <ModuleField label="Estimated hours">
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={form.estimatedTotalHours}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, estimatedTotalHours: event.target.value }))
+              }
+              className={numberInputClass}
+              disabled={isCreating}
+            />
+          </ModuleField>
+
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <ModuleButton variant="secondary" onClick={onClose} disabled={isCreating}>
+            Cancel
+          </ModuleButton>
+          <ModuleButton type="submit" disabled={isCreating || isLoadingRoles}>
+            {isCreating ? "Creating..." : "Create draft"}
+          </ModuleButton>
+        </div>
+      </form>
+    </div>,
+    document.body,
+  );
+}
 
 function RoadmapActionsMenu({ roadmap, onDelete }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -292,6 +443,12 @@ export default function ContentManagerRoadmapsPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [roadmapToDelete, setRoadmapToDelete] = useState(null);
   const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+  const [isCreateRoadmapOpen, setIsCreateRoadmapOpen] = useState(false);
+  const [careerRoles, setCareerRoles] = useState([]);
+  const [isLoadingCareerRoles, setIsLoadingCareerRoles] = useState(false);
+  const [createRoadmapForm, setCreateRoadmapForm] = useState(initialCreateRoadmapForm);
+  const [createRoadmapError, setCreateRoadmapError] = useState("");
+  const [isCreatingRoadmap, setIsCreatingRoadmap] = useState(false);
 
   const setQueryValues = (changes, options) => {
     const next = new URLSearchParams(searchParamsString);
@@ -310,6 +467,42 @@ export default function ContentManagerRoadmapsPage() {
   useEffect(() => {
     setSearchInput(searchQuery);
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (!isCreateRoadmapOpen || careerRoles.length > 0) return undefined;
+
+    let isActive = true;
+
+    async function loadCareerRoles() {
+      try {
+        setIsLoadingCareerRoles(true);
+        setCreateRoadmapError("");
+
+        const roles = normalizeCareerRoles(await contentManagerRoadmapApi.getCareerRoles());
+        if (!isActive) return;
+
+        setCareerRoles(roles);
+        setCreateRoadmapForm((current) => ({
+          ...current,
+          careerRoleId: current.careerRoleId || roles[0]?.careerRoleId || "",
+        }));
+      } catch (requestError) {
+        if (isActive) {
+          setCreateRoadmapError(requestError?.message || "Unable to load career roles.");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingCareerRoles(false);
+        }
+      }
+    }
+
+    loadCareerRoles();
+
+    return () => {
+      isActive = false;
+    };
+  }, [careerRoles.length, isCreateRoadmapOpen]);
 
   useEffect(() => {
     const normalizedSearch = searchInput.trim();
@@ -401,6 +594,69 @@ export default function ContentManagerRoadmapsPage() {
     setQueryValues({ q: null, sort: null, page: null });
   };
 
+  const openCreateRoadmap = () => {
+    setCreateRoadmapError("");
+    setCreateRoadmapForm({
+      ...initialCreateRoadmapForm,
+      careerRoleId: careerRoles[0]?.careerRoleId || "",
+    });
+    setIsCreateRoadmapOpen(true);
+  };
+
+  const closeCreateRoadmap = () => {
+    if (isCreatingRoadmap) return;
+
+    setIsCreateRoadmapOpen(false);
+    setCreateRoadmapError("");
+    setCreateRoadmapForm(initialCreateRoadmapForm);
+  };
+
+  const createRoadmap = async () => {
+    const title = createRoadmapForm.title.trim();
+    const careerRoleId = createRoadmapForm.careerRoleId;
+    const estimatedTotalHoursText = String(createRoadmapForm.estimatedTotalHours || "").trim();
+    const estimatedTotalHours = estimatedTotalHoursText
+      ? Number(estimatedTotalHoursText)
+      : null;
+
+    if (!careerRoleId) {
+      setCreateRoadmapError("Select a career role.");
+      return;
+    }
+
+    if (!title) {
+      setCreateRoadmapError("Roadmap title is required.");
+      return;
+    }
+
+    if (estimatedTotalHours !== null
+      && (!Number.isInteger(estimatedTotalHours) || estimatedTotalHours <= 0)) {
+      setCreateRoadmapError("Estimated hours must be a positive whole number.");
+      return;
+    }
+
+    try {
+      setIsCreatingRoadmap(true);
+      setCreateRoadmapError("");
+
+      const createdRoadmap = await contentManagerRoadmapApi.createRoadmap({
+        careerRoleId,
+        title,
+        description: createRoadmapForm.description.trim() || null,
+        estimatedTotalHours,
+      });
+
+      toast.success("Roadmap draft created.");
+      navigate(
+        `/content/roadmaps/${createdRoadmap.roadmapId}/edit?versionId=${createdRoadmap.roadmapVersionId}`,
+      );
+    } catch (requestError) {
+      setCreateRoadmapError(requestError?.message || "Unable to create roadmap.");
+    } finally {
+      setIsCreatingRoadmap(false);
+    }
+  };
+
   const openEditor = (roadmap) => {
     const versionQuery = roadmap.roadmapVersionId
       ? `?versionId=${roadmap.roadmapVersionId}`
@@ -444,6 +700,10 @@ export default function ContentManagerRoadmapsPage() {
                 </h1>
               </div>
             </div>
+
+            <ModuleButton size="md" onClick={openCreateRoadmap}>
+              <Plus size={15} /> Create roadmap
+            </ModuleButton>
           </div>
         </section>
 
@@ -565,7 +825,11 @@ export default function ContentManagerRoadmapsPage() {
                 <ModuleButton onClick={resetFilters}>
                   Clear filters
                 </ModuleButton>
-              ) : null
+              ) : (
+                <ModuleButton onClick={openCreateRoadmap}>
+                  <Plus size={14} /> Create roadmap
+                </ModuleButton>
+              )
             }
           >
             {hasFilters
@@ -630,6 +894,18 @@ export default function ContentManagerRoadmapsPage() {
           </ModuleCard>
         )}
       </div>
+
+      <CreateRoadmapModal
+        isOpen={isCreateRoadmapOpen}
+        form={createRoadmapForm}
+        setForm={setCreateRoadmapForm}
+        careerRoles={careerRoles}
+        isLoadingRoles={isLoadingCareerRoles}
+        isCreating={isCreatingRoadmap}
+        error={createRoadmapError}
+        onClose={closeCreateRoadmap}
+        onCreate={createRoadmap}
+      />
 
       <ConfirmActionDialog
         isOpen={Boolean(roadmapToDelete)}

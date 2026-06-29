@@ -9,10 +9,10 @@ import {
   numberInputClass,
 } from "../../learningModules/components/learningModuleUi";
 import {
-  checkpointTypeOptions,
   difficultyOptions,
   draftNodeTypeOptions,
   draftNodePositionOptions,
+  nodeRequirementOptions,
 } from "../roadmapEditorConstants";
 import { compareNodes } from "../roadmapEditorUtils";
 import { getAllowedChildNodeTypes, getNodeLabel } from "../nodeRules";
@@ -36,7 +36,7 @@ const initialForm = {
   description: "",
   estimatedHours: "",
   difficultyLevel: "",
-  checkpointType: "review",
+  requirement: "required",
   position: "end",
   referenceNodeId: "",
 };
@@ -66,9 +66,11 @@ export default function NodeCreateModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    const nextNodeType = isPhaseCreate ? "phase" : nodeTypeOptions[0]?.value || "topic";
     setForm({
       ...initialForm,
-      nodeType: isPhaseCreate ? "phase" : nodeTypeOptions[0]?.value || "topic",
+      nodeType: nextNodeType,
+      requirement: nextNodeType === "project" ? "optional" : "required",
     });
   }, [isOpen, isPhaseCreate, nodeTypeOptions]);
 
@@ -87,11 +89,16 @@ export default function NodeCreateModal({
 
   const parentNodeId = isPhaseCreate ? null : getNodeId(selectedNode);
   const canUseLearningFields = ["topic", "project", "checkpoint"].includes(form.nodeType);
+  const canChooseRequirement = form.nodeType === "project";
   const setField = (key, value) => setForm((current) => {
     const next = { ...current, [key]: value };
 
     if (key === "position" && value === "end") {
       next.referenceNodeId = "";
+    }
+
+    if (key === "nodeType") {
+      next.requirement = value === "project" ? "optional" : "required";
     }
 
     return next;
@@ -106,7 +113,9 @@ export default function NodeCreateModal({
       description: form.description,
       estimatedHours: form.estimatedHours === "" ? null : Number(form.estimatedHours),
       difficultyLevel: form.difficultyLevel || null,
-      checkpointType: form.nodeType === "checkpoint" ? form.checkpointType : null,
+      checkpointType: form.nodeType === "checkpoint" ? "assessment" : null,
+      layoutRole: null,
+      isRequired: canChooseRequirement ? form.requirement === "required" : null,
       position: isPhaseCreate ? form.position : "end",
       referenceNodeId: isPhaseCreate && form.position !== "end" ? form.referenceNodeId || null : null,
     });
@@ -139,7 +148,7 @@ export default function NodeCreateModal({
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
               <Plus size={18} />
             </div>
-            <h2 className="text-base font-extrabold text-[#18332D]">Add node</h2>
+            <h2 className="text-base font-extrabold text-[#18332D]">{isPhaseCreate ? "Add Phase Node" : "Add node"}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 transition hover:bg-[#F7F1E8] hover:text-[#18332D]">
             <X size={18} />
@@ -236,12 +245,12 @@ export default function NodeCreateModal({
             </div>
           ) : null}
 
-          {form.nodeType === "checkpoint" ? (
-            <ModuleField label="Checkpoint type">
+          {canChooseRequirement ? (
+            <ModuleField label="Progress rule">
               <AppSelect
-                value={form.checkpointType}
-                options={checkpointTypeOptions}
-                onChange={(value) => setField("checkpointType", value)}
+                value={form.requirement}
+                options={nodeRequirementOptions}
+                onChange={(value) => setField("requirement", value)}
                 dropdownMode="fixed"
               />
             </ModuleField>
@@ -252,7 +261,7 @@ export default function NodeCreateModal({
           <ModuleButton type="button" variant="secondary" onClick={onClose}>Cancel</ModuleButton>
           <ModuleButton type="submit" disabled={isSubmitDisabled}>
             {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            Add node
+            {isPhaseCreate ? "Add Phase Node" : "Add node"}
           </ModuleButton>
         </div>
       </form>

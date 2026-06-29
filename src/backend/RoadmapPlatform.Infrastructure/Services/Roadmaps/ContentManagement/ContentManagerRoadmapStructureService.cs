@@ -30,6 +30,7 @@ public sealed class ContentManagerRoadmapStructureService(
         var siblings = await LoadSiblingsAsync(roadmapVersionId, parentNode?.RoadmapNodeId, cancellationToken);
         var insertionIndex = GetInsertionIndex(siblings, request.Position, request.ReferenceNodeId);
         ShiftSiblingsForInsert(siblings, insertionIndex);
+        var isRequired = ContentManagerRoadmapStructureRules.GetIsRequiredForCreate(nodeType, request.IsRequired);
 
         var node = new RoadmapNode
         {
@@ -44,13 +45,13 @@ public sealed class ContentManagerRoadmapStructureService(
             Title = title,
             Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description),
             OrderIndex = insertionIndex,
-            LayoutRole = ContentManagerRoadmapStructureRules.GetDefaultLayoutRole(nodeType),
+            LayoutRole = ContentManagerRoadmapStructureRules.GetLayoutRoleForCreate(nodeType, parentNode),
             EstimatedHours = ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(nodeType) ? request.EstimatedHours : null,
             DifficultyLevel = ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(nodeType)
                 ? ContentManagerRoadmapText.NormalizeOptionalText(request.DifficultyLevel)?.ToLowerInvariant()
                 : null,
             Metadata = "{}",
-            IsRequired = true,
+            IsRequired = isRequired,
             IsTrackable = ContentManagerRoadmapStructureRules.GetDefaultIsTrackable(nodeType),
             LearningOutcomes = "[]",
             CompletionCriteria = "[]",
@@ -343,7 +344,7 @@ public sealed class ContentManagerRoadmapStructureService(
             RoadmapVersionId = node.RoadmapVersionId,
             FromNodeId = parentNode.RoadmapNodeId,
             ToNodeId = node.RoadmapNodeId,
-            EdgeType = parentNode.NodeType.Equals("choice_group", StringComparison.OrdinalIgnoreCase) ? "choice" : "contains",
+            EdgeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(parentNode.NodeType) == "choice_group" ? "choice" : "contains",
             DependencyType = "required",
             Condition = "{}"
         });
@@ -419,9 +420,7 @@ public sealed class ContentManagerRoadmapStructureService(
             var child = children[index];
             var childType = ContentManagerRoadmapStructureRules.NormalizeNodeType(child.NodeType);
             child.OrderIndex = index + 1;
-            child.LayoutRole = string.IsNullOrWhiteSpace(child.LayoutRole)
-                ? ContentManagerRoadmapStructureRules.GetDefaultLayoutRole(childType)
-                : child.LayoutRole;
+            child.LayoutRole = ContentManagerRoadmapStructureRules.GetPersistedLayoutRole(childType, child.LayoutRole);
             child.IsTrackable = ContentManagerRoadmapStructureRules.GetDefaultIsTrackable(childType) || child.IsTrackable;
 
             ApplyLayoutToChildren(child, childrenByParent);

@@ -70,7 +70,14 @@ export default function DraftVersionActions({ detail, versionOptions = [], onVer
       {status === "published" && (
         <button
           type="button"
-          onClick={onCloneDraft}
+          onClick={() => {
+            if (existingDraft?.roadmapVersionId) {
+              onVersionChange(existingDraft.roadmapVersionId);
+              return;
+            }
+
+            onCloneDraft();
+          }}
           disabled={isBusy}
           className="group flex w-full items-center justify-between gap-4 rounded-xl border border-dashed border-[#9FBFB4] bg-white/95 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:border-[#9FBFB4]"
         >

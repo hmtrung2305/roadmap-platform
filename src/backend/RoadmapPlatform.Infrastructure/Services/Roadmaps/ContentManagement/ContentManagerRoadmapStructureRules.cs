@@ -8,6 +8,7 @@ internal static class ContentManagerRoadmapStructureRules
     private static readonly HashSet<string> SupportedCreatedNodeTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "phase",
+        "choice_group",
         "resource_group",
         "group",
         "topic",
@@ -20,7 +21,7 @@ internal static class ContentManagerRoadmapStructureRules
         var normalized = ContentManagerRoadmapText.NormalizeOptionalText(nodeType)?.ToLowerInvariant();
         if (normalized == "group")
         {
-            return "resource_group";
+            return "choice_group";
         }
 
         return normalized ?? string.Empty;
@@ -66,7 +67,7 @@ internal static class ContentManagerRoadmapStructureRules
             throw new ArgumentException("This node type cannot contain child nodes.");
         }
 
-        if (normalizedNodeType == "resource_group")
+        if (normalizedNodeType is "choice_group" or "resource_group")
         {
             if (parentType != "phase")
             {
@@ -122,10 +123,69 @@ internal static class ContentManagerRoadmapStructureRules
         return nodeType switch
         {
             "phase" => "trunk",
-            "checkpoint" => "checkpoint",
-            "project" => "required_project",
             _ => "side"
         };
+    }
+
+    public static string GetLayoutRoleForCreate(string nodeType, RoadmapNode? parentNode)
+    {
+        var normalizedNodeType = NormalizeNodeType(nodeType);
+        if (normalizedNodeType == "phase")
+        {
+            return "trunk";
+        }
+
+        var parentType = NormalizeNodeType(parentNode?.NodeType);
+        if (parentType == "choice_group")
+        {
+            return "choice";
+        }
+
+        if (normalizedNodeType == "checkpoint" && parentType == "phase")
+        {
+            return "checkpoint";
+        }
+
+        return "side";
+    }
+
+    public static string GetPersistedLayoutRole(string nodeType, string? currentLayoutRole)
+    {
+        var normalizedNodeType = NormalizeNodeType(nodeType);
+        var normalizedRole = ContentManagerRoadmapText.NormalizeOptionalText(currentLayoutRole)?.ToLowerInvariant();
+
+        if (normalizedRole is null or "")
+        {
+            return GetDefaultLayoutRole(normalizedNodeType);
+        }
+
+        if (normalizedRole is "side_left" or "side_right")
+        {
+            return "side";
+        }
+
+        if (normalizedRole is "trunk" or "side" or "choice" or "checkpoint" or "hidden")
+        {
+            return normalizedRole;
+        }
+
+        return GetDefaultLayoutRole(normalizedNodeType);
+    }
+
+    public static bool GetIsRequiredForCreate(string nodeType, bool? requestedIsRequired)
+    {
+        var normalizedNodeType = NormalizeNodeType(nodeType);
+        if (normalizedNodeType == "checkpoint")
+        {
+            return true;
+        }
+
+        if (normalizedNodeType == "project")
+        {
+            return requestedIsRequired ?? false;
+        }
+
+        return true;
     }
 
     public static bool GetDefaultIsTrackable(string nodeType)
@@ -135,11 +195,6 @@ internal static class ContentManagerRoadmapStructureRules
 
     public static string? GetDefaultCheckpointType(string nodeType, string? requestedCheckpointType)
     {
-        if (nodeType != "checkpoint")
-        {
-            return null;
-        }
-
-        return ContentManagerRoadmapText.NormalizeOptionalText(requestedCheckpointType)?.ToLowerInvariant() ?? "review";
+        return nodeType == "checkpoint" ? "assessment" : null;
     }
 }

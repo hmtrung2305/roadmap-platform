@@ -49,6 +49,19 @@ export const contentManagerRoadmapApi = {
     return response.data;
   },
 
+  createRoadmap: async (payload) => {
+    const response = await axiosClient.post("/content/roadmaps", payload);
+
+    return response.data;
+  },
+
+  getCareerRoles: async () => {
+    const response = await axiosClient.get("/skill-gap/career-roles");
+
+    if (Array.isArray(response.data)) return response.data;
+    if (Array.isArray(response.data?.items)) return response.data.items;
+    return [];
+  },
 
   cloneVersionToDraft: async (roadmapVersionId, payload = {}) => {
     const response = await axiosClient.post(

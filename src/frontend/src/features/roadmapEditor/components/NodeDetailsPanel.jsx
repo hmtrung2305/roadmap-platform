@@ -299,9 +299,9 @@ export default function NodeDetailsPanel({
         isOpen={isDeleteConfirmOpen}
         title="Delete node"
         description={childNodeCount > 0
-          ? `This will remove this node and ${childNodeCount} child ${childNodeCount === 1 ? "node" : "nodes"}. You can restore it from deletion history before applying changes.`
-          : "This removes the selected draft node. You can restore it from deletion history before applying changes."}
-        confirmLabel="Delete node"
+          ? `This permanently deletes this node and ${childNodeCount} child ${childNodeCount === 1 ? "node" : "nodes"}. This action cannot be undone.`
+          : "This permanently deletes the selected draft node. This action cannot be undone."}
+        confirmLabel="Delete permanently"
         cancelLabel="Keep node"
         isConfirming={isMutatingDraft}
         onCancel={() => setIsDeleteConfirmOpen(false)}

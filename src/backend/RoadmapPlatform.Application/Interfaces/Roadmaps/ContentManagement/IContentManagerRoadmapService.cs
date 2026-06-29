@@ -13,6 +13,10 @@ public interface IContentManagerRoadmapService
         Guid? roadmapVersionId,
         CancellationToken cancellationToken);
 
+    Task<ContentRoadmapDetailDto> CreateRoadmapAsync(
+        CreateRoadmapRequestDto request,
+        CancellationToken cancellationToken);
+
     Task<ContentRoadmapDetailDto> UpdateRoadmapVersionMetadataAsync(
         Guid roadmapVersionId,
         UpdateRoadmapVersionMetadataRequestDto request,

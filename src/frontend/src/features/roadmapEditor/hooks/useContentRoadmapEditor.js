@@ -84,46 +84,6 @@ function getDescendantIds(rootId, nodes = []) {
   return orderedIds;
 }
 
-function getEdgeNodeIds(edge = {}) {
-  return {
-    sourceId: edge.fromNodeId || edge.sourceNodeId || edge.source || edge.sourceId,
-    targetId: edge.toNodeId || edge.targetNodeId || edge.target || edge.targetId,
-  };
-}
-
-function removeNodesFromDetail(detail, deletedIds = []) {
-  if (!detail) return detail;
-
-  const deletedSet = new Set(deletedIds.map(String));
-  return {
-    ...detail,
-    nodes: normalizeNodes(detail.nodes).filter((node) => !deletedSet.has(String(getNodeId(node)))),
-    edges: Array.isArray(detail.edges)
-      ? detail.edges.filter((edge) => {
-        const { sourceId, targetId } = getEdgeNodeIds(edge);
-        return !deletedSet.has(String(sourceId)) && !deletedSet.has(String(targetId));
-      })
-      : detail.edges,
-  };
-}
-
-function restoreDeletedItems(detail, deletedNodes = [], deletedEdges = []) {
-  if (!detail) return detail;
-
-  const existingNodeIds = new Set(normalizeNodes(detail.nodes).map((node) => String(getNodeId(node))));
-  const restoredNodes = deletedNodes.filter((node) => !existingNodeIds.has(String(getNodeId(node))));
-  const existingEdgeIds = new Set((detail.edges || []).map((edge) => String(edge.roadmapEdgeId || edge.id || `${edge.fromNodeId || edge.sourceNodeId}-${edge.toNodeId || edge.targetNodeId}-${edge.edgeType || edge.type}`)));
-  const restoredEdges = deletedEdges.filter((edge) => {
-    const edgeId = String(edge.roadmapEdgeId || edge.id || `${edge.fromNodeId || edge.sourceNodeId}-${edge.toNodeId || edge.targetNodeId}-${edge.edgeType || edge.type}`);
-    return !existingEdgeIds.has(edgeId);
-  });
-
-  return {
-    ...detail,
-    nodes: [...normalizeNodes(detail.nodes), ...restoredNodes],
-    edges: [...(Array.isArray(detail.edges) ? detail.edges : []), ...restoredEdges],
-  };
-}
 
 function areGuideFormsEqual(left = {}, right = {}, node = null) {
   const nodeType = normalizeNodeType(node);
@@ -195,7 +155,6 @@ export default function useContentRoadmapEditor(roadmapId) {
   const [workspaceMode, setWorkspaceMode] = useState("nodes");
   const [isMutatingDraft, setIsMutatingDraft] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
-  const [pendingNodeDeletions, setPendingNodeDeletions] = useState([]);
 
   useEffect(() => {
     if (!roadmapId) return undefined;
@@ -615,88 +574,15 @@ export default function useContentRoadmapEditor(roadmapId) {
   };
 
   const deleteNode = async () => {
-    if (!selectedNode?.roadmapNodeId || !detail) return;
-
-    const deletedNode = selectedNode;
-    const deletedNodeId = selectedNode.roadmapNodeId;
-    const deletedIds = getDescendantIds(deletedNodeId, allNodes);
-    const deletedIdSet = new Set(deletedIds.map(String));
-    const deletedNodes = allNodes.filter((node) => deletedIdSet.has(String(getNodeId(node))));
-    const deletedEdges = Array.isArray(detail.edges)
-      ? detail.edges.filter((edge) => {
-        const { sourceId, targetId } = getEdgeNodeIds(edge);
-        return deletedIdSet.has(String(sourceId)) || deletedIdSet.has(String(targetId));
-      })
-      : [];
-
-    const remainingNodes = allNodes.filter((node) => !deletedIdSet.has(String(getNodeId(node))));
-    const siblingFallback = remainingNodes.find((node) => node.parentNodeId === deletedNode.parentNodeId)?.roadmapNodeId;
-    const parentFallback = remainingNodes.find((node) => node.roadmapNodeId === deletedNode.parentNodeId)?.roadmapNodeId;
-    const focusNodeId = siblingFallback || parentFallback || remainingNodes[0]?.roadmapNodeId || "";
-
-    setDetail((current) => removeNodesFromDetail(current, deletedIds));
-    setSelectedNodeId(focusNodeId);
-
-    setPendingNodeDeletions((current) => [
-      ...current,
-      {
-        actionId: `${deletedNodeId}-${Date.now()}`,
-        rootNodeId: deletedNodeId,
-        nodeLabel: deletedNode.title || "Node",
-        deletedCount: deletedNodes.length,
-        deletedNodes,
-        deletedEdges,
-        restoreSelectedNodeId: deletedNodeId,
-      },
-    ]);
-    toast.info("Node staged for deletion.");
-  };
-
-  const undoNodeDelete = (actionId) => {
-    const action = pendingNodeDeletions.find((item) => item.actionId === actionId);
-    if (!action) return;
-
-    setDetail((current) => restoreDeletedItems(current, action.deletedNodes, action.deletedEdges));
-    setSelectedNodeId(action.restoreSelectedNodeId);
-    setPendingNodeDeletions((current) => current.filter((item) => item.actionId !== actionId));
-    toast.info("Node restored.");
-  };
-
-  const restoreAllPendingNodeDeletions = () => {
-    if (pendingNodeDeletions.length === 0) return;
-
-    setDetail((current) => pendingNodeDeletions.reduce(
-      (nextDetail, action) => restoreDeletedItems(nextDetail, action.deletedNodes, action.deletedEdges),
-      current,
-    ));
-    const lastRestoredNodeId = pendingNodeDeletions[pendingNodeDeletions.length - 1]?.restoreSelectedNodeId || "";
-    if (lastRestoredNodeId) {
-      setSelectedNodeId(lastRestoredNodeId);
-    }
-    setPendingNodeDeletions([]);
-    toast.info("Nodes restored.");
-  };
-
-  const commitPendingNodeDeletions = async () => {
-    if (pendingNodeDeletions.length === 0) return true;
+    if (!selectedNode?.roadmapNodeId) return;
 
     try {
       setIsMutatingDraft(true);
-      let latestResult = null;
-
-      for (const action of pendingNodeDeletions) {
-        latestResult = await contentManagerRoadmapApi.deleteNode(action.rootNodeId);
-      }
-
-      setPendingNodeDeletions([]);
-      if (latestResult?.roadmap) {
-        applyRoadmapDetail(latestResult.roadmap, latestResult.focusNodeId);
-      }
-      toast.success("Deletions applied.");
-      return true;
+      const result = await contentManagerRoadmapApi.deleteNode(selectedNode.roadmapNodeId);
+      applyRoadmapDetail(result?.roadmap, result?.focusNodeId);
+      toast.success("Node deleted.");
     } catch (actionError) {
-      toast.error(actionError?.message || "Unable to apply deletions.");
-      return false;
+      toast.error(actionError?.message || "Unable to delete node.");
     } finally {
       setIsMutatingDraft(false);
     }
@@ -745,7 +631,6 @@ export default function useContentRoadmapEditor(roadmapId) {
     isMutatingDraft,
     validationResult,
     setValidationResult,
-    pendingNodeDeletions,
     selectedNodeChildCount,
     error,
     workspaceMode,
@@ -763,9 +648,6 @@ export default function useContentRoadmapEditor(roadmapId) {
     createNode,
     moveNode,
     deleteNode,
-    undoNodeDelete,
-    restoreAllPendingNodeDeletions,
-    commitPendingNodeDeletions,
     loadSkillSuggestions,
     loadResourceSuggestions,
     searchSkills,

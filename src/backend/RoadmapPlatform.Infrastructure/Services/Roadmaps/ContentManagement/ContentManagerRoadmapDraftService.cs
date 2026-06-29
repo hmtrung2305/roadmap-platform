@@ -15,6 +15,74 @@ public sealed class ContentManagerRoadmapDraftService(
     private const string PublishedStatus = "published";
     private const string ArchivedStatus = "archived";
     private const string MajorReleaseType = "major";
+    private const string InitialReleaseType = "initial";
+
+    public async Task<ContentRoadmapDetailDto> CreateRoadmapAsync(
+        CreateRoadmapRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (request.CareerRoleId == Guid.Empty)
+        {
+            throw new ArgumentException("Career role was not provided.", nameof(request.CareerRoleId));
+        }
+
+        var careerRoleExists = await dbContext.Set<CareerRole>()
+            .AsNoTracking()
+            .AnyAsync(role => role.CareerRoleId == request.CareerRoleId, cancellationToken);
+
+        if (!careerRoleExists)
+        {
+            throw new KeyNotFoundException("Career role was not found.");
+        }
+
+        var now = DateTime.UtcNow;
+        var title = NormalizeRoadmapTitle(request.Title);
+        var description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
+
+        var roadmap = new Roadmap
+        {
+            RoadmapId = Guid.NewGuid(),
+            CareerRoleId = request.CareerRoleId,
+            OwnerUserId = null,
+            Title = title,
+            Description = description,
+            Visibility = "public",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        var version = new RoadmapVersion
+        {
+            RoadmapVersionId = Guid.NewGuid(),
+            RoadmapId = roadmap.RoadmapId,
+            VersionNumber = 1,
+            MajorVersion = 1,
+            MinorVersion = 0,
+            PatchVersion = 0,
+            ReleaseType = InitialReleaseType,
+            CreatedFromVersionId = null,
+            Status = DraftStatus,
+            Title = title,
+            Description = description,
+            EstimatedTotalHours = request.EstimatedTotalHours,
+            LayoutDirection = "TB",
+            LayoutAlgorithm = null,
+            CreatedByUserId = null,
+            PublishedAt = null,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        dbContext.Set<Roadmap>().Add(roadmap);
+        dbContext.Set<RoadmapVersion>().Add(version);
+        AddInitialSampleNodes(version.RoadmapVersionId, now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return await queryService.GetRoadmapDetailAsync(
+            roadmap.RoadmapId,
+            version.RoadmapVersionId,
+            cancellationToken);
+    }
 
     public async Task<ContentRoadmapDetailDto> CloneRoadmapVersionToDraftAsync(
         Guid roadmapVersionId,
@@ -41,16 +109,14 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new ArgumentException("Only published roadmap versions can be copied into a draft.");
         }
 
-        var nextMajorVersion = sourceVersion.MajorVersion + 1;
-
         var existingMajorDraft = await dbContext.Set<RoadmapVersion>()
             .Where(version =>
                 version.RoadmapId == sourceVersion.RoadmapId
                 && version.Status == DraftStatus
                 && version.ReleaseType == MajorReleaseType
-                && version.MajorVersion == nextMajorVersion
                 && version.MinorVersion == 0
                 && version.PatchVersion == 0)
+            .OrderByDescending(version => version.MajorVersion)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (existingMajorDraft != null)
@@ -69,6 +135,8 @@ public sealed class ContentManagerRoadmapDraftService(
                 existingMajorDraft.RoadmapVersionId,
                 cancellationToken);
         }
+
+        var nextMajorVersion = sourceVersion.MajorVersion + 1;
 
         var conflictingMajorVersion = await dbContext.Set<RoadmapVersion>()
             .AsNoTracking()
@@ -262,14 +330,148 @@ public sealed class ContentManagerRoadmapDraftService(
             .Where(node => node.RoadmapVersionId == roadmapVersionId)
             .ToListAsync(cancellationToken);
 
+        var hasOtherVersions = await dbContext.Set<RoadmapVersion>()
+            .AsNoTracking()
+            .AnyAsync(version =>
+                version.RoadmapId == draftVersion.RoadmapId
+                && version.RoadmapVersionId != draftVersion.RoadmapVersionId,
+                cancellationToken);
+
         dbContext.Set<RoadmapNodeSkill>().RemoveRange(nodeSkills);
         dbContext.Set<RoadmapNodeResource>().RemoveRange(nodeResources);
         dbContext.Set<RoadmapEdge>().RemoveRange(edges);
         dbContext.Set<RoadmapNode>().RemoveRange(nodes);
         dbContext.Set<RoadmapVersion>().Remove(draftVersion);
 
-        draftVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
+        if (!hasOtherVersions
+            && draftVersion.ReleaseType.Equals(InitialReleaseType, StringComparison.OrdinalIgnoreCase)
+            && draftVersion.CreatedFromVersionId == null)
+        {
+            dbContext.Set<Roadmap>().Remove(draftVersion.Roadmap);
+        }
+        else
+        {
+            draftVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private void AddInitialSampleNodes(Guid roadmapVersionId, DateTime now)
+    {
+        var phaseNodeId = Guid.NewGuid();
+        var groupNodeId = Guid.NewGuid();
+        var firstTopicNodeId = Guid.NewGuid();
+        var secondTopicNodeId = Guid.NewGuid();
+
+        var nodes = new[]
+        {
+            CreateSampleNode(
+                phaseNodeId,
+                roadmapVersionId,
+                parentNodeId: null,
+                slug: "phase-node",
+                nodeType: "phase",
+                title: "Phase Node",
+                orderIndex: 1,
+                layoutRole: "trunk",
+                isTrackable: false,
+                now: now),
+            CreateSampleNode(
+                groupNodeId,
+                roadmapVersionId,
+                phaseNodeId,
+                slug: "group-node",
+                nodeType: "choice_group",
+                title: "Group Node",
+                orderIndex: 1,
+                layoutRole: "side",
+                isTrackable: false,
+                now: now),
+            CreateSampleNode(
+                firstTopicNodeId,
+                roadmapVersionId,
+                groupNodeId,
+                slug: "topic-node-1",
+                nodeType: "topic",
+                title: "Topic Node 1",
+                orderIndex: 1,
+                layoutRole: "side",
+                isTrackable: true,
+                now: now),
+            CreateSampleNode(
+                secondTopicNodeId,
+                roadmapVersionId,
+                groupNodeId,
+                slug: "topic-node-2",
+                nodeType: "topic",
+                title: "Topic Node 2",
+                orderIndex: 2,
+                layoutRole: "side",
+                isTrackable: true,
+                now: now)
+        };
+
+        dbContext.Set<RoadmapNode>().AddRange(nodes);
+        dbContext.Set<RoadmapEdge>().AddRange(
+            CreateSampleEdge(roadmapVersionId, phaseNodeId, groupNodeId, "contains"),
+            CreateSampleEdge(roadmapVersionId, groupNodeId, firstTopicNodeId, "choice"),
+            CreateSampleEdge(roadmapVersionId, groupNodeId, secondTopicNodeId, "choice"));
+    }
+
+    private static RoadmapNode CreateSampleNode(
+        Guid roadmapNodeId,
+        Guid roadmapVersionId,
+        Guid? parentNodeId,
+        string slug,
+        string nodeType,
+        string title,
+        int orderIndex,
+        string layoutRole,
+        bool isTrackable,
+        DateTime now)
+    {
+        return new RoadmapNode
+        {
+            RoadmapNodeId = roadmapNodeId,
+            RoadmapVersionId = roadmapVersionId,
+            ParentNodeId = parentNodeId,
+            Slug = slug,
+            NodeType = nodeType,
+            CheckpointType = null,
+            SelectionType = nodeType.Equals("choice_group", StringComparison.OrdinalIgnoreCase) ? "complete_all" : null,
+            RequiredCount = null,
+            Title = title,
+            Description = null,
+            OrderIndex = orderIndex,
+            LayoutRole = layoutRole,
+            EstimatedHours = null,
+            DifficultyLevel = null,
+            Metadata = "{}",
+            IsRequired = true,
+            IsTrackable = isTrackable,
+            LearningOutcomes = "[]",
+            CompletionCriteria = "[]",
+            CreatedAt = now
+        };
+    }
+
+    private static RoadmapEdge CreateSampleEdge(
+        Guid roadmapVersionId,
+        Guid fromNodeId,
+        Guid toNodeId,
+        string edgeType)
+    {
+        return new RoadmapEdge
+        {
+            RoadmapEdgeId = Guid.NewGuid(),
+            RoadmapVersionId = roadmapVersionId,
+            FromNodeId = fromNodeId,
+            ToNodeId = toNodeId,
+            EdgeType = edgeType,
+            DependencyType = "required",
+            Condition = "{}"
+        };
     }
 
     internal static void EnsureDraftVersion(RoadmapVersion version)

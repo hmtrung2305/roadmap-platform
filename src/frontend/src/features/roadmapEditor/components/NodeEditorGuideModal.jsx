@@ -95,7 +95,7 @@ export default function NodeEditorGuideModal({ isOpen, onClose }) {
           <GuideSection title="Checkpoints">
             <GuideList
               items={[
-                "Checkpoints are review gates for completed roadmap work.",
+                "Checkpoints are assessment points for completed roadmap work.",
                 "They can have hours, difficulty, outcomes, completion criteria, and a checkpoint guide.",
                 "Skills and resources are not mapped on checkpoints because checkpoints review earlier learning rather than introduce a new study path.",
               ]}

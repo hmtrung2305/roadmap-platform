@@ -7,7 +7,7 @@ export const LEAF_NODE_TYPES = new Set(["topic", "choice_option", "checkpoint", 
 
 export function normalizeNodeType(node) {
   const value = String(node?.nodeType || "").trim().toLowerCase();
-  return value === "group" ? "resource_group" : value;
+  return value === "group" ? "choice_group" : value;
 }
 
 export function canEditLearningFields(node) {
@@ -30,7 +30,7 @@ export function getAllowedChildNodeTypes(parentNode) {
   const parentType = normalizeNodeType(parentNode);
 
   if (parentType === "phase") {
-    return ["resource_group", "project", "checkpoint"];
+    return ["choice_group", "project", "checkpoint"];
   }
 
   if (parentType === "resource_group" || parentType === "group") {

@@ -32,7 +32,7 @@ export const difficultyOptions = [
 
 export const draftNodeTypeOptions = [
   { value: "phase", label: "Phase" },
-  { value: "resource_group", label: "Group" },
+  { value: "choice_group", label: "Group" },
   { value: "topic", label: "Topic" },
   { value: "project", label: "Project" },
   { value: "checkpoint", label: "Checkpoint" },
@@ -44,8 +44,7 @@ export const draftNodePositionOptions = [
   { value: "after", label: "After selected item" },
 ];
 
-export const checkpointTypeOptions = [
-  { value: "review", label: "Review" },
-  { value: "assessment", label: "Assessment" },
-  { value: "gate", label: "Gate" },
+export const nodeRequirementOptions = [
+  { value: "required", label: "Required" },
+  { value: "optional", label: "Optional" },
 ];

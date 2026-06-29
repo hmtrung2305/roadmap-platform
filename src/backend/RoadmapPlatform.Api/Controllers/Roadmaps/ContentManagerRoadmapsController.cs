@@ -21,6 +21,21 @@ public sealed class ContentManagerRoadmapsController(
         return Ok(result);
     }
 
+    [HttpPost]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateRoadmap(
+        [FromBody] CreateRoadmapRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await roadmapService.CreateRoadmapAsync(request, cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetRoadmapDetail),
+            new { roadmapId = result.RoadmapId, versionId = result.RoadmapVersionId },
+            result);
+    }
+
     [HttpGet("{roadmapId:guid}")]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

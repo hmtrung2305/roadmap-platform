@@ -141,6 +141,14 @@ public sealed class ContentRoadmapEdgeDto
     public string? Condition { get; set; }
 }
 
+public sealed class CreateRoadmapRequestDto
+{
+    public Guid CareerRoleId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? EstimatedTotalHours { get; set; }
+}
+
 public sealed class UpdateRoadmapVersionMetadataRequestDto
 {
     public string Title { get; set; } = string.Empty;
@@ -192,6 +200,8 @@ public sealed class CreateRoadmapNodeRequestDto
     public int? EstimatedHours { get; set; }
     public string? DifficultyLevel { get; set; }
     public string? CheckpointType { get; set; }
+    public string? LayoutRole { get; set; }
+    public bool? IsRequired { get; set; }
     public string? Position { get; set; }
     public Guid? ReferenceNodeId { get; set; }
 }
