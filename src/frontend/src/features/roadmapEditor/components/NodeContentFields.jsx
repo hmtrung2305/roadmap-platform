@@ -38,6 +38,7 @@ function SectionCard({ title, children }) {
 
 export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm }) {
   const nodeType = normalizeNodeType(selectedNode);
+  const showGenericCompletionCriteria = nodeType !== "checkpoint";
 
   return (
     <div className="space-y-4">
@@ -49,36 +50,31 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
           placeholder="Learner should be able to..."
           onChange={(value) => setNodeForm((current) => ({ ...current, learningOutcomesText: value }))}
         />
-        <ListEditorField
-          label="Completion criteria"
-          value={nodeForm.completionCriteriaText}
-          addLabel="Add criterion"
-          placeholder="Done when..."
-          onChange={(value) => setNodeForm((current) => ({ ...current, completionCriteriaText: value }))}
-        />
+        {showGenericCompletionCriteria && (
+          <ListEditorField
+            label="Completion criteria"
+            value={nodeForm.completionCriteriaText}
+            addLabel="Add criterion"
+            placeholder="Completion criterion"
+            onChange={(value) => setNodeForm((current) => ({ ...current, completionCriteriaText: value }))}
+          />
+        )}
       </SectionCard>
 
       {nodeType === "project" && (
         <SectionCard title="Project guide">
           <SingleTextField
-            label="Project brief"
-            value={nodeForm.guide?.projectBrief}
-            onChange={(value) => updateGuideField(setNodeForm, "projectBrief", value)}
+            label="What to build"
+            value={nodeForm.guide?.whatToBuild}
+            onChange={(value) => updateGuideField(setNodeForm, "whatToBuild", value)}
             placeholder="Describe the artifact learners should build."
           />
           <ListEditorField
             label="Build steps"
-            value={nodeForm.guide?.suggestedStepsText}
+            value={nodeForm.guide?.buildStepsText}
             addLabel="Add step"
             placeholder="Step to complete"
-            onChange={(value) => updateGuideField(setNodeForm, "suggestedStepsText", value)}
-          />
-          <ListEditorField
-            label="Evidence to submit"
-            value={nodeForm.guide?.expectedEvidenceText}
-            addLabel="Add evidence"
-            placeholder="Evidence item"
-            onChange={(value) => updateGuideField(setNodeForm, "expectedEvidenceText", value)}
+            onChange={(value) => updateGuideField(setNodeForm, "buildStepsText", value)}
           />
         </SectionCard>
       )}
@@ -92,25 +88,11 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
             placeholder="Describe what learners should review."
           />
           <ListEditorField
-            label="Evidence to prepare"
-            value={nodeForm.guide?.expectedEvidenceText}
-            addLabel="Add evidence"
-            placeholder="Evidence item"
-            onChange={(value) => updateGuideField(setNodeForm, "expectedEvidenceText", value)}
-          />
-          <ListEditorField
-            label="Reflection prompts"
-            value={nodeForm.guide?.reviewQuestionsText}
-            addLabel="Add prompt"
-            placeholder="Reflection prompt"
-            onChange={(value) => updateGuideField(setNodeForm, "reviewQuestionsText", value)}
-          />
-          <ListEditorField
-            label="Next action options"
-            value={nodeForm.guide?.nextActionsText}
-            addLabel="Add action"
-            placeholder="Next action"
-            onChange={(value) => updateGuideField(setNodeForm, "nextActionsText", value)}
+            label="Review criteria"
+            value={nodeForm.guide?.reviewCriteriaText}
+            addLabel="Add criterion"
+            placeholder="Review criterion"
+            onChange={(value) => updateGuideField(setNodeForm, "reviewCriteriaText", value)}
           />
         </SectionCard>
       )}

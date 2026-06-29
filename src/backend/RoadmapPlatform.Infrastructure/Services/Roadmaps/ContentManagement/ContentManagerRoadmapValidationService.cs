@@ -146,8 +146,8 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
 
             if (ContentManagerRoadmapStructureRules.IsContainerNode(nodeType))
             {
-                var children = childrenByParent.GetValueOrDefault(node.RoadmapNodeId) ?? [];
-                if (children.Count == 0)
+                var containerChildren = childrenByParent.GetValueOrDefault(node.RoadmapNodeId) ?? [];
+                if (containerChildren.Count == 0)
                 {
                     warnings.Add(CreateItem("container_empty", "This container has no child nodes.", node));
                 }

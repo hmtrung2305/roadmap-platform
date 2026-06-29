@@ -171,12 +171,10 @@ public sealed class UpdateRoadmapNodeGuideRequestDto
 {
     public string? Focus { get; set; }
     public List<string>? Practice { get; set; }
-    public string? ProjectBrief { get; set; }
-    public List<string>? SuggestedSteps { get; set; }
-    public List<string>? ExpectedEvidence { get; set; }
+    public string? WhatToBuild { get; set; }
+    public List<string>? BuildSteps { get; set; }
     public string? ReviewFocus { get; set; }
-    public List<string>? ReviewQuestions { get; set; }
-    public List<string>? NextActions { get; set; }
+    public List<string>? ReviewCriteria { get; set; }
     public string? WhenToChoose { get; set; }
     public string? ChoiceGuidance { get; set; }
     public List<string>? SelectionNotes { get; set; }

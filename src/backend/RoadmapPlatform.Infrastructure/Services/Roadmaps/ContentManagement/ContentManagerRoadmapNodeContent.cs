@@ -60,21 +60,55 @@ internal static class ContentManagerRoadmapNodeContent
         switch (normalizedNodeType)
         {
             case "project":
-                SetText(metadata, "projectBrief", guide.ProjectBrief);
-                SetStringArray(metadata, "suggestedSteps", guide.SuggestedSteps);
-                SetStringArray(metadata, "expectedEvidence", guide.ExpectedEvidence);
+                RemoveProjectGuideKeys(metadata);
+                SetText(metadata, "whatToBuild", guide.WhatToBuild);
+                SetStringArray(metadata, "buildSteps", guide.BuildSteps);
                 break;
             case "checkpoint":
+                RemoveCheckpointGuideKeys(metadata);
                 SetText(metadata, "reviewFocus", guide.ReviewFocus);
-                SetStringArray(metadata, "expectedEvidence", guide.ExpectedEvidence);
-                SetStringArray(metadata, "reviewQuestions", guide.ReviewQuestions);
-                SetStringArray(metadata, "nextActions", guide.NextActions);
+                SetStringArray(metadata, "reviewCriteria", guide.ReviewCriteria);
                 break;
             default:
                 return string.IsNullOrWhiteSpace(existingMetadata) ? "{}" : existingMetadata;
         }
 
         return metadata.ToJsonString();
+    }
+
+    private static void RemoveProjectGuideKeys(JsonObject metadata)
+    {
+        foreach (var key in new[]
+        {
+            "projectBrief",
+            "suggestedSteps",
+            "expectedEvidence",
+            "deliverables",
+            "artifacts",
+            "outputs",
+            "reviewEvidence",
+            "reviewFocus"
+        })
+        {
+            metadata.Remove(key);
+        }
+    }
+
+    private static void RemoveCheckpointGuideKeys(JsonObject metadata)
+    {
+        foreach (var key in new[]
+        {
+            "expectedEvidence",
+            "reviewEvidence",
+            "reviewQuestions",
+            "nextActions",
+            "followUpActions",
+            "followUps",
+            "nextSteps"
+        })
+        {
+            metadata.Remove(key);
+        }
     }
 
     private static JsonObject ParseObject(string? json)

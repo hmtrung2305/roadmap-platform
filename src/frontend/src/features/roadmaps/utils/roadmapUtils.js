@@ -1151,10 +1151,7 @@ export function getNodeTypeClass(nodeType, checkpointType) {
   if (nodeType === "resource_group") return "border-[#CFE79B] bg-[#E9F5BE] text-[#18332D] hover:bg-[#E0F0AA]";
 
   if (nodeType === "checkpoint") {
-    if (checkpointType === "gate" || checkpointType === "assessment") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
-    if (checkpointType === "review") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
-    if (checkpointType === "project") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
-    return "border-[#B9D8CC] bg-[#F8FAFC] text-[#18332D] hover:bg-[#F1F5F9]";
+    return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
   }
 
   return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";

@@ -28,12 +28,10 @@ function createNodeGuideForm(node) {
   return {
     focus: getFirstMetadataText(metadata, ["focus", "topicFocus", "purpose", "summary"]),
     practiceText: listToText(getFirstMetadataList(metadata, ["practice", "practiceIdeas", "suggestedPractice"])),
-    projectBrief: getFirstMetadataText(metadata, ["projectBrief", "brief", "goal", "objective", "purpose"]),
-    suggestedStepsText: listToText(getFirstMetadataList(metadata, ["suggestedSteps", "buildSteps", "implementationSteps", "steps", "practiceSteps"])),
-    expectedEvidenceText: listToText(getFirstMetadataList(metadata, ["expectedEvidence", "evidence", "deliverables", "artifacts", "outputs", "reviewEvidence"])),
+    whatToBuild: getFirstMetadataText(metadata, ["whatToBuild", "projectBrief", "brief", "goal", "objective", "purpose"]),
+    buildStepsText: listToText(getFirstMetadataList(metadata, ["buildSteps", "suggestedSteps", "implementationSteps", "steps", "practiceSteps"])),
     reviewFocus: getFirstMetadataText(metadata, ["reviewFocus", "checkpointFocus", "focus", "purpose", "reviewPurpose"]),
-    reviewQuestionsText: listToText(getFirstMetadataList(metadata, ["reviewQuestions", "questions", "reflectionQuestions", "selfCheckQuestions"])),
-    nextActionsText: listToText(getFirstMetadataList(metadata, ["nextActions", "followUpActions", "followUps", "nextSteps"])),
+    reviewCriteriaText: listToText(getFirstMetadataList(metadata, ["reviewCriteria", "expectedEvidence", "evidence", "reviewEvidence", "artifacts"])),
     whenToChoose: getFirstMetadataText(metadata, ["whenToChoose", "optionUseCase", "useCase", "purpose", "focus"]),
     choiceGuidance: getFirstMetadataText(metadata, ["choiceGuidance", "guidance", "purpose", "selectionGuidance"]),
     selectionNotesText: listToText(getFirstMetadataList(metadata, ["selectionNotes", "options", "considerations"])),
@@ -90,18 +88,15 @@ function areGuideFormsEqual(left = {}, right = {}, node = null) {
 
   if (nodeType === "project") {
     return (
-      normalizeComparableText(left.projectBrief) === normalizeComparableText(right.projectBrief)
-      && areTextListsEqual(left.suggestedStepsText, right.suggestedStepsText)
-      && areTextListsEqual(left.expectedEvidenceText, right.expectedEvidenceText)
+      normalizeComparableText(left.whatToBuild) === normalizeComparableText(right.whatToBuild)
+      && areTextListsEqual(left.buildStepsText, right.buildStepsText)
     );
   }
 
   if (nodeType === "checkpoint") {
     return (
       normalizeComparableText(left.reviewFocus) === normalizeComparableText(right.reviewFocus)
-      && areTextListsEqual(left.expectedEvidenceText, right.expectedEvidenceText)
-      && areTextListsEqual(left.reviewQuestionsText, right.reviewQuestionsText)
-      && areTextListsEqual(left.nextActionsText, right.nextActionsText)
+      && areTextListsEqual(left.reviewCriteriaText, right.reviewCriteriaText)
     );
   }
 
@@ -113,18 +108,15 @@ function buildGuidePayload(guide = {}, node = null) {
 
   if (nodeType === "project") {
     return {
-      projectBrief: guide.projectBrief || null,
-      suggestedSteps: textToList(guide.suggestedStepsText),
-      expectedEvidence: textToList(guide.expectedEvidenceText),
+      whatToBuild: guide.whatToBuild || null,
+      buildSteps: textToList(guide.buildStepsText),
     };
   }
 
   if (nodeType === "checkpoint") {
     return {
       reviewFocus: guide.reviewFocus || null,
-      expectedEvidence: textToList(guide.expectedEvidenceText),
-      reviewQuestions: textToList(guide.reviewQuestionsText),
-      nextActions: textToList(guide.nextActionsText),
+      reviewCriteria: textToList(guide.reviewCriteriaText),
     };
   }
 

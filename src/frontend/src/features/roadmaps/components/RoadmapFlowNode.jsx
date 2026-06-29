@@ -241,7 +241,7 @@ export default function RoadmapFlowNode({ data }) {
 
       {data.nodeType === "checkpoint" && (
         <span className="rounded-lg border border-[#B9D8CC] bg-white/95 px-2 py-0.5 text-[9px] font-extrabold tracking-[0.08em] text-[#18332D]">
-          {data.checkpointType || "checkpoint"}
+          {data.checkpointType || "assessment"}
         </span>
       )}
     </button>
