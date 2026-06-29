@@ -603,6 +603,38 @@ export default function useContentRoadmapEditor(roadmapId) {
     }
   };
 
+  const updateGroupRule = async (roadmapNodeId, payload) => {
+    if (!roadmapNodeId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const result = await contentManagerRoadmapApi.updateNodeGroupRule(roadmapNodeId, payload);
+      applyRoadmapDetail(result?.roadmap, result?.focusNodeId || roadmapNodeId);
+      toast.success("Group rule updated.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to update group rule.");
+      throw actionError;
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const updateNodeRequirement = async (roadmapNodeId, isRequired, focusNodeId = roadmapNodeId) => {
+    if (!roadmapNodeId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const result = await contentManagerRoadmapApi.updateNodeRequirement(roadmapNodeId, isRequired);
+      applyRoadmapDetail(result?.roadmap, focusNodeId || roadmapNodeId);
+      toast.success(isRequired ? "Node marked required." : "Node marked optional.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to update node requirement.");
+      throw actionError;
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
   const deleteNode = async () => {
     if (!selectedNode?.roadmapNodeId) return;
 
@@ -679,6 +711,8 @@ export default function useContentRoadmapEditor(roadmapId) {
     publishDraft,
     createNode,
     moveNode,
+    updateGroupRule,
+    updateNodeRequirement,
     deleteNode,
     loadSkillSuggestions,
     loadResourceSuggestions,

@@ -95,6 +95,22 @@ public sealed class ContentManagerRoadmapService(
         return structureService.MoveNodeAsync(roadmapNodeId, request, cancellationToken);
     }
 
+    public Task<ContentRoadmapStructureMutationResultDto> UpdateGroupRuleAsync(
+        Guid roadmapNodeId,
+        UpdateRoadmapNodeGroupRuleRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return structureService.UpdateGroupRuleAsync(roadmapNodeId, request, cancellationToken);
+    }
+
+    public Task<ContentRoadmapStructureMutationResultDto> UpdateNodeRequirementAsync(
+        Guid roadmapNodeId,
+        UpdateRoadmapNodeRequirementRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return structureService.UpdateNodeRequirementAsync(roadmapNodeId, request, cancellationToken);
+    }
+
     public Task<ContentRoadmapStructureMutationResultDto> DeleteNodeAsync(
         Guid roadmapNodeId,
         CancellationToken cancellationToken)

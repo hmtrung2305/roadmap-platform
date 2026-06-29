@@ -209,6 +209,18 @@ public sealed class MoveRoadmapNodeRequestDto
     public string Direction { get; set; } = string.Empty;
 }
 
+
+public sealed class UpdateRoadmapNodeGroupRuleRequestDto
+{
+    public string SelectionType { get; set; } = string.Empty;
+    public int? RequiredCount { get; set; }
+}
+
+public sealed class UpdateRoadmapNodeRequirementRequestDto
+{
+    public bool IsRequired { get; set; }
+}
+
 public sealed class ContentRoadmapStructureMutationResultDto
 {
     public ContentRoadmapDetailDto Roadmap { get; set; } = new();

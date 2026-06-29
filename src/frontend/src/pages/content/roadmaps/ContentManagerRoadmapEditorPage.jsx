@@ -74,6 +74,8 @@ export default function ContentManagerRoadmapEditorPage() {
     publishDraft,
     createNode,
     moveNode,
+    updateGroupRule,
+    updateNodeRequirement,
     deleteNode,
     loadSkillSuggestions,
     loadResourceSuggestions,
@@ -311,6 +313,7 @@ export default function ContentManagerRoadmapEditorPage() {
 
               <NodeDetailsPanel
                 selectedNode={selectedNode}
+                allNodes={allNodes}
                 nodeForm={nodeForm}
                 setNodeForm={setNodeForm}
                 isSavingNode={isSavingNode}
@@ -338,6 +341,8 @@ export default function ContentManagerRoadmapEditorPage() {
                 canEditStructure={canEditStructure}
                 isMutatingDraft={isMutatingDraft}
                 onMoveNode={moveNode}
+                onUpdateGroupRule={updateGroupRule}
+                onUpdateNodeRequirement={updateNodeRequirement}
                 onDeleteNode={deleteNode}
                 childNodeCount={selectedNodeChildCount}
                 onOpenCreateChild={() => {

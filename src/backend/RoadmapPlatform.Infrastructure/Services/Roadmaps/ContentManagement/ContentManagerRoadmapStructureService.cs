@@ -44,7 +44,7 @@ public sealed class ContentManagerRoadmapStructureService(
             Slug = await CreateUniqueSlugAsync(roadmapVersionId, title, cancellationToken),
             NodeType = nodeType,
             CheckpointType = ContentManagerRoadmapStructureRules.GetDefaultCheckpointType(nodeType, request.CheckpointType),
-            SelectionType = null,
+            SelectionType = nodeType == "choice_group" ? "complete_all" : null,
             RequiredCount = null,
             Title = title,
             Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description),
@@ -120,6 +120,88 @@ public sealed class ContentManagerRoadmapStructureService(
         {
             Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
             FocusNodeId = roadmapNodeId
+        };
+    }
+
+    public async Task<ContentRoadmapStructureMutationResultDto> UpdateGroupRuleAsync(
+        Guid roadmapNodeId,
+        UpdateRoadmapNodeGroupRuleRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
+        var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+
+        if (ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType) != "choice_group")
+        {
+            throw new ArgumentException("Only group nodes can have completion rules.");
+        }
+
+        EnsureInitialOrMajorDraftVersion(version, "Group completion rules can only be changed in an initial draft or a major draft.");
+
+        var selectionType = NormalizeSelectionType(request.SelectionType);
+        var requiredChildCount = await GetRequiredChildCountAsync(node.RoadmapNodeId, cancellationToken);
+        ValidateGroupRule(selectionType, request.RequiredCount, requiredChildCount);
+
+        node.SelectionType = selectionType;
+        node.RequiredCount = selectionType == "choose_many" ? request.RequiredCount : null;
+
+        await RecalculateLayoutAsync(node.RoadmapVersionId, cancellationToken);
+        TouchVersion(version);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new ContentRoadmapStructureMutationResultDto
+        {
+            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+            FocusNodeId = node.RoadmapNodeId
+        };
+    }
+
+    public async Task<ContentRoadmapStructureMutationResultDto> UpdateNodeRequirementAsync(
+        Guid roadmapNodeId,
+        UpdateRoadmapNodeRequirementRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
+        var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+        var nodeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType);
+
+        if (!ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(nodeType))
+        {
+            throw new ArgumentException("Only learner-facing nodes can be marked required or optional.");
+        }
+
+        EnsureInitialOrMajorDraftVersion(version, "Required or optional status can only be changed in an initial draft or a major draft.");
+
+        RoadmapNode? parent = null;
+        var requiredChildCountAfterChange = 0;
+        if (node.ParentNodeId.HasValue)
+        {
+            parent = await dbContext.Set<RoadmapNode>()
+                .Where(item => item.RoadmapNodeId == node.ParentNodeId.Value)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (parent != null && ContentManagerRoadmapStructureRules.NormalizeNodeType(parent.NodeType) == "choice_group")
+            {
+                requiredChildCountAfterChange = await GetRequiredChildCountAfterChangeAsync(
+                    parent.RoadmapNodeId,
+                    node.RoadmapNodeId,
+                    request.IsRequired,
+                    cancellationToken);
+                ValidateRequirementChange(parent.SelectionType, parent.RequiredCount, requiredChildCountAfterChange);
+            }
+        }
+
+        node.IsRequired = request.IsRequired;
+        await SyncParentEdgeDependencyAsync(node, cancellationToken);
+
+        await RecalculateLayoutAsync(node.RoadmapVersionId, cancellationToken);
+        TouchVersion(version);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new ContentRoadmapStructureMutationResultDto
+        {
+            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+            FocusNodeId = node.RoadmapNodeId
         };
     }
 
@@ -237,6 +319,15 @@ public sealed class ContentManagerRoadmapStructureService(
     {
         version.UpdatedAt = DateTime.UtcNow;
         version.Roadmap.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static void EnsureInitialOrMajorDraftVersion(RoadmapVersion version, string message)
+    {
+        var releaseType = ContentManagerRoadmapText.NormalizeOptionalText(version.ReleaseType)?.ToLowerInvariant();
+        if (releaseType is not ("initial" or "major"))
+        {
+            throw new ArgumentException(message);
+        }
     }
 
     private async Task<RoadmapVersion> LoadVersionForMutationAsync(
@@ -359,9 +450,136 @@ public sealed class ContentManagerRoadmapStructureService(
             FromNodeId = parentNode.RoadmapNodeId,
             ToNodeId = node.RoadmapNodeId,
             EdgeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(parentNode.NodeType) == "choice_group" ? "choice" : "contains",
-            DependencyType = "required",
+            DependencyType = node.IsRequired ? "required" : "optional",
             Condition = "{}"
         });
+    }
+
+    private async Task SyncParentEdgeDependencyAsync(
+        RoadmapNode node,
+        CancellationToken cancellationToken)
+    {
+        if (!node.ParentNodeId.HasValue)
+        {
+            return;
+        }
+
+        var parent = await dbContext.Set<RoadmapNode>()
+            .Where(item => item.RoadmapNodeId == node.ParentNodeId.Value)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        var expectedEdgeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(parent.NodeType) == "choice_group"
+            ? "choice"
+            : "contains";
+        var dependencyType = node.IsRequired ? "required" : "optional";
+
+        var edge = await dbContext.Set<RoadmapEdge>()
+            .Where(item =>
+                item.RoadmapVersionId == node.RoadmapVersionId
+                && item.FromNodeId == parent.RoadmapNodeId
+                && item.ToNodeId == node.RoadmapNodeId
+                && item.EdgeType == expectedEdgeType)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (edge == null)
+        {
+            dbContext.Set<RoadmapEdge>().Add(new RoadmapEdge
+            {
+                RoadmapEdgeId = Guid.NewGuid(),
+                RoadmapVersionId = node.RoadmapVersionId,
+                FromNodeId = parent.RoadmapNodeId,
+                ToNodeId = node.RoadmapNodeId,
+                EdgeType = expectedEdgeType,
+                DependencyType = dependencyType,
+                Condition = "{}"
+            });
+            return;
+        }
+
+        edge.DependencyType = dependencyType;
+    }
+
+    private async Task<int> GetRequiredChildCountAsync(
+        Guid parentNodeId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Set<RoadmapNode>()
+            .Where(item => item.ParentNodeId == parentNodeId && item.IsRequired)
+            .CountAsync(cancellationToken);
+    }
+
+    private async Task<int> GetRequiredChildCountAfterChangeAsync(
+        Guid parentNodeId,
+        Guid changedNodeId,
+        bool changedNodeIsRequired,
+        CancellationToken cancellationToken)
+    {
+        var children = await dbContext.Set<RoadmapNode>()
+            .AsNoTracking()
+            .Where(item => item.ParentNodeId == parentNodeId)
+            .Select(item => new { item.RoadmapNodeId, item.IsRequired })
+            .ToListAsync(cancellationToken);
+
+        return children.Count(item => item.RoadmapNodeId == changedNodeId
+            ? changedNodeIsRequired
+            : item.IsRequired);
+    }
+
+    private static string NormalizeSelectionType(string? selectionType)
+    {
+        var normalized = ContentManagerRoadmapText.NormalizeOptionalText(selectionType)?.ToLowerInvariant();
+        return normalized is "complete_all" or "choose_one" or "choose_many"
+            ? normalized
+            : "complete_all";
+    }
+
+    private static void ValidateGroupRule(
+        string? selectionType,
+        int? requiredCount,
+        int requiredChildCount)
+    {
+        var normalizedSelectionType = NormalizeSelectionType(selectionType);
+
+        if (requiredChildCount < 1)
+        {
+            throw new ArgumentException("A group must have at least one required child node.");
+        }
+
+        if (normalizedSelectionType == "choose_many")
+        {
+            if (!requiredCount.HasValue)
+            {
+                throw new ArgumentException("Choose many groups must define a required count.");
+            }
+
+            if (requiredCount.Value < 1 || requiredCount.Value > requiredChildCount)
+            {
+                throw new ArgumentException("Required count must be between 1 and the number of required child nodes.");
+            }
+        }
+    }
+
+    private static void ValidateRequirementChange(
+        string? selectionType,
+        int? requiredCount,
+        int requiredChildCount)
+    {
+        if (requiredChildCount < 1)
+        {
+            throw new ArgumentException("A group must have at least one required child node.");
+        }
+
+        if (NormalizeSelectionType(selectionType) == "choose_many"
+            && requiredCount.HasValue
+            && requiredCount.Value > requiredChildCount)
+        {
+            throw new ArgumentException("Required count cannot be greater than the number of required child nodes.");
+        }
     }
 
     private async Task<string> CreateUniqueSlugAsync(

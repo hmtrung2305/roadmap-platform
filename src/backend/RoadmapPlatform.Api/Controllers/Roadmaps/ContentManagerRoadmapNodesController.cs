@@ -43,6 +43,39 @@ public sealed class ContentManagerRoadmapNodesController(
 
         return Ok(result);
     }
+    [HttpPatch("{roadmapNodeId:guid}/group-rule")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    [ProducesResponseType(typeof(ContentRoadmapStructureMutationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateGroupRule(
+        Guid roadmapNodeId,
+        [FromBody] UpdateRoadmapNodeGroupRuleRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await roadmapService.UpdateGroupRuleAsync(
+            roadmapNodeId,
+            request,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPatch("{roadmapNodeId:guid}/requirement")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    [ProducesResponseType(typeof(ContentRoadmapStructureMutationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateNodeRequirement(
+        Guid roadmapNodeId,
+        [FromBody] UpdateRoadmapNodeRequirementRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await roadmapService.UpdateNodeRequirementAsync(
+            roadmapNodeId,
+            request,
+            cancellationToken);
+
+        return Ok(result);
+    }
     [HttpPatch("{roadmapNodeId:guid}/metadata")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapNodeDto), StatusCodes.Status200OK)]

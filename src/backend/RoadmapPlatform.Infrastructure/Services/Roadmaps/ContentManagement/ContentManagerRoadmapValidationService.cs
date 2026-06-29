@@ -34,6 +34,10 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
             .AsNoTracking()
             .Where(node => node.RoadmapVersionId == roadmapVersionId)
             .ToListAsync(cancellationToken);
+        var edges = await dbContext.Set<RoadmapEdge>()
+            .AsNoTracking()
+            .Where(edge => edge.RoadmapVersionId == roadmapVersionId)
+            .ToListAsync(cancellationToken);
 
         var nodesById = nodes.ToDictionary(node => node.RoadmapNodeId);
         var nodeIds = nodesById.Keys.ToHashSet();
@@ -46,7 +50,7 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         var warnings = new List<ContentRoadmapValidationItemDto>();
 
         AddVersionValidation(version, nodes, errors);
-        AddNodeValidation(nodes, nodesById, nodeIds, childrenByParent, errors, warnings);
+        AddNodeValidation(nodes, edges, nodesById, nodeIds, childrenByParent, errors, warnings);
         await AddMappingWarningsAsync(nodes, warnings, cancellationToken);
 
         return new ContentRoadmapValidationResultDto
@@ -90,12 +94,18 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
 
     private static void AddNodeValidation(
         IReadOnlyCollection<RoadmapNode> nodes,
+        IReadOnlyCollection<RoadmapEdge> edges,
         IReadOnlyDictionary<Guid, RoadmapNode> nodesById,
         HashSet<Guid> nodeIds,
         Dictionary<Guid, List<RoadmapNode>> childrenByParent,
         List<ContentRoadmapValidationItemDto> errors,
         List<ContentRoadmapValidationItemDto> warnings)
     {
+        var childStructureEdges = edges
+            .Where(edge => edge.EdgeType is "contains" or "choice")
+            .GroupBy(edge => edge.ToNodeId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
         foreach (var node in nodes)
         {
             var nodeType = NormalizeNodeType(node);
@@ -131,6 +141,8 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
                 errors.Add(CreateItem("learning_node_parent_invalid", "Learner-facing nodes must belong to a phase or group.", node));
             }
 
+            AddParentEdgeValidation(node, nodesById, childStructureEdges, errors);
+
             if (ContentManagerRoadmapStructureRules.IsLeafNodeType(nodeType)
                 && childrenByParent.TryGetValue(node.RoadmapNodeId, out var children)
                 && children.Count > 0)
@@ -150,6 +162,70 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
                 {
                     warnings.Add(CreateItem("container_empty", "This container has no child nodes.", node));
                 }
+
+                if (nodeType == "choice_group")
+                {
+                    AddGroupRuleValidation(node, containerChildren, errors);
+                }
+            }
+        }
+    }
+
+    private static void AddParentEdgeValidation(
+        RoadmapNode node,
+        IReadOnlyDictionary<Guid, RoadmapNode> nodesById,
+        IReadOnlyDictionary<Guid, List<RoadmapEdge>> childStructureEdges,
+        List<ContentRoadmapValidationItemDto> errors)
+    {
+        if (!node.ParentNodeId.HasValue || !nodesById.TryGetValue(node.ParentNodeId.Value, out var parent))
+        {
+            return;
+        }
+
+        var expectedEdgeType = NormalizeNodeType(parent) == "choice_group" ? "choice" : "contains";
+        var expectedDependencyType = node.IsRequired ? "required" : "optional";
+        var matchingEdges = childStructureEdges.GetValueOrDefault(node.RoadmapNodeId) ?? [];
+        var parentEdge = matchingEdges.FirstOrDefault(edge =>
+            edge.FromNodeId == parent.RoadmapNodeId
+            && edge.EdgeType.Equals(expectedEdgeType, StringComparison.OrdinalIgnoreCase));
+
+        if (parentEdge == null)
+        {
+            errors.Add(CreateItem("node_parent_edge_missing", "Node parent relationship edge is missing.", node));
+            return;
+        }
+
+        if (!parentEdge.DependencyType.Equals(expectedDependencyType, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(CreateItem("node_dependency_mismatch", "Node required status must match the parent edge dependency type.", node));
+        }
+    }
+
+    private static void AddGroupRuleValidation(
+        RoadmapNode node,
+        IReadOnlyCollection<RoadmapNode> children,
+        List<ContentRoadmapValidationItemDto> errors)
+    {
+        var requiredChildCount = children.Count(child => child.IsRequired);
+        var selectionType = NormalizeSelectionType(node.SelectionType);
+
+        if (requiredChildCount < 1)
+        {
+            errors.Add(CreateItem("group_required_child_missing", "A group must have at least one required child node.", node));
+            return;
+        }
+
+        if (selectionType == "choose_many")
+        {
+            if (!node.RequiredCount.HasValue)
+            {
+                errors.Add(CreateItem("group_required_count_missing", "Choose many groups must define a required count.", node));
+                return;
+            }
+
+            if (node.RequiredCount.Value < 1 || node.RequiredCount.Value > requiredChildCount)
+            {
+                errors.Add(CreateItem("group_required_count_invalid", "Required count must be between 1 and the number of required child nodes.", node));
             }
         }
     }
@@ -267,6 +343,14 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         }
 
         return false;
+    }
+
+    private static string NormalizeSelectionType(string? selectionType)
+    {
+        var normalized = ContentManagerRoadmapText.NormalizeOptionalText(selectionType)?.ToLowerInvariant();
+        return normalized is "complete_all" or "choose_one" or "choose_many"
+            ? normalized
+            : "complete_all";
     }
 
     private static ContentRoadmapValidationItemDto CreateItem(

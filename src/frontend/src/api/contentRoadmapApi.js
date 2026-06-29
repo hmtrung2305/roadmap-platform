@@ -128,6 +128,24 @@ export const contentManagerRoadmapApi = {
     return response.data;
   },
 
+  updateNodeGroupRule: async (roadmapNodeId, payload) => {
+    const response = await axiosClient.patch(
+      `/content/roadmap-nodes/${encode(roadmapNodeId)}/group-rule`,
+      payload,
+    );
+
+    return response.data;
+  },
+
+  updateNodeRequirement: async (roadmapNodeId, isRequired) => {
+    const response = await axiosClient.patch(
+      `/content/roadmap-nodes/${encode(roadmapNodeId)}/requirement`,
+      { isRequired },
+    );
+
+    return response.data;
+  },
+
   deleteNode: async (roadmapNodeId) => {
     const response = await axiosClient.delete(`/content/roadmap-nodes/${encode(roadmapNodeId)}`);
 

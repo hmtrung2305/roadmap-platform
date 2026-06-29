@@ -60,6 +60,16 @@ public interface IContentManagerRoadmapService
         MoveRoadmapNodeRequestDto request,
         CancellationToken cancellationToken);
 
+    Task<ContentRoadmapStructureMutationResultDto> UpdateGroupRuleAsync(
+        Guid roadmapNodeId,
+        UpdateRoadmapNodeGroupRuleRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapStructureMutationResultDto> UpdateNodeRequirementAsync(
+        Guid roadmapNodeId,
+        UpdateRoadmapNodeRequirementRequestDto request,
+        CancellationToken cancellationToken);
+
     Task<ContentRoadmapStructureMutationResultDto> DeleteNodeAsync(
         Guid roadmapNodeId,
         CancellationToken cancellationToken);

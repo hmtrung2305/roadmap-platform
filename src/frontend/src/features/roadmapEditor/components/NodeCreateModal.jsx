@@ -96,7 +96,7 @@ export default function NodeCreateModal({
   const parentNodeId = isPhaseCreate ? null : getNodeId(selectedNode);
   const canUseLearningFields = ["topic", "project", "checkpoint"].includes(form.nodeType);
   const minorOptionalNodeTypes = ["topic", "project"];
-  const canChooseRequirement = form.nodeType === "project" && !isMinorDraft;
+  const canChooseRequirement = ["topic", "project", "checkpoint"].includes(form.nodeType) && !isMinorDraft;
   const setField = (key, value) => setForm((current) => {
     const next = { ...current, [key]: value };
 
