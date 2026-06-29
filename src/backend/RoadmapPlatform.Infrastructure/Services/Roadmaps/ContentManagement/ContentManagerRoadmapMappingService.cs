@@ -25,6 +25,7 @@ public sealed class ContentManagerRoadmapMappingService(
         }
 
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        EnsureResourceMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var resourceExists = await dbContext.Set<LearningResource>()
@@ -62,6 +63,7 @@ public sealed class ContentManagerRoadmapMappingService(
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        EnsureResourceMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var mapping = await dbContext.Set<RoadmapNodeResource>()
@@ -96,6 +98,7 @@ public sealed class ContentManagerRoadmapMappingService(
         }
 
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        EnsureSkillMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var skillExists = await dbContext.Set<Skill>()
@@ -133,6 +136,7 @@ public sealed class ContentManagerRoadmapMappingService(
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        EnsureSkillMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
         var mapping = await dbContext.Set<RoadmapNodeSkill>()
@@ -156,10 +160,26 @@ public sealed class ContentManagerRoadmapMappingService(
         CancellationToken cancellationToken)
     {
         var node = await dbContext.Set<RoadmapNode>()
+            .Include(item => item.RoadmapVersion)
             .Where(item => item.RoadmapNodeId == roadmapNodeId)
             .FirstOrDefaultAsync(cancellationToken);
 
         return node ?? throw new KeyNotFoundException("Roadmap node was not found.");
+    }
+
+    private static void EnsureResourceMappingAllowed(RoadmapNode node)
+    {
+        ContentManagerRoadmapDraftService.EnsureDraftVersion(node.RoadmapVersion);
+    }
+
+    private static void EnsureSkillMappingAllowed(RoadmapNode node)
+    {
+        ContentManagerRoadmapDraftService.EnsureDraftVersion(node.RoadmapVersion);
+
+        if (ContentManagerRoadmapDraftService.IsPatchDraft(node.RoadmapVersion))
+        {
+            throw new ArgumentException("Patch drafts cannot change skill mappings.");
+        }
     }
 
     private async Task TouchRoadmapVersionAsync(

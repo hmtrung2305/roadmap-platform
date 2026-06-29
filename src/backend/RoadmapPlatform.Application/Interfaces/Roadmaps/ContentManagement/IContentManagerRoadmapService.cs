@@ -28,6 +28,11 @@ public interface IContentManagerRoadmapService
         CloneRoadmapVersionDraftRequestDto request,
         CancellationToken cancellationToken);
 
+    Task<ContentRoadmapDetailDto> CreatePatchRoadmapVersionDraftAsync(
+        Guid roadmapVersionId,
+        CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken);
+
     Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken);

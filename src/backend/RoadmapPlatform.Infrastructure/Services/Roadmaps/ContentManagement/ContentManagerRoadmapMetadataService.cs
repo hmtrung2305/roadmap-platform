@@ -31,15 +31,12 @@ public sealed class ContentManagerRoadmapMetadataService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
+        ContentManagerRoadmapDraftService.EnsureDraftVersion(version);
+
         version.Title = title;
         version.Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
         version.EstimatedTotalHours = request.EstimatedTotalHours;
 
-        if (version.Status.Equals("published", StringComparison.OrdinalIgnoreCase))
-        {
-            version.Roadmap.Title = title;
-            version.Roadmap.Description = version.Description;
-        }
 
         version.UpdatedAt = DateTime.UtcNow;
         version.Roadmap.UpdatedAt = DateTime.UtcNow;
@@ -62,6 +59,7 @@ public sealed class ContentManagerRoadmapMetadataService(
         var title = ContentManagerRoadmapText.NormalizeRequiredText(request.Title, "Node title is required.");
 
         var node = await dbContext.Set<RoadmapNode>()
+            .Include(item => item.RoadmapVersion)
             .Where(item => item.RoadmapNodeId == roadmapNodeId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -69,6 +67,8 @@ public sealed class ContentManagerRoadmapMetadataService(
         {
             throw new KeyNotFoundException("Roadmap node was not found.");
         }
+
+        ContentManagerRoadmapDraftService.EnsureDraftVersion(node.RoadmapVersion);
 
         node.Title = title;
         node.Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);

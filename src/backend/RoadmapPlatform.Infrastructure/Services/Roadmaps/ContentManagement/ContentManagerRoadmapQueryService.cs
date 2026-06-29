@@ -53,24 +53,29 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
 
         var statusRows = roadmaps
             .SelectMany(roadmap => roadmap.RoadmapVersions
-                .GroupBy(version => version.Status)
-                .Select(group => new RoadmapVersionRow(roadmap, RoadmapVersionLabels.OrderNewestFirst(group).First())))
+                .Select(version => new RoadmapVersionRow(roadmap, version)))
             .GroupBy(row => row.Version.Status)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        var filteredRows = roadmaps
-            .Select(roadmap => new
-            {
-                Roadmap = roadmap,
-                Version = status is null
-                    ? RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions).FirstOrDefault()
-                    : RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions
-                        .Where(version => version.Status.Equals(status, StringComparison.OrdinalIgnoreCase)))
-                        .FirstOrDefault()
-            })
-            .Where(row => row.Version != null)
-            .Select(row => new RoadmapVersionRow(row.Roadmap, row.Version!))
-            .ToList();
+        var filteredRows = status == "archived"
+            ? roadmaps
+                .SelectMany(roadmap => roadmap.RoadmapVersions
+                    .Where(version => version.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
+                    .Select(version => new RoadmapVersionRow(roadmap, version)))
+                .ToList()
+            : roadmaps
+                .Select(roadmap => new
+                {
+                    Roadmap = roadmap,
+                    Version = status is null
+                        ? RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions).FirstOrDefault()
+                        : RoadmapVersionLabels.OrderNewestFirst(roadmap.RoadmapVersions
+                            .Where(version => version.Status.Equals(status, StringComparison.OrdinalIgnoreCase)))
+                            .FirstOrDefault()
+                })
+                .Where(row => row.Version != null)
+                .Select(row => new RoadmapVersionRow(row.Roadmap, row.Version!))
+                .ToList();
 
         filteredRows = sort switch
         {

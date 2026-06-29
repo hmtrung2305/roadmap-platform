@@ -239,7 +239,7 @@ public sealed class ContentManagerRoadmapStructureService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
-        ContentManagerRoadmapDraftService.EnsureDraftVersion(version);
+        ContentManagerRoadmapDraftService.EnsureStructuralDraftVersion(version);
         return version;
     }
 

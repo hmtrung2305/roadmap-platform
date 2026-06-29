@@ -42,6 +42,14 @@ public sealed class ContentManagerRoadmapService(
         return draftService.CloneRoadmapVersionToDraftAsync(roadmapVersionId, request, cancellationToken);
     }
 
+    public Task<ContentRoadmapDetailDto> CreatePatchRoadmapVersionDraftAsync(
+        Guid roadmapVersionId,
+        CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return draftService.CreatePatchRoadmapVersionDraftAsync(roadmapVersionId, request, cancellationToken);
+    }
+
     public Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken)

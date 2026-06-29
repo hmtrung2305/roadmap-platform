@@ -13,7 +13,7 @@ function updateGuideField(setNodeForm, field, value) {
   }));
 }
 
-function SingleTextField({ label, value, onChange, rows = 3, placeholder = "" }) {
+function SingleTextField({ label, value, onChange, rows = 3, placeholder = "", disabled = false }) {
   return (
     <ModuleField label={label}>
       <textarea
@@ -22,6 +22,7 @@ function SingleTextField({ label, value, onChange, rows = 3, placeholder = "" })
         rows={rows}
         placeholder={placeholder}
         className={`${inputClass} min-h-24 resize-y`}
+        disabled={disabled}
       />
     </ModuleField>
   );
@@ -36,7 +37,7 @@ function SectionCard({ title, children }) {
   );
 }
 
-export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm }) {
+export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm, isEditable = false }) {
   const nodeType = normalizeNodeType(selectedNode);
   const showGenericCompletionCriteria = nodeType !== "checkpoint";
 
@@ -49,6 +50,7 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
           addLabel="Add outcome"
           placeholder="Learner should be able to..."
           onChange={(value) => setNodeForm((current) => ({ ...current, learningOutcomesText: value }))}
+          disabled={!isEditable}
         />
         {showGenericCompletionCriteria && (
           <ListEditorField
@@ -57,6 +59,7 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
             addLabel="Add criterion"
             placeholder="Completion criterion"
             onChange={(value) => setNodeForm((current) => ({ ...current, completionCriteriaText: value }))}
+            disabled={!isEditable}
           />
         )}
       </SectionCard>
@@ -68,6 +71,7 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
             value={nodeForm.guide?.whatToBuild}
             onChange={(value) => updateGuideField(setNodeForm, "whatToBuild", value)}
             placeholder="Describe the artifact learners should build."
+            disabled={!isEditable}
           />
           <ListEditorField
             label="Build steps"
@@ -75,6 +79,7 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
             addLabel="Add step"
             placeholder="Step to complete"
             onChange={(value) => updateGuideField(setNodeForm, "buildStepsText", value)}
+            disabled={!isEditable}
           />
         </SectionCard>
       )}
@@ -86,6 +91,7 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
             value={nodeForm.guide?.reviewFocus}
             onChange={(value) => updateGuideField(setNodeForm, "reviewFocus", value)}
             placeholder="Describe what learners should review."
+            disabled={!isEditable}
           />
           <ListEditorField
             label="Review criteria"
@@ -93,6 +99,7 @@ export default function NodeContentFields({ selectedNode, nodeForm, setNodeForm 
             addLabel="Add criterion"
             placeholder="Review criterion"
             onChange={(value) => updateGuideField(setNodeForm, "reviewCriteriaText", value)}
+            disabled={!isEditable}
           />
         </SectionCard>
       )}

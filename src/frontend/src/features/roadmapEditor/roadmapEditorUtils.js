@@ -42,6 +42,25 @@ export function getNextMajorVersionLabel(versions = []) {
   return legacyVersions.length > 0 ? `v${Math.max(...legacyVersions) + 1}.0.0` : "v1.0.0";
 }
 
+export function getNextPatchVersionLabel(currentVersion, versions = []) {
+  const major = Number(currentVersion?.majorVersion);
+  const minor = Number(currentVersion?.minorVersion);
+
+  if (!Number.isFinite(major) || !Number.isFinite(minor)) {
+    return "v-";
+  }
+
+  const patchVersions = normalizeNodes(versions)
+    .filter((version) => Number(version?.majorVersion) === major && Number(version?.minorVersion) === minor)
+    .map((version) => Number(version?.patchVersion))
+    .filter((value) => Number.isFinite(value) && value >= 0);
+
+  const currentPatch = Number(currentVersion?.patchVersion);
+  const nextPatch = Math.max(Number.isFinite(currentPatch) ? currentPatch : 0, ...patchVersions) + 1;
+
+  return `v${major}.${minor}.${nextPatch}`;
+}
+
 export function prettyReleaseType(releaseType) {
   const normalized = String(releaseType || "").toLowerCase();
   if (!normalized) return "Release";

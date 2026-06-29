@@ -68,6 +68,7 @@ export default function ContentManagerRoadmapEditorPage() {
     saveMetadata,
     saveNode,
     cloneDraft,
+    createPatchDraft,
     validateDraft,
     publishDraft,
     createNode,
@@ -143,6 +144,9 @@ export default function ContentManagerRoadmapEditorPage() {
 
   const status = String(detail.status || "").toLowerCase();
   const isDraft = status === "draft";
+  const releaseType = String(detail.releaseType || "").toLowerCase();
+  const isPatchDraft = isDraft && releaseType === "patch";
+  const canEditStructure = isDraft && !isPatchDraft;
   const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
@@ -210,6 +214,7 @@ export default function ContentManagerRoadmapEditorPage() {
           onVersionChange={handleEditorVersionChange}
           isBusy={isMutatingDraft}
           onCloneDraft={() => setIsCloneConfirmOpen(true)}
+          onCreatePatchDraft={createPatchDraft}
           onPublishDraft={openValidation}
         />
 
@@ -246,6 +251,7 @@ export default function ContentManagerRoadmapEditorPage() {
             isSaving={isSavingMetadata}
             isDirty={hasMetadataChanges}
             onSave={saveMetadata}
+            isEditable={isDraft}
           />
         ) : (
           <ModuleCard className="overflow-visible">
@@ -268,7 +274,7 @@ export default function ContentManagerRoadmapEditorPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {isDraft && (
+                  {canEditStructure && (
                     <ModuleButton
                       size="xs"
                       variant="secondary"
@@ -323,6 +329,8 @@ export default function ContentManagerRoadmapEditorPage() {
                 onAddResource={addResource}
                 onRemoveResource={removeResource}
                 isDraft={isDraft}
+                isPatchDraft={isPatchDraft}
+                canEditStructure={canEditStructure}
                 isMutatingDraft={isMutatingDraft}
                 onMoveNode={moveNode}
                 onDeleteNode={deleteNode}

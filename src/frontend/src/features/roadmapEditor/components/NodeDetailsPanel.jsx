@@ -53,6 +53,8 @@ export default function NodeDetailsPanel({
   onAddResource,
   onRemoveResource,
   isDraft = false,
+  isPatchDraft = false,
+  canEditStructure = false,
   isMutatingDraft = false,
   onMoveNode,
   onDeleteNode,
@@ -85,7 +87,9 @@ export default function NodeDetailsPanel({
   ));
   const canEditLearning = canEditLearningFields(selectedNode);
   const canMapLearning = canEditMappings(selectedNode);
-  const canAddChildNode = isDraft && canCreateChildNodes(selectedNode);
+  const canManageSkills = isDraft && !isPatchDraft && canMapLearning;
+  const canManageResources = isDraft && canMapLearning;
+  const canAddChildNode = canEditStructure && canCreateChildNodes(selectedNode);
   const skillCount = selectedNode.skills?.length || 0;
   const resourceCount = selectedNode.resources?.length || 0;
 
@@ -113,7 +117,7 @@ export default function NodeDetailsPanel({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {isDraft && (
+              {canEditStructure && (
                 <ModuleButton
                   variant="primary"
                   size="xs"
@@ -124,13 +128,13 @@ export default function NodeDetailsPanel({
                   <Plus size={14} /> Add node
                 </ModuleButton>
               )}
-              <ModuleButton onClick={onSaveNode} disabled={isSavingNode || !isDirty}>
+              <ModuleButton onClick={onSaveNode} disabled={!isDraft || isSavingNode || !isDirty}>
                 <Save size={14} /> {isSavingNode ? "Saving" : "Save"}
               </ModuleButton>
             </div>
           </div>
 
-          {isDraft && (
+          {canEditStructure && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[#B9D8CC]/70 bg-[#F7F1E8]/45 p-2">
               <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("up")} disabled={isMutatingDraft}>
                 <ArrowUp size={13} /> Move up
@@ -164,16 +168,16 @@ export default function NodeDetailsPanel({
             <button
               type="button"
               onClick={() => setPanelMode("skills")}
-              disabled={!canMapLearning}
-              className={tabButtonClass("skills", !canMapLearning)}
+              disabled={!canManageSkills}
+              className={tabButtonClass("skills", !canManageSkills)}
             >
               Skills
             </button>
             <button
               type="button"
               onClick={() => setPanelMode("resources")}
-              disabled={!canMapLearning}
-              className={tabButtonClass("resources", !canMapLearning)}
+              disabled={!canManageResources}
+              className={tabButtonClass("resources", !canManageResources)}
             >
               Resources
             </button>
@@ -190,6 +194,7 @@ export default function NodeDetailsPanel({
                     value={nodeForm.title}
                     onChange={(event) => setNodeForm((current) => ({ ...current, title: event.target.value }))}
                     className={inputClass}
+                    disabled={!isDraft}
                   />
                 </ModuleField>
 
@@ -199,6 +204,7 @@ export default function NodeDetailsPanel({
                     onChange={(event) => setNodeForm((current) => ({ ...current, description: event.target.value }))}
                     rows={5}
                     className={`${inputClass} min-h-32 resize-y`}
+                    disabled={!isDraft}
                   />
                 </ModuleField>
               </section>
@@ -213,6 +219,7 @@ export default function NodeDetailsPanel({
                         value={nodeForm.estimatedHours}
                         onChange={(event) => setNodeForm((current) => ({ ...current, estimatedHours: event.target.value }))}
                         className={numberInputClass}
+                        disabled={!isDraft}
                       />
                     </ModuleField>
                     <ModuleField label="Difficulty">
@@ -220,6 +227,7 @@ export default function NodeDetailsPanel({
                         value={nodeForm.difficultyLevel}
                         onChange={(event) => setNodeForm((current) => ({ ...current, difficultyLevel: event.target.value }))}
                         className={inputClass}
+                        disabled={!isDraft}
                       >
                         {difficultyOptions.map((option) => (
                           <option key={option.value || "empty"} value={option.value}>
@@ -240,10 +248,11 @@ export default function NodeDetailsPanel({
               selectedNode={selectedNode}
               nodeForm={nodeForm}
               setNodeForm={setNodeForm}
+              isEditable={isDraft}
             />
           )}
 
-          {panelMode === "skills" && canMapLearning && (
+          {panelMode === "skills" && canManageSkills && (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs font-extrabold uppercase tracking-wide text-slate-600">
@@ -268,7 +277,7 @@ export default function NodeDetailsPanel({
             </section>
           )}
 
-          {panelMode === "resources" && canMapLearning && (
+          {panelMode === "resources" && canManageResources && (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs font-extrabold uppercase tracking-wide text-slate-600">

@@ -47,7 +47,6 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
 
         AddVersionValidation(version, nodes, errors);
         AddNodeValidation(nodes, nodesById, nodeIds, childrenByParent, errors, warnings);
-        AddSiblingOrderValidation(nodes, errors);
         await AddMappingWarningsAsync(nodes, warnings, cancellationToken);
 
         return new ContentRoadmapValidationResultDto
@@ -172,31 +171,6 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         if (ContentManagerRoadmapNodeContent.DeserializeStringArray(node.CompletionCriteria).Count == 0)
         {
             warnings.Add(CreateItem("completion_criteria_missing", "Completion criteria are missing.", node));
-        }
-    }
-
-    private static void AddSiblingOrderValidation(
-        IReadOnlyCollection<RoadmapNode> nodes,
-        List<ContentRoadmapValidationItemDto> errors)
-    {
-        foreach (var siblingGroup in nodes.GroupBy(node => node.ParentNodeId))
-        {
-            foreach (var node in siblingGroup.Where(node => node.OrderIndex <= 0))
-            {
-                errors.Add(CreateItem("node_order_invalid", "Sibling order index values must be greater than zero.", node));
-            }
-
-            var duplicateOrderNodes = siblingGroup
-                .Where(node => node.OrderIndex > 0)
-                .GroupBy(node => node.OrderIndex)
-                .Where(group => group.Count() > 1)
-                .SelectMany(group => group)
-                .ToList();
-
-            foreach (var node in duplicateOrderNodes)
-            {
-                errors.Add(CreateItem("node_order_duplicate", "Sibling order index values must be unique.", node));
-            }
         }
     }
 

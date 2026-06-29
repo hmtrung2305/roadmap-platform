@@ -25,6 +25,7 @@ export default function ListEditorField({
   onChange,
   addLabel = "Add item",
   placeholder = "List item",
+  disabled = false,
 }) {
   const [draftItems, setDraftItems] = useState(() => normalizeDraftItems(value));
 
@@ -51,6 +52,7 @@ export default function ListEditorField({
                 value={item}
                 rows={2}
                 placeholder={placeholder}
+                disabled={disabled}
                 onPaste={(event) => {
                   const pastedText = event.clipboardData.getData("text");
                   const pastedItems = normalizeTextList(pastedText);
@@ -69,7 +71,7 @@ export default function ListEditorField({
               <button
                 type="button"
                 onClick={() => commit(removeItem(draftItems, index))}
-                disabled={draftItems.length === 1 && !item}
+                disabled={disabled || (draftItems.length === 1 && !item)}
                 className="mt-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#D6E4DE] bg-white text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500"
                 aria-label={`Remove ${label} item ${index + 1}`}
               >
@@ -83,6 +85,7 @@ export default function ListEditorField({
           size="xs"
           variant="secondary"
           onClick={() => setDraftItems((current) => [...current, ""])}
+          disabled={disabled}
         >
           <Plus size={14} /> {addLabel}
         </ModuleButton>

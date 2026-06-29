@@ -9,7 +9,7 @@ import {
   numberInputClass,
 } from "../../learningModules/components/learningModuleUi";
 
-export default function MetadataEditor({ detail, form, setForm, isSaving, isDirty, onSave }) {
+export default function MetadataEditor({ detail, form, setForm, isSaving, isDirty, onSave, isEditable = false }) {
   return (
     <ModuleCard className="p-4">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -22,7 +22,7 @@ export default function MetadataEditor({ detail, form, setForm, isSaving, isDirt
             <DirtyStateBadge isDirty={isDirty} />
           </div>
         </div>
-        <ModuleButton onClick={onSave} disabled={!detail || isSaving || !isDirty}>
+        <ModuleButton onClick={onSave} disabled={!detail || !isEditable || isSaving || !isDirty}>
           <Save size={14} /> {isSaving ? "Saving" : "Save metadata"}
         </ModuleButton>
       </div>
@@ -34,6 +34,7 @@ export default function MetadataEditor({ detail, form, setForm, isSaving, isDirt
             value={form.title}
             onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
             className={inputClass}
+            disabled={!isEditable}
           />
         </ModuleField>
         <ModuleField label="Total hours">
@@ -43,6 +44,7 @@ export default function MetadataEditor({ detail, form, setForm, isSaving, isDirt
             value={form.estimatedTotalHours}
             onChange={(event) => setForm((current) => ({ ...current, estimatedTotalHours: event.target.value }))}
             className={numberInputClass}
+            disabled={!isEditable}
           />
         </ModuleField>
         <div className="lg:col-span-2">

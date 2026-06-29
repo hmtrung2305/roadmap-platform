@@ -58,6 +58,13 @@ function getNodeId(node) {
   return node?.roadmapNodeId || node?.id || "";
 }
 
+function getDefaultSelectedNodeId(nodes = []) {
+  const availableNodes = normalizeNodes(nodes);
+  const firstPhaseNode = availableNodes.find((node) => normalizeNodeType(node) === "phase");
+
+  return (firstPhaseNode || availableNodes[0])?.roadmapNodeId || "";
+}
+
 function getDescendantIds(rootId, nodes = []) {
   if (!rootId) return [];
 
@@ -178,8 +185,7 @@ export default function useContentRoadmapEditor(roadmapId) {
         } else {
           setSelectedNodeId((current) => {
             if (availableNodes.some((node) => node.roadmapNodeId === current)) return current;
-            const firstLearningNode = availableNodes.find(canEditLearningFields);
-            return (firstLearningNode || availableNodes[0]).roadmapNodeId;
+            return getDefaultSelectedNodeId(availableNodes);
           });
         }
       } catch (requestError) {
@@ -219,7 +225,7 @@ export default function useContentRoadmapEditor(roadmapId) {
 
   useEffect(() => {
     if (!selectedNode && allNodes.length > 0) {
-      setSelectedNodeId(allNodes[0].roadmapNodeId);
+      setSelectedNodeId(getDefaultSelectedNodeId(allNodes));
     }
   }, [allNodes, selectedNode]);
   const selectedNodeChildCount = useMemo(() => {
@@ -303,7 +309,7 @@ export default function useContentRoadmapEditor(roadmapId) {
       setSelectedNodeId(focusNodeId);
       setGraphFocusRequest({ id: focusNodeId, requestId: Date.now() });
     } else if (!availableNodes.some((node) => node.roadmapNodeId === selectedNodeId)) {
-      setSelectedNodeId(availableNodes[0]?.roadmapNodeId || "");
+      setSelectedNodeId(getDefaultSelectedNodeId(availableNodes));
     }
   };
 
