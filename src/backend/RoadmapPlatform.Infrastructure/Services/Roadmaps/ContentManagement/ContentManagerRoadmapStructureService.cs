@@ -31,6 +31,10 @@ public sealed class ContentManagerRoadmapStructureService(
         var insertionIndex = GetInsertionIndex(siblings, request.Position, request.ReferenceNodeId);
         ShiftSiblingsForInsert(siblings, insertionIndex);
         var isRequired = ContentManagerRoadmapStructureRules.GetIsRequiredForCreate(nodeType, request.IsRequired);
+        if (ContentManagerRoadmapDraftService.IsMinorDraft(version))
+        {
+            ContentManagerRoadmapStructureRules.ValidateMinorCreateRequest(nodeType, isRequired);
+        }
 
         var node = new RoadmapNode
         {
@@ -80,6 +84,11 @@ public sealed class ContentManagerRoadmapStructureService(
     {
         var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
         var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+        if (ContentManagerRoadmapDraftService.IsMinorDraft(version) && node.IsRequired)
+        {
+            throw new ArgumentException("Minor drafts cannot move required nodes.");
+        }
+
         var direction = ContentManagerRoadmapText.NormalizeOptionalText(request.Direction)?.ToLowerInvariant();
         if (direction is not ("up" or "down"))
         {
@@ -157,6 +166,11 @@ public sealed class ContentManagerRoadmapStructureService(
             .Where(item => nodeIdsToDelete.Contains(item.RoadmapNodeId))
             .OrderByDescending(item => item.ParentNodeId.HasValue)
             .ToListAsync(cancellationToken);
+
+        if (ContentManagerRoadmapDraftService.IsMinorDraft(version) && nodes.Any(item => item.IsRequired))
+        {
+            throw new ArgumentException("Minor drafts cannot delete required nodes.");
+        }
 
         dbContext.Set<RoadmapEdge>().RemoveRange(edges);
         dbContext.Set<RoadmapNodeSkill>().RemoveRange(skills);

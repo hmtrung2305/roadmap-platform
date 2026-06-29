@@ -33,6 +33,11 @@ public interface IContentManagerRoadmapService
         CloneRoadmapVersionDraftRequestDto request,
         CancellationToken cancellationToken);
 
+    Task<ContentRoadmapDetailDto> CreateMinorRoadmapVersionDraftAsync(
+        Guid roadmapVersionId,
+        CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken);
+
     Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken);

@@ -1,35 +1,58 @@
-import { GitBranch, Loader2, Send, ShieldCheck, ArrowRight, History, Wrench } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  GitBranch,
+  History,
+  Loader2,
+  Send,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 
 import AppSelect from "../../../components/common/AppSelect";
-import { ModuleButton, ModuleCard } from "../../learningModules/components/learningModuleUi";
+import {
+  ModuleButton,
+  ModuleCard,
+} from "../../learningModules/components/learningModuleUi";
 import {
   formatVersionLabel,
   getNextMajorVersionLabel,
+  getNextMinorVersionLabel,
   getNextPatchVersionLabel,
   prettyReleaseType,
   prettyStatus,
 } from "../roadmapEditorUtils";
 
-function VersionActionButton({ icon: Icon, title, description, isBusy, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isBusy}
-      className="group flex w-full items-center justify-between gap-4 rounded-xl border border-dashed border-[#9FBFB4] bg-white/95 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:border-[#9FBFB4]"
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F7F1E8] text-[#B7791F]">
-          {isBusy ? <Loader2 size={18} className="animate-spin" /> : <Icon size={18} />}
-        </div>
-        <div className="min-w-0">
-          <h2 className="truncate text-sm font-extrabold text-[#18332D]">{title}</h2>
-          {description ? <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{description}</p> : null}
-        </div>
-      </div>
-      <ArrowRight size={18} className="shrink-0 text-[#1F6F5F] transition group-hover:translate-x-1" />
-    </button>
-  );
+const updateTypeCopy = {
+  patch: {
+    icon: Wrench,
+    label: "Patch update",
+    description: "Safe wording, guide, and resource fixes.",
+  },
+  minor: {
+    icon: GitBranch,
+    label: "Minor update",
+    description:
+      "Optional content additions without changing the required path.",
+  },
+  major: {
+    icon: GitBranch,
+    label: "Major update",
+    description: "Structural changes for a new roadmap version.",
+  },
+};
+
+function sortDraftsNewestFirst(drafts) {
+  return [...drafts].sort((first, second) => {
+    const firstTime = Date.parse(first.updatedAt || first.createdAt || "") || 0;
+    const secondTime =
+      Date.parse(second.updatedAt || second.createdAt || "") || 0;
+
+    if (firstTime !== secondTime) {
+      return secondTime - firstTime;
+    }
+
+    return Number(second.versionNumber || 0) - Number(first.versionNumber || 0);
+  });
 }
 
 export default function DraftVersionActions({
@@ -39,22 +62,67 @@ export default function DraftVersionActions({
   isBusy,
   onCloneDraft,
   onCreatePatchDraft,
+  onCreateMinorDraft,
   onPublishDraft,
 }) {
+  const [selectedUpdateType, setSelectedUpdateType] = useState("patch");
   const status = String(detail?.status || "").toLowerCase();
   const releaseType = String(detail?.releaseType || "").toLowerCase();
-  const drafts = detail?.versions?.filter((version) => String(version.status).toLowerCase() === "draft") || [];
-  const existingMajorDraft = drafts.find((version) => String(version.releaseType).toLowerCase() === "major");
-  const existingPatchDraft = drafts.find((version) => (
-    String(version.releaseType).toLowerCase() === "patch"
-    && Number(version.majorVersion) === Number(detail?.majorVersion)
-    && Number(version.minorVersion) === Number(detail?.minorVersion)
-  ));
   const currentVersionLabel = formatVersionLabel(detail);
-  const existingMajorDraftLabel = formatVersionLabel(existingMajorDraft);
-  const existingPatchDraftLabel = formatVersionLabel(existingPatchDraft);
-  const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
-  const nextPatchVersionLabel = getNextPatchVersionLabel(detail, detail?.versions);
+
+  const drafts = useMemo(
+    () =>
+      sortDraftsNewestFirst(
+        detail?.versions?.filter(
+          (version) => String(version.status).toLowerCase() === "draft",
+        ) || [],
+      ),
+    [detail?.versions],
+  );
+
+  const existingDraft = drafts[0] || null;
+  const existingDraftLabel = formatVersionLabel(existingDraft);
+  const existingDraftReleaseType = String(
+    existingDraft?.releaseType || "",
+  ).toLowerCase();
+  const ExistingDraftIcon =
+    updateTypeCopy[existingDraftReleaseType]?.icon || GitBranch;
+
+  const updateOptions = useMemo(
+    () => [
+      {
+        value: "patch",
+        label: `Patch draft ${getNextPatchVersionLabel(detail, detail?.versions)}`,
+      },
+      {
+        value: "minor",
+        label: `Minor draft ${getNextMinorVersionLabel(detail, detail?.versions)}`,
+      },
+      {
+        value: "major",
+        label: `Major draft ${getNextMajorVersionLabel(detail?.versions)}`,
+      },
+    ],
+    [detail],
+  );
+
+  const selectedUpdateCopy =
+    updateTypeCopy[selectedUpdateType] || updateTypeCopy.patch;
+  const SelectedUpdateIcon = selectedUpdateCopy.icon;
+
+  const handleCreateUpdateDraft = () => {
+    if (selectedUpdateType === "minor") {
+      onCreateMinorDraft();
+      return;
+    }
+
+    if (selectedUpdateType === "major") {
+      onCloneDraft();
+      return;
+    }
+
+    onCreatePatchDraft();
+  };
 
   return (
     <div className="space-y-3">
@@ -85,9 +153,11 @@ export default function DraftVersionActions({
               {currentVersionLabel}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold text-[#18332D]">Current version</p>
+              <p className="truncate text-sm font-extrabold text-[#18332D]">
+                Current version
+              </p>
               <p className="truncate text-xs font-semibold text-slate-600">
-                {prettyStatus(status)} · {prettyReleaseType(releaseType)} · {detail?.nodeCount || 0} nodes
+                {prettyStatus(status)} · {detail?.nodeCount || 0} nodes
               </p>
             </div>
           </div>
@@ -102,52 +172,104 @@ export default function DraftVersionActions({
                 <ShieldCheck size={18} />
               </div>
               <div className="min-w-0">
-                <h2 className="min-w-0 text-sm font-extrabold text-[#18332D]">Draft tools</h2>
+                <h2 className="min-w-0 text-sm font-extrabold text-[#18332D]">
+                  Draft tools
+                </h2>
                 {releaseType === "patch" ? (
-                  <p className="mt-0.5 text-xs font-semibold text-slate-600">Patch drafts allow wording and resource fixes only.</p>
+                  <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                    Patch drafts allow wording and resource fixes only.
+                  </p>
+                ) : null}
+                {releaseType === "minor" ? (
+                  <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                    Minor drafts allow optional additions and safe content
+                    edits.
+                  </p>
                 ) : null}
               </div>
             </div>
 
             <ModuleButton onClick={onPublishDraft} disabled={isBusy}>
-              {isBusy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {isBusy ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
               Publish draft
             </ModuleButton>
           </div>
         </ModuleCard>
       )}
 
-      {status === "published" && (
-        <div className="grid gap-3 lg:grid-cols-2">
-          <VersionActionButton
-            icon={Wrench}
-            title={existingPatchDraft ? `Open patch draft ${existingPatchDraftLabel}` : `Create patch draft ${nextPatchVersionLabel}`}
-            description="Safe content and resource fixes"
-            isBusy={isBusy}
-            onClick={() => {
-              if (existingPatchDraft?.roadmapVersionId) {
-                onVersionChange(existingPatchDraft.roadmapVersionId);
-                return;
-              }
+      {status === "published" && existingDraft && (
+        <ModuleCard className="overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F7F1E8] text-[#B7791F]">
+                <ExistingDraftIcon size={18} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-extrabold text-[#18332D]">
+                  Draft in progress: {existingDraftLabel}
+                </h2>
+                <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                  Finish or delete this{" "}
+                  {prettyReleaseType(existingDraftReleaseType).toLowerCase()}{" "}
+                  draft before creating another update.
+                </p>
+              </div>
+            </div>
+            <ModuleButton
+              variant="secondary"
+              onClick={() => onVersionChange(existingDraft.roadmapVersionId)}
+              disabled={isBusy}
+            >
+              Open draft
+            </ModuleButton>
+          </div>
+        </ModuleCard>
+      )}
 
-              onCreatePatchDraft();
-            }}
-          />
-          <VersionActionButton
-            icon={GitBranch}
-            title={existingMajorDraft ? `Open major draft ${existingMajorDraftLabel}` : `Create major draft ${nextMajorVersionLabel}`}
-            description="Structural version update"
-            isBusy={isBusy}
-            onClick={() => {
-              if (existingMajorDraft?.roadmapVersionId) {
-                onVersionChange(existingMajorDraft.roadmapVersionId);
-                return;
-              }
-
-              onCloneDraft();
-            }}
-          />
-        </div>
+      {status === "published" && !existingDraft && (
+        <ModuleCard className="overflow-visible p-0">
+          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
+                <SelectedUpdateIcon size={18} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-extrabold text-[#18332D]">
+                  Create update draft
+                </h2>
+                <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                  {selectedUpdateCopy.description}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="w-full sm:w-56">
+                <AppSelect
+                  value={selectedUpdateType}
+                  options={updateOptions}
+                  ariaLabel="Select update draft type"
+                  onChange={setSelectedUpdateType}
+                />
+              </div>
+              <ModuleButton
+                onClick={handleCreateUpdateDraft}
+                disabled={isBusy}
+                size="md"
+              >
+                {isBusy ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <SelectedUpdateIcon size={14} />
+                )}
+                Create draft
+              </ModuleButton>
+            </div>
+          </div>
+        </ModuleCard>
       )}
     </div>
   );

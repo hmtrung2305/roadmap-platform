@@ -81,6 +81,15 @@ export const contentManagerRoadmapApi = {
     return response.data;
   },
 
+  createMinorDraft: async (roadmapVersionId, payload = {}) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/minor-draft`,
+      payload,
+    );
+
+    return response.data;
+  },
+
   validateVersion: async (roadmapVersionId) => {
     const response = await axiosClient.post(
       `/content/roadmap-versions/${encode(roadmapVersionId)}/validate`,

@@ -61,6 +61,25 @@ export function getNextPatchVersionLabel(currentVersion, versions = []) {
   return `v${major}.${minor}.${nextPatch}`;
 }
 
+
+export function getNextMinorVersionLabel(currentVersion, versions = []) {
+  const major = Number(currentVersion?.majorVersion);
+
+  if (!Number.isFinite(major)) {
+    return "v-";
+  }
+
+  const minorVersions = normalizeNodes(versions)
+    .filter((version) => Number(version?.majorVersion) === major)
+    .map((version) => Number(version?.minorVersion))
+    .filter((value) => Number.isFinite(value) && value >= 0);
+
+  const currentMinor = Number(currentVersion?.minorVersion);
+  const nextMinor = Math.max(Number.isFinite(currentMinor) ? currentMinor : 0, ...minorVersions) + 1;
+
+  return `v${major}.${nextMinor}.0`;
+}
+
 export function prettyReleaseType(releaseType) {
   const normalized = String(releaseType || "").toLowerCase();
   if (!normalized) return "Release";

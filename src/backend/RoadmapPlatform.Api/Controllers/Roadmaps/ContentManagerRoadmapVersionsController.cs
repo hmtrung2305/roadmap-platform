@@ -46,6 +46,24 @@ public sealed class ContentManagerRoadmapVersionsController(
         return Ok(result);
     }
 
+
+    [HttpPost("{roadmapVersionId:guid}/minor-draft")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateMinorRoadmapVersionDraft(
+        Guid roadmapVersionId,
+        [FromBody] CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await roadmapService.CreateMinorRoadmapVersionDraftAsync(
+            roadmapVersionId,
+            request,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPost("{roadmapVersionId:guid}/validate")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapValidationResultDto), StatusCodes.Status200OK)]

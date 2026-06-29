@@ -50,6 +50,14 @@ public sealed class ContentManagerRoadmapService(
         return draftService.CreatePatchRoadmapVersionDraftAsync(roadmapVersionId, request, cancellationToken);
     }
 
+    public Task<ContentRoadmapDetailDto> CreateMinorRoadmapVersionDraftAsync(
+        Guid roadmapVersionId,
+        CloneRoadmapVersionDraftRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return draftService.CreateMinorRoadmapVersionDraftAsync(roadmapVersionId, request, cancellationToken);
+    }
+
     public Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken)

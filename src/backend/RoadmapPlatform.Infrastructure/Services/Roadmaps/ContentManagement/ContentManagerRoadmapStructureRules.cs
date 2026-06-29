@@ -180,12 +180,35 @@ internal static class ContentManagerRoadmapStructureRules
             return true;
         }
 
+        if (normalizedNodeType is "topic" or "choice_option")
+        {
+            return requestedIsRequired ?? true;
+        }
+
         if (normalizedNodeType == "project")
         {
             return requestedIsRequired ?? false;
         }
 
         return true;
+    }
+
+    public static void ValidateMinorCreateRequest(string normalizedNodeType, bool isRequired)
+    {
+        if (normalizedNodeType == "phase")
+        {
+            throw new ArgumentException("Minor drafts cannot add phases.");
+        }
+
+        if (normalizedNodeType == "checkpoint")
+        {
+            throw new ArgumentException("Minor drafts cannot add required checkpoints.");
+        }
+
+        if (GetDefaultIsTrackable(normalizedNodeType) && isRequired)
+        {
+            throw new ArgumentException("Minor drafts can only add optional learner-facing nodes.");
+        }
     }
 
     public static bool GetDefaultIsTrackable(string nodeType)

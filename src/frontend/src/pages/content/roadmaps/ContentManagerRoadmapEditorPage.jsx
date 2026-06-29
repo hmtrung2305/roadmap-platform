@@ -69,6 +69,7 @@ export default function ContentManagerRoadmapEditorPage() {
     saveNode,
     cloneDraft,
     createPatchDraft,
+    createMinorDraft,
     validateDraft,
     publishDraft,
     createNode,
@@ -146,7 +147,9 @@ export default function ContentManagerRoadmapEditorPage() {
   const isDraft = status === "draft";
   const releaseType = String(detail.releaseType || "").toLowerCase();
   const isPatchDraft = isDraft && releaseType === "patch";
+  const isMinorDraft = isDraft && releaseType === "minor";
   const canEditStructure = isDraft && !isPatchDraft;
+  const canAddPhaseNode = canEditStructure && !isMinorDraft;
   const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
@@ -215,6 +218,7 @@ export default function ContentManagerRoadmapEditorPage() {
           isBusy={isMutatingDraft}
           onCloneDraft={() => setIsCloneConfirmOpen(true)}
           onCreatePatchDraft={createPatchDraft}
+          onCreateMinorDraft={createMinorDraft}
           onPublishDraft={openValidation}
         />
 
@@ -274,7 +278,7 @@ export default function ContentManagerRoadmapEditorPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {canEditStructure && (
+                  {canAddPhaseNode && (
                     <ModuleButton
                       size="xs"
                       variant="secondary"
@@ -330,6 +334,7 @@ export default function ContentManagerRoadmapEditorPage() {
                 onRemoveResource={removeResource}
                 isDraft={isDraft}
                 isPatchDraft={isPatchDraft}
+                isMinorDraft={isMinorDraft}
                 canEditStructure={canEditStructure}
                 isMutatingDraft={isMutatingDraft}
                 onMoveNode={moveNode}
@@ -368,6 +373,7 @@ export default function ContentManagerRoadmapEditorPage() {
         createMode={createNodeMode}
         isSaving={isMutatingDraft}
         onClose={() => setIsCreateNodeOpen(false)}
+        isMinorDraft={isMinorDraft}
         onCreate={createNode}
       />
 

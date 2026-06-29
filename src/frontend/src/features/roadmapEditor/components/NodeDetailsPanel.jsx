@@ -54,6 +54,7 @@ export default function NodeDetailsPanel({
   onRemoveResource,
   isDraft = false,
   isPatchDraft = false,
+  isMinorDraft = false,
   canEditStructure = false,
   isMutatingDraft = false,
   onMoveNode,
@@ -90,6 +91,7 @@ export default function NodeDetailsPanel({
   const canManageSkills = isDraft && !isPatchDraft && canMapLearning;
   const canManageResources = isDraft && canMapLearning;
   const canAddChildNode = canEditStructure && canCreateChildNodes(selectedNode);
+  const canMutateSelectedStructure = canEditStructure && !(isMinorDraft && selectedNode.isRequired);
   const skillCount = selectedNode.skills?.length || 0;
   const resourceCount = selectedNode.resources?.length || 0;
 
@@ -136,13 +138,13 @@ export default function NodeDetailsPanel({
 
           {canEditStructure && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[#B9D8CC]/70 bg-[#F7F1E8]/45 p-2">
-              <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("up")} disabled={isMutatingDraft}>
+              <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("up")} disabled={isMutatingDraft || !canMutateSelectedStructure}>
                 <ArrowUp size={13} /> Move up
               </ModuleButton>
-              <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("down")} disabled={isMutatingDraft}>
+              <ModuleButton size="xs" variant="secondary" onClick={() => onMoveNode?.("down")} disabled={isMutatingDraft || !canMutateSelectedStructure}>
                 <ArrowDown size={13} /> Move down
               </ModuleButton>
-              <ModuleButton size="xs" variant="danger" className="hover:border-rose-500 hover:bg-rose-100 hover:text-rose-800" onClick={() => setIsDeleteConfirmOpen(true)} disabled={isMutatingDraft}>
+              <ModuleButton size="xs" variant="danger" className="hover:border-rose-500 hover:bg-rose-100 hover:text-rose-800" onClick={() => setIsDeleteConfirmOpen(true)} disabled={isMutatingDraft || !canMutateSelectedStructure}>
                 <Trash2 size={13} /> Delete
               </ModuleButton>
             </div>

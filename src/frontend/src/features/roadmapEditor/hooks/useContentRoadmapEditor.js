@@ -501,6 +501,38 @@ export default function useContentRoadmapEditor(roadmapId) {
     }
   };
 
+  const createPatchDraft = async () => {
+    if (!detail?.roadmapVersionId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const updated = await contentManagerRoadmapApi.createPatchDraft(detail.roadmapVersionId, {});
+      applyRoadmapDetail(updated);
+      setWorkspaceMode("nodes");
+      toast.success("Patch draft opened.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to create patch draft.");
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
+  const createMinorDraft = async () => {
+    if (!detail?.roadmapVersionId) return;
+
+    try {
+      setIsMutatingDraft(true);
+      const updated = await contentManagerRoadmapApi.createMinorDraft(detail.roadmapVersionId, {});
+      applyRoadmapDetail(updated);
+      setWorkspaceMode("nodes");
+      toast.success("Minor draft opened.");
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to create minor draft.");
+    } finally {
+      setIsMutatingDraft(false);
+    }
+  };
+
   const validateDraft = async () => {
     if (!detail?.roadmapVersionId) return null;
 
@@ -641,6 +673,8 @@ export default function useContentRoadmapEditor(roadmapId) {
     saveMetadata,
     saveNode,
     cloneDraft,
+    createPatchDraft,
+    createMinorDraft,
     validateDraft,
     publishDraft,
     createNode,

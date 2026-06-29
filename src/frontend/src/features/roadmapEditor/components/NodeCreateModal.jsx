@@ -47,6 +47,7 @@ export default function NodeCreateModal({
   selectedNode,
   createMode = "child",
   isSaving,
+  isMinorDraft = false,
   onClose,
   onCreate,
 }) {
@@ -54,9 +55,12 @@ export default function NodeCreateModal({
   const [form, setForm] = useState(initialForm);
 
   const isPhaseCreate = createMode === "phase";
-  const allowedNodeTypes = useMemo(() => (
-    isPhaseCreate ? ["phase"] : getAllowedChildNodeTypes(selectedNode)
-  ), [isPhaseCreate, selectedNode]);
+  const allowedNodeTypes = useMemo(() => {
+    const baseTypes = isPhaseCreate ? ["phase"] : getAllowedChildNodeTypes(selectedNode);
+    if (!isMinorDraft) return baseTypes;
+
+    return baseTypes.filter((nodeType) => nodeType !== "phase" && nodeType !== "checkpoint");
+  }, [isPhaseCreate, isMinorDraft, selectedNode]);
   const nodeTypeOptions = useMemo(() => (
     draftNodeTypeOptions.filter((option) => allowedNodeTypes.includes(option.value))
   ), [allowedNodeTypes]);
@@ -70,9 +74,11 @@ export default function NodeCreateModal({
     setForm({
       ...initialForm,
       nodeType: nextNodeType,
-      requirement: nextNodeType === "project" ? "optional" : "required",
+      requirement: isMinorDraft && ["topic", "project"].includes(nextNodeType)
+        ? "optional"
+        : nextNodeType === "project" ? "optional" : "required",
     });
-  }, [isOpen, isPhaseCreate, nodeTypeOptions]);
+  }, [isOpen, isMinorDraft, isPhaseCreate, nodeTypeOptions]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -89,7 +95,8 @@ export default function NodeCreateModal({
 
   const parentNodeId = isPhaseCreate ? null : getNodeId(selectedNode);
   const canUseLearningFields = ["topic", "project", "checkpoint"].includes(form.nodeType);
-  const canChooseRequirement = form.nodeType === "project";
+  const minorOptionalNodeTypes = ["topic", "project"];
+  const canChooseRequirement = form.nodeType === "project" && !isMinorDraft;
   const setField = (key, value) => setForm((current) => {
     const next = { ...current, [key]: value };
 
@@ -98,7 +105,9 @@ export default function NodeCreateModal({
     }
 
     if (key === "nodeType") {
-      next.requirement = value === "project" ? "optional" : "required";
+      next.requirement = isMinorDraft && minorOptionalNodeTypes.includes(value)
+        ? "optional"
+        : value === "project" ? "optional" : "required";
     }
 
     return next;
@@ -115,7 +124,9 @@ export default function NodeCreateModal({
       difficultyLevel: form.difficultyLevel || null,
       checkpointType: form.nodeType === "checkpoint" ? "assessment" : null,
       layoutRole: null,
-      isRequired: canChooseRequirement ? form.requirement === "required" : null,
+      isRequired: isMinorDraft && minorOptionalNodeTypes.includes(form.nodeType)
+        ? false
+        : canChooseRequirement ? form.requirement === "required" : null,
       position: isPhaseCreate ? form.position : "end",
       referenceNodeId: isPhaseCreate && form.position !== "end" ? form.referenceNodeId || null : null,
     });
@@ -254,6 +265,12 @@ export default function NodeCreateModal({
                 dropdownMode="fixed"
               />
             </ModuleField>
+          ) : null}
+
+          {isMinorDraft && minorOptionalNodeTypes.includes(form.nodeType) ? (
+            <div className="rounded-xl border border-[#B9D8CC]/70 bg-[#F7F1E8]/55 px-3 py-2 text-sm font-bold text-[#18332D]">
+              Minor drafts add this node as optional content.
+            </div>
           ) : null}
         </div>
 
