@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
@@ -17,6 +17,11 @@ import {
 export default function LearningModuleOverviewPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnRoadmapSlug = searchParams.get("fromRoadmap");
+  const returnNodeId = searchParams.get("roadmapNodeId");
+  const returnToRoadmapUrl = buildReturnToRoadmapUrl(returnRoadmapSlug, returnNodeId);
+  const returnSearch = buildReturnSearch(searchParams);
   const module = useLearningModuleStore((state) => state.getModuleSnapshot(slug));
   const moduleLoaded = useLearningModuleStore((state) => state.getModuleLoaded(slug));
   const isLoading = useLearningModuleStore((state) => state.getModuleLoading(slug));
@@ -43,7 +48,7 @@ export default function LearningModuleOverviewPage() {
       trackStreakIfNeeded().catch(() => {
         // Streak tracking should not block opening a learning module.
       });
-      navigate(`/learning-modules/${module.slug}/study`);
+      navigate(`/learning-modules/${module.slug}/study${returnSearch}`);
       return;
     }
 
@@ -54,7 +59,7 @@ export default function LearningModuleOverviewPage() {
         // Streak tracking should not block module enrollment.
       });
       toast.success("Module started.");
-      navigate(`/learning-modules/${module.slug}/study`);
+      navigate(`/learning-modules/${module.slug}/study${returnSearch}`);
     } catch (err) {
       toast.error(err?.message || "Unable to start module.");
     } finally {
@@ -89,11 +94,32 @@ export default function LearningModuleOverviewPage() {
       <div className="space-y-5">
         <button
           type="button"
-          onClick={() => navigate("/learning-modules/browse")}
+          onClick={() => navigate(returnToRoadmapUrl || "/learning-modules/browse")}
           className="inline-flex items-center gap-2 text-sm font-bold text-[#1F6F5F]"
         >
-          <ArrowLeft size={16} /> Back to browse
+          <ArrowLeft size={16} /> {returnToRoadmapUrl ? "Back to roadmap node" : "Back to browse"}
         </button>
+
+        {returnToRoadmapUrl && (
+          <ModuleCard className="border-[#A8D3C4] bg-[#EAF8F1] p-4 text-sm font-bold leading-6 text-[#18332D]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#1F6F5F]">
+                  Roadmap learning flow
+                </p>
+                <p className="mt-1">
+                  Review this overview → click {actionLabel} → complete lessons
+                  in Study Room → ask AI when stuck → finish the quiz → return
+                  to the roadmap node and mark it Done.
+                </p>
+              </div>
+
+              <span className="inline-flex w-fit shrink-0 items-center rounded-full border border-[#A8D3C4] bg-white px-3 py-1 text-xs font-black text-[#1F6F5F] shadow-sm">
+                Next: {actionLabel}
+              </span>
+            </div>
+          </ModuleCard>
+        )}
 
         {isArchived && (
           <ModuleCard className="border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-800">
@@ -132,6 +158,7 @@ export default function LearningModuleOverviewPage() {
 
             <ModuleButton
               size="md"
+              data-roadmap-guide-target="start-module"
               onClick={handleStart}
               disabled={isStarting || (isArchived && enrollmentStatus === "not_started")}
             >
@@ -188,6 +215,26 @@ export default function LearningModuleOverviewPage() {
       </div>
     </ModulePageShell>
   );
+}
+
+function buildReturnSearch(searchParams) {
+  const params = new URLSearchParams();
+  const fromRoadmap = searchParams.get("fromRoadmap");
+  const roadmapNodeId = searchParams.get("roadmapNodeId");
+
+  if (fromRoadmap) params.set("fromRoadmap", fromRoadmap);
+  if (roadmapNodeId) params.set("roadmapNodeId", roadmapNodeId);
+
+  return params.toString() ? `?${params.toString()}` : "";
+}
+
+function buildReturnToRoadmapUrl(roadmapSlug, roadmapNodeId) {
+  if (!roadmapSlug) return null;
+
+  const params = new URLSearchParams();
+  if (roadmapNodeId) params.set("nodeId", roadmapNodeId);
+
+  return `/roadmaps/${roadmapSlug}${params.toString() ? `?${params.toString()}` : ""}`;
 }
 
 function deriveOutcomes(module) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   parseMetadata,
   isManuallyTrackableNode,
@@ -9,6 +10,7 @@ import {
   getDisplayKey,
   getResourceUrl,
   getDisplayText,
+  getNodeId,
   groupResourcesByType,
 } from "../utils/roadmapUtils";
 
@@ -115,6 +117,7 @@ export default function RoadmapDetailDrawer({
   isEnrolled,
   isUpdating,
   isLoadingDetail,
+  roadmapSlug,
   onClose,
   onProgressChange,
 }) {
@@ -267,10 +270,6 @@ export default function RoadmapDetailDrawer({
                   </span>
                 }
               >
-                <p className="mb-2 text-xs font-bold leading-5 text-slate-600">
-                  Internal modules connected to this roadmap item.
-                </p>
-
                 <div className="grid gap-2.5">
                   {learningModules.map((module, index) => (
                     <LearningModuleRow
@@ -281,6 +280,8 @@ export default function RoadmapDetailDrawer({
                         index
                       }
                       module={module}
+                      roadmapSlug={roadmapSlug}
+                      roadmapNodeId={getNodeId(node)}
                     />
                   ))}
                 </div>
@@ -665,6 +666,7 @@ function StatusSelect({ status, disabled, isOptional, onChange }) {
     <div ref={wrapperRef} className="relative">
       <button
         type="button"
+        data-roadmap-guide-target="node-status-select"
         disabled={disabled}
         onClick={() => setIsOpen((currentOpen) => !currentOpen)}
         className="inline-flex h-8 min-w-[128px] items-center justify-between gap-2 rounded-md border border-[#B9D8CC] bg-white px-2.5 text-sm font-semibold text-slate-600 shadow-sm outline-none transition-colors hover:bg-[#F7F1E8] focus-visible:ring-4 focus-visible:ring-[#2FA084]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-80"
@@ -801,30 +803,59 @@ function ListBlock({ title, items }) {
   );
 }
 
-function LearningModuleRow({ module }) {
+function LearningModuleRow({ module, roadmapSlug, roadmapNodeId }) {
   const title = module.title || module.Title || "Learning module";
   const slug = module.slug || module.Slug;
-  const url = slug ? `/learning-modules/${slug}/overview` : null;
-
+  const overviewUrl = slug
+    ? buildLearningModuleUrl(slug, "overview", roadmapSlug, roadmapNodeId)
+    : null;
   const content = (
-    <div className="truncate text-sm font-black leading-5 text-[#18332D]">
-      <span>{title}</span>
-      <span className="font-bold text-slate-500"> - Roadmap Platform</span>
+    <div className="min-w-0 flex-1">
+      <div className="truncate text-sm font-black leading-5 text-[#18332D]">
+        <span>{title}</span>
+        <span className="font-bold text-slate-500"> - Roadmap Platform</span>
+      </div>
+      <p className="mt-1 text-xs font-bold leading-5 text-slate-600">
+        Open the overview first, then continue learning from there.
+      </p>
     </div>
   );
 
   const className =
-    "block rounded-md border border-[#A8D3C4] bg-[#F8FFFC] px-3 py-2.5 shadow-sm transition-colors hover:bg-[#DFF4EA]";
+    "rounded-md border border-[#A8D3C4] bg-[#F8FFFC] px-3 py-2.5 shadow-sm transition-colors hover:bg-[#DFF4EA]";
 
-  if (!url) {
+  if (!overviewUrl) {
     return <div className={className}>{content}</div>;
   }
 
   return (
-    <a href={url} className={className}>
+    <div className={`${className} flex flex-col gap-2 sm:flex-row sm:items-center`}>
       {content}
-    </a>
+
+      <div className="flex shrink-0 flex-wrap gap-2">
+        <Link
+          to={overviewUrl}
+          data-roadmap-guide-target="open-module"
+          className="inline-flex items-center justify-center rounded-md bg-[#2FA084] px-3 py-1.5 text-xs font-black text-white shadow-sm transition hover:bg-[#1F6F5F]"
+        >
+          Open module
+        </Link>
+      </div>
+    </div>
   );
+}
+
+function buildLearningModuleUrl(moduleSlug, mode, roadmapSlug, roadmapNodeId) {
+  const path =
+    mode === "study"
+      ? `/learning-modules/${moduleSlug}/study`
+      : `/learning-modules/${moduleSlug}/overview`;
+  const params = new URLSearchParams();
+
+  if (roadmapSlug) params.set("fromRoadmap", roadmapSlug);
+  if (roadmapNodeId) params.set("roadmapNodeId", roadmapNodeId);
+
+  return `${path}${params.toString() ? `?${params.toString()}` : ""}`;
 }
 
 function ResourceGroup({ group }) {
