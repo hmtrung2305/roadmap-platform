@@ -7,6 +7,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
 public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext dbContext)
 {
+    private static readonly string[] LearnerFacingNodeTypes = ["topic", "project", "checkpoint", "choice_option"];
+    private static readonly string[] GroupNodeTypes = ["choice_group", "resource_group", "group"];
+
     public async Task<ContentRoadmapValidationResultDto> ValidateRoadmapVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken)
@@ -18,6 +21,7 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
 
         var version = await dbContext.Set<RoadmapVersion>()
             .AsNoTracking()
+            .Include(item => item.Roadmap)
             .Where(item => item.RoadmapVersionId == roadmapVersionId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -31,7 +35,8 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
             .Where(node => node.RoadmapVersionId == roadmapVersionId)
             .ToListAsync(cancellationToken);
 
-        var nodeIds = nodes.Select(node => node.RoadmapNodeId).ToHashSet();
+        var nodesById = nodes.ToDictionary(node => node.RoadmapNodeId);
+        var nodeIds = nodesById.Keys.ToHashSet();
         var childrenByParent = nodes
             .Where(node => node.ParentNodeId.HasValue)
             .GroupBy(node => node.ParentNodeId!.Value)
@@ -41,7 +46,8 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         var warnings = new List<ContentRoadmapValidationItemDto>();
 
         AddVersionValidation(version, nodes, errors);
-        AddNodeValidation(nodes, nodeIds, childrenByParent, errors, warnings);
+        AddNodeValidation(nodes, nodesById, nodeIds, childrenByParent, errors, warnings);
+        AddSiblingOrderValidation(nodes, errors);
         await AddMappingWarningsAsync(nodes, warnings, cancellationToken);
 
         return new ContentRoadmapValidationResultDto
@@ -57,19 +63,35 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         IReadOnlyCollection<RoadmapNode> nodes,
         List<ContentRoadmapValidationItemDto> errors)
     {
+        if (!version.Status.Equals("draft", StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(CreateItem("version_must_be_draft", "Only draft roadmap versions can be published."));
+        }
+
         if (string.IsNullOrWhiteSpace(version.Title))
         {
             errors.Add(CreateItem("roadmap_title_required", "Roadmap title is required."));
         }
 
-        if (!nodes.Any(node => ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType) == "phase"))
+        if (version.Roadmap == null || version.Roadmap.CareerRoleId == Guid.Empty)
+        {
+            errors.Add(CreateItem("career_role_required", "Career role is required."));
+        }
+
+        if (!nodes.Any(node => IsNodeType(node, "phase")))
         {
             errors.Add(CreateItem("phase_required", "Add at least one phase before publishing."));
+        }
+
+        if (!nodes.Any(node => LearnerFacingNodeTypes.Contains(NormalizeNodeType(node), StringComparer.OrdinalIgnoreCase)))
+        {
+            errors.Add(CreateItem("learner_node_required", "Add at least one learner-facing node before publishing."));
         }
     }
 
     private static void AddNodeValidation(
         IReadOnlyCollection<RoadmapNode> nodes,
+        IReadOnlyDictionary<Guid, RoadmapNode> nodesById,
         HashSet<Guid> nodeIds,
         Dictionary<Guid, List<RoadmapNode>> childrenByParent,
         List<ContentRoadmapValidationItemDto> errors,
@@ -77,7 +99,7 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
     {
         foreach (var node in nodes)
         {
-            var nodeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType);
+            var nodeType = NormalizeNodeType(node);
 
             if (string.IsNullOrWhiteSpace(node.Title))
             {
@@ -89,46 +111,91 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
                 errors.Add(CreateItem("node_parent_missing", "Node parent does not exist in this roadmap version.", node));
             }
 
+            if (HasCircularParentChain(node, nodesById))
+            {
+                errors.Add(CreateItem("node_parent_cycle", "Node parent relationships cannot be circular.", node));
+            }
+
             if (nodeType == "phase" && node.ParentNodeId.HasValue)
             {
-                errors.Add(CreateItem("phase_parent_invalid", "Phases must stay at the top level.", node));
+                errors.Add(CreateItem("phase_parent_invalid", "Phase nodes must be top-level.", node));
             }
 
-            if (nodeType is ("choice_group" or "resource_group" or "group") && !HasParentOfType(node, nodes, "phase"))
+            if (GroupNodeTypes.Contains(nodeType, StringComparer.OrdinalIgnoreCase) && !HasDirectParentOfType(node, nodesById, "phase"))
             {
-                errors.Add(CreateItem("group_parent_invalid", "Groups must belong to a phase.", node));
+                errors.Add(CreateItem("group_parent_invalid", "Group nodes must belong directly to a phase.", node));
             }
 
-            if (nodeType is "topic" or "project" or "checkpoint")
+            if (LearnerFacingNodeTypes.Contains(nodeType, StringComparer.OrdinalIgnoreCase)
+                && !HasDirectParentOfType(node, nodesById, "phase", "resource_group", "group", "choice_group"))
             {
-                if (!HasParentOfType(node, nodes, "phase", "resource_group", "group", "choice_group"))
-                {
-                    errors.Add(CreateItem("learning_node_parent_invalid", "Learning nodes must belong to a phase or group.", node));
-                }
-
-                if (string.IsNullOrWhiteSpace(node.Description))
-                {
-                    warnings.Add(CreateItem("node_description_missing", "Description is missing.", node));
-                }
-
-                if (ContentManagerRoadmapNodeContent.DeserializeStringArray(node.LearningOutcomes).Count == 0)
-                {
-                    warnings.Add(CreateItem("learning_outcomes_missing", "Learning outcomes are missing.", node));
-                }
-
-                if (ContentManagerRoadmapNodeContent.DeserializeStringArray(node.CompletionCriteria).Count == 0)
-                {
-                    warnings.Add(CreateItem("completion_criteria_missing", "Completion criteria are missing.", node));
-                }
+                errors.Add(CreateItem("learning_node_parent_invalid", "Learner-facing nodes must belong to a phase or group.", node));
             }
 
-            if (nodeType is "phase" or "resource_group" or "group" or "choice_group")
+            if (ContentManagerRoadmapStructureRules.IsLeafNodeType(nodeType)
+                && childrenByParent.TryGetValue(node.RoadmapNodeId, out var children)
+                && children.Count > 0)
+            {
+                errors.Add(CreateItem("leaf_node_has_children", "Leaf nodes cannot have child nodes.", node));
+            }
+
+            if (LearnerFacingNodeTypes.Contains(nodeType, StringComparer.OrdinalIgnoreCase))
+            {
+                AddLearnerNodeWarnings(node, warnings);
+            }
+
+            if (ContentManagerRoadmapStructureRules.IsContainerNode(nodeType))
             {
                 var children = childrenByParent.GetValueOrDefault(node.RoadmapNodeId) ?? [];
                 if (children.Count == 0)
                 {
                     warnings.Add(CreateItem("container_empty", "This container has no child nodes.", node));
                 }
+            }
+        }
+    }
+
+    private static void AddLearnerNodeWarnings(
+        RoadmapNode node,
+        List<ContentRoadmapValidationItemDto> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(node.Description))
+        {
+            warnings.Add(CreateItem("node_description_missing", "Description is missing.", node));
+        }
+
+        if (ContentManagerRoadmapNodeContent.DeserializeStringArray(node.LearningOutcomes).Count == 0)
+        {
+            warnings.Add(CreateItem("learning_outcomes_missing", "Learning outcomes are missing.", node));
+        }
+
+        if (ContentManagerRoadmapNodeContent.DeserializeStringArray(node.CompletionCriteria).Count == 0)
+        {
+            warnings.Add(CreateItem("completion_criteria_missing", "Completion criteria are missing.", node));
+        }
+    }
+
+    private static void AddSiblingOrderValidation(
+        IReadOnlyCollection<RoadmapNode> nodes,
+        List<ContentRoadmapValidationItemDto> errors)
+    {
+        foreach (var siblingGroup in nodes.GroupBy(node => node.ParentNodeId))
+        {
+            foreach (var node in siblingGroup.Where(node => node.OrderIndex <= 0))
+            {
+                errors.Add(CreateItem("node_order_invalid", "Sibling order index values must be greater than zero.", node));
+            }
+
+            var duplicateOrderNodes = siblingGroup
+                .Where(node => node.OrderIndex > 0)
+                .GroupBy(node => node.OrderIndex)
+                .Where(group => group.Count() > 1)
+                .SelectMany(group => group)
+                .ToList();
+
+            foreach (var node in duplicateOrderNodes)
+            {
+                errors.Add(CreateItem("node_order_duplicate", "Sibling order index values must be unique.", node));
             }
         }
     }
@@ -178,21 +245,54 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         }
     }
 
-    private static bool HasParentOfType(RoadmapNode node, IEnumerable<RoadmapNode> nodes, params string[] allowedParentTypes)
+    private static bool IsNodeType(RoadmapNode node, string nodeType)
     {
-        if (!node.ParentNodeId.HasValue)
+        return NormalizeNodeType(node).Equals(nodeType, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeNodeType(RoadmapNode node)
+    {
+        return ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType);
+    }
+
+    private static bool HasDirectParentOfType(
+        RoadmapNode node,
+        IReadOnlyDictionary<Guid, RoadmapNode> nodesById,
+        params string[] allowedParentTypes)
+    {
+        if (!node.ParentNodeId.HasValue || !nodesById.TryGetValue(node.ParentNodeId.Value, out var parent))
         {
             return false;
         }
 
-        var parent = nodes.FirstOrDefault(item => item.RoadmapNodeId == node.ParentNodeId.Value);
-        if (parent == null)
-        {
-            return false;
-        }
-
-        var normalizedParentType = ContentManagerRoadmapStructureRules.NormalizeNodeType(parent.NodeType);
+        var normalizedParentType = NormalizeNodeType(parent);
         return allowedParentTypes.Any(type => normalizedParentType.Equals(type, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool HasCircularParentChain(
+        RoadmapNode node,
+        IReadOnlyDictionary<Guid, RoadmapNode> nodesById)
+    {
+        var seenNodeIds = new HashSet<Guid> { node.RoadmapNodeId };
+        var current = node;
+
+        while (current.ParentNodeId.HasValue)
+        {
+            var parentNodeId = current.ParentNodeId.Value;
+            if (!seenNodeIds.Add(parentNodeId))
+            {
+                return true;
+            }
+
+            if (!nodesById.TryGetValue(parentNodeId, out var parent))
+            {
+                return false;
+            }
+
+            current = parent;
+        }
+
+        return false;
     }
 
     private static ContentRoadmapValidationItemDto CreateItem(

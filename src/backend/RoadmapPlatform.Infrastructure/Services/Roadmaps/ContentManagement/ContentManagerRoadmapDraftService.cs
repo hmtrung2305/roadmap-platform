@@ -230,7 +230,7 @@ public sealed class ContentManagerRoadmapDraftService(
         }
 
         EnsureDraftVersion(draftVersion);
-        EnsureStructuralMajorDraftVersion(draftVersion);
+        EnsurePublishableStructuralDraftVersion(draftVersion);
 
         var validation = await validationService.ValidateRoadmapVersionAsync(roadmapVersionId, cancellationToken);
         if (!validation.IsValid)
@@ -482,13 +482,22 @@ public sealed class ContentManagerRoadmapDraftService(
         }
     }
 
-    private static void EnsureStructuralMajorDraftVersion(RoadmapVersion version)
+    private static void EnsurePublishableStructuralDraftVersion(RoadmapVersion version)
     {
-        if (!version.ReleaseType.Equals(MajorReleaseType, StringComparison.OrdinalIgnoreCase)
-            || version.MinorVersion != 0
-            || version.PatchVersion != 0)
+        var isInitialDraft = version.ReleaseType.Equals(InitialReleaseType, StringComparison.OrdinalIgnoreCase)
+            && version.MajorVersion == 1
+            && version.MinorVersion == 0
+            && version.PatchVersion == 0
+            && version.CreatedFromVersionId == null;
+
+        var isMajorDraft = version.ReleaseType.Equals(MajorReleaseType, StringComparison.OrdinalIgnoreCase)
+            && version.MinorVersion == 0
+            && version.PatchVersion == 0
+            && version.CreatedFromVersionId.HasValue;
+
+        if (!isInitialDraft && !isMajorDraft)
         {
-            throw new ArgumentException("Only major structural drafts can be published through this workflow.");
+            throw new ArgumentException("Only initial and major structural drafts can be published through this workflow.");
         }
     }
 
