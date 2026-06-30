@@ -18,7 +18,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Full Stack Developer Roadmap', 'Fullstack Developer Roadmap', 'Full Stack Developer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'full-stack-developer-roadmap'
 );
 
 DELETE FROM public.user_node_progress
@@ -27,7 +27,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Full Stack Developer Roadmap', 'Fullstack Developer Roadmap', 'Full Stack Developer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'full-stack-developer-roadmap'
 );
 
 DELETE FROM public.roadmap_enrollment
@@ -35,11 +35,11 @@ WHERE roadmap_version_id IN (
     SELECT rv.roadmap_version_id
     FROM public.roadmap_version rv
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Full Stack Developer Roadmap', 'Fullstack Developer Roadmap', 'Full Stack Developer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'full-stack-developer-roadmap'
 );
 
 DELETE FROM public.roadmap
-WHERE title IN ('Full Stack Developer Roadmap', 'Fullstack Developer Roadmap', 'Full Stack Developer Roadmap - Full Detailed Seed');
+WHERE slug = 'full-stack-developer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active)
 VALUES (
@@ -61,8 +61,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'full-stack-developer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Full Stack Developer Roadmap', 'A structured learning path for becoming a full stack developer with a frontend-first focus, covering web fundamentals, HTML, CSS, JavaScript, TypeScript, React, frontend architecture, backend APIs, databases, authentication, testing, deployment, performance, DevOps awareness, and portfolio-ready full stack applications.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Full Stack Developer Roadmap', 'full-stack-developer-roadmap', 'A structured learning path for becoming a full stack developer with a frontend-first focus, covering web fundamentals, HTML, CSS, JavaScript, TypeScript, React, frontend architecture, backend APIs, databases, authentication, testing, deployment, performance, DevOps awareness, and portfolio-ready full stack applications.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

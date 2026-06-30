@@ -14,10 +14,11 @@ export function getRoadmapProgressPercent(roadmap) {
 }
 
 export function cleanRoadmapTitle(title) {
-  return String(title || "Roadmap")
-    .replace(/\s*Roadmap\s*v\d+(\.\d+)?\s*$/i, "")
-    .replace(/\s*v\d+(\.\d+)?\s*$/i, "")
+  const cleanedTitle = String(title || "Roadmap")
+    .replace(/\s*v\d+(\.\d+){0,2}\s*$/i, "")
     .trim();
+
+  return cleanedTitle || "Roadmap";
 }
 
 export function getRoadmapEnrollment(roadmap) {

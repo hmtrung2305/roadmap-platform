@@ -21,7 +21,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Backend Developer Roadmap - roadmap.sh Full Detailed Seed', 'Backend Developer Roadmap')
+    WHERE r.slug = 'backend-developer-roadmap'
 );
 
 DELETE FROM public.user_node_progress
@@ -30,7 +30,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Backend Developer Roadmap - roadmap.sh Full Detailed Seed', 'Backend Developer Roadmap')
+    WHERE r.slug = 'backend-developer-roadmap'
 );
 
 DELETE FROM public.roadmap_enrollment
@@ -38,14 +38,11 @@ WHERE roadmap_version_id IN (
     SELECT rv.roadmap_version_id
     FROM public.roadmap_version rv
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Backend Developer Roadmap - roadmap.sh Full Detailed Seed', 'Backend Developer Roadmap')
+    WHERE r.slug = 'backend-developer-roadmap'
 );
 
 DELETE FROM public.roadmap
-WHERE title IN (
-    'Backend Developer Roadmap - roadmap.sh Full Detailed Seed',
-    'Backend Developer Roadmap'
-);
+WHERE slug = 'backend-developer-roadmap';
 
 -- ------------------------------------------------------------
 -- Career role and roadmap/version.
@@ -70,10 +67,11 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'backend-developer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
     SELECT
         career_role_id,
         'Backend Developer Roadmap',
+        'backend-developer-roadmap',
         'A structured learning path for becoming a backend developer, covering web fundamentals, backend programming, databases, API design, authentication, security, testing, deployment, architecture, observability, and production-ready system design.',
         'public'
     FROM role_row

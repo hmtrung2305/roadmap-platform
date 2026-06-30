@@ -16,7 +16,7 @@ WHERE roadmap_enrollment_id IN (
     SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Mobile Developer Roadmap', 'Mobile Development Roadmap', 'Mobile Developer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'mobile-developer-roadmap'
 );
 
 DELETE FROM public.user_node_progress
@@ -24,17 +24,17 @@ WHERE roadmap_enrollment_id IN (
     SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Mobile Developer Roadmap', 'Mobile Development Roadmap', 'Mobile Developer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'mobile-developer-roadmap'
 );
 
 DELETE FROM public.roadmap_enrollment
 WHERE roadmap_version_id IN (
     SELECT rv.roadmap_version_id FROM public.roadmap_version rv
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('Mobile Developer Roadmap', 'Mobile Development Roadmap', 'Mobile Developer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'mobile-developer-roadmap'
 );
 
-DELETE FROM public.roadmap WHERE title IN ('Mobile Developer Roadmap', 'Mobile Development Roadmap', 'Mobile Developer Roadmap - Full Detailed Seed');
+DELETE FROM public.roadmap WHERE slug = 'mobile-developer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active)
 VALUES ('Mobile Developer', 'mobile-developer', 'Mobile development path covering native Android, native iOS, React Native, Flutter, mobile UI/UX, data, auth, device APIs, testing, performance, security, release, and capstone projects.', 'Software Development', true)
@@ -50,8 +50,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'mobile-developer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Mobile Developer Roadmap', 'A detailed curated roadmap for mobile development, covering programming foundations, mobile UI, native Android, native iOS, cross-platform choices, networking, local storage, authentication, state management, testing, performance, accessibility, security, app store release, analytics, CI/CD, and portfolio-ready mobile projects.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Mobile Developer Roadmap', 'mobile-developer-roadmap', 'A detailed curated roadmap for mobile development, covering programming foundations, mobile UI, native Android, native iOS, cross-platform choices, networking, local storage, authentication, state management, testing, performance, accessibility, security, app store release, analytics, CI/CD, and portfolio-ready mobile projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

@@ -11,10 +11,10 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
-DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Cyber Security Expert Roadmap', 'Cybersecurity Expert Roadmap', 'Cyber Security Roadmap', 'Cyber Security Expert Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Cyber Security Expert Roadmap', 'Cybersecurity Expert Roadmap', 'Cyber Security Roadmap', 'Cyber Security Expert Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Cyber Security Expert Roadmap', 'Cybersecurity Expert Roadmap', 'Cyber Security Roadmap', 'Cyber Security Expert Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.roadmap WHERE title IN ('Cyber Security Expert Roadmap', 'Cybersecurity Expert Roadmap', 'Cyber Security Roadmap', 'Cyber Security Expert Roadmap - roadmap.sh Full Detailed Seed');
+DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'cyber-security-expert-roadmap');
+DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'cyber-security-expert-roadmap');
+DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'cyber-security-expert-roadmap');
+DELETE FROM public.roadmap WHERE slug = 'cyber-security-expert-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active) VALUES (
     'Cyber Security Expert',
@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'cyber-security-expert'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Cyber Security Expert Roadmap', 'A structured learning path for becoming a cybersecurity expert, covering security fundamentals, networking, operating systems, programming, web and application security, cryptography, identity, blue-team operations, incident response, ethical hacking, cloud security, governance, advanced specializations, and portfolio-ready security work.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Cyber Security Expert Roadmap', 'cyber-security-expert-roadmap', 'A structured learning path for becoming a cybersecurity expert, covering security fundamentals, networking, operating systems, programming, web and application security, cryptography, identity, blue-team operations, incident response, ethical hacking, cloud security, governance, advanced specializations, and portfolio-ready security work.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

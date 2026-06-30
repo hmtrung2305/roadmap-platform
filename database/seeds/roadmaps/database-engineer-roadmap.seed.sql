@@ -19,7 +19,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title = 'Database Engineer Roadmap'
+    WHERE r.slug = 'database-engineer-roadmap'
 );
 
 DELETE FROM public.user_node_progress
@@ -28,7 +28,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title = 'Database Engineer Roadmap'
+    WHERE r.slug = 'database-engineer-roadmap'
 );
 
 DELETE FROM public.roadmap_enrollment
@@ -36,11 +36,11 @@ WHERE roadmap_version_id IN (
     SELECT rv.roadmap_version_id
     FROM public.roadmap_version rv
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title = 'Database Engineer Roadmap'
+    WHERE r.slug = 'database-engineer-roadmap'
 );
 
 DELETE FROM public.roadmap
-WHERE title = 'Database Engineer Roadmap';
+WHERE slug = 'database-engineer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active)
 VALUES (
@@ -62,8 +62,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'database-engineer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Database Engineer Roadmap', 'A practical roadmap for CS students learning relational modeling, SQL performance, PostgreSQL administration, reliability, migrations, security, and database platform operations.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Database Engineer Roadmap', 'database-engineer-roadmap', 'A practical roadmap for CS students learning relational modeling, SQL performance, PostgreSQL administration, reliability, migrations, security, and database platform operations.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

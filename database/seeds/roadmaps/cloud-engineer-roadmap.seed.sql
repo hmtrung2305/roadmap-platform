@@ -11,10 +11,10 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
-DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id=e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id=rv.roadmap_id WHERE r.title IN ('Cloud Engineer Roadmap', 'Cloud Engineering Roadmap', 'Cloud Engineer Roadmap - Full Detailed Seed'));
-DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id=e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id=rv.roadmap_id WHERE r.title IN ('Cloud Engineer Roadmap', 'Cloud Engineering Roadmap', 'Cloud Engineer Roadmap - Full Detailed Seed'));
-DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id=rv.roadmap_id WHERE r.title IN ('Cloud Engineer Roadmap', 'Cloud Engineering Roadmap', 'Cloud Engineer Roadmap - Full Detailed Seed'));
-DELETE FROM public.roadmap WHERE title IN ('Cloud Engineer Roadmap', 'Cloud Engineering Roadmap', 'Cloud Engineer Roadmap - Full Detailed Seed');
+DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id=e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id=rv.roadmap_id WHERE r.slug = 'cloud-engineer-roadmap');
+DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id=e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id=rv.roadmap_id WHERE r.slug = 'cloud-engineer-roadmap');
+DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id=rv.roadmap_id WHERE r.slug = 'cloud-engineer-roadmap');
+DELETE FROM public.roadmap WHERE slug = 'cloud-engineer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active) VALUES ('Cloud Engineer', 'cloud-engineer', 'Cloud engineering path covering IAM, networking, compute, storage, serverless, containers, IaC, monitoring, security, reliability, cost optimization, migration, and portfolio-ready cloud projects.', 'Cloud and Infrastructure', true)
 ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, category=EXCLUDED.category, is_active=true, updated_at=now();
@@ -22,8 +22,8 @@ ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.descri
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug='cloud-engineer'), inserted_roadmap AS (
-  INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Cloud Engineer Roadmap', 'A structured learning path for becoming a cloud engineer, covering cloud fundamentals, Linux, networking, IAM, compute, storage, databases, serverless, containers, infrastructure as code, monitoring, security, reliability, cost optimization, migration, multi-cloud awareness, and portfolio-ready cloud projects.', 'public'
+  INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Cloud Engineer Roadmap', 'cloud-engineer-roadmap', 'A structured learning path for becoming a cloud engineer, covering cloud fundamentals, Linux, networking, IAM, compute, storage, databases, serverless, containers, infrastructure as code, monitoring, security, reliability, cost optimization, migration, multi-cloud awareness, and portfolio-ready cloud projects.', 'public'
 FROM role_row RETURNING roadmap_id
 ), inserted_version AS (
   INSERT INTO public.roadmap_version
@@ -1572,7 +1572,9 @@ INSERT INTO seed_edge VALUES
 ('terraform-workflow', 'terraform-state-backends-and-locking', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('terraform-state-backends-and-locking', 'proj-terraform-cloud-stack', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
 ('capstone-iac-and-environments', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
-('capstone-application-hosting', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb),
+('capstone-application-hosting', 'proj-cloud-engineering-capstone', 'dependency', 'required', '{"rule": "source_completed"}'::jsonb)
+;
+
 INSERT INTO public.roadmap_edge (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
 SELECT DISTINCT ON (m.roadmap_version_id, source.roadmap_node_id, target.roadmap_node_id, se.edge_type)
     m.roadmap_version_id,

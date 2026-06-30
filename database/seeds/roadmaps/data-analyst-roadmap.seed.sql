@@ -11,10 +11,10 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
-DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Data Analyst Roadmap', 'Data Analytics Roadmap', 'Data Analyst Roadmap - Generated Seed'));
-DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Data Analyst Roadmap', 'Data Analytics Roadmap', 'Data Analyst Roadmap - Generated Seed'));
-DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Data Analyst Roadmap', 'Data Analytics Roadmap', 'Data Analyst Roadmap - Generated Seed'));
-DELETE FROM public.roadmap WHERE title IN ('Data Analyst Roadmap', 'Data Analytics Roadmap', 'Data Analyst Roadmap - Generated Seed');
+DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'data-analyst-roadmap');
+DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'data-analyst-roadmap');
+DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'data-analyst-roadmap');
+DELETE FROM public.roadmap WHERE slug = 'data-analyst-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active) VALUES (
     'Data Analyst',
@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'data-analyst'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Data Analyst Roadmap', 'A structured learning path for becoming a data analyst, covering business context, spreadsheets, SQL, statistics, data cleaning, visualization, BI tools, Python analytics, governance, stakeholder communication, advanced analysis awareness, and portfolio-ready projects.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Data Analyst Roadmap', 'data-analyst-roadmap', 'A structured learning path for becoming a data analyst, covering business context, spreadsheets, SQL, statistics, data cleaning, visualization, BI tools, Python analytics, governance, stakeholder communication, advanced analysis awareness, and portfolio-ready projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
@@ -1214,12 +1214,12 @@ CREATE TEMP TABLE seed_roadmap_map AS
 SELECT r.roadmap_id, rv.roadmap_version_id
 FROM public.roadmap r
 JOIN public.roadmap_version rv ON rv.roadmap_id = r.roadmap_id
-WHERE r.title = 'Data Analyst Roadmap'
+WHERE r.slug = 'data-analyst-roadmap'
 ORDER BY rv.created_at DESC
 LIMIT 1;
 
 UPDATE public.roadmap_version rv
-SET title = 'Data Analyst Roadmap v1',
+SET title = 'Data Analyst Roadmap',
     description = 'A deeper but still curated data analyst roadmap with strong coverage of spreadsheets, SQL, statistics, data cleaning, dashboards, Python analytics, domain analytics, governance, advanced analytics awareness, and portfolio-ready projects.',
     estimated_total_hours = 410
 FROM seed_roadmap_map m

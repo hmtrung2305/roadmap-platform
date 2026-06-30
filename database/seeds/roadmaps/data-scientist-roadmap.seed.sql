@@ -19,7 +19,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title = 'Data Scientist Roadmap'
+    WHERE r.slug = 'data-scientist-roadmap'
 );
 
 DELETE FROM public.user_node_progress
@@ -28,7 +28,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title = 'Data Scientist Roadmap'
+    WHERE r.slug = 'data-scientist-roadmap'
 );
 
 DELETE FROM public.roadmap_enrollment
@@ -36,11 +36,11 @@ WHERE roadmap_version_id IN (
     SELECT rv.roadmap_version_id
     FROM public.roadmap_version rv
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title = 'Data Scientist Roadmap'
+    WHERE r.slug = 'data-scientist-roadmap'
 );
 
 DELETE FROM public.roadmap
-WHERE title = 'Data Scientist Roadmap';
+WHERE slug = 'data-scientist-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active)
 VALUES (
@@ -62,8 +62,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'data-scientist'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Data Scientist Roadmap', 'A practical roadmap for CS students moving from analysis and statistics into machine learning, experimentation, reproducible research, communication, and portfolio-ready data science projects.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Data Scientist Roadmap', 'data-scientist-roadmap', 'A practical roadmap for CS students moving from analysis and statistics into machine learning, experimentation, reproducible research, communication, and portfolio-ready data science projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

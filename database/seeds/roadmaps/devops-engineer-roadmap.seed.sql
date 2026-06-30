@@ -18,7 +18,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('DevOps Engineer Roadmap', 'DevOps Roadmap', 'DevOps Engineer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'devops-engineer-roadmap'
 );
 
 DELETE FROM public.user_node_progress
@@ -27,7 +27,7 @@ WHERE roadmap_enrollment_id IN (
     FROM public.roadmap_enrollment e
     JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('DevOps Engineer Roadmap', 'DevOps Roadmap', 'DevOps Engineer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'devops-engineer-roadmap'
 );
 
 DELETE FROM public.roadmap_enrollment
@@ -35,11 +35,11 @@ WHERE roadmap_version_id IN (
     SELECT rv.roadmap_version_id
     FROM public.roadmap_version rv
     JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.title IN ('DevOps Engineer Roadmap', 'DevOps Roadmap', 'DevOps Engineer Roadmap - Full Detailed Seed')
+    WHERE r.slug = 'devops-engineer-roadmap'
 );
 
 DELETE FROM public.roadmap
-WHERE title IN ('DevOps Engineer Roadmap', 'DevOps Roadmap', 'DevOps Engineer Roadmap - Full Detailed Seed');
+WHERE slug = 'devops-engineer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active)
 VALUES (
@@ -61,8 +61,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'devops-engineer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'DevOps Engineer Roadmap', 'A structured learning path for becoming a DevOps engineer, covering Linux, networking, scripting, Git, CI/CD, containers, Kubernetes, cloud infrastructure, infrastructure as code, observability, security, reliability, platform engineering, and production-ready deployment workflows.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'DevOps Engineer Roadmap', 'devops-engineer-roadmap', 'A structured learning path for becoming a DevOps engineer, covering Linux, networking, scripting, Git, CI/CD, containers, Kubernetes, cloud infrastructure, infrastructure as code, observability, security, reliability, platform engineering, and production-ready deployment workflows.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

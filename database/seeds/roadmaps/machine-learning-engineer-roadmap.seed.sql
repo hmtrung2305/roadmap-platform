@@ -11,10 +11,10 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
-DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Machine Learning Engineer Roadmap', 'Machine Learning Roadmap', 'Machine Learning Engineer Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Machine Learning Engineer Roadmap', 'Machine Learning Roadmap', 'Machine Learning Engineer Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('Machine Learning Engineer Roadmap', 'Machine Learning Roadmap', 'Machine Learning Engineer Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.roadmap WHERE title IN ('Machine Learning Engineer Roadmap', 'Machine Learning Roadmap', 'Machine Learning Engineer Roadmap - roadmap.sh Full Detailed Seed');
+DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'machine-learning-engineer-roadmap');
+DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'machine-learning-engineer-roadmap');
+DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'machine-learning-engineer-roadmap');
+DELETE FROM public.roadmap WHERE slug = 'machine-learning-engineer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active) VALUES (
     'Machine Learning Engineer',
@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'machine-learning-engineer'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'Machine Learning Engineer Roadmap', 'A structured learning path for becoming a machine learning engineer, covering programming, mathematics, data handling, classical machine learning, deep learning, NLP, computer vision, recommender systems, MLOps, deployment, monitoring, responsible AI, system design, and portfolio-ready ML projects.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'Machine Learning Engineer Roadmap', 'machine-learning-engineer-roadmap', 'A structured learning path for becoming a machine learning engineer, covering programming, mathematics, data handling, classical machine learning, deep learning, NLP, computer vision, recommender systems, MLOps, deployment, monitoring, responsible AI, system design, and portfolio-ready ML projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

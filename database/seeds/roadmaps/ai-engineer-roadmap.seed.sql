@@ -11,10 +11,10 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
-DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('AI Engineer Roadmap', 'AI Engineer Roadmap - roadmap.sh Full Detailed Seed', 'AI Engineering Roadmap Full Detailed Seed'));
-DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('AI Engineer Roadmap', 'AI Engineer Roadmap - roadmap.sh Full Detailed Seed', 'AI Engineering Roadmap Full Detailed Seed'));
-DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('AI Engineer Roadmap', 'AI Engineer Roadmap - roadmap.sh Full Detailed Seed', 'AI Engineering Roadmap Full Detailed Seed'));
-DELETE FROM public.roadmap WHERE title IN ('AI Engineer Roadmap', 'AI Engineer Roadmap - roadmap.sh Full Detailed Seed', 'AI Engineering Roadmap Full Detailed Seed');
+DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'ai-engineer-roadmap');
+DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'ai-engineer-roadmap');
+DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'ai-engineer-roadmap');
+DELETE FROM public.roadmap WHERE slug = 'ai-engineer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active) VALUES (
     'AI Engineer',
@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'ai-engineer'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'AI Engineer Roadmap', 'A structured learning path for becoming an AI engineer, covering practical AI product development, Python foundations, machine learning, deep learning, large language models, prompt engineering, retrieval-augmented generation, agents, evaluation, safety, LLMOps, deployment, observability, and portfolio-ready AI systems.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'AI Engineer Roadmap', 'ai-engineer-roadmap', 'A structured learning path for becoming an AI engineer, covering practical AI product development, Python foundations, machine learning, deep learning, large language models, prompt engineering, retrieval-augmented generation, agents, evaluation, safety, LLMOps, deployment, observability, and portfolio-ready AI systems.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

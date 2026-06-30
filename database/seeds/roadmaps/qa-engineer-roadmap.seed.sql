@@ -11,10 +11,10 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
-DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('QA Engineer Roadmap', 'Quality Assurance Engineer Roadmap', 'QA Roadmap', 'QA Engineer Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('QA Engineer Roadmap', 'Quality Assurance Engineer Roadmap', 'QA Roadmap', 'QA Engineer Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.title IN ('QA Engineer Roadmap', 'Quality Assurance Engineer Roadmap', 'QA Roadmap', 'QA Engineer Roadmap - roadmap.sh Full Detailed Seed'));
-DELETE FROM public.roadmap WHERE title IN ('QA Engineer Roadmap', 'Quality Assurance Engineer Roadmap', 'QA Roadmap', 'QA Engineer Roadmap - roadmap.sh Full Detailed Seed');
+DELETE FROM public.progress_event WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'qa-engineer-roadmap');
+DELETE FROM public.user_node_progress WHERE roadmap_enrollment_id IN (SELECT e.roadmap_enrollment_id FROM public.roadmap_enrollment e JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'qa-engineer-roadmap');
+DELETE FROM public.roadmap_enrollment WHERE roadmap_version_id IN (SELECT rv.roadmap_version_id FROM public.roadmap_version rv JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id WHERE r.slug = 'qa-engineer-roadmap');
+DELETE FROM public.roadmap WHERE slug = 'qa-engineer-roadmap';
 
 INSERT INTO public.career_role (name, slug, description, category, is_active) VALUES (
     'QA Engineer',
@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'qa-engineer'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, description, visibility)
-SELECT career_role_id, 'QA Engineer Roadmap', 'A structured learning path for becoming a QA engineer, covering testing fundamentals, manual testing, web and API foundations, test management, API testing, automation programming, UI automation, mobile testing, performance, security, accessibility, CI/CD, AI-assisted QA, specialization, and portfolio-ready quality engineering work.', 'public'
+    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+SELECT career_role_id, 'QA Engineer Roadmap', 'qa-engineer-roadmap', 'A structured learning path for becoming a QA engineer, covering testing fundamentals, manual testing, web and API foundations, test management, API testing, automation programming, UI automation, mobile testing, performance, security, accessibility, CI/CD, AI-assisted QA, specialization, and portfolio-ready quality engineering work.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
