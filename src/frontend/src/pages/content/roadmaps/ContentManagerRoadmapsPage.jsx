@@ -19,6 +19,7 @@ import {
 import { toast } from "react-toastify";
 
 import { contentManagerRoadmapApi } from "../../../api/contentRoadmapApi";
+import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
 import AppSelect from "../../../components/common/AppSelect";
 import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
@@ -651,7 +652,7 @@ export default function ContentManagerRoadmapsPage() {
         `/content/roadmaps/${createdRoadmap.roadmapId}/edit?versionId=${createdRoadmap.roadmapVersionId}`,
       );
     } catch (requestError) {
-      setCreateRoadmapError(requestError?.message || "Unable to create roadmap.");
+      setCreateRoadmapError(getFriendlyApiErrorMessage(requestError, "Unable to create roadmap."));
     } finally {
       setIsCreatingRoadmap(false);
     }

@@ -1,6 +1,6 @@
 -- ============================================================
 -- Consolidated database schema
--- Represents the final schema after migrations 002 through 026.
+-- Represents the final schema after migrations 002 through 027.
 -- Intended for provisioning a new PostgreSQL database.
 -- ============================================================
 
@@ -823,6 +823,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap
     career_role_id uuid NOT NULL,
     owner_user_id uuid,
     title varchar(200) NOT NULL,
+    slug text NOT NULL,
     description text,
     visibility varchar(30) NOT NULL DEFAULT 'public',
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -1213,6 +1214,12 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_career_role_id
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_owner_user_id
     ON public.roadmap(owner_user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_slug
+    ON public.roadmap(slug);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_career_role_title
+    ON public.roadmap(career_role_id, lower(btrim(title)));
 
 
 

@@ -1250,6 +1250,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.OwnerUserId, "ix_roadmap_owner_user_id");
 
+            entity.HasIndex(e => e.Slug, "uq_roadmap_slug").IsUnique();
+
             entity.Property(e => e.RoadmapId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("roadmap_id");
@@ -1259,6 +1261,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
+            entity.Property(e => e.Slug).HasColumnName("slug");
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");

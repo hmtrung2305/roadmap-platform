@@ -33,6 +33,13 @@ public sealed class ContentManagerRoadmapMetadataService(
 
         ContentManagerRoadmapDraftService.EnsureDraftVersion(version);
 
+        await ContentManagerRoadmapUniqueness.EnsureTitleAvailableAsync(
+            dbContext,
+            version.Roadmap.CareerRoleId,
+            version.RoadmapId,
+            title,
+            cancellationToken);
+
         version.Title = title;
         version.Description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
         version.EstimatedTotalHours = request.EstimatedTotalHours;

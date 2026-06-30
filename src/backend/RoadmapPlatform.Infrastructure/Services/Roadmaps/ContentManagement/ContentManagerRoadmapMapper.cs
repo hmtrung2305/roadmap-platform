@@ -16,7 +16,7 @@ internal static class ContentManagerRoadmapMapper
         {
             RoadmapId = roadmap.RoadmapId,
             RoadmapVersionId = version.RoadmapVersionId,
-            Slug = roadmap.CareerRole.Slug,
+            Slug = roadmap.Slug,
             Title = version.Title,
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,
@@ -51,7 +51,7 @@ internal static class ContentManagerRoadmapMapper
         {
             RoadmapId = roadmap.RoadmapId,
             RoadmapVersionId = version.RoadmapVersionId,
-            Slug = roadmap.CareerRole.Slug,
+            Slug = roadmap.Slug,
             Title = version.Title,
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,

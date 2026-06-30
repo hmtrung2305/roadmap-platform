@@ -21,6 +21,8 @@ public partial class Roadmap
 
     public DateTime UpdatedAt { get; set; }
 
+    public string Slug { get; set; } = null!;
+
     public virtual CareerRole CareerRole { get; set; } = null!;
 
     public virtual User? OwnerUser { get; set; }

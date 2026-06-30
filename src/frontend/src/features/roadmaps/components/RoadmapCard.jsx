@@ -7,7 +7,7 @@ import {
 export default function RoadmapCard({ roadmap, onOpen, index = 0 }) {
   const progressPercent = getRoadmapProgressPercent(roadmap);
   const title = cleanRoadmapTitle(
-    roadmap.careerRole?.name || roadmap.title || "Roadmap",
+    roadmap.title || roadmap.careerRole?.name || "Roadmap",
   );
   const enrollment = getRoadmapEnrollment(roadmap);
 

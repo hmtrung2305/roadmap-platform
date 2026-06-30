@@ -484,7 +484,7 @@ export default function RoadmapViewerPage() {
 
 function getViewerHeading(roadmap) {
   const baseTitle = cleanViewerTitle(
-    roadmap?.careerRole?.name || roadmap?.title || "Roadmap",
+    roadmap?.title || roadmap?.careerRole?.name || "Roadmap",
   );
 
   if (!baseTitle) return "Roadmap";

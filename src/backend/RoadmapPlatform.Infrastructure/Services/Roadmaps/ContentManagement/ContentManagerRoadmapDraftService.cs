@@ -41,12 +41,25 @@ public sealed class ContentManagerRoadmapDraftService(
         var title = NormalizeRoadmapTitle(request.Title);
         var description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
 
+        await ContentManagerRoadmapUniqueness.EnsureTitleAvailableAsync(
+            dbContext,
+            request.CareerRoleId,
+            null,
+            title,
+            cancellationToken);
+
+        var slug = await ContentManagerRoadmapUniqueness.CreateUniqueSlugAsync(
+            dbContext,
+            title,
+            cancellationToken);
+
         var roadmap = new Roadmap
         {
             RoadmapId = Guid.NewGuid(),
             CareerRoleId = request.CareerRoleId,
             OwnerUserId = null,
             Title = title,
+            Slug = slug,
             Description = description,
             Visibility = "public",
             CreatedAt = now,
@@ -496,12 +509,11 @@ public sealed class ContentManagerRoadmapDraftService(
             publishedVersion.UpdatedAt = DateTime.UtcNow;
         }
 
+        var now = DateTime.UtcNow;
         draftVersion.Status = PublishedStatus;
-        draftVersion.PublishedAt = DateTime.UtcNow;
-        draftVersion.UpdatedAt = DateTime.UtcNow;
-        draftVersion.Roadmap.Title = draftVersion.Title;
-        draftVersion.Roadmap.Description = draftVersion.Description;
-        draftVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
+        draftVersion.PublishedAt = now;
+        draftVersion.UpdatedAt = now;
+        await ApplyPublishedRoadmapMetadataAsync(draftVersion, now, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -577,9 +589,7 @@ public sealed class ContentManagerRoadmapDraftService(
         draftVersion.Status = PublishedStatus;
         draftVersion.PublishedAt = now;
         draftVersion.UpdatedAt = now;
-        draftVersion.Roadmap.Title = draftVersion.Title;
-        draftVersion.Roadmap.Description = draftVersion.Description;
-        draftVersion.Roadmap.UpdatedAt = now;
+        await ApplyPublishedRoadmapMetadataAsync(draftVersion, now, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -666,9 +676,7 @@ public sealed class ContentManagerRoadmapDraftService(
         draftVersion.Status = PublishedStatus;
         draftVersion.PublishedAt = now;
         draftVersion.UpdatedAt = now;
-        draftVersion.Roadmap.Title = draftVersion.Title;
-        draftVersion.Roadmap.Description = draftVersion.Description;
-        draftVersion.Roadmap.UpdatedAt = now;
+        await ApplyPublishedRoadmapMetadataAsync(draftVersion, now, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -677,6 +685,24 @@ public sealed class ContentManagerRoadmapDraftService(
             draftVersion.RoadmapVersionId,
             cancellationToken);
     }
+
+    private async Task ApplyPublishedRoadmapMetadataAsync(
+        RoadmapVersion draftVersion,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        await ContentManagerRoadmapUniqueness.EnsureTitleAvailableAsync(
+            dbContext,
+            draftVersion.Roadmap.CareerRoleId,
+            draftVersion.RoadmapId,
+            draftVersion.Title,
+            cancellationToken);
+
+        draftVersion.Roadmap.Title = draftVersion.Title;
+        draftVersion.Roadmap.Description = draftVersion.Description;
+        draftVersion.Roadmap.UpdatedAt = now;
+    }
+
 
     public async Task DeleteDraftVersionAsync(
         Guid roadmapVersionId,

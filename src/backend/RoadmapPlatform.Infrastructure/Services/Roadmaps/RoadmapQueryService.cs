@@ -73,7 +73,7 @@ public sealed class RoadmapQueryService(
         {
             RoadmapId = x.Roadmap.RoadmapId,
             RoadmapVersionId = x.PublishedVersion.RoadmapVersionId,
-            Slug = x.CareerRole.Slug,
+            Slug = x.Roadmap.Slug,
             Title = x.PublishedVersion.Title,
             Description = x.PublishedVersion.Description ?? x.Roadmap.Description,
             Visibility = x.Roadmap.Visibility,
@@ -214,11 +214,9 @@ public sealed class RoadmapQueryService(
             from version in dbContext.Set<RoadmapVersion>().AsNoTracking()
             join roadmap in dbContext.Set<Roadmap>().AsNoTracking()
                 on version.RoadmapId equals roadmap.RoadmapId
-            join careerRole in dbContext.Set<CareerRole>().AsNoTracking()
-                on roadmap.CareerRoleId equals careerRole.CareerRoleId
             where version.Status == "published" &&
                   roadmap.Visibility == "public" &&
-                  careerRole.Slug == normalizedSlug
+                  roadmap.Slug.ToLower() == normalizedSlug
             orderby version.MajorVersion descending,
                     version.MinorVersion descending,
                     version.PatchVersion descending,
@@ -326,7 +324,7 @@ public sealed class RoadmapQueryService(
         {
             RoadmapId = version.RoadmapId,
             RoadmapVersionId = version.RoadmapVersionId,
-            Slug = roadmap.CareerRole.Slug,
+            Slug = roadmap.Slug,
             Title = version.Title,
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,

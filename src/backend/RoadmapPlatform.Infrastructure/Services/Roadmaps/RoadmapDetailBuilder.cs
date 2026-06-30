@@ -76,7 +76,7 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
         {
             RoadmapId = version.RoadmapId,
             RoadmapVersionId = version.RoadmapVersionId,
-            Slug = roadmap.CareerRole.Slug,
+            Slug = roadmap.Slug,
             Title = version.Title,
             Description = version.Description ?? roadmap.Description,
             Visibility = roadmap.Visibility,
