@@ -72,6 +72,27 @@ public sealed class ContentManagerRoadmapService(
         return draftService.PublishRoadmapVersionAsync(roadmapVersionId, cancellationToken);
     }
 
+    public Task<ContentRoadmapDetailDto> SubmitRoadmapVersionForReviewAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        return draftService.SubmitRoadmapVersionForReviewAsync(roadmapVersionId, cancellationToken);
+    }
+
+    public Task<ContentRoadmapDetailDto> ApproveRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        return draftService.PublishRoadmapVersionAsync(roadmapVersionId, cancellationToken);
+    }
+
+    public Task<ContentRoadmapDetailDto> RejectRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        return draftService.RejectRoadmapVersionAsync(roadmapVersionId, cancellationToken);
+    }
+
     public Task DeleteDraftVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken)

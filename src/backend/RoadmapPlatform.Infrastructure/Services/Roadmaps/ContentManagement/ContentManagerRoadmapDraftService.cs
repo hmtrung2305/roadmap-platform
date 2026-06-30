@@ -12,6 +12,8 @@ public sealed class ContentManagerRoadmapDraftService(
     ContentManagerRoadmapValidationService validationService)
 {
     private const string DraftStatus = "draft";
+    private const string PendingReviewStatus = "pending_review";
+    private const string ChangesRequestedStatus = "changes_requested";
     private const string PublishedStatus = "published";
     private const string ArchivedStatus = "archived";
     private const string MajorReleaseType = "major";
@@ -40,16 +42,10 @@ public sealed class ContentManagerRoadmapDraftService(
         var now = DateTime.UtcNow;
         var title = NormalizeRoadmapTitle(request.Title);
         var description = ContentManagerRoadmapText.NormalizeOptionalText(request.Description);
-
         await ContentManagerRoadmapUniqueness.EnsureTitleAvailableAsync(
             dbContext,
             request.CareerRoleId,
-            null,
-            title,
-            cancellationToken);
-
-        var slug = await ContentManagerRoadmapUniqueness.CreateUniqueSlugAsync(
-            dbContext,
+            excludedRoadmapId: null,
             title,
             cancellationToken);
 
@@ -59,7 +55,7 @@ public sealed class ContentManagerRoadmapDraftService(
             CareerRoleId = request.CareerRoleId,
             OwnerUserId = null,
             Title = title,
-            Slug = slug,
+            Slug = await ContentManagerRoadmapUniqueness.CreateUniqueSlugAsync(dbContext, title, cancellationToken),
             Description = description,
             Visibility = "public",
             CreatedAt = now,
@@ -459,13 +455,15 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
-        EnsureDraftVersion(draftVersion);
+        EnsurePendingReviewVersion(draftVersion);
         EnsurePublishableDraftVersion(draftVersion);
 
         var validation = await validationService.ValidateRoadmapVersionAsync(roadmapVersionId, cancellationToken);
         if (!validation.IsValid)
         {
-            throw new InvalidOperationException("The draft has validation errors and cannot be published.");
+            throw new InvalidOperationException(CreateValidationFailureMessage(
+                "The submitted roadmap has validation errors and cannot be approved.",
+                validation));
         }
 
         if (IsPatchDraft(draftVersion))
@@ -509,17 +507,95 @@ public sealed class ContentManagerRoadmapDraftService(
             publishedVersion.UpdatedAt = DateTime.UtcNow;
         }
 
-        var now = DateTime.UtcNow;
         draftVersion.Status = PublishedStatus;
-        draftVersion.PublishedAt = now;
-        draftVersion.UpdatedAt = now;
-        await ApplyPublishedRoadmapMetadataAsync(draftVersion, now, cancellationToken);
+        draftVersion.PublishedAt = DateTime.UtcNow;
+        draftVersion.UpdatedAt = DateTime.UtcNow;
+        draftVersion.Roadmap.Title = draftVersion.Title;
+        draftVersion.Roadmap.Description = draftVersion.Description;
+        draftVersion.Roadmap.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            cancellationToken);
+    }
+
+    public async Task<ContentRoadmapDetailDto> SubmitRoadmapVersionForReviewAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        if (roadmapVersionId == Guid.Empty)
+        {
+            throw new ArgumentException("Roadmap version was not provided.", nameof(roadmapVersionId));
+        }
+
+        var draftVersion = await dbContext.Set<RoadmapVersion>()
+            .Include(version => version.Roadmap)
+            .Where(version => version.RoadmapVersionId == roadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (draftVersion == null)
+        {
+            throw new KeyNotFoundException("Roadmap version was not found.");
+        }
+
+        EnsureDraftVersion(draftVersion);
+        EnsurePublishableDraftVersion(draftVersion);
+
+        var validation = await validationService.ValidateRoadmapVersionAsync(roadmapVersionId, cancellationToken);
+        if (!validation.IsValid)
+        {
+            throw new InvalidOperationException(CreateValidationFailureMessage(
+                "The draft has validation errors and cannot be submitted for review.",
+                validation));
+        }
+
+        var now = DateTime.UtcNow;
+        draftVersion.Status = PendingReviewStatus;
+        draftVersion.UpdatedAt = now;
+        draftVersion.Roadmap.UpdatedAt = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return await queryService.GetRoadmapDetailAsync(
+            draftVersion.RoadmapId,
+            draftVersion.RoadmapVersionId,
+            cancellationToken);
+    }
+
+    public async Task<ContentRoadmapDetailDto> RejectRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        if (roadmapVersionId == Guid.Empty)
+        {
+            throw new ArgumentException("Roadmap version was not provided.", nameof(roadmapVersionId));
+        }
+
+        var reviewVersion = await dbContext.Set<RoadmapVersion>()
+            .Include(version => version.Roadmap)
+            .Where(version => version.RoadmapVersionId == roadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (reviewVersion == null)
+        {
+            throw new KeyNotFoundException("Roadmap version was not found.");
+        }
+
+        EnsurePendingReviewVersion(reviewVersion);
+
+        var now = DateTime.UtcNow;
+        reviewVersion.Status = ChangesRequestedStatus;
+        reviewVersion.UpdatedAt = now;
+        reviewVersion.Roadmap.UpdatedAt = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return await queryService.GetRoadmapDetailAsync(
+            reviewVersion.RoadmapId,
+            reviewVersion.RoadmapVersionId,
             cancellationToken);
     }
 
@@ -589,7 +665,9 @@ public sealed class ContentManagerRoadmapDraftService(
         draftVersion.Status = PublishedStatus;
         draftVersion.PublishedAt = now;
         draftVersion.UpdatedAt = now;
-        await ApplyPublishedRoadmapMetadataAsync(draftVersion, now, cancellationToken);
+        draftVersion.Roadmap.Title = draftVersion.Title;
+        draftVersion.Roadmap.Description = draftVersion.Description;
+        draftVersion.Roadmap.UpdatedAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -676,7 +754,9 @@ public sealed class ContentManagerRoadmapDraftService(
         draftVersion.Status = PublishedStatus;
         draftVersion.PublishedAt = now;
         draftVersion.UpdatedAt = now;
-        await ApplyPublishedRoadmapMetadataAsync(draftVersion, now, cancellationToken);
+        draftVersion.Roadmap.Title = draftVersion.Title;
+        draftVersion.Roadmap.Description = draftVersion.Description;
+        draftVersion.Roadmap.UpdatedAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -685,24 +765,6 @@ public sealed class ContentManagerRoadmapDraftService(
             draftVersion.RoadmapVersionId,
             cancellationToken);
     }
-
-    private async Task ApplyPublishedRoadmapMetadataAsync(
-        RoadmapVersion draftVersion,
-        DateTime now,
-        CancellationToken cancellationToken)
-    {
-        await ContentManagerRoadmapUniqueness.EnsureTitleAvailableAsync(
-            dbContext,
-            draftVersion.Roadmap.CareerRoleId,
-            draftVersion.RoadmapId,
-            draftVersion.Title,
-            cancellationToken);
-
-        draftVersion.Roadmap.Title = draftVersion.Title;
-        draftVersion.Roadmap.Description = draftVersion.Description;
-        draftVersion.Roadmap.UpdatedAt = now;
-    }
-
 
     public async Task DeleteDraftVersionAsync(
         Guid roadmapVersionId,
@@ -785,7 +847,9 @@ public sealed class ContentManagerRoadmapDraftService(
         return await dbContext.Set<RoadmapVersion>()
             .Where(version =>
                 version.RoadmapId == roadmapId
-                && version.Status == DraftStatus)
+                && (version.Status == DraftStatus
+                    || version.Status == PendingReviewStatus
+                    || version.Status == ChangesRequestedStatus))
             .OrderByDescending(version => version.UpdatedAt)
             .ThenByDescending(version => version.CreatedAt)
             .ThenByDescending(version => version.VersionNumber)
@@ -1058,21 +1122,21 @@ public sealed class ContentManagerRoadmapDraftService(
 
     internal static void EnsureDraftVersion(RoadmapVersion version)
     {
-        if (!version.Status.Equals(DraftStatus, StringComparison.OrdinalIgnoreCase))
+        if (!IsEditableDraftStatus(version.Status))
         {
-            throw new ArgumentException("Only draft roadmap versions can be edited.");
+            throw new ArgumentException("Only draft or changes requested roadmap versions can be edited.");
         }
     }
 
     internal static bool IsPatchDraft(RoadmapVersion version)
     {
-        return version.Status.Equals(DraftStatus, StringComparison.OrdinalIgnoreCase)
+        return IsOpenDraftWorkflowStatus(version.Status)
             && version.ReleaseType.Equals(PatchReleaseType, StringComparison.OrdinalIgnoreCase);
     }
 
     internal static bool IsMinorDraft(RoadmapVersion version)
     {
-        return version.Status.Equals(DraftStatus, StringComparison.OrdinalIgnoreCase)
+        return IsOpenDraftWorkflowStatus(version.Status)
             && version.ReleaseType.Equals(MinorReleaseType, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1107,8 +1171,48 @@ public sealed class ContentManagerRoadmapDraftService(
 
         if (!isInitialDraft && !isMajorDraft && !isPatchDraft && !isMinorDraft)
         {
-            throw new ArgumentException("Only initial, major, minor, and patch drafts can be published through this workflow.");
+            throw new ArgumentException("Only initial, major, minor, and patch drafts can move through this workflow.");
         }
+    }
+
+    private static string CreateValidationFailureMessage(
+        string prefix,
+        ContentRoadmapValidationResultDto validation)
+    {
+        var errorMessages = validation.Errors
+            .Select(error => string.IsNullOrWhiteSpace(error.NodeTitle)
+                ? error.Message
+                : $"{error.NodeTitle}: {error.Message}")
+            .Where(message => !string.IsNullOrWhiteSpace(message))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return errorMessages.Count == 0
+            ? prefix
+            : $"{prefix} {string.Join(" ", errorMessages)}";
+    }
+
+    private static void EnsurePendingReviewVersion(RoadmapVersion version)
+    {
+        if (!version.Status.Equals(PendingReviewStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only roadmap versions pending review can be approved.");
+        }
+    }
+
+    private static bool IsEditableDraftStatus(string? status)
+    {
+        return status != null
+            && (status.Equals(DraftStatus, StringComparison.OrdinalIgnoreCase)
+                || status.Equals(ChangesRequestedStatus, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsOpenDraftWorkflowStatus(string? status)
+    {
+        return status != null
+            && (status.Equals(DraftStatus, StringComparison.OrdinalIgnoreCase)
+                || status.Equals(PendingReviewStatus, StringComparison.OrdinalIgnoreCase)
+                || status.Equals(ChangesRequestedStatus, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string NormalizeRoadmapTitle(string title)

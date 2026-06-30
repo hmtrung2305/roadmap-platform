@@ -21,7 +21,7 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
         var status = ContentManagerRoadmapText.NormalizeOptionalText(query.Status)?.ToLowerInvariant();
         var sort = ContentManagerRoadmapText.NormalizeOptionalText(query.Sort)?.ToLowerInvariant() ?? "updated_desc";
 
-        if (status is not null and not ("draft" or "published" or "archived"))
+        if (status is not null and not ("draft" or "pending_review" or "changes_requested" or "published" or "archived"))
         {
             throw new ArgumentException("Unsupported roadmap status.", nameof(query.Status));
         }
@@ -45,6 +45,7 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             roadmapsQuery = roadmapsQuery.Where(roadmap =>
                 EF.Functions.ILike(roadmap.Title, pattern, "\\")
                 || (roadmap.Description != null && EF.Functions.ILike(roadmap.Description, pattern, "\\"))
+                || EF.Functions.ILike(roadmap.Slug, pattern, "\\")
                 || EF.Functions.ILike(roadmap.CareerRole.Name, pattern, "\\")
                 || EF.Functions.ILike(roadmap.CareerRole.Slug, pattern, "\\"));
         }
@@ -131,6 +132,8 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             StatusCounts = new ContentRoadmapStatusCountsDto
             {
                 Draft = GetStatusCount(statusRows, "draft"),
+                PendingReview = GetStatusCount(statusRows, "pending_review"),
+                ChangesRequested = GetStatusCount(statusRows, "changes_requested"),
                 Published = GetStatusCount(statusRows, "published"),
                 Archived = GetStatusCount(statusRows, "archived")
             }

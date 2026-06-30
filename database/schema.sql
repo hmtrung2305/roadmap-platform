@@ -1,6 +1,6 @@
 -- ============================================================
 -- Consolidated database schema
--- Represents the final schema after migrations 002 through 027.
+-- Represents the final schema after migrations 002 through 026.
 -- Intended for provisioning a new PostgreSQL database.
 -- ============================================================
 
@@ -886,7 +886,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
         UNIQUE (roadmap_id, major_version, minor_version, patch_version),
 
     CONSTRAINT chk_roadmap_version_status
-        CHECK (status IN ('draft', 'published', 'archived')),
+        CHECK (status IN ('draft', 'pending_review', 'changes_requested', 'published', 'archived')),
 
     CONSTRAINT chk_roadmap_version_release_type
         CHECK (release_type IN ('initial', 'patch', 'minor', 'major')),
@@ -1221,14 +1221,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_slug
 CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_career_role_title
     ON public.roadmap(career_role_id, lower(btrim(title)));
 
-
-
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_roadmap_id
     ON public.roadmap_version(roadmap_id);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_status
     ON public.roadmap_version(status);
 
+CREATE INDEX IF NOT EXISTS ix_roadmap_version_review_queue
+    ON public.roadmap_version(status, updated_at DESC)
+    WHERE status IN ('pending_review', 'changes_requested');
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_created_by_user_id
     ON public.roadmap_version(created_by_user_id);

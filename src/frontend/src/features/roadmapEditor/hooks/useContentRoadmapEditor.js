@@ -549,17 +549,17 @@ export default function useContentRoadmapEditor(roadmapId) {
     }
   };
 
-  const publishDraft = async () => {
+  const submitDraftForReview = async () => {
     if (!detail?.roadmapVersionId) return;
 
     try {
       setIsMutatingDraft(true);
-      const updated = await contentManagerRoadmapApi.publishVersion(detail.roadmapVersionId);
+      const updated = await contentManagerRoadmapApi.submitReviewVersion(detail.roadmapVersionId);
       applyRoadmapDetail(updated);
       setValidationResult(null);
-      toast.success("Draft published.");
+      toast.success("Roadmap submitted for review.");
     } catch (actionError) {
-      toast.error(actionError?.message || "Unable to publish draft.");
+      toast.error(actionError?.message || "Unable to submit roadmap for review.");
     } finally {
       setIsMutatingDraft(false);
     }
@@ -708,7 +708,7 @@ export default function useContentRoadmapEditor(roadmapId) {
     createPatchDraft,
     createMinorDraft,
     validateDraft,
-    publishDraft,
+    submitDraftForReview,
     createNode,
     moveNode,
     updateGroupRule,

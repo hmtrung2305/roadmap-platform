@@ -22,7 +22,13 @@ export const contentManagerRoadmapApi = {
         page: 1,
         pageSize: response.data.length,
         totalPages: response.data.length > 0 ? 1 : 0,
-        statusCounts: { draft: 0, published: 0, archived: 0 },
+        statusCounts: {
+          draft: 0,
+          changes_requested: 0,
+          pending_review: 0,
+          published: 0,
+          archived: 0,
+        },
       };
     }
 
@@ -34,6 +40,18 @@ export const contentManagerRoadmapApi = {
       totalPages: Number(response.data?.totalPages ?? 0),
       statusCounts: {
         draft: Number(response.data?.statusCounts?.draft ?? response.data?.statusCounts?.Draft ?? 0),
+        changes_requested: Number(
+          response.data?.statusCounts?.changesRequested
+            ?? response.data?.statusCounts?.ChangesRequested
+            ?? response.data?.statusCounts?.changes_requested
+            ?? 0,
+        ),
+        pending_review: Number(
+          response.data?.statusCounts?.pendingReview
+            ?? response.data?.statusCounts?.PendingReview
+            ?? response.data?.statusCounts?.pending_review
+            ?? 0,
+        ),
         published: Number(response.data?.statusCounts?.published ?? response.data?.statusCounts?.Published ?? 0),
         archived: Number(response.data?.statusCounts?.archived ?? response.data?.statusCounts?.Archived ?? 0),
       },
@@ -101,6 +119,30 @@ export const contentManagerRoadmapApi = {
   publishVersion: async (roadmapVersionId) => {
     const response = await axiosClient.post(
       `/content/roadmap-versions/${encode(roadmapVersionId)}/publish`,
+    );
+
+    return response.data;
+  },
+
+  submitReviewVersion: async (roadmapVersionId) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/submit-review`,
+    );
+
+    return response.data;
+  },
+
+  approveVersion: async (roadmapVersionId) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/approve`,
+    );
+
+    return response.data;
+  },
+
+  rejectVersion: async (roadmapVersionId) => {
+    const response = await axiosClient.post(
+      `/content/roadmap-versions/${encode(roadmapVersionId)}/reject`,
     );
 
     return response.data;

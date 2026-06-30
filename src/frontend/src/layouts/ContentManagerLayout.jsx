@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronUp,
+  ClipboardCheck,
   LayoutDashboard,
   LibraryBig,
   ListChecks,
@@ -41,7 +42,15 @@ const contentManagerNavGroups = [
         label: "Roadmaps",
         path: "/content/roadmaps",
         icon: MapIcon,
+        requiredPermission: PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY,
         match: (pathname) => pathname.startsWith("/content/roadmaps"),
+      },
+      {
+        label: "Approvals",
+        path: "/content/reviews",
+        icon: ClipboardCheck,
+        requiredPermission: PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
+        match: (pathname) => pathname.startsWith("/content/reviews"),
       },
       {
         label: "Skill Gap Config",
@@ -77,6 +86,10 @@ function getContentManagerPageTitle(pathname) {
 
   if (pathname.startsWith("/content/roadmaps")) {
     return "Roadmaps";
+  }
+
+  if (pathname.startsWith("/content/reviews")) {
+    return "Approvals";
   }
   if (pathname === "/content/skill-gap") {
     return "Skill Gap Config";

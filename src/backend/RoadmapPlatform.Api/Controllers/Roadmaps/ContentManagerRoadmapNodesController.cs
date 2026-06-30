@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
@@ -8,6 +10,7 @@ namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
 [ApiController]
 [Route("api/content/roadmap-nodes")]
+[RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_ANY)]
 public sealed class ContentManagerRoadmapNodesController(
     IContentManagerRoadmapService roadmapService) : ControllerBase
 {
@@ -161,4 +164,3 @@ public sealed class ContentManagerRoadmapNodesController(
         return Ok(result);
     }
 }
-

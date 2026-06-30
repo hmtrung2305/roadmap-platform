@@ -7,6 +7,7 @@
 -- Model:
 --   - learner   = learning participant
 --   - content_manager = learning content operator
+--   - reviewer = content review operator
 --   - admin     = platform operator
 --
 -- Important product rule:
@@ -35,6 +36,7 @@ INSERT INTO public.role (role_name)
 VALUES
     ('learner'),
     ('content_manager'),
+    ('reviewer'),
     ('admin')
 ON CONFLICT (role_name) DO NOTHING;
 
@@ -75,6 +77,16 @@ VALUES
     ('roadmap_enrollment.view.self'),
     ('roadmap_enrollment.create.self'),
     ('roadmap_progress.update.self'),
+
+    -- Roadmap draft and review workflow permissions
+    ('roadmap_draft.view.any'),
+    ('roadmap_draft.create.any'),
+    ('roadmap_draft.update.any'),
+    ('roadmap_draft.delete.any'),
+    ('roadmap_review.submit.own'),
+    ('roadmap_review.view.any'),
+    ('roadmap_review.approve.any'),
+    ('roadmap_review.reject.any'),
 
     -- Learner learning module permissions
     ('learning_module.view.published'),
@@ -167,6 +179,7 @@ WITH managed_roles(role_name) AS (
     VALUES
         ('learner'),
         ('content_manager'),
+        ('reviewer'),
         ('admin')
 ),
 managed_permissions(permission_name) AS (
@@ -203,6 +216,16 @@ managed_permissions(permission_name) AS (
         ('roadmap_enrollment.view.self'),
         ('roadmap_enrollment.create.self'),
         ('roadmap_progress.update.self'),
+
+        -- Roadmap draft and review workflow permissions
+        ('roadmap_draft.view.any'),
+        ('roadmap_draft.create.any'),
+        ('roadmap_draft.update.any'),
+        ('roadmap_draft.delete.any'),
+        ('roadmap_review.submit.own'),
+        ('roadmap_review.view.any'),
+        ('roadmap_review.approve.any'),
+        ('roadmap_review.reject.any'),
 
         -- Learner learning module permissions
         ('learning_module.view.published'),
@@ -295,6 +318,15 @@ WITH role_permissions(role_name, permission_name) AS (
         ('content_manager', 'profile.view.self'),
         ('content_manager', 'profile.update.self'),
 
+        ('reviewer', 'account.view.self'),
+        ('reviewer', 'account.update.self'),
+        ('reviewer', 'auth_provider.view.self'),
+        ('reviewer', 'auth_provider.link.self'),
+        ('reviewer', 'auth_provider.unlink.self'),
+        ('reviewer', 'auth_provider.update.self'),
+        ('reviewer', 'profile.view.self'),
+        ('reviewer', 'profile.update.self'),
+
         ('admin', 'account.view.self'),
         ('admin', 'account.update.self'),
         ('admin', 'auth_provider.view.self'),
@@ -346,6 +378,11 @@ WITH role_permissions(role_name, permission_name) AS (
 
         -- Content Manager catalog lookup and content management permissions
         ('content_manager', 'skill.view.catalog'),
+        ('content_manager', 'roadmap_draft.view.any'),
+        ('content_manager', 'roadmap_draft.create.any'),
+        ('content_manager', 'roadmap_draft.update.any'),
+        ('content_manager', 'roadmap_draft.delete.any'),
+        ('content_manager', 'roadmap_review.submit.own'),
         ('content_manager', 'learning_module.view.own'),
         ('content_manager', 'learning_module.create.own'),
         ('content_manager', 'learning_module.update.own'),
@@ -365,7 +402,20 @@ WITH role_permissions(role_name, permission_name) AS (
         ('content_manager', 'learning_module_quiz_question.delete.own'),
         ('content_manager', 'learning_module_quiz_question.reorder.own'),
 
+        -- Reviewer content approval permissions
+        ('reviewer', 'roadmap_review.view.any'),
+        ('reviewer', 'roadmap_review.approve.any'),
+        ('reviewer', 'roadmap_review.reject.any'),
+
         -- Admin platform governance permissions
+        ('admin', 'roadmap_draft.view.any'),
+        ('admin', 'roadmap_draft.create.any'),
+        ('admin', 'roadmap_draft.update.any'),
+        ('admin', 'roadmap_draft.delete.any'),
+        ('admin', 'roadmap_review.submit.own'),
+        ('admin', 'roadmap_review.view.any'),
+        ('admin', 'roadmap_review.approve.any'),
+        ('admin', 'roadmap_review.reject.any'),
         ('admin', 'user.view.any'),
         ('admin', 'user.update.any'),
         ('admin', 'user.suspend.any'),

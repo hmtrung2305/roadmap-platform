@@ -71,7 +71,7 @@ export default function ContentManagerRoadmapEditorPage() {
     createPatchDraft,
     createMinorDraft,
     validateDraft,
-    publishDraft,
+    submitDraftForReview,
     createNode,
     moveNode,
     updateGroupRule,
@@ -146,7 +146,7 @@ export default function ContentManagerRoadmapEditorPage() {
   }
 
   const status = String(detail.status || "").toLowerCase();
-  const isDraft = status === "draft";
+  const isDraft = status === "draft" || status === "changes_requested";
   const releaseType = String(detail.releaseType || "").toLowerCase();
   const isPatchDraft = isDraft && releaseType === "patch";
   const isMinorDraft = isDraft && releaseType === "minor";
@@ -159,8 +159,8 @@ export default function ContentManagerRoadmapEditorPage() {
     setIsValidationOpen(true);
   };
 
-  const handlePublish = async () => {
-    await publishDraft();
+  const handleSubmitForReview = async () => {
+    await submitDraftForReview();
     setIsValidationOpen(false);
   };
 
@@ -221,7 +221,7 @@ export default function ContentManagerRoadmapEditorPage() {
           onCloneDraft={() => setIsCloneConfirmOpen(true)}
           onCreatePatchDraft={createPatchDraft}
           onCreateMinorDraft={createMinorDraft}
-          onPublishDraft={openValidation}
+          onSubmitDraftForReview={openValidation}
         />
 
         <div className="rounded-xl border border-[#B9D8CC] bg-white p-2 shadow-sm">
@@ -387,12 +387,12 @@ export default function ContentManagerRoadmapEditorPage() {
       <DraftValidationModal
         isOpen={isValidationOpen}
         result={validationResult}
-        isPublishing={isMutatingDraft}
+        isSubmitting={isMutatingDraft}
         onClose={() => {
           setIsValidationOpen(false);
           setValidationResult(null);
         }}
-        onPublish={handlePublish}
+        onSubmitForReview={handleSubmitForReview}
       />
     </ModulePageShell>
   );

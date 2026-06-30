@@ -1,4 +1,4 @@
-export const roadmapStatuses = ["draft", "published", "archived"];
+export const roadmapStatuses = ["draft", "changes_requested", "pending_review", "published", "archived"];
 
 export const roadmapPageSize = 6;
 
@@ -10,6 +10,8 @@ export const initialRoadmapListResult = {
   totalPages: 0,
   statusCounts: {
     draft: 0,
+    changes_requested: 0,
+    pending_review: 0,
     published: 0,
     archived: 0,
   },

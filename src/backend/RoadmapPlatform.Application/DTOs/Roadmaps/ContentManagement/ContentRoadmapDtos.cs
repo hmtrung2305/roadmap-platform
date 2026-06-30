@@ -25,6 +25,8 @@ public sealed class ContentRoadmapListResultDto
 public sealed class ContentRoadmapStatusCountsDto
 {
     public int Draft { get; set; }
+    public int PendingReview { get; set; }
+    public int ChangesRequested { get; set; }
     public int Published { get; set; }
     public int Archived { get; set; }
 }

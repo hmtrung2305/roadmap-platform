@@ -204,7 +204,8 @@ function RoadmapActionsMenu({ roadmap, onDelete }) {
   const [menuPosition, setMenuPosition] = useState(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
-  const isDraft = String(roadmap.status || "").toLowerCase() === "draft";
+  const status = String(roadmap.status || "").toLowerCase();
+  const isEditableDraft = status === "draft" || status === "changes_requested";
 
   const updateMenuPosition = () => {
     if (!buttonRef.current) return;
@@ -265,23 +266,23 @@ function RoadmapActionsMenu({ roadmap, onDelete }) {
             <div className="group/tooltip relative">
               <button
                 type="button"
-                aria-disabled={!isDraft}
+                aria-disabled={!isEditableDraft}
                 onClick={() => {
-                  if (!isDraft) return;
+                  if (!isEditableDraft) return;
                   setIsOpen(false);
                   onDelete(roadmap);
                 }}
                 className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold transition ${
-                  isDraft
+                  isEditableDraft
                     ? "text-rose-700 hover:bg-rose-50"
                     : "cursor-not-allowed text-slate-400"
                 }`}
               >
                 <Trash2 size={14} /> Delete
               </button>
-              {!isDraft && (
+              {!isEditableDraft && (
                 <div className="pointer-events-none absolute right-full top-1/2 z-[95] mr-2 hidden w-56 -translate-y-1/2 rounded-lg border border-[#B9D8CC] bg-[#18332D] px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/tooltip:block">
-                  Only draft roadmap versions can be deleted.
+                  Only editable draft roadmap versions can be deleted.
                 </div>
               )}
             </div>

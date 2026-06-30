@@ -192,6 +192,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Authorize Handler
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+            services.AddScoped<IAuthorizationHandler, AnyPermissionHandler>();
 
             // Skill gap, Career role skill
             services.AddScoped<ISkillGapAnalysisService, SkillGapAnalysisService>();

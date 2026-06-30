@@ -35,6 +35,7 @@ import ContentManagerLearningModuleEditorPage from "./pages/content/learningModu
 import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
 import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
 import ContentManagerSkillGapPage from "./pages/content/ContentManagerSkillGapPage";
+import ContentReviewerRoadmapReviewsPage from "./pages/content/roadmaps/ContentReviewerRoadmapReviewsPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
 import AdminRolesPermissionsPage from "./pages/admin/AdminRolesPermissionsPage";
@@ -233,8 +234,35 @@ export default function App() {
             <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
             <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />
             <Route path="/content/learning-modules/:moduleId/preview" element={<ContentManagerLearningModulePreviewPage />} />
-            <Route path="/content/roadmaps" element={<LazyContentPage><ContentManagerRoadmapsPage /></LazyContentPage>} />
-            <Route path="/content/roadmaps/:roadmapId/edit" element={<LazyContentPage><ContentManagerRoadmapEditorPage /></LazyContentPage>} />
+            <Route
+              path="/content/roadmaps"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY]}>
+                  <LazyContentPage><ContentManagerRoadmapsPage /></LazyContentPage>
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/roadmaps/:roadmapId/edit"
+              element={
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY,
+                    PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
+                  ]}
+                >
+                  <LazyContentPage><ContentManagerRoadmapEditorPage /></LazyContentPage>
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/reviews"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY]}>
+                  <ContentReviewerRoadmapReviewsPage />
+                </RequirePermission>
+              }
+            />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
             <Route
               path="/content/skill-gap"

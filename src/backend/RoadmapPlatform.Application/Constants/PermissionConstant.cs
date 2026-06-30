@@ -46,6 +46,18 @@ public static class PermissionConstant
     public const string ROADMAP_PROGRESS_UPDATE_SELF = "roadmap_progress.update.self";
 
     // =====================================================
+    // CONTENT REVIEW WORKFLOW PERMISSIONS
+    // =====================================================
+    public const string ROADMAP_DRAFT_VIEW_ANY = "roadmap_draft.view.any";
+    public const string ROADMAP_DRAFT_CREATE_ANY = "roadmap_draft.create.any";
+    public const string ROADMAP_DRAFT_UPDATE_ANY = "roadmap_draft.update.any";
+    public const string ROADMAP_DRAFT_DELETE_ANY = "roadmap_draft.delete.any";
+    public const string ROADMAP_REVIEW_SUBMIT_OWN = "roadmap_review.submit.own";
+    public const string ROADMAP_REVIEW_VIEW_ANY = "roadmap_review.view.any";
+    public const string ROADMAP_REVIEW_APPROVE_ANY = "roadmap_review.approve.any";
+    public const string ROADMAP_REVIEW_REJECT_ANY = "roadmap_review.reject.any";
+
+    // =====================================================
     // LEARNER LEARNING MODULE PERMISSIONS
     // =====================================================
     public const string LEARNING_MODULE_VIEW_PUBLISHED = "learning_module.view.published";
@@ -188,6 +200,14 @@ public static class PermissionConstant
         ROADMAP_ENROLLMENT_VIEW_SELF,
         ROADMAP_ENROLLMENT_CREATE_SELF,
         ROADMAP_PROGRESS_UPDATE_SELF,
+        ROADMAP_DRAFT_VIEW_ANY,
+        ROADMAP_DRAFT_CREATE_ANY,
+        ROADMAP_DRAFT_UPDATE_ANY,
+        ROADMAP_DRAFT_DELETE_ANY,
+        ROADMAP_REVIEW_SUBMIT_OWN,
+        ROADMAP_REVIEW_VIEW_ANY,
+        ROADMAP_REVIEW_APPROVE_ANY,
+        ROADMAP_REVIEW_REJECT_ANY,
         LEARNING_MODULE_VIEW_PUBLISHED,
         LEARNING_MODULE_ENROLLMENT_VIEW_SELF,
         LEARNING_MODULE_ENROLLMENT_CREATE_SELF,

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  Clock3,
   GitBranch,
   History,
   Loader2,
@@ -63,18 +64,25 @@ export default function DraftVersionActions({
   onCloneDraft,
   onCreatePatchDraft,
   onCreateMinorDraft,
-  onPublishDraft,
+  onSubmitDraftForReview,
 }) {
   const [selectedUpdateType, setSelectedUpdateType] = useState("patch");
   const status = String(detail?.status || "").toLowerCase();
   const releaseType = String(detail?.releaseType || "").toLowerCase();
   const currentVersionLabel = formatVersionLabel(detail);
+  const isEditableDraft = status === "draft" || status === "changes_requested";
+  const isPendingReview = status === "pending_review";
+  const submitLabel =
+    status === "changes_requested" ? "Resubmit for review" : "Submit for review";
 
   const drafts = useMemo(
     () =>
       sortDraftsNewestFirst(
         detail?.versions?.filter(
-          (version) => String(version.status).toLowerCase() === "draft",
+          (version) =>
+            ["draft", "changes_requested", "pending_review"].includes(
+              String(version.status).toLowerCase(),
+            ),
         ) || [],
       ),
     [detail?.versions],
@@ -82,6 +90,7 @@ export default function DraftVersionActions({
 
   const existingDraft = drafts[0] || null;
   const existingDraftLabel = formatVersionLabel(existingDraft);
+  const existingDraftStatus = String(existingDraft?.status || "").toLowerCase();
   const existingDraftReleaseType = String(
     existingDraft?.releaseType || "",
   ).toLowerCase();
@@ -164,7 +173,7 @@ export default function DraftVersionActions({
         </div>
       </ModuleCard>
 
-      {status === "draft" && (
+      {isEditableDraft && (
         <ModuleCard className="overflow-hidden p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -173,7 +182,9 @@ export default function DraftVersionActions({
               </div>
               <div className="min-w-0">
                 <h2 className="min-w-0 text-sm font-extrabold text-[#18332D]">
-                  Draft tools
+                  {status === "changes_requested"
+                    ? "Changes requested"
+                    : "Draft tools"}
                 </h2>
                 {releaseType === "patch" ? (
                   <p className="mt-0.5 text-xs font-semibold text-slate-600">
@@ -189,14 +200,34 @@ export default function DraftVersionActions({
               </div>
             </div>
 
-            <ModuleButton onClick={onPublishDraft} disabled={isBusy}>
+            <ModuleButton onClick={onSubmitDraftForReview} disabled={isBusy}>
               {isBusy ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 <Send size={14} />
               )}
-              Publish draft
+              {submitLabel}
             </ModuleButton>
+          </div>
+        </ModuleCard>
+      )}
+
+      {isPendingReview && (
+        <ModuleCard className="overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-amber-50 text-amber-700">
+                <Clock3 size={18} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="min-w-0 text-sm font-extrabold text-[#18332D]">
+                  Awaiting reviewer approval
+                </h2>
+                <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                  The published version remains live until a reviewer approves this update.
+                </p>
+              </div>
+            </div>
           </div>
         </ModuleCard>
       )}
@@ -210,12 +241,12 @@ export default function DraftVersionActions({
               </div>
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-extrabold text-[#18332D]">
-                  Draft in progress: {existingDraftLabel}
+                  Open workflow: {existingDraftLabel}
                 </h2>
                 <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                  Finish or delete this{" "}
-                  {prettyReleaseType(existingDraftReleaseType).toLowerCase()}{" "}
-                  draft before creating another update.
+                  {prettyStatus(existingDraftStatus)}{" "}
+                  {prettyReleaseType(existingDraftReleaseType).toLowerCase()} version exists.
+                  Finish this workflow before creating another update.
                 </p>
               </div>
             </div>
@@ -224,7 +255,7 @@ export default function DraftVersionActions({
               onClick={() => onVersionChange(existingDraft.roadmapVersionId)}
               disabled={isBusy}
             >
-              Open draft
+              Open version
             </ModuleButton>
           </div>
         </ModuleCard>

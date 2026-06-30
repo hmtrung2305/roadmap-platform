@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
@@ -12,6 +14,7 @@ public sealed class ContentManagerRoadmapsController(
     IContentManagerRoadmapService roadmapService) : ControllerBase
 {
     [HttpGet]
+    [RequireAnyPermission(PermissionConstant.ROADMAP_DRAFT_VIEW_ANY, PermissionConstant.ROADMAP_REVIEW_VIEW_ANY)]
     [ProducesResponseType(typeof(ContentRoadmapListResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRoadmaps(
         [FromQuery] ContentRoadmapListQueryDto query,
@@ -22,6 +25,7 @@ public sealed class ContentManagerRoadmapsController(
     }
 
     [HttpPost]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_ANY)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateRoadmap(
@@ -37,6 +41,7 @@ public sealed class ContentManagerRoadmapsController(
     }
 
     [HttpGet("{roadmapId:guid}")]
+    [RequireAnyPermission(PermissionConstant.ROADMAP_DRAFT_VIEW_ANY, PermissionConstant.ROADMAP_REVIEW_VIEW_ANY)]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetRoadmapDetail(
@@ -52,4 +57,3 @@ public sealed class ContentManagerRoadmapsController(
         return Ok(result);
     }
 }
-

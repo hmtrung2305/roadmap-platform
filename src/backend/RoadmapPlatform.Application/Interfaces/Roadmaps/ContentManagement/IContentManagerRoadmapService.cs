@@ -42,6 +42,18 @@ public interface IContentManagerRoadmapService
         Guid roadmapVersionId,
         CancellationToken cancellationToken);
 
+    Task<ContentRoadmapDetailDto> SubmitRoadmapVersionForReviewAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapDetailDto> ApproveRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken);
+
+    Task<ContentRoadmapDetailDto> RejectRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken);
+
     Task<ContentRoadmapDetailDto> PublishRoadmapVersionAsync(
         Guid roadmapVersionId,
         CancellationToken cancellationToken);

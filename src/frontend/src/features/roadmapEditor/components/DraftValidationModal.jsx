@@ -23,7 +23,7 @@ function ValidationList({ title, items, tone }) {
   );
 }
 
-export default function DraftValidationModal({ isOpen, result, onClose, onPublish, isPublishing }) {
+export default function DraftValidationModal({ isOpen, result, onClose, onSubmitForReview, isSubmitting }) {
   const panelRef = useRef(null);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function DraftValidationModal({ isOpen, result, onClose, onPublis
         <div className="flex items-center justify-between gap-3 border-b border-[#B9D8CC]/70 p-4">
           <div className="flex items-center gap-2">
             {isValid ? <CheckCircle2 size={18} className="text-[#1F6F5F]" /> : <AlertCircle size={18} className="text-amber-600" />}
-            <h2 className="text-base font-extrabold text-[#18332D]">Draft validation</h2>
+            <h2 className="text-base font-extrabold text-[#18332D]">Review readiness</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 transition hover:bg-[#F7F1E8] hover:text-[#18332D]">
             <X size={18} />
@@ -64,7 +64,7 @@ export default function DraftValidationModal({ isOpen, result, onClose, onPublis
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC]">
           {isValid && warnings.length === 0 ? (
             <div className="rounded-xl border border-[#B9D8CC] bg-[#F4FBF8] p-4 text-sm font-bold text-[#1F6F5F]">
-              This draft is ready to publish.
+              This draft is ready to submit for review.
             </div>
           ) : null}
           <ValidationList title="Errors" items={errors} tone="error" />
@@ -73,7 +73,7 @@ export default function DraftValidationModal({ isOpen, result, onClose, onPublis
 
         <div className="flex justify-end gap-2 border-t border-[#B9D8CC]/70 p-4">
           <ModuleButton variant="secondary" onClick={onClose}>Close</ModuleButton>
-          <ModuleButton onClick={onPublish} disabled={!isValid || isPublishing}>Publish draft</ModuleButton>
+          <ModuleButton onClick={onSubmitForReview} disabled={!isValid || isSubmitting}>Submit for review</ModuleButton>
         </div>
       </div>
     </div>

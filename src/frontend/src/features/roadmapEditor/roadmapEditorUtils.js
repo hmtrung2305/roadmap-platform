@@ -107,12 +107,16 @@ export function normalizeEdges(edges) {
 export function prettyStatus(status) {
   if (status === "all") return "All";
   if (!status) return "Unknown";
+  if (status === "pending_review") return "Pending review";
+  if (status === "changes_requested") return "Changes requested";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export function getStatusTone(status) {
   if (status === "published") return "green";
   if (status === "draft") return "blue";
+  if (status === "pending_review") return "amber";
+  if (status === "changes_requested") return "rose";
   if (status === "archived") return "slate";
   return "slate";
 }

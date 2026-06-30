@@ -7,6 +7,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 
 public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext dbContext)
 {
+    private static readonly string[] ReviewWorkflowStatuses = ["draft", "changes_requested", "pending_review"];
     private static readonly string[] LearnerFacingNodeTypes = ["topic", "project", "checkpoint", "choice_option"];
     private static readonly string[] GroupNodeTypes = ["choice_group", "resource_group", "group"];
 
@@ -66,9 +67,11 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
         IReadOnlyCollection<RoadmapNode> nodes,
         List<ContentRoadmapValidationItemDto> errors)
     {
-        if (!version.Status.Equals("draft", StringComparison.OrdinalIgnoreCase))
+        if (!ReviewWorkflowStatuses.Contains(version.Status, StringComparer.OrdinalIgnoreCase))
         {
-            errors.Add(CreateItem("version_must_be_draft", "Only draft roadmap versions can be published."));
+            errors.Add(CreateItem(
+                "version_not_in_review_workflow",
+                "Only draft, changes requested, or pending review roadmap versions can move through review."));
         }
 
         if (string.IsNullOrWhiteSpace(version.Title))
@@ -83,12 +86,12 @@ public sealed class ContentManagerRoadmapValidationService(ApplicationDbContext 
 
         if (!nodes.Any(node => IsNodeType(node, "phase")))
         {
-            errors.Add(CreateItem("phase_required", "Add at least one phase before publishing."));
+            errors.Add(CreateItem("phase_required", "Add at least one phase before review."));
         }
 
         if (!nodes.Any(node => LearnerFacingNodeTypes.Contains(NormalizeNodeType(node), StringComparer.OrdinalIgnoreCase)))
         {
-            errors.Add(CreateItem("learner_node_required", "Add at least one learner-facing node before publishing."));
+            errors.Add(CreateItem("learner_node_required", "Add at least one learner-facing node before review."));
         }
     }
 

@@ -46,6 +46,9 @@ Guard: `RequirePermission(anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS})`
 | `/content/learning-modules/create` | Create module draft |
 | `/content/learning-modules/:moduleSlug/edit` | Edit own module |
 | `/content/learning-modules/:moduleSlug/preview` | Preview own module as learner-facing content without learner progress |
+| `/content/roadmaps` | Roadmap draft/version management for Content Manager |
+| `/content/roadmaps/:roadmapId/edit` | Roadmap editor or reviewer read-only inspection |
+| `/content/reviews` | Reviewer roadmap approval queue |
 | `/content/settings` | Content Manager console settings |
 
 ### Admin surface
@@ -124,6 +127,11 @@ Future admin pages should be added under `/admin/*`, for example:
 | Lesson management | `learning_module_lesson.*.own` |
 | Quiz management | `learning_module_quiz.*.own`, `learning_module_quiz_question.*.own` |
 | Skill search in module authoring | `skill.view.catalog` |
+| Roadmap draft list/detail | `roadmap_draft.view.any` or `roadmap_review.view.any` |
+| Roadmap draft create/update/delete | `roadmap_draft.create.any`, `roadmap_draft.update.any`, `roadmap_draft.delete.any` |
+| Roadmap review submit | `roadmap_review.submit.own` |
+| Roadmap review queue | `roadmap_review.view.any` |
+| Roadmap approval/rejection | `roadmap_review.approve.any`, `roadmap_review.reject.any` |
 
 Ownership is still enforced in the service layer.
 
