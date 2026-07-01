@@ -168,6 +168,8 @@ export default function NodeDetailsPanel({
   onOpenSkillSearch,
   onAddSkill,
   onRemoveSkill,
+  onCreateSkillFromSearch,
+  canCreateSkills = false,
   resourceSearch,
   setResourceSearch,
   resourceResults,
@@ -176,6 +178,10 @@ export default function NodeDetailsPanel({
   onOpenResourceSearch,
   onAddResource,
   onRemoveResource,
+  onCreateResourceFromSearch,
+  onEditResource,
+  canCreateResources = false,
+  canUpdateResources = false,
   isDraft = false,
   isPatchDraft = false,
   isMinorDraft = false,
@@ -716,6 +722,7 @@ export default function NodeDetailsPanel({
                 getLabel={getResourceTitle}
                 emptyText="No resources mapped yet."
                 onRemove={onRemoveResource}
+                onEdit={canUpdateResources ? onEditResource : null}
               />
             </section>
           )}
@@ -751,7 +758,9 @@ export default function NodeDetailsPanel({
         onChoose={onAddSkill}
         onClose={() => setMappingModal(null)}
         emptyTitle="No skills found"
-        emptyBody="Search for another skill."
+        emptyBody="Search for another skill or create a new one."
+        emptyActionLabel={canCreateSkills ? "Create skill" : ""}
+        onEmptyAction={canCreateSkills ? () => onCreateSkillFromSearch?.(skillSearch) : null}
       />
 
       <MappingSearchModal
@@ -768,7 +777,9 @@ export default function NodeDetailsPanel({
         onChoose={onAddResource}
         onClose={() => setMappingModal(null)}
         emptyTitle="No resources found"
-        emptyBody="Search for another resource."
+        emptyBody="Search for another resource or create a new one."
+        emptyActionLabel={canCreateResources ? "Create resource" : ""}
+        onEmptyAction={canCreateResources ? () => onCreateResourceFromSearch?.(resourceSearch) : null}
       />
     </>
   );

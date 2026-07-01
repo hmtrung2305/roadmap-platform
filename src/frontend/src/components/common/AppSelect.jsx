@@ -165,7 +165,8 @@ export default function AppSelect({
             aria-label={ariaLabel}
             data-select-listbox={listboxId}
             style={{ left: fixedRect.left, top: fixedRect.top, width: fixedRect.width }}
-            className="fixed z-[80] max-h-60 overflow-y-auto rounded-xl border border-[#B9D8CC] bg-white p-1.5 shadow-[0_18px_45px_rgba(24,51,45,0.16)] scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC]"
+            onMouseDown={(event) => event.stopPropagation()}
+            className="fixed z-[160] max-h-60 overflow-y-auto rounded-xl border border-[#B9D8CC] bg-white p-1.5 shadow-[0_18px_45px_rgba(24,51,45,0.16)] scrollbar-thin scrollbar-track-[#F7F1E8] scrollbar-thumb-[#B9D8CC]"
           >
             {options.map((option, index) => {
               const isSelected = option.value === value;

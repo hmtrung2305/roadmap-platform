@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import { contentManagerRoadmapApi } from "../../../api/contentRoadmapApi";
+import { contentLearningResourceCatalogApi, contentSkillCatalogApi } from "../../../api/contentCatalogApi";
 import { skillApi } from "../../../api/skillApi";
 import {
   areTextListsEqual,
@@ -20,7 +21,7 @@ import {
   textToList,
   toFormNumber,
 } from "../roadmapEditorUtils";
-import { canEditGuideMetadata, canEditLearningFields, canEditMappings, normalizeNodeType } from "../nodeRules";
+import { canEditGuideMetadata, canEditLearningFields, canEditMappings, getResourceId, normalizeNodeType } from "../nodeRules";
 
 function createNodeGuideForm(node) {
   const metadata = node?.metadata || {};
@@ -153,6 +154,7 @@ export default function useContentRoadmapEditor(roadmapId) {
   const [error, setError] = useState("");
   const [workspaceMode, setWorkspaceMode] = useState("nodes");
   const [isMutatingDraft, setIsMutatingDraft] = useState(false);
+  const [isSavingCatalogItem, setIsSavingCatalogItem] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
 
   useEffect(() => {
@@ -284,6 +286,26 @@ export default function useContentRoadmapEditor(roadmapId) {
         nodes: normalizeNodes(current.nodes).map((node) => (
           node.roadmapNodeId === updatedNode.roadmapNodeId ? updatedNode : node
         )),
+      };
+    });
+  };
+
+  const updateResourceInDetail = (resourceId, updatedResource) => {
+    if (!resourceId || !updatedResource) return;
+
+    setDetail((current) => {
+      if (!current) return current;
+
+      return {
+        ...current,
+        nodes: normalizeNodes(current.nodes).map((node) => ({
+          ...node,
+          resources: Array.isArray(node.resources)
+            ? node.resources.map((resource) => (
+              getResourceId(resource) === resourceId ? { ...resource, ...updatedResource } : resource
+            ))
+            : node.resources,
+        })),
       };
     });
   };
@@ -482,6 +504,78 @@ export default function useContentRoadmapEditor(roadmapId) {
       toast.success("Resource removed.");
     } catch (actionError) {
       toast.error(actionError?.message || "Unable to remove resource.");
+    }
+  };
+
+  const createAndMapSkill = async (payload) => {
+    if (!selectedNode || !canEditMappings(selectedNode)) return null;
+
+    try {
+      setIsSavingCatalogItem(true);
+      const createdSkill = await contentSkillCatalogApi.createSkill(payload);
+      const updatedNode = await contentManagerRoadmapApi.addNodeSkill(
+        selectedNode.roadmapNodeId,
+        createdSkill.skillId,
+      );
+
+      updateNodeInDetail(updatedNode);
+      setSkillResults((current) => [
+        createdSkill,
+        ...current.filter((skill) => skill.skillId !== createdSkill.skillId),
+      ]);
+      toast.success("Skill created and mapped.");
+      return createdSkill;
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to create skill.");
+      throw actionError;
+    } finally {
+      setIsSavingCatalogItem(false);
+    }
+  };
+
+  const createAndMapResource = async (payload) => {
+    if (!selectedNode || !canEditMappings(selectedNode)) return null;
+
+    try {
+      setIsSavingCatalogItem(true);
+      const createdResource = await contentLearningResourceCatalogApi.createResource(payload);
+      const updatedNode = await contentManagerRoadmapApi.addNodeResource(
+        selectedNode.roadmapNodeId,
+        createdResource.resourceId,
+      );
+
+      updateNodeInDetail(updatedNode);
+      setResourceResults((current) => [
+        createdResource,
+        ...current.filter((resource) => getResourceId(resource) !== createdResource.resourceId),
+      ]);
+      toast.success("Resource created and mapped.");
+      return createdResource;
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to create resource.");
+      throw actionError;
+    } finally {
+      setIsSavingCatalogItem(false);
+    }
+  };
+
+  const updateMappedResource = async (resourceId, payload) => {
+    if (!resourceId) return null;
+
+    try {
+      setIsSavingCatalogItem(true);
+      const updatedResource = await contentLearningResourceCatalogApi.updateResource(resourceId, payload);
+      updateResourceInDetail(resourceId, updatedResource);
+      setResourceResults((current) => current.map((resource) => (
+        getResourceId(resource) === resourceId ? { ...resource, ...updatedResource } : resource
+      )));
+      toast.success("Resource updated.");
+      return updatedResource;
+    } catch (actionError) {
+      toast.error(actionError?.message || "Unable to update resource.");
+      throw actionError;
+    } finally {
+      setIsSavingCatalogItem(false);
     }
   };
 
@@ -695,6 +789,7 @@ export default function useContentRoadmapEditor(roadmapId) {
     isSearchingSkills,
     isSearchingResources,
     isMutatingDraft,
+    isSavingCatalogItem,
     validationResult,
     setValidationResult,
     selectedNodeChildCount,
@@ -726,6 +821,9 @@ export default function useContentRoadmapEditor(roadmapId) {
     removeSkill,
     addResource,
     removeResource,
+    createAndMapSkill,
+    createAndMapResource,
+    updateMappedResource,
     handleVersionChange,
     focusNodeFromSearch,
   };

@@ -1,4 +1,5 @@
 import axiosClient from "./axiosClient";
+import { contentLearningResourceCatalogApi } from "./contentCatalogApi";
 
 const encode = (value) => encodeURIComponent(value);
 
@@ -214,14 +215,13 @@ export const contentManagerRoadmapApi = {
   },
 
   searchLearningResources: async ({ search = "", limit = 20 } = {}) => {
-    const response = await axiosClient.get("/content/learning-resources", {
-      params: {
-        search: search?.trim() || undefined,
-        limit,
-      },
+    const response = await contentLearningResourceCatalogApi.searchResources({
+      search,
+      limit,
+      offset: 0,
     });
 
-    return Array.isArray(response.data) ? response.data : [];
+    return response.items;
   },
 
   addNodeResource: async (roadmapNodeId, learningResourceId) => {

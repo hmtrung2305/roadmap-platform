@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, Layers3, Loader2, Map as MapIcon, MessageSquare, Plus } from "lucide-react";
 
@@ -18,11 +18,19 @@ import NodeEditorGuideModal from "../../../features/roadmapEditor/components/Nod
 import NodeSearchCombobox from "../../../features/roadmapEditor/components/NodeSearchCombobox";
 import RoadmapGraphCanvas from "../../../features/roadmapEditor/components/RoadmapGraphCanvas";
 import useContentRoadmapEditor from "../../../features/roadmapEditor/hooks/useContentRoadmapEditor";
+import SkillFormModal from "../../../features/contentCatalog/SkillFormModal";
+import LearningResourceFormModal from "../../../features/contentCatalog/LearningResourceFormModal";
+import { skillApi } from "../../../api/skillApi";
+import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
+import { PERMISSIONS } from "../../../constants/permissions";
+import { hasPermission } from "../../../utils/authorizationUtils";
+import { useAuthStore } from "../../../stores/useAuthStore";
 import { formatDate, getNextMajorVersionLabel } from "../../../features/roadmapEditor/roadmapEditorUtils";
 
 export default function ContentManagerRoadmapEditorPage() {
   const navigate = useNavigate();
   const { roadmapId } = useParams();
+  const user = useAuthStore((state) => state.user);
   const editor = useContentRoadmapEditor(roadmapId);
   const [isCreateNodeOpen, setIsCreateNodeOpen] = useState(false);
   const [createNodeMode, setCreateNodeMode] = useState("child");
@@ -30,6 +38,14 @@ export default function ContentManagerRoadmapEditorPage() {
   const [reviewChangeLog, setReviewChangeLog] = useState("");
   const [isCloneConfirmOpen, setIsCloneConfirmOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isCreateSkillOpen, setIsCreateSkillOpen] = useState(false);
+  const [skillCreateInitialName, setSkillCreateInitialName] = useState("");
+  const [isCreateResourceOpen, setIsCreateResourceOpen] = useState(false);
+  const [resourceCreateInitialTitle, setResourceCreateInitialTitle] = useState("");
+  const [resourceCreateInitialUrl, setResourceCreateInitialUrl] = useState("");
+  const [editingResource, setEditingResource] = useState(null);
+  const [catalogFormError, setCatalogFormError] = useState("");
+  const [skillCategories, setSkillCategories] = useState([]);
 
   const {
     detail,
@@ -55,6 +71,7 @@ export default function ContentManagerRoadmapEditorPage() {
     isSearchingSkills,
     isSearchingResources,
     isMutatingDraft,
+    isSavingCatalogItem,
     validationResult,
     setValidationResult,
     selectedNodeChildCount,
@@ -86,9 +103,75 @@ export default function ContentManagerRoadmapEditorPage() {
     removeSkill,
     addResource,
     removeResource,
+    createAndMapSkill,
+    createAndMapResource,
+    updateMappedResource,
     handleVersionChange,
     focusNodeFromSearch,
   } = editor;
+
+
+  useEffect(() => {
+    if (!isCreateSkillOpen) return;
+
+    skillApi.getCategories()
+      .then(setSkillCategories)
+      .catch(() => setSkillCategories([]));
+  }, [isCreateSkillOpen]);
+
+  const openCreateSkillFromSearch = (searchText = "") => {
+    setCatalogFormError("");
+    setSkillCreateInitialName(searchText.trim());
+    setIsCreateSkillOpen(true);
+  };
+
+  const openCreateResourceFromSearch = (searchText = "") => {
+    const trimmedSearch = searchText.trim();
+    setCatalogFormError("");
+    setResourceCreateInitialTitle(trimmedSearch.startsWith("http") ? "" : trimmedSearch);
+    setResourceCreateInitialUrl(trimmedSearch.startsWith("http") ? trimmedSearch : "");
+    setIsCreateResourceOpen(true);
+  };
+
+  const closeCatalogForms = () => {
+    if (isSavingCatalogItem) return;
+    setIsCreateSkillOpen(false);
+    setIsCreateResourceOpen(false);
+    setEditingResource(null);
+    setCatalogFormError("");
+  };
+
+  const handleCreateSkill = async (payload) => {
+    try {
+      setCatalogFormError("");
+      await createAndMapSkill(payload);
+      closeCatalogForms();
+    } catch (actionError) {
+      setCatalogFormError(getFriendlyApiErrorMessage(actionError, "Unable to create skill."));
+    }
+  };
+
+  const handleCreateResource = async (payload) => {
+    try {
+      setCatalogFormError("");
+      await createAndMapResource(payload);
+      closeCatalogForms();
+    } catch (actionError) {
+      setCatalogFormError(getFriendlyApiErrorMessage(actionError, "Unable to create resource."));
+    }
+  };
+
+  const handleUpdateResource = async (payload) => {
+    const resourceId = editingResource?.resourceId || editingResource?.learningResourceId;
+
+    try {
+      setCatalogFormError("");
+      await updateMappedResource(resourceId, payload);
+      closeCatalogForms();
+    } catch (actionError) {
+      setCatalogFormError(getFriendlyApiErrorMessage(actionError, "Unable to update resource."));
+    }
+  };
 
   const handleBackToRoadmaps = () => {
     navigate("/content/roadmaps");
@@ -153,6 +236,9 @@ export default function ContentManagerRoadmapEditorPage() {
   const isMinorDraft = isDraft && releaseType === "minor";
   const canEditStructure = isDraft && !isPatchDraft;
   const canAddPhaseNode = canEditStructure && !isMinorDraft;
+  const canCreateSkillCatalog = hasPermission(user, PERMISSIONS.SKILL_CREATE_CATALOG);
+  const canCreateResourceCatalog = hasPermission(user, PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG);
+  const canUpdateResourceCatalog = hasPermission(user, PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG);
   const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
@@ -334,6 +420,8 @@ export default function ContentManagerRoadmapEditorPage() {
                 onOpenSkillSearch={loadSkillSuggestions}
                 onAddSkill={addSkill}
                 onRemoveSkill={removeSkill}
+                onCreateSkillFromSearch={openCreateSkillFromSearch}
+                canCreateSkills={canCreateSkillCatalog}
                 resourceSearch={resourceSearch}
                 setResourceSearch={setResourceSearch}
                 resourceResults={resourceResults}
@@ -342,6 +430,13 @@ export default function ContentManagerRoadmapEditorPage() {
                 onOpenResourceSearch={loadResourceSuggestions}
                 onAddResource={addResource}
                 onRemoveResource={removeResource}
+                onCreateResourceFromSearch={openCreateResourceFromSearch}
+                canCreateResources={canCreateResourceCatalog}
+                canUpdateResources={canUpdateResourceCatalog}
+                onEditResource={(resource) => {
+                  setCatalogFormError("");
+                  setEditingResource(resource);
+                }}
                 isDraft={isDraft}
                 isPatchDraft={isPatchDraft}
                 isMinorDraft={isMinorDraft}
@@ -390,6 +485,35 @@ export default function ContentManagerRoadmapEditorPage() {
       />
 
       <NodeEditorGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
+      <SkillFormModal
+        isOpen={isCreateSkillOpen}
+        initialName={skillCreateInitialName}
+        categories={skillCategories}
+        isSaving={isSavingCatalogItem}
+        error={catalogFormError}
+        onClose={closeCatalogForms}
+        onSubmit={handleCreateSkill}
+      />
+
+      <LearningResourceFormModal
+        isOpen={isCreateResourceOpen}
+        initialTitle={resourceCreateInitialTitle}
+        initialUrl={resourceCreateInitialUrl}
+        isSaving={isSavingCatalogItem}
+        error={catalogFormError}
+        onClose={closeCatalogForms}
+        onSubmit={handleCreateResource}
+      />
+
+      <LearningResourceFormModal
+        isOpen={Boolean(editingResource)}
+        resource={editingResource}
+        isSaving={isSavingCatalogItem}
+        error={catalogFormError}
+        onClose={closeCatalogForms}
+        onSubmit={handleUpdateResource}
+      />
 
       <DraftValidationModal
         isOpen={isValidationOpen}
