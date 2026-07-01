@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'game-developer'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Game Developer Roadmap', 'game-developer-roadmap', 'A structured learning path for becoming a game developer, covering game programming, engines, math, physics, graphics, gameplay systems, UI, audio, AI, multiplayer, optimization, publishing, and portfolio-ready production.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager2' LIMIT 1), 'Game Developer Roadmap', 'game-developer-roadmap', 'A structured learning path for becoming a game developer, covering game programming, engines, math, physics, graphics, gameplay systems, UI, audio, AI, multiplayer, optimization, publishing, and portfolio-ready production.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

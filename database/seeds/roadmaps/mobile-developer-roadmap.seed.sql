@@ -50,8 +50,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'mobile-developer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Mobile Developer Roadmap', 'mobile-developer-roadmap', 'A detailed curated roadmap for mobile development, covering programming foundations, mobile UI, native Android, native iOS, cross-platform choices, networking, local storage, authentication, state management, testing, performance, accessibility, security, app store release, analytics, CI/CD, and portfolio-ready mobile projects.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager4' LIMIT 1), 'Mobile Developer Roadmap', 'mobile-developer-roadmap', 'A detailed curated roadmap for mobile development, covering programming foundations, mobile UI, native Android, native iOS, cross-platform choices, networking, local storage, authentication, state management, testing, performance, accessibility, security, app store release, analytics, CI/CD, and portfolio-ready mobile projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

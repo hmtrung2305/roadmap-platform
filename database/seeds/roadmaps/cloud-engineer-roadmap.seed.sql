@@ -22,8 +22,8 @@ ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.descri
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug='cloud-engineer'), inserted_roadmap AS (
-  INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Cloud Engineer Roadmap', 'cloud-engineer-roadmap', 'A structured learning path for becoming a cloud engineer, covering cloud fundamentals, Linux, networking, IAM, compute, storage, databases, serverless, containers, infrastructure as code, monitoring, security, reliability, cost optimization, migration, multi-cloud awareness, and portfolio-ready cloud projects.', 'public'
+  INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager3' LIMIT 1), 'Cloud Engineer Roadmap', 'cloud-engineer-roadmap', 'A structured learning path for becoming a cloud engineer, covering cloud fundamentals, Linux, networking, IAM, compute, storage, databases, serverless, containers, infrastructure as code, monitoring, security, reliability, cost optimization, migration, multi-cloud awareness, and portfolio-ready cloud projects.', 'public'
 FROM role_row RETURNING roadmap_id
 ), inserted_version AS (
   INSERT INTO public.roadmap_version

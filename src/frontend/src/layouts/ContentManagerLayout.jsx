@@ -4,7 +4,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronUp,
   ClipboardCheck,
-  LayoutDashboard,
   LibraryBig,
   ListChecks,
   LogOut,
@@ -24,13 +23,6 @@ const contentManagerNavGroups = [
   {
     label: "Content",
     items: [
-      {
-        label: "Overview",
-        path: "/content/overview",
-        icon: LayoutDashboard,
-        match: (pathname) =>
-          pathname === "/content" || pathname === "/content/overview",
-      },
       {
         label: "Learning Modules",
         path: "/content/learning-modules",
@@ -64,10 +56,6 @@ const contentManagerNavGroups = [
 ];
 
 function getContentManagerPageTitle(pathname) {
-  if (pathname === "/content" || pathname === "/content/overview") {
-    return "Overview";
-  }
-
   if (pathname === "/content/learning-modules/create") {
     return "Create Module";
   }
@@ -202,7 +190,7 @@ export default function ContentManagerLayout() {
         <div className="border-b border-[#B9D8CC] px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate("/content/overview")}
+            onClick={() => navigate("/content/learning-modules")}
             className="block"
           >
             <AuthLogo compact showTagline={false} />
@@ -306,7 +294,7 @@ export default function ContentManagerLayout() {
               <div className="flex items-center gap-3 lg:hidden">
                 <button
                   type="button"
-                  onClick={() => navigate("/content/overview")}
+                  onClick={() => navigate("/content/learning-modules")}
                   className="shrink-0"
                 >
                   <AuthLogo compact showTagline={false} />

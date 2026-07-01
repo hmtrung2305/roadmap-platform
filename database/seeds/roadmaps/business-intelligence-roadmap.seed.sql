@@ -27,8 +27,8 @@ INSERT INTO public.career_role (name, slug, description, category, is_active) VA
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'business-intelligence-analyst'), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Business Intelligence Analyst Roadmap', 'business-intelligence-analyst-roadmap', 'A structured learning path for becoming a business intelligence analyst, covering business context, spreadsheets, SQL, statistics, data modeling, BI tools, data visualization, Python analytics, data preparation, cloud BI platforms, governance, advanced analytics, BI operations, and portfolio-ready capstone work.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager' LIMIT 1), 'Business Intelligence Analyst Roadmap', 'business-intelligence-analyst-roadmap', 'A structured learning path for becoming a business intelligence analyst, covering business context, spreadsheets, SQL, statistics, data modeling, BI tools, data visualization, Python analytics, data preparation, cloud BI platforms, governance, advanced analytics, BI operations, and portfolio-ready capstone work.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

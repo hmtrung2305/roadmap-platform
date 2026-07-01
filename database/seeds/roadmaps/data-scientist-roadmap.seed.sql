@@ -62,8 +62,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'data-scientist'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Data Scientist Roadmap', 'data-scientist-roadmap', 'A practical roadmap for CS students moving from analysis and statistics into machine learning, experimentation, reproducible research, communication, and portfolio-ready data science projects.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager4' LIMIT 1), 'Data Scientist Roadmap', 'data-scientist-roadmap', 'A practical roadmap for CS students moving from analysis and statistics into machine learning, experimentation, reproducible research, communication, and portfolio-ready data science projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

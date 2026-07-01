@@ -62,8 +62,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'site-reliability-engineer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Site Reliability Engineer Roadmap', 'site-reliability-engineer-roadmap', 'A practical SRE roadmap for CS students covering systems, automation, cloud, Kubernetes, observability, incidents, reliability engineering, security awareness, and production-ready portfolio work.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager4' LIMIT 1), 'Site Reliability Engineer Roadmap', 'site-reliability-engineer-roadmap', 'A practical SRE roadmap for CS students covering systems, automation, cloud, Kubernetes, observability, incidents, reliability engineering, security awareness, and production-ready portfolio work.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

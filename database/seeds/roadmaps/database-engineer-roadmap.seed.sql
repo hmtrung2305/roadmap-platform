@@ -62,8 +62,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'database-engineer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Database Engineer Roadmap', 'database-engineer-roadmap', 'A practical roadmap for CS students learning relational modeling, SQL performance, PostgreSQL administration, reliability, migrations, security, and database platform operations.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager4' LIMIT 1), 'Database Engineer Roadmap', 'database-engineer-roadmap', 'A practical roadmap for CS students learning relational modeling, SQL performance, PostgreSQL administration, reliability, migrations, security, and database platform operations.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

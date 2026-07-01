@@ -28,7 +28,6 @@ import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
-import ContentManagerOverviewPage from "./pages/content/ContentManagerOverviewPage";
 import ContentManagerLearningModulesPage from "./pages/content/learningModules/ContentManagerLearningModulesPage";
 import ContentManagerLearningModuleCreatePage from "./pages/content/learningModules/ContentManagerLearningModuleCreatePage";
 import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
@@ -228,8 +227,8 @@ export default function App() {
               </RequirePermission>
             }
           >
-            <Route path="/content" element={<Navigate to="/content/overview" replace />} />
-            <Route path="/content/overview" element={<ContentManagerOverviewPage />} />
+            <Route path="/content" element={<Navigate to="/content/learning-modules" replace />} />
+            <Route path="/content/overview" element={<Navigate to="/content/learning-modules" replace />} />
             <Route path="/content/learning-modules" element={<ContentManagerLearningModulesPage />} />
             <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
             <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />

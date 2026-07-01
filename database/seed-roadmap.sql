@@ -3,6 +3,9 @@
 \echo 'Seeding shared/core skills...'
 \i database/seeds/core/shared-skills.seed.sql
 
+\echo 'Seeding users...'
+\i database/seeds/core/dev-users.seed.sql
+
 \echo 'Core seed completed.'
 
 \echo 'Seeding AI Engineer roadmap...'

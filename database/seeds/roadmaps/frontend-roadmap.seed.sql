@@ -62,8 +62,8 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'frontend-developer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
-SELECT career_role_id, 'Frontend Developer Roadmap', 'frontend-developer-roadmap', 'A structured learning path for becoming a frontend developer, covering web fundamentals, semantic HTML, CSS layout, JavaScript, frameworks, TypeScript, testing, authentication, security, rendering, browser APIs, performance, deployment, and production-ready frontend architecture.', 'public'
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager2' LIMIT 1), 'Frontend Developer Roadmap', 'frontend-developer-roadmap', 'A structured learning path for becoming a frontend developer, covering web fundamentals, semantic HTML, CSS layout, JavaScript, frameworks, TypeScript, testing, authentication, security, rendering, browser APIs, performance, deployment, and production-ready frontend architecture.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

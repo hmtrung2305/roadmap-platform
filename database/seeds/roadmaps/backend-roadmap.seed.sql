@@ -67,9 +67,10 @@ CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'backend-developer'
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, title, slug, description, visibility)
+    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
     SELECT
         career_role_id,
+        (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager' LIMIT 1),
         'Backend Developer Roadmap',
         'backend-developer-roadmap',
         'A structured learning path for becoming a backend developer, covering web fundamentals, backend programming, databases, API design, authentication, security, testing, deployment, architecture, observability, and production-ready system design.',

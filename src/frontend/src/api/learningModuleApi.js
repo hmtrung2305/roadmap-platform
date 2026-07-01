@@ -5,7 +5,6 @@ const encode = (value) => encodeURIComponent(value);
 
 const MODULE_DETAIL_CACHE_MS = 20000;
 const MODULE_TAB_CACHE_MS = 20000;
-const WORKSPACE_OVERVIEW_CACHE_MS = 60000;
 
 const moduleDetailCache = new Map();
 const moduleDetailInFlight = new Map();
@@ -15,8 +14,6 @@ const moduleLessonsCache = new Map();
 const moduleLessonsInFlight = new Map();
 const moduleQuizCache = new Map();
 const moduleQuizInFlight = new Map();
-let workspaceOverviewCache = null;
-let workspaceOverviewInFlight = null;
 
 function now() {
   return Date.now();
@@ -48,14 +45,8 @@ function invalidateModuleDetailCache(moduleId) {
   moduleQuizInFlight.delete(key);
 }
 
-function invalidateWorkspaceOverviewCache() {
-  workspaceOverviewCache = null;
-  workspaceOverviewInFlight = null;
-}
-
 function invalidateAuthoringCaches(moduleId) {
   invalidateModuleDetailCache(moduleId);
-  invalidateWorkspaceOverviewCache();
 }
 
 function requireModuleId(moduleId) {
@@ -189,35 +180,6 @@ export const learningModuleApi = {
 };
 
 export const contentManagerLearningModuleApi = {
-  getWorkspaceOverview: async ({ force = false, signal } = {}) => {
-    if (!force && workspaceOverviewCache) {
-      const ageMs = now() - workspaceOverviewCache.cachedAt;
-      if (ageMs <= WORKSPACE_OVERVIEW_CACHE_MS) {
-        return workspaceOverviewCache.value;
-      }
-    }
-
-    if (!force && workspaceOverviewInFlight) {
-      return workspaceOverviewInFlight;
-    }
-
-    workspaceOverviewInFlight = axiosClient
-      .get("/content/workspace/overview", { signal })
-      .then((response) => {
-        workspaceOverviewCache = {
-          value: response.data,
-          cachedAt: now(),
-        };
-
-        return response.data;
-      })
-      .finally(() => {
-        workspaceOverviewInFlight = null;
-      });
-
-    return workspaceOverviewInFlight;
-  },
-
   searchSkills: async (search) => {
     const response = await axiosClient.get("/skills", {
       params: {
@@ -285,7 +247,6 @@ export const contentManagerLearningModuleApi = {
 
   createModule: async (payload) => {
     const response = await axiosClient.post("/content/learning-modules", payload);
-    invalidateWorkspaceOverviewCache();
     return response.data;
   },
 
