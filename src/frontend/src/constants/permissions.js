@@ -39,10 +39,10 @@ export const PERMISSIONS = Object.freeze({
   ROADMAP_ENROLLMENT_MIGRATE_SELF: "roadmap_enrollment.migrate.self",
   ROADMAP_PROGRESS_UPDATE_SELF: "roadmap_progress.update.self",
 
-  ROADMAP_DRAFT_VIEW_ANY: "roadmap_draft.view.any",
-  ROADMAP_DRAFT_CREATE_ANY: "roadmap_draft.create.any",
-  ROADMAP_DRAFT_UPDATE_ANY: "roadmap_draft.update.any",
-  ROADMAP_DRAFT_DELETE_ANY: "roadmap_draft.delete.any",
+  ROADMAP_DRAFT_VIEW_OWN: "roadmap_draft.view.own",
+  ROADMAP_DRAFT_CREATE_OWN: "roadmap_draft.create.own",
+  ROADMAP_DRAFT_UPDATE_OWN: "roadmap_draft.update.own",
+  ROADMAP_DRAFT_DELETE_OWN: "roadmap_draft.delete.own",
   ROADMAP_REVIEW_SUBMIT_OWN: "roadmap_review.submit.own",
   ROADMAP_REVIEW_VIEW_ANY: "roadmap_review.view.any",
   ROADMAP_REVIEW_APPROVE_ANY: "roadmap_review.approve.any",
@@ -119,7 +119,7 @@ export const LEARNER_SURFACE_PERMISSIONS = Object.freeze([
 export const CONTENT_MANAGER_SURFACE_PERMISSIONS = Object.freeze([
   PERMISSIONS.LEARNING_MODULE_VIEW_OWN,
   PERMISSIONS.LEARNING_MODULE_CREATE_OWN,
-  PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY,
+  PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN,
   PERMISSIONS.ROADMAP_REVIEW_SUBMIT_OWN,
   PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
   PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY,

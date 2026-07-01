@@ -12,6 +12,7 @@ public sealed class ContentManagerRoadmapStructureService(
     public async Task<ContentRoadmapStructureMutationResultDto> CreateNodeAsync(
         Guid roadmapVersionId,
         CreateRoadmapNodeRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -20,6 +21,7 @@ public sealed class ContentManagerRoadmapStructureService(
         }
 
         var version = await LoadVersionForMutationAsync(roadmapVersionId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(version.Roadmap, actorUserId);
         var title = ContentManagerRoadmapText.NormalizeRequiredText(request.Title, "Node title is required.");
         var nodeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(request.NodeType);
         ContentManagerRoadmapStructureRules.EnsureSupportedNodeType(nodeType);
@@ -72,7 +74,12 @@ public sealed class ContentManagerRoadmapStructureService(
 
         return new ContentRoadmapStructureMutationResultDto
         {
-            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, roadmapVersionId, cancellationToken),
+            Roadmap = await queryService.GetRoadmapDetailAsync(
+                version.RoadmapId,
+                roadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
+                cancellationToken),
             FocusNodeId = node.RoadmapNodeId
         };
     }
@@ -80,10 +87,12 @@ public sealed class ContentManagerRoadmapStructureService(
     public async Task<ContentRoadmapStructureMutationResultDto> MoveNodeAsync(
         Guid roadmapNodeId,
         MoveRoadmapNodeRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
         var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(version.Roadmap, actorUserId);
         if (ContentManagerRoadmapDraftService.IsMinorDraft(version) && node.IsRequired)
         {
             throw new ArgumentException("Minor drafts cannot move required nodes.");
@@ -104,7 +113,12 @@ public sealed class ContentManagerRoadmapStructureService(
         {
             return new ContentRoadmapStructureMutationResultDto
             {
-                Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+                Roadmap = await queryService.GetRoadmapDetailAsync(
+                    version.RoadmapId,
+                    node.RoadmapVersionId,
+                    actorUserId,
+                    includeAllRoadmaps: false,
+                    cancellationToken),
                 FocusNodeId = roadmapNodeId
             };
         }
@@ -118,7 +132,12 @@ public sealed class ContentManagerRoadmapStructureService(
 
         return new ContentRoadmapStructureMutationResultDto
         {
-            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+            Roadmap = await queryService.GetRoadmapDetailAsync(
+                version.RoadmapId,
+                node.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
+                cancellationToken),
             FocusNodeId = roadmapNodeId
         };
     }
@@ -126,10 +145,12 @@ public sealed class ContentManagerRoadmapStructureService(
     public async Task<ContentRoadmapStructureMutationResultDto> UpdateGroupRuleAsync(
         Guid roadmapNodeId,
         UpdateRoadmapNodeGroupRuleRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
         var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(version.Roadmap, actorUserId);
 
         if (ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType) != "choice_group")
         {
@@ -151,7 +172,12 @@ public sealed class ContentManagerRoadmapStructureService(
 
         return new ContentRoadmapStructureMutationResultDto
         {
-            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+            Roadmap = await queryService.GetRoadmapDetailAsync(
+                version.RoadmapId,
+                node.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
+                cancellationToken),
             FocusNodeId = node.RoadmapNodeId
         };
     }
@@ -159,10 +185,12 @@ public sealed class ContentManagerRoadmapStructureService(
     public async Task<ContentRoadmapStructureMutationResultDto> UpdateNodeRequirementAsync(
         Guid roadmapNodeId,
         UpdateRoadmapNodeRequirementRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
         var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(version.Roadmap, actorUserId);
         var nodeType = ContentManagerRoadmapStructureRules.NormalizeNodeType(node.NodeType);
 
         if (!ContentManagerRoadmapNodeRules.CanHaveLearningMetadata(nodeType))
@@ -200,17 +228,24 @@ public sealed class ContentManagerRoadmapStructureService(
 
         return new ContentRoadmapStructureMutationResultDto
         {
-            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+            Roadmap = await queryService.GetRoadmapDetailAsync(
+                version.RoadmapId,
+                node.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
+                cancellationToken),
             FocusNodeId = node.RoadmapNodeId
         };
     }
 
     public async Task<ContentRoadmapStructureMutationResultDto> DeleteNodeAsync(
         Guid roadmapNodeId,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMutationAsync(roadmapNodeId, cancellationToken);
         var version = await LoadVersionForMutationAsync(node.RoadmapVersionId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(version.Roadmap, actorUserId);
         var nodeIdsToDelete = await GetNodeAndDescendantIdsAsync(node, cancellationToken);
 
         var nextFocusNode = await dbContext.Set<RoadmapNode>()
@@ -267,7 +302,12 @@ public sealed class ContentManagerRoadmapStructureService(
 
         return new ContentRoadmapStructureMutationResultDto
         {
-            Roadmap = await queryService.GetRoadmapDetailAsync(version.RoadmapId, node.RoadmapVersionId, cancellationToken),
+            Roadmap = await queryService.GetRoadmapDetailAsync(
+                version.RoadmapId,
+                node.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
+                cancellationToken),
             FocusNodeId = nextFocusNode
         };
     }

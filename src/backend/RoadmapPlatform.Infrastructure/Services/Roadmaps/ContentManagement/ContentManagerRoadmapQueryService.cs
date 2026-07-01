@@ -14,6 +14,8 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
 
     public async Task<ContentRoadmapListResultDto> GetRoadmapsAsync(
         ContentRoadmapListQueryDto query,
+        Guid actorUserId,
+        bool includeAllRoadmaps,
         CancellationToken cancellationToken)
     {
         var safePage = Math.Max(query.Page, 1);
@@ -31,11 +33,13 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             throw new ArgumentException("Unsupported roadmap sort value.", nameof(query.Sort));
         }
 
-        var roadmapsQuery = dbContext.Set<Roadmap>()
-            .AsNoTracking()
-            .Include(roadmap => roadmap.CareerRole)
-            .Include(roadmap => roadmap.RoadmapVersions)
-            .AsQueryable();
+        var roadmapsQuery = ContentManagerRoadmapOwnership.ApplyScope(
+            dbContext.Set<Roadmap>()
+                .AsNoTracking()
+                .Include(roadmap => roadmap.CareerRole)
+                .Include(roadmap => roadmap.RoadmapVersions),
+            actorUserId,
+            includeAllRoadmaps);
 
         var search = ContentManagerRoadmapText.NormalizeOptionalText(query.Search);
         if (search is not null)
@@ -148,6 +152,8 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
     public async Task<ContentRoadmapDetailDto> GetRoadmapDetailAsync(
         Guid roadmapId,
         Guid? roadmapVersionId,
+        Guid actorUserId,
+        bool includeAllRoadmaps,
         CancellationToken cancellationToken)
     {
         if (roadmapId == Guid.Empty)
@@ -155,11 +161,14 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             throw new ArgumentException("Roadmap was not provided.", nameof(roadmapId));
         }
 
-        var roadmap = await dbContext.Set<Roadmap>()
-            .AsNoTracking()
-            .Include(item => item.CareerRole)
-            .Include(item => item.RoadmapVersions)
-            .Where(item => item.RoadmapId == roadmapId)
+        var roadmap = await ContentManagerRoadmapOwnership.ApplyScope(
+                dbContext.Set<Roadmap>()
+                    .AsNoTracking()
+                    .Include(item => item.CareerRole)
+                    .Include(item => item.RoadmapVersions)
+                    .Where(item => item.RoadmapId == roadmapId),
+                actorUserId,
+                includeAllRoadmaps)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (roadmap == null)

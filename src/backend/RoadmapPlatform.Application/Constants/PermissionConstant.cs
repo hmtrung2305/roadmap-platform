@@ -49,10 +49,10 @@ public static class PermissionConstant
     // =====================================================
     // CONTENT REVIEW WORKFLOW PERMISSIONS
     // =====================================================
-    public const string ROADMAP_DRAFT_VIEW_ANY = "roadmap_draft.view.any";
-    public const string ROADMAP_DRAFT_CREATE_ANY = "roadmap_draft.create.any";
-    public const string ROADMAP_DRAFT_UPDATE_ANY = "roadmap_draft.update.any";
-    public const string ROADMAP_DRAFT_DELETE_ANY = "roadmap_draft.delete.any";
+    public const string ROADMAP_DRAFT_VIEW_OWN = "roadmap_draft.view.own";
+    public const string ROADMAP_DRAFT_CREATE_OWN = "roadmap_draft.create.own";
+    public const string ROADMAP_DRAFT_UPDATE_OWN = "roadmap_draft.update.own";
+    public const string ROADMAP_DRAFT_DELETE_OWN = "roadmap_draft.delete.own";
     public const string ROADMAP_REVIEW_SUBMIT_OWN = "roadmap_review.submit.own";
     public const string ROADMAP_REVIEW_VIEW_ANY = "roadmap_review.view.any";
     public const string ROADMAP_REVIEW_APPROVE_ANY = "roadmap_review.approve.any";
@@ -202,10 +202,10 @@ public static class PermissionConstant
         ROADMAP_ENROLLMENT_CREATE_SELF,
         ROADMAP_ENROLLMENT_MIGRATE_SELF,
         ROADMAP_PROGRESS_UPDATE_SELF,
-        ROADMAP_DRAFT_VIEW_ANY,
-        ROADMAP_DRAFT_CREATE_ANY,
-        ROADMAP_DRAFT_UPDATE_ANY,
-        ROADMAP_DRAFT_DELETE_ANY,
+        ROADMAP_DRAFT_VIEW_OWN,
+        ROADMAP_DRAFT_CREATE_OWN,
+        ROADMAP_DRAFT_UPDATE_OWN,
+        ROADMAP_DRAFT_DELETE_OWN,
         ROADMAP_REVIEW_SUBMIT_OWN,
         ROADMAP_REVIEW_VIEW_ANY,
         ROADMAP_REVIEW_APPROVE_ANY,

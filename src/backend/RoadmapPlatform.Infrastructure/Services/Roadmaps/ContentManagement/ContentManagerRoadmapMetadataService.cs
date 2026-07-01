@@ -12,6 +12,7 @@ public sealed class ContentManagerRoadmapMetadataService(
     public async Task<ContentRoadmapDetailDto> UpdateRoadmapVersionMetadataAsync(
         Guid roadmapVersionId,
         UpdateRoadmapVersionMetadataRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -31,6 +32,7 @@ public sealed class ContentManagerRoadmapMetadataService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(version.Roadmap, actorUserId);
         ContentManagerRoadmapDraftService.EnsureDraftVersion(version);
 
         await ContentManagerRoadmapUniqueness.EnsureTitleAvailableAsync(
@@ -50,12 +52,18 @@ public sealed class ContentManagerRoadmapMetadataService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return await queryService.GetRoadmapDetailAsync(version.RoadmapId, version.RoadmapVersionId, cancellationToken);
+        return await queryService.GetRoadmapDetailAsync(
+            version.RoadmapId,
+            version.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: false,
+            cancellationToken);
     }
 
     public async Task<ContentRoadmapNodeDto> UpdateRoadmapNodeMetadataAsync(
         Guid roadmapNodeId,
         UpdateRoadmapNodeMetadataRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapNodeId == Guid.Empty)
@@ -67,6 +75,7 @@ public sealed class ContentManagerRoadmapMetadataService(
 
         var node = await dbContext.Set<RoadmapNode>()
             .Include(item => item.RoadmapVersion)
+                .ThenInclude(version => version.Roadmap)
             .Where(item => item.RoadmapNodeId == roadmapNodeId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -75,6 +84,7 @@ public sealed class ContentManagerRoadmapMetadataService(
             throw new KeyNotFoundException("Roadmap node was not found.");
         }
 
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
         ContentManagerRoadmapDraftService.EnsureDraftVersion(node.RoadmapVersion);
 
         node.Title = title;

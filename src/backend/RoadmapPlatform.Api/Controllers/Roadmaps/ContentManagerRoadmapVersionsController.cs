@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Authorization;
@@ -12,11 +13,11 @@ namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 [ApiController]
 [Route("api/content/roadmap-versions")]
 public sealed class ContentManagerRoadmapVersionsController(
-    IContentManagerRoadmapService roadmapService) : ControllerBase
+    IContentManagerRoadmapService roadmapService,
+    IAuthorizationService authorizationService) : ControllerBase
 {
-
     [HttpPost("{roadmapVersionId:guid}/clone-draft")]
-    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_ANY)]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -28,13 +29,14 @@ public sealed class ContentManagerRoadmapVersionsController(
         var result = await roadmapService.CloneRoadmapVersionToDraftAsync(
             roadmapVersionId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
     }
 
     [HttpPost("{roadmapVersionId:guid}/patch-draft")]
-    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_ANY)]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -46,14 +48,14 @@ public sealed class ContentManagerRoadmapVersionsController(
         var result = await roadmapService.CreatePatchRoadmapVersionDraftAsync(
             roadmapVersionId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
     }
 
-
     [HttpPost("{roadmapVersionId:guid}/minor-draft")]
-    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_ANY)]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_CREATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -65,13 +67,14 @@ public sealed class ContentManagerRoadmapVersionsController(
         var result = await roadmapService.CreateMinorRoadmapVersionDraftAsync(
             roadmapVersionId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
     }
 
     [HttpPost("{roadmapVersionId:guid}/validate")]
-    [RequireAnyPermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_ANY, PermissionConstant.ROADMAP_REVIEW_VIEW_ANY)]
+    [RequireAnyPermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_OWN, PermissionConstant.ROADMAP_REVIEW_VIEW_ANY)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapValidationResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -81,6 +84,8 @@ public sealed class ContentManagerRoadmapVersionsController(
     {
         var result = await roadmapService.ValidateRoadmapVersionAsync(
             roadmapVersionId,
+            User.GetUserId(),
+            await CanViewAllRoadmapsAsync(),
             cancellationToken);
 
         return Ok(result);
@@ -159,7 +164,7 @@ public sealed class ContentManagerRoadmapVersionsController(
     }
 
     [HttpDelete("{roadmapVersionId:guid}")]
-    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_DELETE_ANY)]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_DELETE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -169,13 +174,14 @@ public sealed class ContentManagerRoadmapVersionsController(
     {
         await roadmapService.DeleteDraftVersionAsync(
             roadmapVersionId,
+            User.GetUserId(),
             cancellationToken);
 
         return NoContent();
     }
 
     [HttpPost("{roadmapVersionId:guid}/nodes")]
-    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_ANY)]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapStructureMutationResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -187,12 +193,14 @@ public sealed class ContentManagerRoadmapVersionsController(
         var result = await roadmapService.CreateNodeAsync(
             roadmapVersionId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
     }
+
     [HttpPatch("{roadmapVersionId:guid}/metadata")]
-    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_ANY)]
+    [RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_OWN)]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -204,8 +212,18 @@ public sealed class ContentManagerRoadmapVersionsController(
         var result = await roadmapService.UpdateRoadmapVersionMetadataAsync(
             roadmapVersionId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
+    }
+
+    private async Task<bool> CanViewAllRoadmapsAsync()
+    {
+        var result = await authorizationService.AuthorizeAsync(
+            User,
+            PermissionPolicyNames.For(PermissionConstant.ROADMAP_REVIEW_VIEW_ANY));
+
+        return result.Succeeded;
     }
 }

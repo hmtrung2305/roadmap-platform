@@ -14,6 +14,9 @@
 \echo 'Seeding roles and permissions...'
 \i database/seeds/core/003-rbac-roles-permissions.seed.sql
 
+\echo 'Seeding roadmap draft ownership permissions...'
+\i database/seeds/core/004-rbac-roadmap-draft-own-permissions.seed.sql
+
 \echo 'Seeding users...'
 \i database/seeds/core/dev-users.seed.sql
 

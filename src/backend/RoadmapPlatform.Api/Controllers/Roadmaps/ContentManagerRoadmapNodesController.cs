@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
@@ -10,11 +11,10 @@ namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
 [ApiController]
 [Route("api/content/roadmap-nodes")]
-[RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_ANY)]
+[RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_OWN)]
 public sealed class ContentManagerRoadmapNodesController(
     IContentManagerRoadmapService roadmapService) : ControllerBase
 {
-
     [HttpPost("{roadmapNodeId:guid}/move")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapStructureMutationResultDto), StatusCodes.Status200OK)]
@@ -27,6 +27,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.MoveNodeAsync(
             roadmapNodeId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -42,10 +43,12 @@ public sealed class ContentManagerRoadmapNodesController(
     {
         var result = await roadmapService.DeleteNodeAsync(
             roadmapNodeId,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
     }
+
     [HttpPatch("{roadmapNodeId:guid}/group-rule")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapStructureMutationResultDto), StatusCodes.Status200OK)]
@@ -58,6 +61,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.UpdateGroupRuleAsync(
             roadmapNodeId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -75,10 +79,12 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.UpdateNodeRequirementAsync(
             roadmapNodeId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
     }
+
     [HttpPatch("{roadmapNodeId:guid}/metadata")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(ContentRoadmapNodeDto), StatusCodes.Status200OK)]
@@ -91,6 +97,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.UpdateRoadmapNodeMetadataAsync(
             roadmapNodeId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -108,6 +115,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.AddResourceToNodeAsync(
             roadmapNodeId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -125,6 +133,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.RemoveResourceFromNodeAsync(
             roadmapNodeId,
             learningResourceId,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -142,6 +151,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.AddSkillToNodeAsync(
             roadmapNodeId,
             request,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -159,6 +169,7 @@ public sealed class ContentManagerRoadmapNodesController(
         var result = await roadmapService.RemoveSkillFromNodeAsync(
             roadmapNodeId,
             skillId,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);

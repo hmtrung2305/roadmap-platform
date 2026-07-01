@@ -27,6 +27,7 @@ public sealed class ContentManagerRoadmapDraftService(
 
     public async Task<ContentRoadmapDetailDto> CreateRoadmapAsync(
         CreateRoadmapRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (request.CareerRoleId == Guid.Empty)
@@ -57,7 +58,7 @@ public sealed class ContentManagerRoadmapDraftService(
         {
             RoadmapId = Guid.NewGuid(),
             CareerRoleId = request.CareerRoleId,
-            OwnerUserId = null,
+            OwnerUserId = actorUserId,
             Title = title,
             Slug = await ContentManagerRoadmapUniqueness.CreateUniqueSlugAsync(dbContext, title, cancellationToken),
             Description = description,
@@ -82,7 +83,7 @@ public sealed class ContentManagerRoadmapDraftService(
             EstimatedTotalHours = request.EstimatedTotalHours,
             LayoutDirection = "TB",
             LayoutAlgorithm = null,
-            CreatedByUserId = null,
+            CreatedByUserId = actorUserId,
             PublishedAt = null,
             CreatedAt = now,
             UpdatedAt = now
@@ -96,12 +97,15 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             roadmap.RoadmapId,
             version.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: false,
             cancellationToken);
     }
 
     public async Task<ContentRoadmapDetailDto> CloneRoadmapVersionToDraftAsync(
         Guid roadmapVersionId,
         CloneRoadmapVersionDraftRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -119,6 +123,8 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(sourceVersion.Roadmap, actorUserId);
+
         if (!sourceVersion.Status.Equals(PublishedStatus, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Only published roadmap versions can be copied into a draft.");
@@ -130,6 +136,8 @@ public sealed class ContentManagerRoadmapDraftService(
             return await queryService.GetRoadmapDetailAsync(
                 sourceVersion.RoadmapId,
                 existingDraft.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
                 cancellationToken);
         }
 
@@ -172,7 +180,7 @@ public sealed class ContentManagerRoadmapDraftService(
             EstimatedTotalHours = sourceVersion.EstimatedTotalHours,
             LayoutDirection = sourceVersion.LayoutDirection,
             LayoutAlgorithm = sourceVersion.LayoutAlgorithm,
-            CreatedByUserId = sourceVersion.CreatedByUserId,
+            CreatedByUserId = actorUserId,
             PublishedAt = null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -204,6 +212,8 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             sourceVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: false,
             cancellationToken);
     }
 
@@ -211,6 +221,7 @@ public sealed class ContentManagerRoadmapDraftService(
     public async Task<ContentRoadmapDetailDto> CreateMinorRoadmapVersionDraftAsync(
         Guid roadmapVersionId,
         CloneRoadmapVersionDraftRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -228,6 +239,8 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(sourceVersion.Roadmap, actorUserId);
+
         if (!sourceVersion.Status.Equals(PublishedStatus, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Only published roadmap versions can be copied into a minor draft.");
@@ -239,6 +252,8 @@ public sealed class ContentManagerRoadmapDraftService(
             return await queryService.GetRoadmapDetailAsync(
                 sourceVersion.RoadmapId,
                 existingDraft.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
                 cancellationToken);
         }
 
@@ -288,7 +303,7 @@ public sealed class ContentManagerRoadmapDraftService(
             EstimatedTotalHours = sourceVersion.EstimatedTotalHours,
             LayoutDirection = sourceVersion.LayoutDirection,
             LayoutAlgorithm = sourceVersion.LayoutAlgorithm,
-            CreatedByUserId = sourceVersion.CreatedByUserId,
+            CreatedByUserId = actorUserId,
             PublishedAt = null,
             CreatedAt = now,
             UpdatedAt = now
@@ -320,6 +335,8 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             sourceVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: false,
             cancellationToken);
     }
 
@@ -327,6 +344,7 @@ public sealed class ContentManagerRoadmapDraftService(
     public async Task<ContentRoadmapDetailDto> CreatePatchRoadmapVersionDraftAsync(
         Guid roadmapVersionId,
         CloneRoadmapVersionDraftRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -344,6 +362,8 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(sourceVersion.Roadmap, actorUserId);
+
         if (!sourceVersion.Status.Equals(PublishedStatus, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Only published roadmap versions can be patched.");
@@ -355,6 +375,8 @@ public sealed class ContentManagerRoadmapDraftService(
             return await queryService.GetRoadmapDetailAsync(
                 sourceVersion.RoadmapId,
                 existingDraft.RoadmapVersionId,
+                actorUserId,
+                includeAllRoadmaps: false,
                 cancellationToken);
         }
 
@@ -405,7 +427,7 @@ public sealed class ContentManagerRoadmapDraftService(
             EstimatedTotalHours = sourceVersion.EstimatedTotalHours,
             LayoutDirection = sourceVersion.LayoutDirection,
             LayoutAlgorithm = sourceVersion.LayoutAlgorithm,
-            CreatedByUserId = sourceVersion.CreatedByUserId,
+            CreatedByUserId = actorUserId,
             PublishedAt = null,
             CreatedAt = now,
             UpdatedAt = now
@@ -437,11 +459,14 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             sourceVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: false,
             cancellationToken);
     }
 
     public async Task<ContentRoadmapDetailDto> PublishRoadmapVersionAsync(
         Guid roadmapVersionId,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -472,12 +497,12 @@ public sealed class ContentManagerRoadmapDraftService(
 
         if (IsPatchDraft(draftVersion))
         {
-            return await PublishPatchDraftVersionAsync(draftVersion, cancellationToken);
+            return await PublishPatchDraftVersionAsync(draftVersion, actorUserId, cancellationToken);
         }
 
         if (IsMinorDraft(draftVersion))
         {
-            return await PublishMinorDraftVersionAsync(draftVersion, cancellationToken);
+            return await PublishMinorDraftVersionAsync(draftVersion, actorUserId, cancellationToken);
         }
 
         var blockingPublishedVersion = await dbContext.Set<RoadmapVersion>()
@@ -523,6 +548,8 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: true,
             cancellationToken);
     }
 
@@ -549,6 +576,8 @@ public sealed class ContentManagerRoadmapDraftService(
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
 
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(draftVersion.Roadmap, actorUserId);
+
         EnsureDraftVersion(draftVersion);
         EnsurePublishableDraftVersion(draftVersion);
 
@@ -571,6 +600,8 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: false,
             cancellationToken);
     }
 
@@ -610,6 +641,8 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             reviewVersion.RoadmapId,
             reviewVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: true,
             cancellationToken);
     }
 
@@ -641,12 +674,13 @@ public sealed class ContentManagerRoadmapDraftService(
             "Approved for publication.",
             DateTime.UtcNow);
 
-        return await PublishRoadmapVersionAsync(roadmapVersionId, cancellationToken);
+        return await PublishRoadmapVersionAsync(roadmapVersionId, actorUserId, cancellationToken);
     }
 
 
     private async Task<ContentRoadmapDetailDto> PublishMinorDraftVersionAsync(
         RoadmapVersion draftVersion,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (!draftVersion.CreatedFromVersionId.HasValue)
@@ -719,12 +753,15 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: true,
             cancellationToken);
     }
 
 
     private async Task<ContentRoadmapDetailDto> PublishPatchDraftVersionAsync(
         RoadmapVersion draftVersion,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (!draftVersion.CreatedFromVersionId.HasValue)
@@ -808,11 +845,14 @@ public sealed class ContentManagerRoadmapDraftService(
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
+            actorUserId,
+            includeAllRoadmaps: true,
             cancellationToken);
     }
 
     public async Task DeleteDraftVersionAsync(
         Guid roadmapVersionId,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
@@ -829,6 +869,8 @@ public sealed class ContentManagerRoadmapDraftService(
         {
             throw new KeyNotFoundException("Roadmap version was not found.");
         }
+
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(draftVersion.Roadmap, actorUserId);
 
         EnsureDraftVersion(draftVersion);
 

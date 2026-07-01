@@ -12,6 +12,7 @@ public sealed class ContentManagerRoadmapMappingService(
     public async Task<ContentRoadmapNodeDto> AddResourceToNodeAsync(
         Guid roadmapNodeId,
         AddRoadmapNodeResourceRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapNodeId == Guid.Empty)
@@ -25,6 +26,7 @@ public sealed class ContentManagerRoadmapMappingService(
         }
 
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
         EnsureResourceMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
@@ -60,9 +62,11 @@ public sealed class ContentManagerRoadmapMappingService(
     public async Task<ContentRoadmapNodeDto> RemoveResourceFromNodeAsync(
         Guid roadmapNodeId,
         Guid learningResourceId,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
         EnsureResourceMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
@@ -85,6 +89,7 @@ public sealed class ContentManagerRoadmapMappingService(
     public async Task<ContentRoadmapNodeDto> AddSkillToNodeAsync(
         Guid roadmapNodeId,
         AddRoadmapNodeSkillRequestDto request,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         if (roadmapNodeId == Guid.Empty)
@@ -98,6 +103,7 @@ public sealed class ContentManagerRoadmapMappingService(
         }
 
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
         EnsureSkillMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
@@ -133,9 +139,11 @@ public sealed class ContentManagerRoadmapMappingService(
     public async Task<ContentRoadmapNodeDto> RemoveSkillFromNodeAsync(
         Guid roadmapNodeId,
         Guid skillId,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
         var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
         EnsureSkillMappingAllowed(node);
         ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
 
@@ -161,6 +169,7 @@ public sealed class ContentManagerRoadmapMappingService(
     {
         var node = await dbContext.Set<RoadmapNode>()
             .Include(item => item.RoadmapVersion)
+                .ThenInclude(version => version.Roadmap)
             .Where(item => item.RoadmapNodeId == roadmapNodeId)
             .FirstOrDefaultAsync(cancellationToken);
 

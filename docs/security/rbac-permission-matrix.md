@@ -141,15 +141,17 @@ Content Manager receives catalog skill lookup only. Content Manager should not r
 | `learning_module_quiz_question.delete.own` | Delete questions from own module quizzes |
 | `learning_module_quiz_question.reorder.own` | Reorder questions in own module quizzes |
 
-### Roadmap draft and review submission
+### Roadmap ownership and review submission
 
 | Permission | Purpose |
 |---|---|
-| `roadmap_draft.view.any` | View roadmap draft/version list and detail in the content workspace |
-| `roadmap_draft.create.any` | Create new roadmap drafts and patch/minor/major update drafts |
-| `roadmap_draft.update.any` | Edit roadmap metadata, nodes, requirements, skills, and resources |
-| `roadmap_draft.delete.any` | Delete editable draft or changes-requested versions where allowed |
-| `roadmap_review.submit.own` | Submit an editable draft to Reviewer with a changelog |
+| `roadmap_draft.view.own` | View roadmap list/detail scoped to `roadmap.owner_user_id = current_user_id` |
+| `roadmap_draft.create.own` | Create new owned roadmaps and owned patch/minor/major update drafts |
+| `roadmap_draft.update.own` | Edit owned roadmap metadata, nodes, requirements, skills, and resources |
+| `roadmap_draft.delete.own` | Delete owned editable draft or changes-requested versions where allowed |
+| `roadmap_review.submit.own` | Submit an owned editable draft to Reviewer with a changelog |
+
+`own` roadmap permissions must be enforced by service-layer ownership checks against `roadmap.owner_user_id`. The permission only grants access to the content manager workflow. It does not grant access to another content manager's roadmaps.
 
 ## Reviewer permissions
 
@@ -165,18 +167,7 @@ Assigned to: `reviewer`
 
 Assigned to: `admin`
 
-### Roadmap content operations
-
-| Permission | Purpose |
-|---|---|
-| `roadmap_draft.view.any` | View roadmap draft/version list and detail |
-| `roadmap_draft.create.any` | Create roadmap drafts and update drafts |
-| `roadmap_draft.update.any` | Edit roadmap drafts |
-| `roadmap_draft.delete.any` | Delete editable roadmap drafts where allowed |
-| `roadmap_review.submit.own` | Submit editable drafts for review |
-| `roadmap_review.view.any` | View the review queue |
-| `roadmap_review.approve.any` | Approve and publish pending versions |
-| `roadmap_review.reject.any` | Reject pending versions with a reason |
+Admin is a platform governance role. It does not receive roadmap authoring or review permissions by default. If a real admin account must author roadmaps or review submissions, assign `content_manager` or `reviewer` explicitly in addition to `admin`.
 
 ### User governance
 
@@ -235,6 +226,6 @@ Assigned to: `admin`
 |---|---|
 | `content_manager` | Learner enrollment, learner progress, learner portfolio editing, platform user/role/permission governance |
 | `reviewer` | Draft editing, learner enrollment, learner progress, platform user/role/permission governance |
-| `admin` | Learner enrollment, learner progress, content manager module ownership actions, learner portfolio editing |
+| `admin` | Learner enrollment, learner progress, content manager module ownership actions, roadmap authoring/review actions, learner portfolio editing |
 
 If a real user must operate in multiple product personas, assign multiple roles explicitly.

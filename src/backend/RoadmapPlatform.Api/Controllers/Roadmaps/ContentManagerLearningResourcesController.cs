@@ -10,7 +10,7 @@ namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
 [ApiController]
 [Route("api/content/learning-resources")]
-[RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_ANY)]
+[RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_OWN)]
 public sealed class ContentManagerLearningResourcesController(
     IContentManagerRoadmapService roadmapService) : ControllerBase
 {

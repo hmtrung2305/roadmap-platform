@@ -12,6 +12,7 @@ import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
 import { subscribeToUnauthorizedEvent } from "./utils/authEventUtils";
+import { getDefaultContentManagerRoute } from "./utils/navigationUtils";
 import StudyRoomPage from "./pages/StudyRoomPage";
 import EditPortfolioPage from "./pages/EditPortfolioPage";
 import { ToastContainer } from "react-toastify";
@@ -65,6 +66,16 @@ function LazyContentPage({ children }) {
   return <Suspense fallback={<ContentRouteLoadingState />}>{children}</Suspense>;
 }
 
+function ContentWorkspaceDefaultRedirect() {
+  const user = useAuthStore((state) => state.user);
+  const defaultRoute = getDefaultContentManagerRoute(user);
+
+  if (defaultRoute === "/content") {
+    return <Navigate to="/not-found" replace />;
+  }
+
+  return <Navigate to={defaultRoute} replace />;
+}
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -227,16 +238,44 @@ export default function App() {
               </RequirePermission>
             }
           >
-            <Route path="/content" element={<Navigate to="/content/learning-modules" replace />} />
-            <Route path="/content/overview" element={<Navigate to="/content/learning-modules" replace />} />
-            <Route path="/content/learning-modules" element={<ContentManagerLearningModulesPage />} />
-            <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
-            <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />
-            <Route path="/content/learning-modules/:moduleId/preview" element={<ContentManagerLearningModulePreviewPage />} />
+            <Route path="/content" element={<ContentWorkspaceDefaultRedirect />} />
+            <Route path="/content/overview" element={<ContentWorkspaceDefaultRedirect />} />
+            <Route
+              path="/content/learning-modules"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_VIEW_OWN]}>
+                  <ContentManagerLearningModulesPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-modules/create"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_CREATE_OWN]}>
+                  <ContentManagerLearningModuleCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-modules/:moduleId/edit"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_UPDATE_OWN]}>
+                  <ContentManagerLearningModuleEditorPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-modules/:moduleId/preview"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_PREVIEW_OWN]}>
+                  <ContentManagerLearningModulePreviewPage />
+                </RequirePermission>
+              }
+            />
             <Route
               path="/content/roadmaps"
               element={
-                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY]}>
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN]}>
                   <LazyContentPage><ContentManagerRoadmapsPage /></LazyContentPage>
                 </RequirePermission>
               }
@@ -246,7 +285,7 @@ export default function App() {
               element={
                 <RequirePermission
                   anyPermissions={[
-                    PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY,
+                    PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN,
                     PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
                   ]}
                 >

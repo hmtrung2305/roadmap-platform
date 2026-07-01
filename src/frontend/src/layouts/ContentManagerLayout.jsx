@@ -14,6 +14,7 @@ import {
 
 import { PERMISSIONS } from "../constants/permissions";
 import { hasPermission } from "../utils/authorizationUtils";
+import { getDefaultContentManagerRoute } from "../utils/navigationUtils";
 import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -34,7 +35,7 @@ const contentManagerNavGroups = [
         label: "Roadmaps",
         path: "/content/roadmaps",
         icon: MapIcon,
-        requiredPermission: PERMISSIONS.ROADMAP_DRAFT_VIEW_ANY,
+        requiredPermission: PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN,
         match: (pathname) => pathname.startsWith("/content/roadmaps"),
       },
       {
@@ -173,6 +174,15 @@ export default function ContentManagerLayout() {
     [user],
   );
 
+  const defaultContentRoute = useMemo(
+    () => getDefaultContentManagerRoute(user),
+    [user],
+  );
+
+  const goToDefaultContentRoute = () => {
+    navigate(defaultContentRoute === "/content" ? "/content" : defaultContentRoute);
+  };
+
   const goToSettings = () => {
     setIsUserMenuOpen(false);
     navigate("/content/settings");
@@ -190,7 +200,7 @@ export default function ContentManagerLayout() {
         <div className="border-b border-[#B9D8CC] px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate("/content/learning-modules")}
+            onClick={goToDefaultContentRoute}
             className="block"
           >
             <AuthLogo compact showTagline={false} />
@@ -294,7 +304,7 @@ export default function ContentManagerLayout() {
               <div className="flex items-center gap-3 lg:hidden">
                 <button
                   type="button"
-                  onClick={() => navigate("/content/learning-modules")}
+                  onClick={goToDefaultContentRoute}
                   className="shrink-0"
                 >
                   <AuthLogo compact showTagline={false} />

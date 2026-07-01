@@ -80,10 +80,10 @@ VALUES
     ('roadmap_progress.update.self'),
 
     -- Roadmap draft and review workflow permissions
-    ('roadmap_draft.view.any'),
-    ('roadmap_draft.create.any'),
-    ('roadmap_draft.update.any'),
-    ('roadmap_draft.delete.any'),
+    ('roadmap_draft.view.own'),
+    ('roadmap_draft.create.own'),
+    ('roadmap_draft.update.own'),
+    ('roadmap_draft.delete.own'),
     ('roadmap_review.submit.own'),
     ('roadmap_review.view.any'),
     ('roadmap_review.approve.any'),
@@ -220,14 +220,20 @@ managed_permissions(permission_name) AS (
         ('roadmap_progress.update.self'),
 
         -- Roadmap draft and review workflow permissions
-        ('roadmap_draft.view.any'),
-        ('roadmap_draft.create.any'),
-        ('roadmap_draft.update.any'),
-        ('roadmap_draft.delete.any'),
+        ('roadmap_draft.view.own'),
+        ('roadmap_draft.create.own'),
+        ('roadmap_draft.update.own'),
+        ('roadmap_draft.delete.own'),
         ('roadmap_review.submit.own'),
         ('roadmap_review.view.any'),
         ('roadmap_review.approve.any'),
         ('roadmap_review.reject.any'),
+
+        -- Legacy broad roadmap draft permissions removed from built-in roles
+        ('roadmap_draft.view.any'),
+        ('roadmap_draft.create.any'),
+        ('roadmap_draft.update.any'),
+        ('roadmap_draft.delete.any'),
 
         -- Learner learning module permissions
         ('learning_module.view.published'),
@@ -381,10 +387,10 @@ WITH role_permissions(role_name, permission_name) AS (
 
         -- Content Manager catalog lookup and content management permissions
         ('content_manager', 'skill.view.catalog'),
-        ('content_manager', 'roadmap_draft.view.any'),
-        ('content_manager', 'roadmap_draft.create.any'),
-        ('content_manager', 'roadmap_draft.update.any'),
-        ('content_manager', 'roadmap_draft.delete.any'),
+        ('content_manager', 'roadmap_draft.view.own'),
+        ('content_manager', 'roadmap_draft.create.own'),
+        ('content_manager', 'roadmap_draft.update.own'),
+        ('content_manager', 'roadmap_draft.delete.own'),
         ('content_manager', 'roadmap_review.submit.own'),
         ('content_manager', 'learning_module.view.own'),
         ('content_manager', 'learning_module.create.own'),
@@ -411,14 +417,6 @@ WITH role_permissions(role_name, permission_name) AS (
         ('reviewer', 'roadmap_review.reject.any'),
 
         -- Admin platform governance permissions
-        ('admin', 'roadmap_draft.view.any'),
-        ('admin', 'roadmap_draft.create.any'),
-        ('admin', 'roadmap_draft.update.any'),
-        ('admin', 'roadmap_draft.delete.any'),
-        ('admin', 'roadmap_review.submit.own'),
-        ('admin', 'roadmap_review.view.any'),
-        ('admin', 'roadmap_review.approve.any'),
-        ('admin', 'roadmap_review.reject.any'),
         ('admin', 'user.view.any'),
         ('admin', 'user.update.any'),
         ('admin', 'user.suspend.any'),

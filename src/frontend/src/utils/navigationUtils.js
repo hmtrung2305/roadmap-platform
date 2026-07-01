@@ -2,11 +2,12 @@ import {
   ADMIN_SURFACE_PERMISSIONS,
   CONTENT_MANAGER_SURFACE_PERMISSIONS,
   LEARNER_SURFACE_PERMISSIONS,
+  PERMISSIONS,
 } from "../constants/permissions";
 import { hasAnyPermission } from "./authorizationUtils";
 
 export const DEFAULT_LEARNER_ROUTE = "/roadmaps";
-export const DEFAULT_CONTENT_MANAGER_ROUTE = "/content/learning-modules";
+export const DEFAULT_CONTENT_MANAGER_ROUTE = "/content";
 export const DEFAULT_ADMIN_ROUTE = "/admin";
 
 const AUTH_ENTRY_PATHS = new Set([
@@ -55,13 +56,33 @@ export function getPathFromLocation(location) {
   return `${pathname}${location.search || ""}${location.hash || ""}`;
 }
 
+export function getDefaultContentManagerRoute(user) {
+  if (hasAnyPermission(user, [PERMISSIONS.LEARNING_MODULE_VIEW_OWN])) {
+    return "/content/learning-modules";
+  }
+
+  if (hasAnyPermission(user, [PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN])) {
+    return "/content/roadmaps";
+  }
+
+  if (hasAnyPermission(user, [PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY])) {
+    return "/content/reviews";
+  }
+
+  if (hasAnyPermission(user, [PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY])) {
+    return "/content/skill-gap";
+  }
+
+  return DEFAULT_CONTENT_MANAGER_ROUTE;
+}
+
 export function getDefaultAuthenticatedRoute(user) {
   if (hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS)) {
     return DEFAULT_ADMIN_ROUTE;
   }
 
   if (hasAnyPermission(user, CONTENT_MANAGER_SURFACE_PERMISSIONS)) {
-    return DEFAULT_CONTENT_MANAGER_ROUTE;
+    return getDefaultContentManagerRoute(user);
   }
 
   if (hasAnyPermission(user, LEARNER_SURFACE_PERMISSIONS)) {
