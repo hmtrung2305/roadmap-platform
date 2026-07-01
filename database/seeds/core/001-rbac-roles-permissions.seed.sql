@@ -105,6 +105,11 @@ VALUES
     ('skill_gap_analysis.create.self'),
     ('market_pulse.view.catalog'),
     ('skill.view.catalog'),
+    ('skill.create.catalog'),
+    ('skill.update.catalog'),
+    ('learning_resource.view.catalog'),
+    ('learning_resource.create.catalog'),
+    ('learning_resource.update.catalog'),
 
     -- Admin skill governance permissions
     ('skill.view.any'),
@@ -251,6 +256,11 @@ managed_permissions(permission_name) AS (
         ('skill_gap_analysis.create.self'),
         ('market_pulse.view.catalog'),
         ('skill.view.catalog'),
+        ('skill.create.catalog'),
+        ('skill.update.catalog'),
+        ('learning_resource.view.catalog'),
+        ('learning_resource.create.catalog'),
+        ('learning_resource.update.catalog'),
 
         -- Content Manager learning module ownership permissions
         ('learning_module.view.own'),
@@ -387,6 +397,11 @@ WITH role_permissions(role_name, permission_name) AS (
 
         -- Content Manager catalog lookup and content management permissions
         ('content_manager', 'skill.view.catalog'),
+        ('content_manager', 'skill.create.catalog'),
+        ('content_manager', 'skill.update.catalog'),
+        ('content_manager', 'learning_resource.view.catalog'),
+        ('content_manager', 'learning_resource.create.catalog'),
+        ('content_manager', 'learning_resource.update.catalog'),
         ('content_manager', 'roadmap_draft.view.own'),
         ('content_manager', 'roadmap_draft.create.own'),
         ('content_manager', 'roadmap_draft.update.own'),

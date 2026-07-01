@@ -79,6 +79,11 @@ public static class PermissionConstant
     public const string MARKET_PULSE_VIEW_CATALOG = "market_pulse.view.catalog";
     public const string MARKET_PULSE_MANAGE_ANY = "market_pulse.manage.any";
     public const string SKILL_VIEW_CATALOG = "skill.view.catalog";
+    public const string SKILL_CREATE_CATALOG = "skill.create.catalog";
+    public const string SKILL_UPDATE_CATALOG = "skill.update.catalog";
+    public const string LEARNING_RESOURCE_VIEW_CATALOG = "learning_resource.view.catalog";
+    public const string LEARNING_RESOURCE_CREATE_CATALOG = "learning_resource.create.catalog";
+    public const string LEARNING_RESOURCE_UPDATE_CATALOG = "learning_resource.update.catalog";
 
     public const string SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF = "skill_gap_analysis_history.view.self";
     public const string SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF = "skill_gap_analysis_history.delete.self";
@@ -224,6 +229,11 @@ public static class PermissionConstant
         MARKET_PULSE_VIEW_CATALOG,
         MARKET_PULSE_MANAGE_ANY,
         SKILL_VIEW_CATALOG,
+        SKILL_CREATE_CATALOG,
+        SKILL_UPDATE_CATALOG,
+        LEARNING_RESOURCE_VIEW_CATALOG,
+        LEARNING_RESOURCE_CREATE_CATALOG,
+        LEARNING_RESOURCE_UPDATE_CATALOG,
         SKILL_VIEW_ANY,
         LEARNING_MODULE_VIEW_OWN,
         LEARNING_MODULE_CREATE_OWN,
