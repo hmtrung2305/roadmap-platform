@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  BookOpenText,
   ChevronUp,
   ClipboardCheck,
   LibraryBig,
@@ -10,6 +11,7 @@ import {
   Map as MapIcon,
   Settings,
   Shield,
+  Tag,
 } from "lucide-react";
 
 import { PERMISSIONS } from "../constants/permissions";
@@ -46,6 +48,20 @@ const contentManagerNavGroups = [
         match: (pathname) => pathname.startsWith("/content/reviews"),
       },
       {
+        label: "Skills",
+        path: "/content/skills",
+        icon: Tag,
+        requiredPermission: PERMISSIONS.SKILL_VIEW_CATALOG,
+        match: (pathname) => pathname.startsWith("/content/skills"),
+      },
+      {
+        label: "Learning Resources",
+        path: "/content/learning-resources",
+        icon: BookOpenText,
+        requiredPermission: PERMISSIONS.LEARNING_RESOURCE_VIEW_CATALOG,
+        match: (pathname) => pathname.startsWith("/content/learning-resources"),
+      },
+      {
         label: "Skill Gap Config",
         path: "/content/skill-gap",
         icon: ListChecks,
@@ -80,6 +96,15 @@ function getContentManagerPageTitle(pathname) {
   if (pathname.startsWith("/content/reviews")) {
     return "Approvals";
   }
+
+  if (pathname.startsWith("/content/skills")) {
+    return "Skills";
+  }
+
+  if (pathname.startsWith("/content/learning-resources")) {
+    return "Learning Resources";
+  }
+
   if (pathname === "/content/skill-gap") {
     return "Skill Gap Config";
   }

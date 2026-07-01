@@ -69,6 +69,14 @@ export function getDefaultContentManagerRoute(user) {
     return "/content/reviews";
   }
 
+  if (hasAnyPermission(user, [PERMISSIONS.SKILL_VIEW_CATALOG])) {
+    return "/content/skills";
+  }
+
+  if (hasAnyPermission(user, [PERMISSIONS.LEARNING_RESOURCE_VIEW_CATALOG])) {
+    return "/content/learning-resources";
+  }
+
   if (hasAnyPermission(user, [PERMISSIONS.SKILL_GAP_CONFIG_VIEW_ANY])) {
     return "/content/skill-gap";
   }

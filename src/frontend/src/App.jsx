@@ -35,6 +35,8 @@ import ContentManagerLearningModuleEditorPage from "./pages/content/learningModu
 import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
 import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
 import ContentManagerSkillGapPage from "./pages/content/ContentManagerSkillGapPage";
+import ContentManagerSkillsPage from "./pages/content/catalog/ContentManagerSkillsPage";
+import ContentManagerLearningResourcesPage from "./pages/content/catalog/ContentManagerLearningResourcesPage";
 import ContentReviewerRoadmapReviewsPage from "./pages/content/roadmaps/ContentReviewerRoadmapReviewsPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
@@ -302,6 +304,22 @@ export default function App() {
               }
             />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
+            <Route
+              path="/content/skills"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.SKILL_VIEW_CATALOG]}>
+                  <ContentManagerSkillsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-resources"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_RESOURCE_VIEW_CATALOG]}>
+                  <ContentManagerLearningResourcesPage />
+                </RequirePermission>
+              }
+            />
             <Route
               path="/content/skill-gap"
               element={
