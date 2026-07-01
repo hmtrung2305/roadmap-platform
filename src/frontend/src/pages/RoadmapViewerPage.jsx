@@ -56,6 +56,7 @@ export default function RoadmapViewerPage() {
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isMigratingUpdate, setIsMigratingUpdate] = useState(false);
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [flowInstance, setFlowInstance] = useState(null);
@@ -65,6 +66,7 @@ export default function RoadmapViewerPage() {
   const loadRoadmapGraph = useRoadmapStore((state) => state.loadRoadmapGraph);
   const loadNodeDetailFromStore = useRoadmapStore((state) => state.loadNodeDetail);
   const enrollInRoadmap = useRoadmapStore((state) => state.enroll);
+  const migrateRoadmapEnrollment = useRoadmapStore((state) => state.migrateEnrollment);
   const updateNodeProgressInStore = useRoadmapStore((state) => state.updateNodeProgress);
   const nodeDetailByKey = useRoadmapStore((state) => state.nodeDetailByKey);
   const loadRequestRef = useRef(0);
@@ -232,6 +234,40 @@ export default function RoadmapViewerPage() {
     }
   }
 
+  async function handleMigrateUpdate() {
+    const availableUpdate = roadmap?.availableUpdate;
+
+    if (!availableUpdate?.roadmapEnrollmentId || !availableUpdate?.targetRoadmapVersionId || isMigratingUpdate) {
+      return;
+    }
+
+    setIsMigratingUpdate(true);
+    setMessage("");
+
+    try {
+      const result = await migrateRoadmapEnrollment({
+        enrollmentId: availableUpdate.roadmapEnrollmentId,
+        targetRoadmapVersionId: availableUpdate.targetRoadmapVersionId,
+        slug,
+      });
+
+      if (result?.graph) {
+        focusedRoadmapKeyRef.current = null;
+        setIsInitialViewportReady(false);
+        setRoadmap(result.graph);
+        setSelectedNode(null);
+        setStatus("success");
+      } else {
+        await loadPage({ force: true });
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage(error?.message || "Failed to migrate roadmap update.");
+    } finally {
+      setIsMigratingUpdate(false);
+    }
+  }
+
   async function handleProgressChange(nextStatus) {
     const enrollmentId = roadmap?.enrollment?.roadmapEnrollmentId;
     const selectedNodeId = selectedNode ? getNodeId(selectedNode) : null;
@@ -336,9 +372,11 @@ export default function RoadmapViewerPage() {
     );
   }
 
-  const progressPercent =
-    roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
+  const availableUpdate = roadmap?.availableUpdate || null;
   const isEnrolled = Boolean(roadmap?.enrollment);
+  const progressPercent = isEnrolled
+    ? roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0
+    : availableUpdate?.progressPercent ?? roadmap?.progressPercent ?? 0;
   const shouldShowMiniMap = nodes.length <= 150;
 
   return (
@@ -370,6 +408,27 @@ export default function RoadmapViewerPage() {
                 {message}
               </div>
             )}
+
+            {availableUpdate && !isEnrolled && (
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#B9D8CC] bg-[#F4FBF8] px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-[#18332D]">
+                    {String(availableUpdate.releaseType || "Version").toUpperCase()} update available
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                    Current {availableUpdate.currentVersionLabel} &gt; New {availableUpdate.targetVersionLabel}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleMigrateUpdate}
+                  disabled={isMigratingUpdate}
+                  className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 py-2 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+                >
+                  {isMigratingUpdate ? "Migrating..." : "Migrate update"}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
@@ -390,7 +449,7 @@ export default function RoadmapViewerPage() {
                 </div>
               </div>
 
-              {!isEnrolled && (
+              {!isEnrolled && !availableUpdate && (
                 <button
                   type="button"
                   onClick={handleEnroll}

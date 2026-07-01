@@ -319,6 +319,9 @@ public sealed class RoadmapQueryService(
         var statusByNodeId = RoadmapProgressCalculator.CalculateStatuses(nodes, edges, progressByNodeId);
         var progressSummary = RoadmapProgressCalculator.CalculateRoadmapProgress(nodes, edges, statusByNodeId);
         var estimatedTime = RoadmapEstimatedTimeCalculator.Calculate(nodes, edges);
+        var availableUpdate = enrollment == null
+            ? await detailBuilder.LoadAvailableUpdateAsync(version, userId, cancellationToken)
+            : null;
 
         return new RoadmapGraphDto
         {
@@ -342,6 +345,7 @@ public sealed class RoadmapQueryService(
             LayoutAlgorithm = version.LayoutAlgorithm,
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole),
             Enrollment = enrollment == null ? null : RoadmapDetailBuilder.MapEnrollment(enrollment),
+            AvailableUpdate = availableUpdate,
             TrackableNodeCount = progressSummary.TotalUnits,
             CompletedNodeCount = progressSummary.CompletedUnits,
             ProgressPercent = enrollment?.ProgressPercent ?? progressSummary.ProgressPercent,

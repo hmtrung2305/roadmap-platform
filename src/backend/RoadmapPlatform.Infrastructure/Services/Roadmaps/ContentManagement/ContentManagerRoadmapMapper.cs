@@ -10,8 +10,11 @@ internal static class ContentManagerRoadmapMapper
     public static ContentRoadmapSummaryDto MapSummary(
         Roadmap roadmap,
         RoadmapVersion version,
-        RoadmapVersionAggregate? aggregate)
+        RoadmapVersionAggregate? aggregate,
+        IReadOnlyList<RoadmapVersionReviewEvent>? reviewEvents = null)
     {
+        var mappedReviewEvents = MapReviewEvents(reviewEvents);
+
         return new ContentRoadmapSummaryDto
         {
             RoadmapId = roadmap.RoadmapId,
@@ -36,7 +39,9 @@ internal static class ContentManagerRoadmapMapper
             CreatedAt = version.CreatedAt,
             UpdatedAt = version.UpdatedAt,
             PublishedAt = version.PublishedAt,
-            CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole)
+            CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole),
+            LatestReviewEvent = mappedReviewEvents.FirstOrDefault(),
+            ReviewEvents = mappedReviewEvents
         };
     }
 
@@ -45,8 +50,11 @@ internal static class ContentManagerRoadmapMapper
         RoadmapVersion version,
         List<ContentRoadmapNodeDto> nodes,
         List<ContentRoadmapEdgeDto> edges,
-        RoadmapVersionAggregate aggregate)
+        RoadmapVersionAggregate aggregate,
+        IReadOnlyList<RoadmapVersionReviewEvent>? reviewEvents = null)
     {
+        var mappedReviewEvents = MapReviewEvents(reviewEvents);
+
         return new ContentRoadmapDetailDto
         {
             RoadmapId = roadmap.RoadmapId,
@@ -93,7 +101,9 @@ internal static class ContentManagerRoadmapMapper
             NodeCount = aggregate.NodeCount,
             TrackableNodeCount = aggregate.TrackableNodeCount,
             ResourceMappingCount = aggregate.ResourceMappingCount,
-            SkillMappingCount = aggregate.SkillMappingCount
+            SkillMappingCount = aggregate.SkillMappingCount,
+            LatestReviewEvent = mappedReviewEvents.FirstOrDefault(),
+            ReviewEvents = mappedReviewEvents
         };
     }
 
@@ -139,6 +149,23 @@ internal static class ContentManagerRoadmapMapper
             DependencyType = edge.DependencyType,
             Condition = edge.Condition
         };
+    }
+
+    private static List<ContentRoadmapReviewEventDto> MapReviewEvents(
+        IReadOnlyList<RoadmapVersionReviewEvent>? reviewEvents)
+    {
+        return (reviewEvents ?? [])
+            .OrderByDescending(item => item.CreatedAt)
+            .Select(item => new ContentRoadmapReviewEventDto
+            {
+                RoadmapVersionReviewEventId = item.RoadmapVersionReviewEventId,
+                RoadmapVersionId = item.RoadmapVersionId,
+                ActorUserId = item.ActorUserId,
+                EventType = item.EventType,
+                Message = item.Message,
+                CreatedAt = item.CreatedAt
+            })
+            .ToList();
     }
 }
 

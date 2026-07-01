@@ -20,6 +20,10 @@ public sealed class ContentManagerRoadmapDraftService(
     private const string MinorReleaseType = "minor";
     private const string InitialReleaseType = "initial";
     private const string PatchReleaseType = "patch";
+    private const string SubmittedReviewEventType = "submitted";
+    private const string ApprovedReviewEventType = "approved";
+    private const string RejectedReviewEventType = "rejected";
+    private const int MaxReviewMessageLength = 4000;
 
     public async Task<ContentRoadmapDetailDto> CreateRoadmapAsync(
         CreateRoadmapRequestDto request,
@@ -524,12 +528,16 @@ public sealed class ContentManagerRoadmapDraftService(
 
     public async Task<ContentRoadmapDetailDto> SubmitRoadmapVersionForReviewAsync(
         Guid roadmapVersionId,
+        Guid actorUserId,
+        SubmitRoadmapVersionReviewRequestDto request,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
         {
             throw new ArgumentException("Roadmap version was not provided.", nameof(roadmapVersionId));
         }
+
+        var changeLog = NormalizeReviewMessage(request?.ChangeLog, "Change log is required before submitting a roadmap for review.");
 
         var draftVersion = await dbContext.Set<RoadmapVersion>()
             .Include(version => version.Roadmap)
@@ -556,6 +564,7 @@ public sealed class ContentManagerRoadmapDraftService(
         draftVersion.Status = PendingReviewStatus;
         draftVersion.UpdatedAt = now;
         draftVersion.Roadmap.UpdatedAt = now;
+        AddReviewEvent(draftVersion.RoadmapVersionId, actorUserId, SubmittedReviewEventType, changeLog, now);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -567,12 +576,16 @@ public sealed class ContentManagerRoadmapDraftService(
 
     public async Task<ContentRoadmapDetailDto> RejectRoadmapVersionAsync(
         Guid roadmapVersionId,
+        Guid actorUserId,
+        RejectRoadmapVersionReviewRequestDto request,
         CancellationToken cancellationToken)
     {
         if (roadmapVersionId == Guid.Empty)
         {
             throw new ArgumentException("Roadmap version was not provided.", nameof(roadmapVersionId));
         }
+
+        var reason = NormalizeReviewMessage(request?.Reason, "Reject reason is required.");
 
         var reviewVersion = await dbContext.Set<RoadmapVersion>()
             .Include(version => version.Roadmap)
@@ -590,6 +603,7 @@ public sealed class ContentManagerRoadmapDraftService(
         reviewVersion.Status = ChangesRequestedStatus;
         reviewVersion.UpdatedAt = now;
         reviewVersion.Roadmap.UpdatedAt = now;
+        AddReviewEvent(reviewVersion.RoadmapVersionId, actorUserId, RejectedReviewEventType, reason, now);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -597,6 +611,37 @@ public sealed class ContentManagerRoadmapDraftService(
             reviewVersion.RoadmapId,
             reviewVersion.RoadmapVersionId,
             cancellationToken);
+    }
+
+    public async Task<ContentRoadmapDetailDto> ApproveRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        if (roadmapVersionId == Guid.Empty)
+        {
+            throw new ArgumentException("Roadmap version was not provided.", nameof(roadmapVersionId));
+        }
+
+        var reviewVersion = await dbContext.Set<RoadmapVersion>()
+            .AsNoTracking()
+            .Where(version => version.RoadmapVersionId == roadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (reviewVersion == null)
+        {
+            throw new KeyNotFoundException("Roadmap version was not found.");
+        }
+
+        EnsurePendingReviewVersion(reviewVersion);
+        AddReviewEvent(
+            reviewVersion.RoadmapVersionId,
+            actorUserId,
+            ApprovedReviewEventType,
+            "Approved for publication.",
+            DateTime.UtcNow);
+
+        return await PublishRoadmapVersionAsync(roadmapVersionId, cancellationToken);
     }
 
 
@@ -854,6 +899,40 @@ public sealed class ContentManagerRoadmapDraftService(
             .ThenByDescending(version => version.CreatedAt)
             .ThenByDescending(version => version.VersionNumber)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static string NormalizeReviewMessage(string? value, string emptyMessage)
+    {
+        var normalized = ContentManagerRoadmapText.NormalizeOptionalText(value);
+        if (normalized == null)
+        {
+            throw new ArgumentException(emptyMessage);
+        }
+
+        if (normalized.Length > MaxReviewMessageLength)
+        {
+            throw new ArgumentException($"Review message cannot exceed {MaxReviewMessageLength} characters.");
+        }
+
+        return normalized;
+    }
+
+    private void AddReviewEvent(
+        Guid roadmapVersionId,
+        Guid actorUserId,
+        string eventType,
+        string message,
+        DateTime createdAt)
+    {
+        dbContext.Set<RoadmapVersionReviewEvent>().Add(new RoadmapVersionReviewEvent
+        {
+            RoadmapVersionReviewEventId = Guid.NewGuid(),
+            RoadmapVersionId = roadmapVersionId,
+            ActorUserId = actorUserId == Guid.Empty ? null : actorUserId,
+            EventType = eventType,
+            Message = message,
+            CreatedAt = createdAt
+        });
     }
 
 

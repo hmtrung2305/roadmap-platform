@@ -35,6 +35,8 @@ public partial class User
 
     public virtual ICollection<Roadmap> Roadmaps { get; set; } = new List<Roadmap>();
 
+    public virtual ICollection<RoadmapVersionReviewEvent> RoadmapVersionReviewEvents { get; set; } = new List<RoadmapVersionReviewEvent>();
+
     public virtual ICollection<SkillGapAnalysisHistory> SkillGapAnalysisHistories { get; set; } = new List<SkillGapAnalysisHistory>();
 
     public virtual ICollection<SkillModuleEnrollment> SkillModuleEnrollments { get; set; } = new List<SkillModuleEnrollment>();

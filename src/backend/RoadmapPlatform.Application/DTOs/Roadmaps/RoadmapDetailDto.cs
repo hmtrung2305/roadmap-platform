@@ -22,9 +22,24 @@ public sealed class RoadmapDetailDto
     public string? LayoutAlgorithm { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
     public RoadmapEnrollmentDto? Enrollment { get; set; }
+    public RoadmapVersionUpdateDto? AvailableUpdate { get; set; }
     public int TrackableNodeCount { get; set; }
     public int CompletedNodeCount { get; set; }
     public decimal ProgressPercent { get; set; }
     public List<RoadmapNodeDto> Nodes { get; set; } = [];
     public List<RoadmapEdgeDto> Edges { get; set; } = [];
+}
+
+public sealed class RoadmapVersionUpdateDto
+{
+    public Guid RoadmapEnrollmentId { get; set; }
+    public Guid CurrentRoadmapVersionId { get; set; }
+    public string CurrentVersionLabel { get; set; } = string.Empty;
+    public Guid TargetRoadmapVersionId { get; set; }
+    public string TargetVersionLabel { get; set; } = string.Empty;
+    public string ReleaseType { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public decimal ProgressPercent { get; set; }
 }

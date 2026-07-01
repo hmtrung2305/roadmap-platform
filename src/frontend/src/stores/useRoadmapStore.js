@@ -188,6 +188,7 @@ export const useRoadmapStore = create((set, get) => ({
   nodeDetailLoadingByKey: {},
 
   enrollingByVersionId: {},
+  migratingEnrollmentId: "",
   progressUpdatingByNodeId: {},
 
   getRoadmapsWithEnrollments: () => {
@@ -483,6 +484,51 @@ export const useRoadmapStore = create((set, get) => ({
     }
   },
 
+  migrateEnrollment: async ({ enrollmentId, targetRoadmapVersionId, slug }) => {
+    const normalizedEnrollmentId = normalizeStringKey(enrollmentId);
+    const targetVersionId = normalizeStringKey(targetRoadmapVersionId);
+
+    if (!normalizedEnrollmentId || !targetVersionId) return null;
+
+    const requestVersion = roadmapRequestVersion;
+
+    try {
+      set({ migratingEnrollmentId: normalizedEnrollmentId });
+
+      const enrollment = await guardedMutation(
+        [ROADMAP_CACHE_PREFIX, "migrate", normalizedEnrollmentId, targetVersionId],
+        () => roadmapApi.migrateEnrollment(normalizedEnrollmentId, targetVersionId),
+      );
+
+      invalidateRequestCache(getEnrollmentCacheKey(targetVersionId));
+
+      if (slug) {
+        invalidateRequestCache(getGraphCacheKey(slug));
+      }
+
+      if (requestVersion !== roadmapRequestVersion) {
+        return { enrollment, graph: null };
+      }
+
+      set((state) => ({
+        enrollmentByVersionId: toRecordValue(
+          state.enrollmentByVersionId,
+          targetVersionId,
+          enrollment,
+        ),
+      }));
+      setCachedRequestData(getEnrollmentCacheKey(targetVersionId), enrollment);
+
+      const graph = slug ? await get().loadRoadmapGraph(slug, { force: true }) : null;
+
+      return { enrollment, graph };
+    } finally {
+      if (requestVersion === roadmapRequestVersion) {
+        set({ migratingEnrollmentId: "" });
+      }
+    }
+  },
+
   updateNodeProgress: async ({ enrollmentId, nodeId, status, slug, roadmapVersionId }) => {
     const normalizedNodeId = normalizeStringKey(nodeId);
     const versionId = normalizeStringKey(roadmapVersionId);
@@ -615,6 +661,7 @@ export const useRoadmapStore = create((set, get) => ({
       nodeDetailByKey: {},
       nodeDetailLoadingByKey: {},
       enrollingByVersionId: {},
+      migratingEnrollmentId: "",
       progressUpdatingByNodeId: {},
     });
   },

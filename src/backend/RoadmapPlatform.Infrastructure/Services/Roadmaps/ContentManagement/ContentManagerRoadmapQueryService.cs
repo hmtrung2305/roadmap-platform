@@ -119,11 +119,16 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
 
         var versionIds = pageRows.Select(row => row.Version.RoadmapVersionId).ToList();
         var aggregates = await LoadAggregatesAsync(versionIds, cancellationToken);
+        var reviewEventsByVersionId = await LoadReviewEventsAsync(versionIds, cancellationToken);
 
         return new ContentRoadmapListResultDto
         {
             Items = pageRows
-                .Select(row => ContentManagerRoadmapMapper.MapSummary(row.Roadmap, row.Version, aggregates.GetValueOrDefault(row.Version.RoadmapVersionId)))
+                .Select(row => ContentManagerRoadmapMapper.MapSummary(
+                    row.Roadmap,
+                    row.Version,
+                    aggregates.GetValueOrDefault(row.Version.RoadmapVersionId),
+                    reviewEventsByVersionId.GetValueOrDefault(row.Version.RoadmapVersionId) ?? []))
                 .ToList(),
             TotalCount = totalCount,
             Page = effectivePage,
@@ -179,8 +184,15 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
             nodes.Count(node => node.IsTrackable),
             nodes.Sum(node => node.Resources.Count),
             nodes.Sum(node => node.Skills.Count));
+        var reviewEventsByVersionId = await LoadReviewEventsAsync([version.RoadmapVersionId], cancellationToken);
 
-        return ContentManagerRoadmapMapper.MapDetail(roadmap, version, nodes, edges, aggregate);
+        return ContentManagerRoadmapMapper.MapDetail(
+            roadmap,
+            version,
+            nodes,
+            edges,
+            aggregate,
+            reviewEventsByVersionId.GetValueOrDefault(version.RoadmapVersionId) ?? []);
     }
 
     public async Task<ContentRoadmapNodeDto> LoadNodeAsync(
@@ -327,6 +339,26 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
         return string.IsNullOrWhiteSpace(url)
             ? string.Empty
             : url.Trim().TrimEnd('/').ToLowerInvariant();
+    }
+
+    private async Task<Dictionary<Guid, List<RoadmapVersionReviewEvent>>> LoadReviewEventsAsync(
+        IReadOnlyCollection<Guid> versionIds,
+        CancellationToken cancellationToken)
+    {
+        if (versionIds.Count == 0)
+        {
+            return [];
+        }
+
+        var events = await dbContext.Set<RoadmapVersionReviewEvent>()
+            .AsNoTracking()
+            .Where(item => versionIds.Contains(item.RoadmapVersionId))
+            .OrderByDescending(item => item.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return events
+            .GroupBy(item => item.RoadmapVersionId)
+            .ToDictionary(group => group.Key, group => group.ToList());
     }
 
     private async Task<Dictionary<Guid, RoadmapVersionAggregate>> LoadAggregatesAsync(

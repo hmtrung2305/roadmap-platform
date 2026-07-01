@@ -22,6 +22,7 @@ public sealed class RoadmapGraphDto
     public string? LayoutAlgorithm { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
     public RoadmapEnrollmentDto? Enrollment { get; set; }
+    public RoadmapVersionUpdateDto? AvailableUpdate { get; set; }
     public int TrackableNodeCount { get; set; }
     public int CompletedNodeCount { get; set; }
     public decimal ProgressPercent { get; set; }

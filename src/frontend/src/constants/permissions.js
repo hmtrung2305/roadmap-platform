@@ -36,6 +36,7 @@ export const PERMISSIONS = Object.freeze({
   ROADMAP_NODE_VIEW_PUBLISHED: "roadmap_node.view.published",
   ROADMAP_ENROLLMENT_VIEW_SELF: "roadmap_enrollment.view.self",
   ROADMAP_ENROLLMENT_CREATE_SELF: "roadmap_enrollment.create.self",
+  ROADMAP_ENROLLMENT_MIGRATE_SELF: "roadmap_enrollment.migrate.self",
   ROADMAP_PROGRESS_UPDATE_SELF: "roadmap_progress.update.self",
 
   ROADMAP_DRAFT_VIEW_ANY: "roadmap_draft.view.any",

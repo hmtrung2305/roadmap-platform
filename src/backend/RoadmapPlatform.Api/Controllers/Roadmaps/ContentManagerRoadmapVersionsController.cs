@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
+using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
@@ -94,8 +95,9 @@ public sealed class ContentManagerRoadmapVersionsController(
         Guid roadmapVersionId,
         CancellationToken cancellationToken)
     {
-        var result = await roadmapService.PublishRoadmapVersionAsync(
+        var result = await roadmapService.ApproveRoadmapVersionAsync(
             roadmapVersionId,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -108,10 +110,13 @@ public sealed class ContentManagerRoadmapVersionsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SubmitRoadmapVersionForReview(
         Guid roadmapVersionId,
+        [FromBody] SubmitRoadmapVersionReviewRequestDto request,
         CancellationToken cancellationToken)
     {
         var result = await roadmapService.SubmitRoadmapVersionForReviewAsync(
             roadmapVersionId,
+            User.GetUserId(),
+            request,
             cancellationToken);
 
         return Ok(result);
@@ -128,6 +133,7 @@ public sealed class ContentManagerRoadmapVersionsController(
     {
         var result = await roadmapService.ApproveRoadmapVersionAsync(
             roadmapVersionId,
+            User.GetUserId(),
             cancellationToken);
 
         return Ok(result);
@@ -140,10 +146,13 @@ public sealed class ContentManagerRoadmapVersionsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RejectRoadmapVersion(
         Guid roadmapVersionId,
+        [FromBody] RejectRoadmapVersionReviewRequestDto request,
         CancellationToken cancellationToken)
     {
         var result = await roadmapService.RejectRoadmapVersionAsync(
             roadmapVersionId,
+            User.GetUserId(),
+            request,
             cancellationToken);
 
         return Ok(result);

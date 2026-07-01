@@ -56,6 +56,8 @@ public sealed class ContentRoadmapSummaryDto
     public DateTime UpdatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
+    public ContentRoadmapReviewEventDto? LatestReviewEvent { get; set; }
+    public List<ContentRoadmapReviewEventDto> ReviewEvents { get; set; } = [];
 }
 
 public sealed class ContentRoadmapDetailDto
@@ -88,6 +90,18 @@ public sealed class ContentRoadmapDetailDto
     public int TrackableNodeCount { get; set; }
     public int ResourceMappingCount { get; set; }
     public int SkillMappingCount { get; set; }
+    public ContentRoadmapReviewEventDto? LatestReviewEvent { get; set; }
+    public List<ContentRoadmapReviewEventDto> ReviewEvents { get; set; } = [];
+}
+
+public sealed class ContentRoadmapReviewEventDto
+{
+    public Guid RoadmapVersionReviewEventId { get; set; }
+    public Guid RoadmapVersionId { get; set; }
+    public Guid? ActorUserId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }
 
 public sealed class ContentRoadmapVersionSummaryDto
@@ -189,6 +203,16 @@ public sealed class UpdateRoadmapNodeGuideRequestDto
 public sealed class CloneRoadmapVersionDraftRequestDto
 {
     public string? Title { get; set; }
+}
+
+public sealed class SubmitRoadmapVersionReviewRequestDto
+{
+    public string ChangeLog { get; set; } = string.Empty;
+}
+
+public sealed class RejectRoadmapVersionReviewRequestDto
+{
+    public string Reason { get; set; } = string.Empty;
 }
 
 public sealed class CreateRoadmapNodeRequestDto

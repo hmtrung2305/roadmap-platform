@@ -549,17 +549,21 @@ export default function useContentRoadmapEditor(roadmapId) {
     }
   };
 
-  const submitDraftForReview = async () => {
+  const submitDraftForReview = async (changeLog) => {
     if (!detail?.roadmapVersionId) return;
 
     try {
       setIsMutatingDraft(true);
-      const updated = await contentManagerRoadmapApi.submitReviewVersion(detail.roadmapVersionId);
+      const updated = await contentManagerRoadmapApi.submitReviewVersion(detail.roadmapVersionId, {
+        changeLog,
+      });
       applyRoadmapDetail(updated);
       setValidationResult(null);
       toast.success("Roadmap submitted for review.");
+      return true;
     } catch (actionError) {
       toast.error(actionError?.message || "Unable to submit roadmap for review.");
+      return false;
     } finally {
       setIsMutatingDraft(false);
     }

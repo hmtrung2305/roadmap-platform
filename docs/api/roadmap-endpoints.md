@@ -19,6 +19,7 @@ IRoadmapQueryService
 RoadmapSummaryDto
 RoadmapDetailDto
 RoadmapGraphDto
+RoadmapVersionUpdateDto
 RoadmapNodeDetailDto
 RoadmapLearningModuleDto
 ```
@@ -29,7 +30,7 @@ Roadmap endpoints expose published public roadmap data.
 
 The list endpoint returns summary cards. The graph endpoint returns lightweight graph data for the roadmap viewer. Node detail is lazy-loaded separately and includes skills, learning resources, and published learning modules mapped to the node's skills.
 
-Authenticated users may receive enrollment and progress data in roadmap responses. Anonymous users can still view published public roadmap data.
+Authenticated users may receive enrollment, progress data, and update notices in roadmap responses. Anonymous users can still view published public roadmap data.
 
 ## Endpoint Summary
 
@@ -46,7 +47,7 @@ Authenticated users may receive enrollment and progress data in roadmap response
 |---|---|
 | Auth required | No |
 | Optional auth behavior | If authenticated, `ClaimTypes.NameIdentifier` is used to include enrollment progress |
-| Anonymous behavior | Returns roadmap data with `enrollment = null` and computed default progress |
+| Anonymous behavior | Returns roadmap data with `enrollment = null`, `availableUpdate = null`, and computed default progress |
 
 ## Common Response Notes
 
@@ -177,6 +178,7 @@ Body:
     "category": "Software Development"
   },
   "enrollment": null,
+  "availableUpdate": null,
   "trackableNodeCount": 28,
   "completedNodeCount": 0,
   "progressPercent": 0,
@@ -193,6 +195,7 @@ Body:
 | Slug not found | Not found |
 | Roadmap private or version unpublished | Not found |
 | Authenticated user enrolled | Includes `enrollment` and saved/computed progress |
+| Authenticated user enrolled on an older version | Latest published minor/major response includes `availableUpdate` so the learner can migrate manually |
 | Anonymous user | `enrollment = null` |
 | Full detail payload | Includes full node descriptions, resources, skills, outcomes, criteria, and edges |
 
@@ -244,6 +247,18 @@ Body:
     "category": "Software Development"
   },
   "enrollment": null,
+  "availableUpdate": {
+    "roadmapEnrollmentId": "99999999-9999-9999-9999-999999999999",
+    "currentRoadmapVersionId": "11111111-1111-1111-1111-111111111111",
+    "currentVersionLabel": "v1.0.0",
+    "targetRoadmapVersionId": "22222222-2222-2222-2222-222222222222",
+    "targetVersionLabel": "v1.1.0",
+    "releaseType": "minor",
+    "title": "Frontend Developer Roadmap",
+    "description": "A structured roadmap for frontend development.",
+    "publishedAt": "2026-07-01T07:30:00Z",
+    "progressPercent": 24.5
+  },
   "trackableNodeCount": 28,
   "completedNodeCount": 0,
   "progressPercent": 0,
@@ -304,6 +319,34 @@ Body:
 | Response size | Omits long node body fields such as descriptions, resources, skills, outcomes, and criteria |
 | Progress | Includes computed progress for every graph node |
 | Frontend use | Intended for ReactFlow graph rendering |
+
+## `availableUpdate`
+
+`availableUpdate` can appear on both full detail and graph responses.
+
+| Field | Type | Notes |
+|---|---|---|
+| `roadmapEnrollmentId` | `guid` | Current user's existing enrollment on an older version |
+| `currentRoadmapVersionId` | `guid` | Version the learner is currently enrolled in |
+| `currentVersionLabel` | `string` | Example: `v1.0.0` |
+| `targetRoadmapVersionId` | `guid` | Latest published minor/major version the learner can migrate to |
+| `targetVersionLabel` | `string` | Example: `v1.1.0` |
+| `releaseType` | `string` | `minor` or `major` |
+| `title` | `string` | Target version title |
+| `description` | `string/null` | Target version description |
+| `publishedAt` | `datetime/null` | Target version publish time |
+| `progressPercent` | `number` | Progress percent from the learner's current enrollment |
+
+Rules:
+
+| Rule | Behavior |
+|---|---|
+| Anonymous user | `availableUpdate = null` |
+| User already enrolled in latest version | `availableUpdate = null` |
+| Latest release is `patch` | No manual update notice; patch enrollments are remapped automatically after approval |
+| User enrolled in an older version and latest release is `minor` or `major` | Returns `availableUpdate` |
+
+Use `POST /api/roadmap-enrollments/{roadmapEnrollmentId}/migrate` to apply the update.
 
 ## `GET /api/roadmaps/{roadmapVersionId}/nodes/{roadmapNodeId}`
 

@@ -76,6 +76,7 @@ VALUES
     ('roadmap_node.view.published'),
     ('roadmap_enrollment.view.self'),
     ('roadmap_enrollment.create.self'),
+    ('roadmap_enrollment.migrate.self'),
     ('roadmap_progress.update.self'),
 
     -- Roadmap draft and review workflow permissions
@@ -215,6 +216,7 @@ managed_permissions(permission_name) AS (
         ('roadmap_node.view.published'),
         ('roadmap_enrollment.view.self'),
         ('roadmap_enrollment.create.self'),
+        ('roadmap_enrollment.migrate.self'),
         ('roadmap_progress.update.self'),
 
         -- Roadmap draft and review workflow permissions
@@ -357,6 +359,7 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'roadmap_node.view.published'),
         ('learner', 'roadmap_enrollment.view.self'),
         ('learner', 'roadmap_enrollment.create.self'),
+        ('learner', 'roadmap_enrollment.migrate.self'),
         ('learner', 'roadmap_progress.update.self'),
 
         -- Learner learning module permissions

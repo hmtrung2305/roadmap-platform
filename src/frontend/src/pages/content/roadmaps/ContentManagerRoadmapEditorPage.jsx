@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, Layers3, Loader2, Map as MapIcon, Plus } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, Layers3, Loader2, Map as MapIcon, MessageSquare, Plus } from "lucide-react";
 
 import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
@@ -27,6 +27,7 @@ export default function ContentManagerRoadmapEditorPage() {
   const [isCreateNodeOpen, setIsCreateNodeOpen] = useState(false);
   const [createNodeMode, setCreateNodeMode] = useState("child");
   const [isValidationOpen, setIsValidationOpen] = useState(false);
+  const [reviewChangeLog, setReviewChangeLog] = useState("");
   const [isCloneConfirmOpen, setIsCloneConfirmOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
@@ -160,8 +161,12 @@ export default function ContentManagerRoadmapEditorPage() {
   };
 
   const handleSubmitForReview = async () => {
-    await submitDraftForReview();
-    setIsValidationOpen(false);
+    const didSubmit = await submitDraftForReview(reviewChangeLog);
+
+    if (didSubmit) {
+      setReviewChangeLog("");
+      setIsValidationOpen(false);
+    }
   };
 
 
@@ -223,6 +228,8 @@ export default function ContentManagerRoadmapEditorPage() {
           onCreateMinorDraft={createMinorDraft}
           onSubmitDraftForReview={openValidation}
         />
+
+        <ReviewHistoryPanel events={detail.reviewEvents || []} />
 
         <div className="rounded-xl border border-[#B9D8CC] bg-white p-2 shadow-sm">
           <div className="grid gap-2 sm:grid-cols-2">
@@ -387,13 +394,65 @@ export default function ContentManagerRoadmapEditorPage() {
       <DraftValidationModal
         isOpen={isValidationOpen}
         result={validationResult}
+        changeLog={reviewChangeLog}
+        onChangeLogChange={setReviewChangeLog}
         isSubmitting={isMutatingDraft}
         onClose={() => {
           setIsValidationOpen(false);
           setValidationResult(null);
+          setReviewChangeLog("");
         }}
         onSubmitForReview={handleSubmitForReview}
       />
     </ModulePageShell>
   );
+}
+
+function ReviewHistoryPanel({ events }) {
+  if (!events?.length) return null;
+
+  return (
+    <section className="rounded-xl border border-[#B9D8CC] bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#B9D8CC]/70 p-4">
+        <div className="flex items-center gap-2">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
+            <MessageSquare size={16} />
+          </div>
+          <div>
+            <h2 className="text-sm font-extrabold text-[#18332D]">Review history</h2>
+            <p className="text-xs font-semibold text-slate-600">Change logs and reviewer feedback for this version.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+        {events.map((event) => (
+          <article
+            key={event.roadmapVersionReviewEventId || `${event.eventType}-${event.createdAt}`}
+            className="rounded-lg border border-[#B9D8CC]/70 bg-[#F4FBF8] p-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-extrabold uppercase tracking-wide text-[#1F6F5F]">
+                {getReviewEventLabel(event.eventType)}
+              </span>
+              <span className="text-[11px] font-bold text-slate-500">
+                {formatDate(event.createdAt)}
+              </span>
+            </div>
+            <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+              {event.message}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function getReviewEventLabel(eventType) {
+  const normalized = String(eventType || "").toLowerCase();
+  if (normalized === "submitted") return "Submitted";
+  if (normalized === "rejected") return "Rejected";
+  if (normalized === "approved") return "Approved";
+  return eventType || "Review note";
 }

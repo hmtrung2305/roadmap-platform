@@ -43,6 +43,7 @@ public static class PermissionConstant
     public const string ROADMAP_NODE_VIEW_PUBLISHED = "roadmap_node.view.published";
     public const string ROADMAP_ENROLLMENT_VIEW_SELF = "roadmap_enrollment.view.self";
     public const string ROADMAP_ENROLLMENT_CREATE_SELF = "roadmap_enrollment.create.self";
+    public const string ROADMAP_ENROLLMENT_MIGRATE_SELF = "roadmap_enrollment.migrate.self";
     public const string ROADMAP_PROGRESS_UPDATE_SELF = "roadmap_progress.update.self";
 
     // =====================================================
@@ -199,6 +200,7 @@ public static class PermissionConstant
         ROADMAP_NODE_VIEW_PUBLISHED,
         ROADMAP_ENROLLMENT_VIEW_SELF,
         ROADMAP_ENROLLMENT_CREATE_SELF,
+        ROADMAP_ENROLLMENT_MIGRATE_SELF,
         ROADMAP_PROGRESS_UPDATE_SELF,
         ROADMAP_DRAFT_VIEW_ANY,
         ROADMAP_DRAFT_CREATE_ANY,

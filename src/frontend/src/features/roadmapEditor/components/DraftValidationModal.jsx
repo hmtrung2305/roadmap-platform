@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AlertCircle, CheckCircle2, X } from "lucide-react";
 
-import { ModuleButton } from "../../learningModules/components/learningModuleUi";
+import { inputClass, ModuleButton, ModuleField } from "../../learningModules/components/learningModuleUi";
 
 function ValidationList({ title, items, tone }) {
   if (!items?.length) return null;
@@ -23,7 +23,15 @@ function ValidationList({ title, items, tone }) {
   );
 }
 
-export default function DraftValidationModal({ isOpen, result, onClose, onSubmitForReview, isSubmitting }) {
+export default function DraftValidationModal({
+  isOpen,
+  result,
+  changeLog,
+  onChangeLogChange,
+  onClose,
+  onSubmitForReview,
+  isSubmitting,
+}) {
   const panelRef = useRef(null);
 
   useEffect(() => {
@@ -42,6 +50,7 @@ export default function DraftValidationModal({ isOpen, result, onClose, onSubmit
   const errors = result?.errors || [];
   const warnings = result?.warnings || [];
   const isValid = result?.isValid && errors.length === 0;
+  const hasChangeLog = String(changeLog || "").trim().length > 0;
 
   return (
     <div
@@ -67,13 +76,25 @@ export default function DraftValidationModal({ isOpen, result, onClose, onSubmit
               This draft is ready to submit for review.
             </div>
           ) : null}
+          <ModuleField
+            label="Review changelog"
+            hint="Summarize the content changes, affected nodes, and anything the reviewer should verify."
+          >
+            <textarea
+              className={`${inputClass} min-h-[120px] resize-y`}
+              value={changeLog}
+              onChange={(event) => onChangeLogChange?.(event.target.value)}
+              placeholder="Example: Updated backend API phase, added deployment checklist, and corrected resource mapping for authentication nodes."
+              maxLength={4000}
+            />
+          </ModuleField>
           <ValidationList title="Errors" items={errors} tone="error" />
           <ValidationList title="Warnings" items={warnings} tone="warning" />
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[#B9D8CC]/70 p-4">
           <ModuleButton variant="secondary" onClick={onClose}>Close</ModuleButton>
-          <ModuleButton onClick={onSubmitForReview} disabled={!isValid || isSubmitting}>Submit for review</ModuleButton>
+          <ModuleButton onClick={onSubmitForReview} disabled={!isValid || !hasChangeLog || isSubmitting}>Submit for review</ModuleButton>
         </div>
       </div>
     </div>

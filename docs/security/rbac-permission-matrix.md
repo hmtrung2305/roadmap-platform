@@ -2,11 +2,12 @@
 
 ## Summary
 
-The first RBAC version defines three built-in roles:
+The RBAC baseline defines four built-in roles:
 
 ```text
 learner
 content_manager
+reviewer
 admin
 ```
 
@@ -14,7 +15,7 @@ Content Manager and admin do not automatically inherit learner workflow permissi
 
 ## Shared authenticated account permissions
 
-Assigned to: `learner`, `content_manager`, `admin`
+Assigned to: `learner`, `content_manager`, `reviewer`, `admin`
 
 | Permission | Purpose |
 |---|---|
@@ -64,6 +65,7 @@ Assigned to: `learner`
 | `roadmap_node.view.published` | View published roadmap node detail |
 | `roadmap_enrollment.view.self` | View own roadmap enrollment |
 | `roadmap_enrollment.create.self` | Enroll self into a roadmap |
+| `roadmap_enrollment.migrate.self` | Migrate own roadmap enrollment to an approved minor/major update |
 | `roadmap_progress.update.self` | Update own roadmap node progress |
 
 ### Learning modules
@@ -139,9 +141,42 @@ Content Manager receives catalog skill lookup only. Content Manager should not r
 | `learning_module_quiz_question.delete.own` | Delete questions from own module quizzes |
 | `learning_module_quiz_question.reorder.own` | Reorder questions in own module quizzes |
 
+### Roadmap draft and review submission
+
+| Permission | Purpose |
+|---|---|
+| `roadmap_draft.view.any` | View roadmap draft/version list and detail in the content workspace |
+| `roadmap_draft.create.any` | Create new roadmap drafts and patch/minor/major update drafts |
+| `roadmap_draft.update.any` | Edit roadmap metadata, nodes, requirements, skills, and resources |
+| `roadmap_draft.delete.any` | Delete editable draft or changes-requested versions where allowed |
+| `roadmap_review.submit.own` | Submit an editable draft to Reviewer with a changelog |
+
+## Reviewer permissions
+
+Assigned to: `reviewer`
+
+| Permission | Purpose |
+|---|---|
+| `roadmap_review.view.any` | View the roadmap review queue and review packet |
+| `roadmap_review.approve.any` | Approve a pending version and publish it |
+| `roadmap_review.reject.any` | Reject a pending version with a required reason |
+
 ## Admin permissions
 
 Assigned to: `admin`
+
+### Roadmap content operations
+
+| Permission | Purpose |
+|---|---|
+| `roadmap_draft.view.any` | View roadmap draft/version list and detail |
+| `roadmap_draft.create.any` | Create roadmap drafts and update drafts |
+| `roadmap_draft.update.any` | Edit roadmap drafts |
+| `roadmap_draft.delete.any` | Delete editable roadmap drafts where allowed |
+| `roadmap_review.submit.own` | Submit editable drafts for review |
+| `roadmap_review.view.any` | View the review queue |
+| `roadmap_review.approve.any` | Approve and publish pending versions |
+| `roadmap_review.reject.any` | Reject pending versions with a reason |
 
 ### User governance
 
@@ -199,6 +234,7 @@ Assigned to: `admin`
 | Role | Not granted by default |
 |---|---|
 | `content_manager` | Learner enrollment, learner progress, learner portfolio editing, platform user/role/permission governance |
+| `reviewer` | Draft editing, learner enrollment, learner progress, platform user/role/permission governance |
 | `admin` | Learner enrollment, learner progress, content manager module ownership actions, learner portfolio editing |
 
 If a real user must operate in multiple product personas, assign multiple roles explicitly.

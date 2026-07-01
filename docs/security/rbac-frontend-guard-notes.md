@@ -39,6 +39,8 @@ ADMIN_SURFACE_PERMISSIONS
 
 They should be used to guard route groups. They should not replace action-level permission checks for sensitive UI controls.
 
+`CONTENT_MANAGER_SURFACE_PERMISSIONS` intentionally includes roadmap review entry permissions. A user with the `reviewer` role can enter the `/content` shell, but `/content/reviews` still requires `roadmap_review.view.any` and draft editing actions still require roadmap draft permissions.
+
 Examples:
 
 ```jsx
@@ -80,15 +82,15 @@ After login, the frontend must fetch `/api/me` before resolving the redirect bec
 Default redirect priority:
 
 ```text
-admin -> content manager -> learner
+admin -> content/reviewer -> learner
 ```
 
 Current defaults:
 
 ```text
-admin     = /admin
-content manager = /content/learning-modules
-learner   = /roadmaps
+admin = /admin
+content manager or reviewer = /content/learning-modules
+learner = /roadmaps
 ```
 
 If a user attempted to open a route before login, redirect back only when the user can access that route. Otherwise, redirect to the user's default authorized surface.

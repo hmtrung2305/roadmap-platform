@@ -35,6 +35,15 @@ export const roadmapApi = {
     return response.data;
   },
 
+  migrateEnrollment: async (roadmapEnrollmentId, targetRoadmapVersionId) => {
+    const response = await axiosClient.post(
+      `/roadmap-enrollments/${encodeURIComponent(roadmapEnrollmentId)}/migrate`,
+      { targetRoadmapVersionId },
+    );
+
+    return response.data;
+  },
+
   getNodeDetail: async (roadmapVersionId, nodeId) => {
     const response = await axiosClient.get(`/roadmaps/${roadmapVersionId}/nodes/${nodeId}`);
     return response.data;

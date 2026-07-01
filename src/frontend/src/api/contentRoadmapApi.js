@@ -124,9 +124,10 @@ export const contentManagerRoadmapApi = {
     return response.data;
   },
 
-  submitReviewVersion: async (roadmapVersionId) => {
+  submitReviewVersion: async (roadmapVersionId, payload = {}) => {
     const response = await axiosClient.post(
       `/content/roadmap-versions/${encode(roadmapVersionId)}/submit-review`,
+      payload,
     );
 
     return response.data;
@@ -140,9 +141,10 @@ export const contentManagerRoadmapApi = {
     return response.data;
   },
 
-  rejectVersion: async (roadmapVersionId) => {
+  rejectVersion: async (roadmapVersionId, payload = {}) => {
     const response = await axiosClient.post(
       `/content/roadmap-versions/${encode(roadmapVersionId)}/reject`,
+      payload,
     );
 
     return response.data;

@@ -35,7 +35,7 @@ Guard: `RequirePermission(anyPermissions={LEARNER_SURFACE_PERMISSIONS})`
 | `/skill-gap-analysis` | Skill gap analysis alias |
 | `/settings/*` | Learner account/settings pages |
 
-### Content Manager surface
+### Content and Reviewer surface
 
 Guard: `RequirePermission(anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS})`
 
@@ -50,6 +50,8 @@ Guard: `RequirePermission(anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS})`
 | `/content/roadmaps/:roadmapId/edit` | Roadmap editor or reviewer read-only inspection |
 | `/content/reviews` | Reviewer roadmap approval queue |
 | `/content/settings` | Content Manager console settings |
+
+`CONTENT_MANAGER_SURFACE_PERMISSIONS` includes both authoring and review entry permissions. The `/content/reviews` route still has its own route-level guard requiring `roadmap_review.view.any`, so a Content Manager with only `roadmap_review.submit.own` cannot open the Reviewer queue.
 
 ### Admin surface
 
@@ -131,7 +133,8 @@ Future admin pages should be added under `/admin/*`, for example:
 | Roadmap draft create/update/delete | `roadmap_draft.create.any`, `roadmap_draft.update.any`, `roadmap_draft.delete.any` |
 | Roadmap review submit | `roadmap_review.submit.own` |
 | Roadmap review queue | `roadmap_review.view.any` |
-| Roadmap approval/rejection | `roadmap_review.approve.any`, `roadmap_review.reject.any` |
+| Roadmap approval/rejection | `roadmap_review.approve.any`, `roadmap_review.reject.any`; reject requires a reason |
+| Roadmap review event log | Submit, approve, and reject write `roadmap_version_review_event` rows |
 
 Ownership is still enforced in the service layer.
 
