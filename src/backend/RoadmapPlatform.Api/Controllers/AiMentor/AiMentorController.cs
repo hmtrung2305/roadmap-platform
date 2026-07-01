@@ -6,7 +6,6 @@ using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.AiMentor;
 using RoadmapPlatform.Application.Interfaces.AiMentor;
-using RoadmapPlatform.Infrastructure.Entities;
 
 namespace RoadmapPlatform.Api.Controllers.AiMentor
 {
@@ -15,7 +14,7 @@ namespace RoadmapPlatform.Api.Controllers.AiMentor
     [RequirePermission(PermissionConstant.AI_MENTOR_CHAT_USE_SELF)]
     public sealed class AiMentorController(IAiMentorService aiMentorService) : ControllerBase
     {
-        [HttpGet("conversation")]
+        [HttpGet("conversations")]
         [ProducesResponseType(typeof(IReadOnlyList<AiMentorConversationDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetConversations(CancellationToken cancellationToken)
         {
@@ -26,10 +25,10 @@ namespace RoadmapPlatform.Api.Controllers.AiMentor
             return Ok(result);
         }
 
-        [HttpGet("conversation/{conversationId:guid}/messages")]
+        [HttpGet("conversations/{conversationId:guid}/messages")]
         [ProducesResponseType(typeof(IReadOnlyList<AiMentorMessageDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetMessage(Guid conversationId, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetMessages(Guid conversationId, CancellationToken cancellationToken)
         {
             var userId = User.GetUserId();
 
