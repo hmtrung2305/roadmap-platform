@@ -18,7 +18,15 @@ import { FaGithub } from "react-icons/fa";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { aiMentorApi } from "../../../api/aiMentorApi";
+import { useAiCreditStore } from "../../../stores/useAiCreditStore";
+import { useAuthProviderStore } from "../../../stores/useAuthProviderStore";
 import { useAuthStore } from "../../../stores/useAuthStore";
+import { useProfileStore } from "../../../stores/useProfileStore";
+import {
+  getCreditStatus,
+  getFriendlyApiErrorMessage,
+} from "../../../utils/apiErrorUtils";
 
 const starterPrompts = [
   {
@@ -43,87 +51,155 @@ const starterPrompts = [
   },
 ];
 
-const initialSessions = [
-  {
-    id: "role-plan",
-    title: "Career role plan",
-    time: "Now",
-    pinned: true,
-  },
-  {
-    id: "github-review",
-    title: "GitHub profile review",
-    time: "2h ago",
-  },
-  {
-    id: "internship-focus",
-    title: "Internship focus",
-    time: "Yesterday",
-  },
-  {
-    id: "system-design",
-    title: "System design prep",
-    time: "2d ago",
-  },
-  {
-    id: "portfolio-checklist",
-    title: "Portfolio checklist",
-    time: "5d ago",
-  },
-];
+const PAGE_CONTEXT = "roadmap_selection";
+const LOCAL_SESSION_PREFIX = "local-session-";
 
-const initialMessagesBySession = {
-  "role-plan": [
-    {
-      id: "m-1",
-      role: "assistant",
-      content:
-        "Hi! I can help you choose a career role, plan your roadmap order, and turn learning progress into portfolio evidence.",
-    },
-  ],
-  "github-review": [
-    {
-      id: "m-2",
-      role: "assistant",
-      content:
-        "After GitHub is connected, I can review your public projects, README quality, tech stack, and portfolio gaps.",
-    },
-  ],
-  "internship-focus": [
-    {
-      id: "m-3",
-      role: "assistant",
-      content:
-        "For internship preparation, I can help you choose the highest-impact skills and convert them into a weekly plan.",
-    },
-  ],
-  "system-design": [
-    {
-      id: "m-4",
-      role: "assistant",
-      content:
-        "We can break system design into small concepts: APIs, databases, caching, queues, and deployment basics.",
-    },
-  ],
-  "portfolio-checklist": [
-    {
-      id: "m-5",
-      role: "assistant",
-      content:
-        "A strong portfolio should show the problem, features, tech stack, screenshots, deployment, and what you learned.",
-    },
-  ],
+const introMessage = {
+  id: "mentor-intro",
+  role: "assistant",
+  content:
+    "Hi! I can help you choose a career role, plan your roadmap order, and turn learning progress into portfolio evidence.",
 };
+
+function createLocalSession() {
+  return {
+    id: `${LOCAL_SESSION_PREFIX}${Date.now()}`,
+    title: "New conversation",
+    time: "Now",
+    pinned: false,
+    isLocal: true,
+  };
+}
+
+function isLocalSessionId(sessionId) {
+  return String(sessionId || "").startsWith(LOCAL_SESSION_PREFIX);
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "Now";
+
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) return "Now";
+
+  const diffMs = Date.now() - timestamp;
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+
+  if (diffMs < minuteMs) return "Now";
+  if (diffMs < hourMs) return `${Math.floor(diffMs / minuteMs)}m ago`;
+  if (diffMs < dayMs) return `${Math.floor(diffMs / hourMs)}h ago`;
+  if (diffMs < 2 * dayMs) return "Yesterday";
+  if (diffMs < 7 * dayMs) return `${Math.floor(diffMs / dayMs)}d ago`;
+
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function getConversationId(conversation) {
+  return conversation?.aiMentorConversationId || conversation?.conversationId || conversation?.id || "";
+}
+
+function normalizeConversation(conversation) {
+  const id = getConversationId(conversation);
+
+  return {
+    id,
+    title: conversation?.title || "New conversation",
+    time: formatRelativeTime(conversation?.updatedAt || conversation?.createdAt),
+    pinned: false,
+    isLocal: false,
+    pageContext: conversation?.pageContext || PAGE_CONTEXT,
+    createdAt: conversation?.createdAt || null,
+    updatedAt: conversation?.updatedAt || null,
+  };
+}
+
+function normalizeMessage(message) {
+  const id =
+    message?.aiMentorMessageId ||
+    message?.messageId ||
+    message?.id ||
+    `${message?.role || "message"}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return {
+    id,
+    role: message?.role === "user" ? "user" : "assistant",
+    content: message?.content || "",
+    sources: Array.isArray(message?.sources) ? message.sources : [],
+    aiModel: message?.aiModel || null,
+    createdAt: message?.createdAt || null,
+  };
+}
+
+function getProviderName(provider) {
+  return String(provider?.provider || provider?.providerName || provider?.name || "").trim().toLowerCase();
+}
+
+function hasRoleProfileSignal(profile) {
+  return Boolean(
+    profile?.careerGoal ||
+      profile?.currentRole ||
+      profile?.targetRole ||
+      profile?.headline,
+  );
+}
+
+function renderInlineMentorMarkdown(content) {
+  const parts = String(content || "").split(/(`[^`\n]+`|\*\*[\s\S]*?\*\*)/g);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <strong key={`bold-${index}`} className="font-black text-inherit">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+      return (
+        <code
+          key={`code-${index}`}
+          className="rounded bg-white/70 px-1 py-0.5 font-mono !text-[0.85em] text-[#1F6F5F]"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    return part;
+  });
+}
 
 export default function CareerMentorWidget() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const providers = useAuthProviderStore((state) => state.providers);
+  const loadProviders = useAuthProviderStore((state) => state.loadProviders);
+  const profile = useProfileStore((state) => state.profile);
+  const loadProfile = useProfileStore((state) => state.loadProfile);
+  const creditStatus = useAiCreditStore((state) => state.creditStatus);
+  const loadCreditStatus = useAiCreditStore((state) => state.loadCreditStatus);
+  const patchCreditStatus = useAiCreditStore((state) => state.patchCreditStatus);
+  const invalidateCreditStatus = useAiCreditStore((state) => state.invalidateCreditStatus);
+
+  const initialSessionRef = useRef(createLocalSession());
   const [isOpen, setIsOpen] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState("role-plan");
-  const [sessions, setSessions] = useState(initialSessions);
-  const [messagesBySession, setMessagesBySession] = useState(initialMessagesBySession);
+  const [activeSessionId, setActiveSessionId] = useState(initialSessionRef.current.id);
+  const [sessions, setSessions] = useState([initialSessionRef.current]);
+  const [messagesBySession, setMessagesBySession] = useState({
+    [initialSessionRef.current.id]: [introMessage],
+  });
   const [input, setInput] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [loadingMessageSessionId, setLoadingMessageSessionId] = useState(null);
   const [activeStatus, setActiveStatus] = useState(null);
   const [isRecentCollapsed, setIsRecentCollapsed] = useState(false);
   const messagesEndRef = useRef(null);
@@ -136,19 +212,132 @@ export default function CareerMentorWidget() {
     return first.pinned ? -1 : 1;
   });
 
-  const learnerName =
-    user?.username ||
-    user?.name ||
-    user?.email?.split("@")[0] ||
-    "learner";
-
   const connectionState = useMemo(
     () => ({
-      githubConnected: false,
-      roleSelected: false,
+      githubConnected: providers.some(
+        (provider) => getProviderName(provider) === "github" && Boolean(provider.isLinked),
+      ),
+      roleSelected: hasRoleProfileSignal(profile),
     }),
-    [],
+    [profile, providers],
   );
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    loadProviders().catch(() => {});
+    loadProfile().catch(() => {});
+    loadCreditStatus().catch(() => {});
+  }, [isOpen, loadCreditStatus, loadProfile, loadProviders, user]);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    let isCancelled = false;
+
+    async function loadConversations() {
+      try {
+        setIsLoadingConversations(true);
+        const data = await aiMentorApi.getConversations();
+        if (isCancelled) return;
+
+        const nextSessions = data
+          .map(normalizeConversation)
+          .filter((session) => session.id);
+
+        if (nextSessions.length === 0) {
+          const localSession = createLocalSession();
+          setSessions([localSession]);
+          setMessagesBySession({ [localSession.id]: [introMessage] });
+          setActiveSessionId(localSession.id);
+          return;
+        }
+
+        setSessions(nextSessions);
+        setActiveSessionId((current) =>
+          nextSessions.some((session) => session.id === current)
+            ? current
+            : nextSessions[0].id,
+        );
+      } catch (error) {
+        if (isCancelled) return;
+
+        const localSession = createLocalSession();
+        setSessions([localSession]);
+        setMessagesBySession({
+          [localSession.id]: [
+            introMessage,
+            {
+              id: `${localSession.id}-load-error`,
+              role: "assistant",
+              content: getFriendlyApiErrorMessage(
+                error,
+                "Unable to load AI mentor conversations right now.",
+              ),
+            },
+          ],
+        });
+        setActiveSessionId(localSession.id);
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingConversations(false);
+        }
+      }
+    }
+
+    loadConversations();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, user]);
+
+  useEffect(() => {
+    if (!isOpen || !activeSessionId || isLocalSessionId(activeSessionId)) return;
+    if (messagesBySession[activeSessionId]) return;
+
+    let isCancelled = false;
+
+    async function loadMessages() {
+      try {
+        setLoadingMessageSessionId(activeSessionId);
+        const data = await aiMentorApi.getMessages(activeSessionId);
+        if (isCancelled) return;
+
+        const nextMessages = data.map(normalizeMessage);
+        setMessagesBySession((current) => ({
+          ...current,
+          [activeSessionId]: nextMessages.length > 0 ? nextMessages : [introMessage],
+        }));
+      } catch (error) {
+        if (isCancelled) return;
+
+        setMessagesBySession((current) => ({
+          ...current,
+          [activeSessionId]: [
+            {
+              id: `${activeSessionId}-message-load-error`,
+              role: "assistant",
+              content: getFriendlyApiErrorMessage(
+                error,
+                "Unable to load this AI mentor conversation.",
+              ),
+            },
+          ],
+        }));
+      } finally {
+        if (!isCancelled) {
+          setLoadingMessageSessionId(null);
+        }
+      }
+    }
+
+    loadMessages();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeSessionId, isOpen, messagesBySession]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -156,7 +345,7 @@ export default function CareerMentorWidget() {
     requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     });
-  }, [isOpen, activeSessionId, messages.length, isReplying]);
+  }, [isOpen, activeSessionId, messages.length, isReplying, loadingMessageSessionId]);
 
   useEffect(() => {
     if (!activeStatus) return;
@@ -193,70 +382,77 @@ export default function CareerMentorWidget() {
   }, [isOpen]);
 
   function handleCreateSession() {
-    const nextId = `session-${Date.now()}`;
-    const nextSession = {
-      id: nextId,
-      title: "New conversation",
-      time: "Now",
-      pinned: false,
-    };
+    const nextSession = createLocalSession();
 
     setSessions((current) => [nextSession, ...current]);
     setMessagesBySession((current) => ({
       ...current,
-      [nextId]: [
+      [nextSession.id]: [
         {
-          id: `${nextId}-intro`,
-          role: "assistant",
+          ...introMessage,
+          id: "mentor-intro",
           content: "What career question do you want to explore today?",
         },
       ],
     }));
-    setActiveSessionId(nextId);
+    setActiveSessionId(nextSession.id);
   }
 
-
-  function handleDeleteSession(sessionId) {
+  function removeSessionLocally(sessionId) {
     setSessions((current) => {
       const remaining = current.filter((session) => session.id !== sessionId);
-
-      if (remaining.length === 0) {
-        const nextId = `session-${Date.now()}`;
-        const nextSession = {
-          id: nextId,
-          title: "New conversation",
-          time: "Now",
-          pinned: false,
-        };
-
-        setMessagesBySession((currentMessages) => {
-          const updated = { ...currentMessages };
-          delete updated[sessionId];
-          updated[nextId] = [
-            {
-              id: `${nextId}-intro`,
-              role: "assistant",
-              content: "What career question do you want to explore today?",
-            },
-          ];
-          return updated;
-        });
-        setActiveSessionId(nextId);
-        return [nextSession];
-      }
+      const nextSessions = remaining.length > 0 ? remaining : [createLocalSession()];
+      const nextActiveId =
+        activeSessionId === sessionId ? nextSessions[0].id : activeSessionId;
 
       setMessagesBySession((currentMessages) => {
         const updated = { ...currentMessages };
         delete updated[sessionId];
+
+        if (nextSessions.length === 1 && nextSessions[0].isLocal && !updated[nextSessions[0].id]) {
+          updated[nextSessions[0].id] = [
+            {
+              ...introMessage,
+              id: "mentor-intro",
+              content: "What career question do you want to explore today?",
+            },
+          ];
+        }
+
         return updated;
       });
 
-      if (activeSessionId === sessionId) {
-        setActiveSessionId(remaining[0].id);
+      setActiveSessionId(nextActiveId);
+      return nextSessions;
+    });
+  }
+
+  async function handleDeleteSession(sessionId) {
+    const session = sessions.find((item) => item.id === sessionId);
+    if (!session) return;
+
+    try {
+      if (!session.isLocal && !isLocalSessionId(sessionId)) {
+        await aiMentorApi.archiveConversation(sessionId);
       }
 
-      return remaining;
-    });
+      removeSessionLocally(sessionId);
+    } catch (error) {
+      setMessagesBySession((current) => ({
+        ...current,
+        [sessionId]: [
+          ...(current[sessionId] ?? []),
+          {
+            id: `${sessionId}-delete-error-${Date.now()}`,
+            role: "assistant",
+            content: getFriendlyApiErrorMessage(
+              error,
+              "Unable to delete this conversation right now.",
+            ),
+          },
+        ],
+      }));
+    }
   }
 
   function handleTogglePin(sessionId) {
@@ -287,30 +483,52 @@ export default function CareerMentorWidget() {
     navigate(path);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     const text = input.trim();
     if (!text || isReplying) return;
 
-    const userMessage = {
+    if (creditStatus?.remainingCreditsToday <= 0) {
+      setMessagesBySession((current) => ({
+        ...current,
+        [activeSessionId]: [
+          ...(current[activeSessionId] ?? []),
+          {
+            id: `assistant-no-credit-${Date.now()}`,
+            role: "assistant",
+            content:
+              "You have no AI credits left today. Try again after the daily reset.",
+          },
+        ],
+      }));
+      return;
+    }
+
+    const sessionIdAtSend = activeSessionId;
+    const isLocalSession = isLocalSessionId(sessionIdAtSend);
+    const optimisticUserMessage = {
       id: `user-${Date.now()}`,
       role: "user",
       content: text,
+      sources: [],
     };
 
     setInput("");
     setMessagesBySession((current) => ({
       ...current,
-      [activeSessionId]: [...(current[activeSessionId] ?? []), userMessage],
+      [sessionIdAtSend]: [
+        ...(current[sessionIdAtSend] ?? []).filter((message) => message.id !== "mentor-intro"),
+        optimisticUserMessage,
+      ],
     }));
 
     setSessions((current) =>
       current.map((session) =>
-        session.id === activeSessionId
+        session.id === sessionIdAtSend
           ? {
               ...session,
-              title: text,
+              title: session.title === "New conversation" ? text : session.title,
               time: "Now",
             }
           : session,
@@ -319,19 +537,113 @@ export default function CareerMentorWidget() {
 
     setIsReplying(true);
 
-    window.setTimeout(() => {
-      const assistantMessage = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: buildMockAnswer(text, learnerName),
-      };
+    try {
+      const response = await aiMentorApi.sendMessage({
+        conversationId: isLocalSession ? null : sessionIdAtSend,
+        pageContext: PAGE_CONTEXT,
+        message: text,
+      });
+
+      const nextConversation = normalizeConversation(response?.conversation);
+      const nextConversationId = nextConversation.id || sessionIdAtSend;
+      const nextUserMessage = response?.userMessage
+        ? normalizeMessage(response.userMessage)
+        : optimisticUserMessage;
+      const nextAssistantMessage = response?.assistantMessage
+        ? normalizeMessage(response.assistantMessage)
+        : {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: response?.answer || "No answer was generated.",
+            sources: response?.sources || [],
+          };
+
+      setSessions((current) => {
+        const baseSessions = isLocalSession
+          ? current.filter((session) => session.id !== sessionIdAtSend)
+          : current;
+        const existingIndex = baseSessions.findIndex(
+          (session) => session.id === nextConversationId,
+        );
+
+        if (existingIndex >= 0) {
+          const updatedSession = {
+            ...baseSessions[existingIndex],
+            ...nextConversation,
+            id: nextConversationId,
+            pinned: baseSessions[existingIndex].pinned,
+            time: "Now",
+          };
+
+          return [
+            updatedSession,
+            ...baseSessions.filter((session) => session.id !== nextConversationId),
+          ];
+        }
+
+        return [
+          {
+            ...nextConversation,
+            id: nextConversationId,
+            title: nextConversation.title || text,
+            time: "Now",
+          },
+          ...baseSessions,
+        ];
+      });
+
+      setMessagesBySession((current) => {
+        const previousMessages = (current[sessionIdAtSend] ?? [])
+          .filter((message) => message.id !== optimisticUserMessage.id)
+          .filter((message) => message.id !== "mentor-intro");
+        const updated = { ...current };
+
+        if (sessionIdAtSend !== nextConversationId) {
+          delete updated[sessionIdAtSend];
+        }
+
+        updated[nextConversationId] = [
+          ...previousMessages,
+          nextUserMessage,
+          nextAssistantMessage,
+        ];
+
+        return updated;
+      });
+
+      setActiveSessionId(nextConversationId);
+
+      const responseCreditStatus = response?.creditStatus || response?.aiCreditStatus;
+      if (responseCreditStatus) {
+        patchCreditStatus(responseCreditStatus);
+      } else {
+        invalidateCreditStatus();
+        loadCreditStatus({ force: true }).catch(() => {});
+      }
+    } catch (error) {
+      const nextCreditStatus = getCreditStatus(error);
+
+      if (nextCreditStatus) {
+        patchCreditStatus(nextCreditStatus);
+      }
 
       setMessagesBySession((current) => ({
         ...current,
-        [activeSessionId]: [...(current[activeSessionId] ?? []), assistantMessage],
+        [sessionIdAtSend]: [
+          ...(current[sessionIdAtSend] ?? []),
+          {
+            id: `assistant-error-${Date.now()}`,
+            role: "assistant",
+            content: getFriendlyApiErrorMessage(
+              error,
+              "Unable to send this question right now.",
+            ),
+          },
+        ],
       }));
+    } finally {
       setIsReplying(false);
-    }, 520);
+    }
   }
 
   if (typeof document === "undefined") {
@@ -522,7 +834,9 @@ export default function CareerMentorWidget() {
                 </div>
 
                 <div className="group mt-1 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-500">Recent</p>
+                  <p className="text-sm font-semibold text-slate-500">
+                    {isLoadingConversations ? "Loading recent" : "Recent"}
+                  </p>
 
                   <button
                     type="button"
@@ -542,72 +856,72 @@ export default function CareerMentorWidget() {
                 {!isRecentCollapsed && (
                   <div className="space-y-1.5">
                     {visibleSessions.map((session) => {
-                    const isActive = session.id === activeSessionId;
+                      const isActive = session.id === activeSessionId;
 
-                    return (
-                      <div
-                        key={session.id}
-                        className={`group relative flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${
-                          isActive
-                            ? "mentor-active-session border-[#2FA084] bg-[#EAF8F1]"
-                            : "border-transparent bg-transparent hover:border-[#B9D8CC] hover:bg-[#FDFBF7]"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setActiveSessionId(session.id)}
-                          className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2FA084]/20"
-                          aria-current={isActive ? "true" : undefined}
+                      return (
+                        <div
+                          key={session.id}
+                          className={`group relative flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${
+                            isActive
+                              ? "mentor-active-session border-[#2FA084] bg-[#EAF8F1]"
+                              : "border-transparent bg-transparent hover:border-[#B9D8CC] hover:bg-[#FDFBF7]"
+                          }`}
                         >
-                          <span
-                            className="block overflow-hidden !text-[13px] !font-black !leading-snug text-[#18332D]"
-                            style={{
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                            }}
-                          >
-                            {session.title}
-                          </span>
-                          <span className="mt-0.5 flex items-center gap-1 !text-[11px] !font-semibold text-slate-500">
-                            <Clock3 size={11} />
-                            {session.time}
-                          </span>
-                        </button>
-
-                        <span className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleTogglePin(session.id);
-                            }}
-                            className={`grid h-7 w-7 place-items-center rounded-md border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2FA084]/20 ${
-                              session.pinned
-                                ? "border-[#B9D8CC] bg-[#EAF8F1] text-[#1F6F5F] opacity-100"
-                                : "border-transparent bg-white/60 text-slate-400 opacity-0 hover:border-[#B9D8CC] hover:bg-[#F7F1E8] hover:text-[#1F6F5F] group-hover:opacity-100 focus-visible:opacity-100"
-                            }`}
-                            aria-label={`${session.pinned ? "Unpin" : "Pin"} ${session.title} chat`}
-                            title={session.pinned ? "Unpin chat" : "Pin chat"}
+                            onClick={() => setActiveSessionId(session.id)}
+                            className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2FA084]/20"
+                            aria-current={isActive ? "true" : undefined}
                           >
-                            <Pin size={12} />
+                            <span
+                              className="block overflow-hidden !text-[13px] !font-black !leading-snug text-[#18332D]"
+                              style={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                              }}
+                            >
+                              {session.title}
+                            </span>
+                            <span className="mt-0.5 flex items-center gap-1 !text-[11px] !font-semibold text-slate-500">
+                              <Clock3 size={11} />
+                              {session.time}
+                            </span>
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteSession(session.id);
-                            }}
-                            className="grid h-7 w-7 place-items-center rounded-md border border-transparent bg-white/60 text-slate-400 opacity-0 transition hover:border-[#EF4444] hover:bg-[#FEF2F2] hover:text-[#DC2626] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF4444]/20 group-hover:opacity-100"
-                            aria-label={`Delete ${session.title} chat`}
-                            title="Delete chat"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </span>
-                      </div>
-                    );
+                          <span className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleTogglePin(session.id);
+                              }}
+                              className={`grid h-7 w-7 place-items-center rounded-md border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2FA084]/20 ${
+                                session.pinned
+                                  ? "border-[#B9D8CC] bg-[#EAF8F1] text-[#1F6F5F] opacity-100"
+                                  : "border-transparent bg-white/60 text-slate-400 opacity-0 hover:border-[#B9D8CC] hover:bg-[#F7F1E8] hover:text-[#1F6F5F] group-hover:opacity-100 focus-visible:opacity-100"
+                              }`}
+                              aria-label={`${session.pinned ? "Unpin" : "Pin"} ${session.title} chat`}
+                              title={session.pinned ? "Unpin chat" : "Pin chat"}
+                            >
+                              <Pin size={12} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteSession(session.id);
+                              }}
+                              className="grid h-7 w-7 place-items-center rounded-md border border-transparent bg-white/60 text-slate-400 opacity-0 transition hover:border-[#EF4444] hover:bg-[#FEF2F2] hover:text-[#DC2626] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF4444]/20 group-hover:opacity-100"
+                              aria-label={`Delete ${session.title} chat`}
+                              title="Delete chat"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </span>
+                        </div>
+                      );
                     })}
                   </div>
                 )}
@@ -664,8 +978,6 @@ export default function CareerMentorWidget() {
                       onAction={() => handleNavigate("/settings/profile")}
                     />
 
-                    
-
                     <button
                       type="button"
                       onClick={handleCloseWidget}
@@ -680,6 +992,15 @@ export default function CareerMentorWidget() {
 
               <div className="mentor-scrollbar-hidden min-h-0 flex-1 overflow-y-auto px-4 py-4">
                 <div className="flex w-full max-w-none flex-col gap-4">
+                  {loadingMessageSessionId === activeSessionId && (
+                    <div className="flex justify-start">
+                      <div className="inline-flex items-center gap-2 rounded-xl border border-[#B9D8CC] bg-white px-4 py-3 text-sm font-semibold text-slate-500 shadow-sm">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-[#2FA084]" />
+                        Loading conversation...
+                      </div>
+                    </div>
+                  )}
+
                   {messages.map((message) => (
                     <MentorMessage key={message.id} message={message} />
                   ))}
@@ -731,7 +1052,11 @@ export default function CareerMentorWidget() {
                     value={input}
                     disabled={isReplying}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Ask anything about roles, projects, GitHub, or career growth..."
+                    placeholder={
+                      creditStatus?.remainingCreditsToday <= 0
+                        ? "Daily AI credits used up"
+                        : "Ask anything about roles, projects, GitHub, or career growth..."
+                    }
                     className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm font-semibold text-[#18332D] outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
@@ -743,7 +1068,7 @@ export default function CareerMentorWidget() {
 
                   <button
                     type="submit"
-                    disabled={isReplying || !input.trim()}
+                    disabled={isReplying || !input.trim() || creditStatus?.remainingCreditsToday <= 0}
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#2FA084] text-white shadow-sm transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:bg-[#6FCF97]/60"
                     aria-label="Send mentor question"
                   >
@@ -831,27 +1156,38 @@ function MentorMessage({ message }) {
               : "border-[#B9D8CC] bg-[#EAF8F1] text-[#18332D]"
           }`}
         >
-          <p>{message.content}</p>
+          <p className="whitespace-pre-wrap break-words">
+            {renderInlineMentorMarkdown(message.content)}
+          </p>
+          <MentorSources sources={message.sources} />
         </div>
       </div>
     </div>
   );
 }
 
-function buildMockAnswer(question, learnerName) {
-  const lowerQuestion = question.toLowerCase();
-
-  if (lowerQuestion.includes("github") || lowerQuestion.includes("repo")) {
-    return `For ${learnerName}, improve GitHub in this order: pin your strongest repositories, write clearer README files, add screenshots, and connect each project to one career skill. Connecting GitHub will make this advice more specific.`;
+function MentorSources({ sources = [] }) {
+  if (!Array.isArray(sources) || sources.length === 0) {
+    return null;
   }
 
-  if (lowerQuestion.includes("project") || lowerQuestion.includes("portfolio")) {
-    return "A strong next portfolio project should prove one target role skill. For a full-stack direction, build one project with authentication, CRUD, database design, API error handling, deployment, and a short case-study README.";
-  }
+  return (
+    <div className="mt-3 border-t border-[#B9D8CC]/70 pt-2">
+      <p className="mb-1.5 !text-[10px] font-black uppercase tracking-[0.12em] text-[#1F6F5F]">
+        Based on context
+      </p>
 
-  if (lowerQuestion.includes("roadmap") || lowerQuestion.includes("learn")) {
-    return "Choose the roadmap closest to your target job, then prioritize nodes that create visible evidence: projects, GitHub commits, and portfolio summaries. Avoid learning too many disconnected tools before building one complete project.";
-  }
-
-  return "I would turn this into a simple plan: define your target role, compare required skills with your current projects, choose one missing skill, then build a small public project that proves it.";
+      <div className="flex flex-wrap gap-1.5">
+        {sources.slice(0, 4).map((source, index) => (
+          <span
+            key={`${source.type || "source"}-${source.title || index}-${index}`}
+            className="rounded-md border border-[#B9D8CC] bg-white/70 px-2 py-1 !text-[11px] font-bold text-slate-600"
+            title={source.detail || source.title || "AI mentor context"}
+          >
+            {source.title || source.type || `Source ${index + 1}`}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }

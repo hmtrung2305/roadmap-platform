@@ -22,7 +22,6 @@ public sealed class AiMentorService : IAiMentorService
     private const int AiMentorCreditCost = 1;
     private const int RecentMessageLimit = 10;
     private const int PublishedRoadmapLimit = 8;
-    private const int EnrollmentLimit = 5;
     private const int RepositoryInsightLimit = 5;
     private const int SkillGapHistoryLimit = 3;
 
@@ -266,7 +265,6 @@ public sealed class AiMentorService : IAiMentorService
 
         await AppendUserProfileContextAsync(builder, sources, userId, cancellationToken);
         await AppendPublishedRoadmapContextAsync(builder, sources, cancellationToken);
-        await AppendRoadmapProgressContextAsync(builder, sources, userId, cancellationToken);
         await AppendGitHubInsightContextAsync(builder, sources, userId, cancellationToken);
         await AppendSkillGapContextAsync(builder, sources, userId, cancellationToken);
 
@@ -358,54 +356,6 @@ public sealed class AiMentorService : IAiMentorService
             Type = "roadmap_catalog",
             Title = "Published roadmap catalog",
             Detail = $"{roadmaps.Count} published roadmap(s) included."
-        });
-    }
-
-    private async Task AppendRoadmapProgressContextAsync(
-        StringBuilder builder,
-        List<AiMentorSourceDto> sources,
-        Guid userId,
-        CancellationToken cancellationToken)
-    {
-        var enrollments = await _context.RoadmapEnrollments
-            .AsNoTracking()
-            .Include(enrollment => enrollment.RoadmapVersion)
-                .ThenInclude(version => version.Roadmap)
-                    .ThenInclude(roadmap => roadmap.CareerRole)
-            .Where(enrollment => enrollment.UserId == userId)
-            .OrderByDescending(enrollment => enrollment.UpdatedAt)
-            .Take(EnrollmentLimit)
-            .Select(enrollment => new
-            {
-                RoadmapTitle = enrollment.RoadmapVersion.Roadmap.Title,
-                CareerRole = enrollment.RoadmapVersion.Roadmap.CareerRole.Name,
-                enrollment.Status,
-                enrollment.ProgressPercent,
-                enrollment.StartedAt,
-                enrollment.CompletedAt
-            })
-            .ToListAsync(cancellationToken);
-
-        builder.AppendLine();
-        builder.AppendLine("[USER ROADMAP PROGRESS]");
-
-        if (enrollments.Count == 0)
-        {
-            builder.AppendLine("The user has not started any roadmap yet.");
-            return;
-        }
-
-        foreach (var enrollment in enrollments)
-        {
-            builder.AppendLine(
-                $"- {enrollment.RoadmapTitle} ({enrollment.CareerRole}): {enrollment.Status}, {enrollment.ProgressPercent}% complete, started at {enrollment.StartedAt:u}, completed at {FormatNullableDate(enrollment.CompletedAt)}");
-        }
-
-        sources.Add(new AiMentorSourceDto
-        {
-            Type = "roadmap_progress",
-            Title = "Roadmap progress",
-            Detail = $"{enrollments.Count} enrollment(s) included."
         });
     }
 
@@ -525,7 +475,7 @@ public sealed class AiMentorService : IAiMentorService
             "You are an AI Virtual Mentor for a career roadmap platform.\n\n" +
             "Use the provided platform context to help the learner choose roadmaps, prioritize skills, plan projects, and prepare for career growth.\n" +
             "Use chat history only to understand the ongoing conversation.\n" +
-            "Do not invent user progress, GitHub analysis, transcript data, roadmap status, project results, or achievements.\n" +
+            "Do not invent GitHub analysis, transcript data, roadmap status, project results, achievements, or learning progress.\n" +
             "If useful context is missing, clearly say what is missing and suggest how the learner can provide it.\n" +
             "Keep the answer practical, structured, and concise.\n" +
             "Avoid mentioning internal database table names, IDs, or implementation details.";
@@ -687,11 +637,6 @@ public sealed class AiMentorService : IAiMentorService
         return normalized.Length <= maxCharacters
             ? normalized
             : normalized[..maxCharacters] + "...";
-    }
-
-    private static string FormatNullableDate(DateTime? value)
-    {
-        return value.HasValue ? value.Value.ToString("u") : "Not completed";
     }
 
     private sealed record MentorContext(

@@ -47,6 +47,7 @@ export const PERMISSIONS = Object.freeze({
   LEARNING_MODULE_QUIZ_ATTEMPT_CREATE_SELF: "learning_module_quiz_attempt.create.self",
   LEARNING_MODULE_QUIZ_ATTEMPT_SUBMIT_SELF: "learning_module_quiz_attempt.submit.self",
   LEARNING_MODULE_CHAT_USE_ENROLLED: "learning_module_chat.use.enrolled",
+  AI_MENTOR_CHAT_USE_SELF: "ai_mentor_chat.use.self",
 
   LEARNING_MODULE_VIEW_OWN: "learning_module.view.own",
   LEARNING_MODULE_CREATE_OWN: "learning_module.create.own",
