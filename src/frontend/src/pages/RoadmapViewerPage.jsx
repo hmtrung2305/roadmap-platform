@@ -171,8 +171,11 @@ export default function RoadmapViewerPage() {
   useEffect(() => {
     if (!isGuideOpen || !guideTargetSelector) {
       lastGuideTargetRectRef.current = null;
-      setGuideTargetRect(null);
-      return;
+      const clearFrameId = window.requestAnimationFrame(() => {
+        setGuideTargetRect(null);
+      });
+
+      return () => window.cancelAnimationFrame(clearFrameId);
     }
 
     let animationFrameId = 0;
@@ -262,13 +265,15 @@ export default function RoadmapViewerPage() {
     if (!returnNode) return;
 
     openedReturnNodeRef.current = returnKey;
-    setGuideStep(5);
-    setIsGuideOpen(true);
 
-    window.requestAnimationFrame(() => {
+    const openFrameId = window.requestAnimationFrame(() => {
+      setGuideStep(5);
+      setIsGuideOpen(true);
       focusFlowNode(returnNodeId);
       loadNodeDetail(returnNode);
     });
+
+    return () => window.cancelAnimationFrame(openFrameId);
   }, [returnNodeId, roadmapVersionId, nodeLookup, flowInstance]);
 
   const handleNodeClick = useCallback(
