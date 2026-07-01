@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.PermissionRole;
 using RoadmapPlatform.Application.DTOs.Permissions;
 using RoadmapPlatform.Application.DTOs.Role;
@@ -53,6 +54,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             var role = await _dbContext.Roles.FindAsync(roleId);
 
             if (role == null) throw new NotFoundException("Not found role");
+            EnsureRoleCanBeRenamedOrDeleted(role);
 
             _dbContext.Roles.Remove(role);
 
@@ -91,6 +93,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
                 .FirstOrDefaultAsync(r => r.RoleId == roleId);
 
             if (role == null) throw new NotFoundException("Not found role");
+            EnsureRoleCanBeRenamedOrDeleted(role);
 
             var roleNameExists = await _dbContext.Roles
                 .AnyAsync(r =>
@@ -159,6 +162,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             var removePermissionIds = currentPermissionIds
                 .Except(requestPermissionIds)
                 .ToList();
+            EnsureAdminPermissionsAreNotRevoked(role, removePermissionIds);
 
             if (removePermissionIds.Any())
             {
@@ -213,6 +217,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             var permissionRole = role.PermissionRoles.FirstOrDefault(pr => pr.PermissionId == permissionId);
             if (permissionRole != null)
             {
+                EnsureAdminPermissionsAreNotRevoked(role, [permissionId]);
                 _dbContext.PermissionRoles.Remove(permissionRole);
                 await _dbContext.SaveChangesAsync();
                 _permissionCache.Invalidate();
@@ -279,6 +284,25 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
                 throw new ArgumentException("Role name is required");
 
             return roleName.Trim().ToLowerInvariant();
+        }
+
+        private static void EnsureRoleCanBeRenamedOrDeleted(Role role)
+        {
+            if (IsProtectedAdminRole(role))
+                throw new ForbiddenException("The built-in admin role cannot be renamed or deleted.");
+        }
+
+        private static void EnsureAdminPermissionsAreNotRevoked(Role role, IReadOnlyCollection<Guid> permissionIds)
+        {
+            if (permissionIds.Count == 0 || !IsProtectedAdminRole(role))
+                return;
+
+            throw new ForbiddenException("Permissions cannot be revoked from the built-in admin role.");
+        }
+
+        private static bool IsProtectedAdminRole(Role role)
+        {
+            return string.Equals(role.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

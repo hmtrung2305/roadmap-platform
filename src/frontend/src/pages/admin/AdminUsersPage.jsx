@@ -47,6 +47,10 @@ function getRoleName(role) {
   return role?.roleName || role?.RoleName || "";
 }
 
+function isAdminRole(role) {
+  return getRoleName(role).trim().toLowerCase() === "admin";
+}
+
 function sortByName(items, getName) {
   return [...items].sort((first, second) => getName(first).localeCompare(getName(second)));
 }
@@ -98,6 +102,8 @@ export default function AdminUsersPage() {
   const selectedUser = useMemo(() => {
     return users.find((user) => getUserId(user) === selectedUserId) || null;
   }, [selectedUserId, users]);
+  const currentUserId = getUserId(currentUser);
+  const isSelectedCurrentUser = Boolean(selectedUserId && selectedUserId === currentUserId);
 
   useEffect(() => {
     loadAdminUsers();
@@ -376,7 +382,8 @@ export default function AdminUsersPage() {
                       const roleId = getRoleId(role);
                       const roleName = getRoleName(role);
                       const isAssigned = selectedUserRoleIds.has(roleId);
-                      const canToggle = isAssigned ? canRevokeUserRole : canAssignUserRole;
+                      const isSelfAdminRevoke = isSelectedCurrentUser && isAssigned && isAdminRole(role);
+                      const canToggle = !isSelfAdminRevoke && (isAssigned ? canRevokeUserRole : canAssignUserRole);
                       const isBusy = mutatingRoleId === roleId;
 
                       return (
@@ -388,6 +395,11 @@ export default function AdminUsersPage() {
                             <div className="mt-1 text-xs font-semibold text-slate-500">
                               Role ID {roleId}
                             </div>
+                            {isSelfAdminRevoke && (
+                              <div className="mt-1 text-xs font-extrabold text-[#1F6F5F]">
+                                Protected on your account
+                              </div>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -398,7 +410,13 @@ export default function AdminUsersPage() {
                                 ? "border-[#1F6F5F] bg-[#1F6F5F]"
                                 : "border-slate-300 bg-slate-200"
                             } disabled:cursor-not-allowed disabled:opacity-50`}
-                            title={isAssigned ? "Requires user_role.revoke.any" : "Requires user_role.assign.any"}
+                            title={
+                              isSelfAdminRevoke
+                                ? "You cannot revoke your own admin role"
+                                : isAssigned
+                                  ? "Requires user_role.revoke.any"
+                                  : "Requires user_role.assign.any"
+                            }
                           >
                             <span
                               className={`absolute top-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] text-[#1F6F5F] shadow transition ${

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Permissions;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.Identity;
@@ -48,9 +49,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
         {
             var permission = await _dbContext.Permissions
                 .Include(p => p.PermissionRoles)
+                    .ThenInclude(permissionRole => permissionRole.Role)
                 .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
 
             if (permission == null) throw new NotFoundException("Permission not found");
+            EnsurePermissionCanBeRenamedOrDeleted(permission);
 
             if (permission.PermissionRoles.Count > 0)
             {
@@ -98,8 +101,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
         public async Task<PermissionResponseDto> UpdatePermissionAsync(Guid permissionId, UpdatePermissionRequestDto updatePermissionRequest)
         {
             var permissionName = NormalizePermissionName(updatePermissionRequest.PermissionName);
-            var permission = await _dbContext.Permissions.FindAsync(permissionId);
+            var permission = await _dbContext.Permissions
+                .Include(p => p.PermissionRoles)
+                    .ThenInclude(permissionRole => permissionRole.Role)
+                .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
             if (permission == null) throw new NotFoundException("Not Found Permissions");
+            EnsurePermissionCanBeRenamedOrDeleted(permission);
 
 
             var existedPermission = await _dbContext.Permissions.AnyAsync(p =>
@@ -131,6 +138,19 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
                 throw new ArgumentException("Permission name must follow resource.action.scope");
 
             return normalizedPermissionName;
+        }
+
+        private static void EnsurePermissionCanBeRenamedOrDeleted(Permission permission)
+        {
+            if (PermissionConstant.All.Contains(permission.PermissionName))
+                throw new ForbiddenException("System permissions cannot be renamed or deleted.");
+
+            if (permission.PermissionRoles.Any(permissionRole =>
+                permissionRole.Role != null &&
+                string.Equals(permissionRole.Role.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ForbiddenException("Permissions assigned to the built-in admin role cannot be renamed or deleted.");
+            }
         }
     }
 }

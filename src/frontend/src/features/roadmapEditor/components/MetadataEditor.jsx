@@ -54,6 +54,7 @@ export default function MetadataEditor({ detail, form, setForm, isSaving, isDirt
               onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
               rows={4}
               className={`${inputClass} min-h-28 resize-y`}
+              disabled={!isEditable}
             />
           </ModuleField>
         </div>

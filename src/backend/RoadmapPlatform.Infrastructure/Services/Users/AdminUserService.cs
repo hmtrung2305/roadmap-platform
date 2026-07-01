@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Role;
 using RoadmapPlatform.Application.DTOs.Users;
 using RoadmapPlatform.Application.Exceptions;
@@ -78,14 +79,17 @@ public sealed class AdminUserService : IAdminUserService
         return await GetUserByIdAsync(userId);
     }
 
-    public async Task<AdminUserResponseDto> RevokeUserRoleAsync(Guid userId, Guid roleId)
+    public async Task<AdminUserResponseDto> RevokeUserRoleAsync(Guid userId, Guid roleId, Guid actorUserId)
     {
         var user = await GetUserWithRolesAsync(userId);
 
         if (user == null)
             throw new NotFoundException("User was not found");
 
-        await EnsureRoleExistsAsync(roleId);
+        var role = await GetRoleOrThrowAsync(roleId);
+
+        if (userId == actorUserId && IsAdminRole(role))
+            throw new ForbiddenException("You cannot revoke your own admin role.");
 
         var userRole = user.UserRoles.FirstOrDefault(assignment => assignment.RoleId == roleId);
         if (userRole != null)
@@ -108,10 +112,24 @@ public sealed class AdminUserService : IAdminUserService
 
     private async Task EnsureRoleExistsAsync(Guid roleId)
     {
-        var exists = await _dbContext.Roles.AnyAsync(role => role.RoleId == roleId);
+        await GetRoleOrThrowAsync(roleId);
+    }
 
-        if (!exists)
+    private async Task<Role> GetRoleOrThrowAsync(Guid roleId)
+    {
+        var role = await _dbContext.Roles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.RoleId == roleId);
+
+        if (role == null)
             throw new NotFoundException("Role was not found");
+
+        return role;
+    }
+
+    private static bool IsAdminRole(Role role)
+    {
+        return string.Equals(role.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase);
     }
 
     private static AdminUserResponseDto MapUser(User user)

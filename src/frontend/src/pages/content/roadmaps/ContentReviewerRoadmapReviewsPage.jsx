@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   ClipboardCheck,
-  Eye,
   FileText,
   GitPullRequest,
   Layers3,
   Loader2,
   MessageSquare,
   RefreshCw,
-  X,
   XCircle,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -33,7 +30,6 @@ import {
 import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
 
 export default function ContentReviewerRoadmapReviewsPage() {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState(null);
   const [selectedDetail, setSelectedDetail] = useState(null);
@@ -41,8 +37,7 @@ export default function ContentReviewerRoadmapReviewsPage() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState("");
   const [mutatingVersionId, setMutatingVersionId] = useState("");
-  const [rejectTarget, setRejectTarget] = useState(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [reviewSuggestion, setReviewSuggestion] = useState("");
   const selectedRoadmapRef = useRef(null);
 
   const loadReviewDetail = useCallback(async (roadmap) => {
@@ -53,6 +48,7 @@ export default function ContentReviewerRoadmapReviewsPage() {
 
     selectedRoadmapRef.current = roadmap;
     setSelectedRoadmap(roadmap);
+    setReviewSuggestion("");
     setIsLoadingDetail(true);
     setError("");
 
@@ -123,13 +119,20 @@ export default function ContentReviewerRoadmapReviewsPage() {
     };
   }, [loadReviews]);
 
-  const reviewEvents = selectedDetail?.reviewEvents || selectedRoadmap?.reviewEvents || [];
+  const reviewEvents = useMemo(
+    () => selectedDetail?.reviewEvents || selectedRoadmap?.reviewEvents || [],
+    [selectedDetail?.reviewEvents, selectedRoadmap?.reviewEvents],
+  );
   const latestSubmittedEvent = useMemo(
     () => findLatestReviewEvent(reviewEvents, "submitted"),
     [reviewEvents],
   );
-  const topNodes = useMemo(
-    () => (selectedDetail?.nodes || []).slice(0, 12),
+  const outlineNodes = useMemo(
+    () => [...(selectedDetail?.nodes || [])].sort((first, second) => {
+      const firstOrder = Number(first.orderIndex ?? first.OrderIndex ?? 0);
+      const secondOrder = Number(second.orderIndex ?? second.OrderIndex ?? 0);
+      return firstOrder - secondOrder;
+    }),
     [selectedDetail],
   );
 
@@ -150,36 +153,24 @@ export default function ContentReviewerRoadmapReviewsPage() {
     }
   }
 
-  function openRejectDialog(roadmap) {
-    if (!roadmap?.roadmapVersionId || mutatingVersionId) return;
+  async function handleRequestChanges(roadmap) {
+    if (!roadmap?.roadmapVersionId || mutatingVersionId || !reviewSuggestion.trim()) return;
 
-    setRejectTarget(roadmap);
-    setRejectReason("");
-  }
-
-  async function confirmReject() {
-    if (!rejectTarget?.roadmapVersionId || mutatingVersionId || !rejectReason.trim()) return;
-
-    setMutatingVersionId(rejectTarget.roadmapVersionId);
+    setMutatingVersionId(roadmap.roadmapVersionId);
     setError("");
 
     try {
-      await contentManagerRoadmapApi.rejectVersion(rejectTarget.roadmapVersionId, {
-        reason: rejectReason.trim(),
+      await contentManagerRoadmapApi.rejectVersion(roadmap.roadmapVersionId, {
+        reason: reviewSuggestion.trim(),
       });
       toast.success("Roadmap version returned for changes.");
-      setRejectTarget(null);
-      setRejectReason("");
+      setReviewSuggestion("");
       await loadReviews();
     } catch (requestError) {
       setError(getFriendlyApiErrorMessage(requestError, "Unable to reject roadmap version."));
     } finally {
       setMutatingVersionId("");
     }
-  }
-
-  function openEditor(roadmap) {
-    navigate(`/content/roadmaps/${roadmap.roadmapId}/edit?versionId=${roadmap.roadmapVersionId}&from=reviews`);
   }
 
   const activeRoadmap = selectedDetail || selectedRoadmap;
@@ -292,13 +283,13 @@ export default function ContentReviewerRoadmapReviewsPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <ModuleButton variant="secondary" onClick={() => openEditor(activeRoadmap)} disabled={Boolean(mutatingVersionId)}>
-                          <Eye size={14} />
-                          Open editor
-                        </ModuleButton>
-                        <ModuleButton variant="danger" onClick={() => openRejectDialog(activeRoadmap)} disabled={Boolean(mutatingVersionId)}>
+                        <ModuleButton
+                          variant="danger"
+                          onClick={() => handleRequestChanges(activeRoadmap)}
+                          disabled={Boolean(mutatingVersionId) || !reviewSuggestion.trim()}
+                        >
                           {mutatingVersionId === activeRoadmap.roadmapVersionId ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
-                          Reject
+                          Request changes
                         </ModuleButton>
                         <ModuleButton onClick={() => handleApprove(activeRoadmap)} disabled={Boolean(mutatingVersionId)}>
                           {mutatingVersionId === activeRoadmap.roadmapVersionId ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
@@ -315,6 +306,16 @@ export default function ContentReviewerRoadmapReviewsPage() {
                     </div>
                   ) : (
                     <div className="space-y-5 p-5">
+                      <ReviewPanel icon={<MessageSquare size={17} />} title="Review suggestion">
+                        <textarea
+                          className={`${inputClass} min-h-[120px] resize-y bg-white`}
+                          value={reviewSuggestion}
+                          onChange={(event) => setReviewSuggestion(event.target.value)}
+                          placeholder="Suggest what the content manager should change before approval."
+                          maxLength={4000}
+                        />
+                      </ReviewPanel>
+
                       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
                         <ReviewPanel
                           icon={<MessageSquare size={17} />}
@@ -337,11 +338,11 @@ export default function ContentReviewerRoadmapReviewsPage() {
                       </section>
 
                       <ReviewPanel icon={<Layers3 size={17} />} title="Node outline">
-                        {topNodes.length === 0 ? (
+                        {outlineNodes.length === 0 ? (
                           <p className="text-sm font-semibold text-slate-600">No nodes were returned for this version.</p>
                         ) : (
-                          <div className="grid gap-2 md:grid-cols-2">
-                            {topNodes.map((node) => (
+                          <div className="grid max-h-[460px] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+                            {outlineNodes.map((node) => (
                               <article key={node.roadmapNodeId} className="rounded-lg border border-[#B9D8CC]/70 bg-white p-3">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <ModuleBadge tone="slate">{node.nodeType}</ModuleBadge>
@@ -366,16 +367,18 @@ export default function ContentReviewerRoadmapReviewsPage() {
                         ) : (
                           <div className="grid gap-3">
                             {reviewEvents.map((event) => (
-                              <article key={event.roadmapVersionReviewEventId || `${event.eventType}-${event.createdAt}`} className="rounded-lg border border-[#B9D8CC]/70 bg-white p-3">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <span className="text-xs font-extrabold uppercase tracking-wide text-[#1F6F5F]">
+                              <article key={event.roadmapVersionReviewEventId || `${event.eventType}-${event.createdAt}`} className="grid gap-3 rounded-lg border border-[#B9D8CC]/70 bg-white p-3 md:grid-cols-[150px_minmax(0,1fr)]">
+                                <div className="space-y-1">
+                                  <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide ${getReviewEventTone(event.eventType)}`}>
                                     {getReviewEventLabel(event.eventType)}
                                   </span>
-                                  <span className="text-[11px] font-bold text-slate-500">{formatDate(event.createdAt)}</span>
+                                  <div className="text-[11px] font-bold text-slate-500">{formatDate(event.createdAt)}</div>
                                 </div>
-                                <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
-                                  {event.message}
-                                </p>
+                                <div className="min-w-0">
+                                  <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                                    {event.message || "No message recorded."}
+                                  </p>
+                                </div>
                               </article>
                             ))}
                           </div>
@@ -389,17 +392,6 @@ export default function ContentReviewerRoadmapReviewsPage() {
           </div>
         )}
 
-        <RejectDialog
-          roadmap={rejectTarget}
-          reason={rejectReason}
-          setReason={setRejectReason}
-          isRejecting={Boolean(mutatingVersionId)}
-          onClose={() => {
-            setRejectTarget(null);
-            setRejectReason("");
-          }}
-          onConfirm={confirmReject}
-        />
       </div>
     </ModulePageShell>
   );
@@ -417,51 +409,6 @@ function ReviewPanel({ icon, title, children }) {
   );
 }
 
-function RejectDialog({ roadmap, reason, setReason, isRejecting, onClose, onConfirm }) {
-  if (!roadmap) return null;
-
-  const canReject = reason.trim().length > 0;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-[#B9D8CC] bg-white shadow-2xl">
-        <div className="flex items-center justify-between gap-3 border-b border-[#B9D8CC]/70 p-4">
-          <div>
-            <h2 className="text-base font-extrabold text-[#18332D]">Reject roadmap version</h2>
-            <p className="mt-1 text-xs font-semibold text-slate-600">{roadmap.title}</p>
-          </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 transition hover:bg-[#F7F1E8] hover:text-[#18332D]">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="space-y-3 p-4">
-          <label className="block">
-            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-700">
-              Reject reason
-            </span>
-            <textarea
-              className={`${inputClass} min-h-[140px] resize-y`}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="Explain what needs to be changed before this roadmap can be approved."
-              maxLength={4000}
-            />
-          </label>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-[#B9D8CC]/70 p-4">
-          <ModuleButton variant="secondary" onClick={onClose} disabled={isRejecting}>Cancel</ModuleButton>
-          <ModuleButton variant="danger" onClick={onConfirm} disabled={!canReject || isRejecting}>
-            {isRejecting ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
-            Reject
-          </ModuleButton>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function findLatestReviewEvent(events, eventType) {
   return [...(events || [])]
     .filter((event) => String(event.eventType || "").toLowerCase() === eventType)
@@ -470,8 +417,15 @@ function findLatestReviewEvent(events, eventType) {
 
 function getReviewEventLabel(eventType) {
   const normalized = String(eventType || "").toLowerCase();
-  if (normalized === "submitted") return "Submitted";
+  if (normalized === "submitted") return "Changelog";
   if (normalized === "rejected") return "Rejected";
   if (normalized === "approved") return "Approved";
   return eventType || "Review note";
+}
+
+function getReviewEventTone(eventType) {
+  const normalized = String(eventType || "").toLowerCase();
+  if (normalized === "approved") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (normalized === "rejected") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-[#B9D8CC] bg-white text-[#1F6F5F]";
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.Users;
 using RoadmapPlatform.Application.Interfaces.Users;
@@ -65,7 +66,7 @@ public sealed class AdminUsersController : ControllerBase
     [RequirePermission(PermissionConstant.USER_ROLE_REVOKE_ANY)]
     public async Task<ActionResult<AdminUserResponseDto>> RevokeRole(Guid userId, Guid roleId)
     {
-        var user = await _adminUserService.RevokeUserRoleAsync(userId, roleId);
+        var user = await _adminUserService.RevokeUserRoleAsync(userId, roleId, User.GetUserId());
 
         return Ok(new
         {

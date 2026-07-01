@@ -29,6 +29,8 @@ const PAGE_PERMISSIONS = [
   PERMISSIONS.ROLE_PERMISSION_VIEW_ANY,
 ];
 
+const SYSTEM_PERMISSION_NAMES = new Set(Object.values(PERMISSIONS));
+
 const RESOURCE_LABELS = {
   account: "Account",
   auth_provider: "Auth Providers",
@@ -120,6 +122,14 @@ function getPermissionId(permission) {
 
 function getPermissionName(permission) {
   return permission?.permissionName || permission?.PermissionName || "";
+}
+
+function isAdminRoleName(roleName) {
+  return String(roleName || "").trim().toLowerCase() === "admin";
+}
+
+function isSystemPermissionName(permissionName) {
+  return SYSTEM_PERMISSION_NAMES.has(String(permissionName || "").trim().toLowerCase());
 }
 
 function getResource(permissionName) {
@@ -251,6 +261,7 @@ export default function AdminRolesPermissionsPage() {
     sortByName(filterBySearch(permissions, getPermissionName, catalogSearch), getPermissionName)
   ), [catalogSearch, permissions]);
 
+  const isSelectedAdminRole = isAdminRoleName(selectedRoleName);
   const roleNameChanged = roleNameDraft.trim().toLowerCase() !== selectedRoleName.trim().toLowerCase();
 
   useEffect(() => {
@@ -340,7 +351,7 @@ export default function AdminRolesPermissionsPage() {
 
   async function handleSaveRoleName(event) {
     event.preventDefault();
-    if (!canUpdateRole || !selectedRoleId || !roleNameDraft.trim() || !roleNameChanged) return;
+    if (!canUpdateRole || isSelectedAdminRole || !selectedRoleId || !roleNameDraft.trim() || !roleNameChanged) return;
 
     setIsSavingRole(true);
     setActionError("");
@@ -358,7 +369,7 @@ export default function AdminRolesPermissionsPage() {
   }
 
   async function handleDeleteRole() {
-    if (!canDeleteRole || !selectedRoleId) return;
+    if (!canDeleteRole || isSelectedAdminRole || !selectedRoleId) return;
 
     const confirmed = window.confirm(`Delete role "${selectedRoleName}"?`);
     if (!confirmed) return;
@@ -384,7 +395,7 @@ export default function AdminRolesPermissionsPage() {
     const permissionId = getPermissionId(permission);
     const permissionName = getPermissionName(permission);
     const isAssigned = assignedPermissionIds.has(permissionId);
-    const canToggle = isAssigned ? canRevokeRolePermission : canAssignRolePermission;
+    const canToggle = !isSelectedAdminRole && (isAssigned ? canRevokeRolePermission : canAssignRolePermission);
 
     if (!canToggle || mutatingPermissionId) return;
 
@@ -432,7 +443,8 @@ export default function AdminRolesPermissionsPage() {
   }
 
   async function handleUpdatePermission(permissionId) {
-    if (!canUpdatePermission || !permissionDraftName.trim()) return;
+    const permission = permissions.find((item) => getPermissionId(item) === permissionId);
+    if (!canUpdatePermission || isSystemPermissionName(getPermissionName(permission)) || !permissionDraftName.trim()) return;
 
     setSavingPermissionId(permissionId);
     setActionError("");
@@ -457,6 +469,7 @@ export default function AdminRolesPermissionsPage() {
     const permissionName = getPermissionName(permission);
 
     if (!canDeletePermission || !permissionId) return;
+    if (isSystemPermissionName(permissionName)) return;
 
     const confirmed = window.confirm(`Delete permission "${permissionName}"?`);
     if (!confirmed) return;
@@ -617,13 +630,13 @@ export default function AdminRolesPermissionsPage() {
                       <input
                         value={roleNameDraft}
                         onChange={(event) => setRoleNameDraft(event.target.value)}
-                        disabled={!canUpdateRole}
+                        disabled={!canUpdateRole || isSelectedAdminRole}
                         className="h-11 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-3 text-base font-black text-[#18332D] outline-none focus:border-[#6FCF97] disabled:bg-slate-50 disabled:text-slate-500"
                       />
                       {canUpdateRole && (
                         <button
                           type="submit"
-                          disabled={isSavingRole || !roleNameChanged || !roleNameDraft.trim()}
+                          disabled={isSelectedAdminRole || isSavingRole || !roleNameChanged || !roleNameDraft.trim()}
                           className="inline-flex h-11 items-center gap-2 rounded-md bg-[#1F6F5F] px-4 text-sm font-extrabold text-white transition hover:bg-[#18584c] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {isSavingRole ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
@@ -631,10 +644,16 @@ export default function AdminRolesPermissionsPage() {
                         </button>
                       )}
                     </div>
+                    {isSelectedAdminRole && (
+                      <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#1F6F5F]">
+                        <LockKeyhole size={13} />
+                        Built-in admin role is protected
+                      </p>
+                    )}
                   </label>
                 </form>
 
-                {canDeleteRole && (
+                {canDeleteRole && !isSelectedAdminRole && (
                   <button
                     type="button"
                     onClick={handleDeleteRole}
@@ -715,7 +734,7 @@ export default function AdminRolesPermissionsPage() {
                               const permissionId = getPermissionId(permission);
                               const permissionName = getPermissionName(permission);
                               const isAssigned = assignedPermissionIds.has(permissionId);
-                              const canToggle = isAssigned ? canRevokeRolePermission : canAssignRolePermission;
+                              const canToggle = !isSelectedAdminRole && (isAssigned ? canRevokeRolePermission : canAssignRolePermission);
                               const isBusy = mutatingPermissionId === permissionId;
 
                               return (
@@ -737,7 +756,13 @@ export default function AdminRolesPermissionsPage() {
                                         ? "border-[#1F6F5F] bg-[#1F6F5F]"
                                         : "border-slate-300 bg-slate-200"
                                     } disabled:cursor-not-allowed disabled:opacity-50`}
-                                    title={isAssigned ? "Requires role_permission.revoke.any" : "Requires role_permission.assign.any"}
+                                    title={
+                                      isSelectedAdminRole
+                                        ? "Built-in admin role permissions are protected"
+                                        : isAssigned
+                                          ? "Requires role_permission.revoke.any"
+                                          : "Requires role_permission.assign.any"
+                                    }
                                   >
                                     <span
                                       className={`absolute top-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] text-[#1F6F5F] shadow transition ${
@@ -821,6 +846,7 @@ export default function AdminRolesPermissionsPage() {
                     const permissionId = getPermissionId(permission);
                     const permissionName = getPermissionName(permission);
                     const isEditing = editingPermissionId === permissionId;
+                    const isSystemPermission = isSystemPermissionName(permissionName);
 
                     return (
                       <div key={permissionId} className="rounded-md border border-slate-200 bg-slate-50 p-3">
@@ -835,7 +861,7 @@ export default function AdminRolesPermissionsPage() {
                               <button
                                 type="button"
                                 onClick={() => handleUpdatePermission(permissionId)}
-                                disabled={savingPermissionId === permissionId || !permissionDraftName.trim()}
+                                disabled={isSystemPermission || savingPermissionId === permissionId || !permissionDraftName.trim()}
                                 className="grid h-8 w-8 place-items-center rounded-md bg-[#1F6F5F] text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 title="Save permission"
                               >
@@ -865,7 +891,15 @@ export default function AdminRolesPermissionsPage() {
                               </div>
                             </div>
                             <div className="flex shrink-0 gap-1">
-                              {canUpdatePermission && (
+                              {isSystemPermission && (
+                                <span
+                                  className="grid h-8 w-8 place-items-center rounded-md border border-[#B9D8CC] bg-white text-[#1F6F5F]"
+                                  title="System permission"
+                                >
+                                  <LockKeyhole size={14} />
+                                </span>
+                              )}
+                              {canUpdatePermission && !isSystemPermission && (
                                 <button
                                   type="button"
                                   onClick={() => startEditingPermission(permission)}
@@ -875,7 +909,7 @@ export default function AdminRolesPermissionsPage() {
                                   <Pencil size={14} />
                                 </button>
                               )}
-                              {canDeletePermission && (
+                              {canDeletePermission && !isSystemPermission && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeletePermission(permission)}

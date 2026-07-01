@@ -169,6 +169,8 @@ Assigned to: `admin`
 
 Admin is a platform governance role. It does not receive roadmap authoring or review permissions by default. If a real admin account must author roadmaps or review submissions, assign `content_manager` or `reviewer` explicitly in addition to `admin`.
 
+The built-in `admin` role is protected. Platform governance screens and services must not allow the built-in admin role to be renamed, deleted, or stripped of permissions. An admin user also cannot revoke their own `admin` role. They can still revoke the `admin` role from another account when they have `user_role.revoke.any`.
+
 ### User governance
 
 | Permission | Purpose |
@@ -207,6 +209,16 @@ Admin is a platform governance role. It does not receive roadmap authoring or re
 | `user_role.view.any` | View user-role assignments |
 | `user_role.assign.any` | Assign roles to users |
 | `user_role.revoke.any` | Revoke roles from users |
+
+### Governance safeguards
+
+| Rule | Behavior |
+|---|---|
+| Built-in admin role rename/delete | Blocked |
+| Built-in admin permission removal | Blocked |
+| Current user revoking own admin role | Blocked |
+| Admin role revocation from another account | Allowed when the actor has `user_role.revoke.any` |
+| Built-in/system permission rename/delete | Blocked |
 
 ### Skill and system governance
 

@@ -10,5 +10,5 @@ public interface IAdminUserService
 
     Task<AdminUserResponseDto> AssignUserRoleAsync(Guid userId, Guid roleId);
 
-    Task<AdminUserResponseDto> RevokeUserRoleAsync(Guid userId, Guid roleId);
+    Task<AdminUserResponseDto> RevokeUserRoleAsync(Guid userId, Guid roleId, Guid actorUserId);
 }

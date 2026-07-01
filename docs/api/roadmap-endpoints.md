@@ -20,6 +20,7 @@ RoadmapSummaryDto
 RoadmapDetailDto
 RoadmapGraphDto
 RoadmapVersionUpdateDto
+RoadmapVersionHistoryItemDto
 RoadmapNodeDetailDto
 RoadmapLearningModuleDto
 ```
@@ -28,7 +29,7 @@ RoadmapLearningModuleDto
 
 Roadmap endpoints expose published public roadmap data.
 
-The list endpoint returns summary cards. The graph endpoint returns lightweight graph data for the roadmap viewer. Node detail is lazy-loaded separately and includes skills, learning resources, and published learning modules mapped to the node's skills.
+The list endpoint returns summary cards. The graph endpoint returns lightweight graph data for the roadmap viewer. Node detail is lazy-loaded separately and includes skills, learning resources, and published learning modules mapped to the node's skills. Detail and graph responses include `versionHistory` so learners can view changelog entries across published roadmap versions.
 
 Authenticated users may receive enrollment, progress data, and update notices in roadmap responses. Anonymous users can still view published public roadmap data.
 
@@ -47,7 +48,7 @@ Authenticated users may receive enrollment, progress data, and update notices in
 |---|---|
 | Auth required | No |
 | Optional auth behavior | If authenticated, `ClaimTypes.NameIdentifier` is used to include enrollment progress |
-| Anonymous behavior | Returns roadmap data with `enrollment = null`, `availableUpdate = null`, and computed default progress |
+| Anonymous behavior | Returns roadmap data with `enrollment = null`, `availableUpdate = null`, computed default progress, and public `versionHistory` |
 
 ## Common Response Notes
 
@@ -83,6 +84,13 @@ Body:
     "roadmapType": "career_role",
     "sourceType": "static",
     "visibility": "public",
+    "versionNumber": 1,
+    "majorVersion": 1,
+    "minorVersion": 0,
+    "patchVersion": 0,
+    "versionLabel": "v1.0.0",
+    "releaseType": "major",
+    "createdFromVersionId": null,
     "estimatedTotalHours": 400,
     "estimatedRequiredHours": 320.0,
     "estimatedOptionalHours": 80.0,
@@ -113,6 +121,13 @@ Body:
 | `roadmapType` | `string` | Roadmap category/type |
 | `sourceType` | `string` | Example: `static` |
 | `visibility` | `string` | Public roadmaps only for this endpoint |
+| `versionNumber` | `number` | Internal monotonic version number |
+| `majorVersion` | `number` | Semantic major version |
+| `minorVersion` | `number` | Semantic minor version |
+| `patchVersion` | `number` | Semantic patch version |
+| `versionLabel` | `string` | Display label, for example `v1.0.0` |
+| `releaseType` | `string` | `major`, `minor`, or `patch` |
+| `createdFromVersionId` | `guid/null` | Source version id for update drafts and derived versions |
 | `estimatedTotalHours` | `number/null` | Seeded total hours |
 | `estimatedRequiredHours` | `number` | Calculated required hours |
 | `estimatedOptionalHours` | `number` | Calculated optional hours |
@@ -162,6 +177,12 @@ Body:
   "sourceType": "static",
   "visibility": "public",
   "versionNumber": 1,
+  "majorVersion": 1,
+  "minorVersion": 0,
+  "patchVersion": 0,
+  "versionLabel": "v1.0.0",
+  "releaseType": "major",
+  "createdFromVersionId": null,
   "estimatedTotalHours": 400,
   "estimatedRequiredHours": 320.0,
   "estimatedOptionalHours": 80.0,
@@ -179,6 +200,23 @@ Body:
   },
   "enrollment": null,
   "availableUpdate": null,
+  "versionHistory": [
+    {
+      "roadmapVersionId": "22222222-2222-2222-2222-222222222222",
+      "versionNumber": 1,
+      "majorVersion": 1,
+      "minorVersion": 0,
+      "patchVersion": 0,
+      "versionLabel": "v1.0.0",
+      "releaseType": "major",
+      "status": "published",
+      "title": "Frontend Developer Roadmap",
+      "description": "A structured roadmap for frontend development.",
+      "changeLog": "Initial published roadmap.",
+      "createdAt": "2026-07-01T07:00:00Z",
+      "publishedAt": "2026-07-01T07:30:00Z"
+    }
+  ],
   "trackableNodeCount": 28,
   "completedNodeCount": 0,
   "progressPercent": 0,
@@ -197,6 +235,7 @@ Body:
 | Authenticated user enrolled | Includes `enrollment` and saved/computed progress |
 | Authenticated user enrolled on an older version | Latest published minor/major response includes `availableUpdate` so the learner can migrate manually |
 | Anonymous user | `enrollment = null` |
+| Version history | Includes published and archived versions for the same roadmap, newest first |
 | Full detail payload | Includes full node descriptions, resources, skills, outcomes, criteria, and edges |
 
 > [!NOTE]
@@ -233,6 +272,12 @@ Body:
   "sourceType": "static",
   "visibility": "public",
   "versionNumber": 1,
+  "majorVersion": 1,
+  "minorVersion": 0,
+  "patchVersion": 0,
+  "versionLabel": "v1.0.0",
+  "releaseType": "major",
+  "createdFromVersionId": null,
   "estimatedTotalHours": 400,
   "estimatedRequiredHours": 320.0,
   "estimatedOptionalHours": 80.0,
@@ -259,6 +304,23 @@ Body:
     "publishedAt": "2026-07-01T07:30:00Z",
     "progressPercent": 24.5
   },
+  "versionHistory": [
+    {
+      "roadmapVersionId": "22222222-2222-2222-2222-222222222222",
+      "versionNumber": 2,
+      "majorVersion": 1,
+      "minorVersion": 1,
+      "patchVersion": 0,
+      "versionLabel": "v1.1.0",
+      "releaseType": "minor",
+      "status": "published",
+      "title": "Frontend Developer Roadmap",
+      "description": "Added deployment and testing guidance.",
+      "changeLog": "Added deployment checklist and refreshed testing nodes.",
+      "createdAt": "2026-07-01T07:00:00Z",
+      "publishedAt": "2026-07-01T07:30:00Z"
+    }
+  ],
   "trackableNodeCount": 28,
   "completedNodeCount": 0,
   "progressPercent": 0,
@@ -319,6 +381,37 @@ Body:
 | Response size | Omits long node body fields such as descriptions, resources, skills, outcomes, and criteria |
 | Progress | Includes computed progress for every graph node |
 | Frontend use | Intended for ReactFlow graph rendering |
+| Version history | Includes published and archived versions for changelog display |
+
+## `versionHistory`
+
+`versionHistory` appears on both full detail and graph responses. It is public roadmap metadata and is visible to learners.
+
+| Field | Type | Notes |
+|---|---|---|
+| `roadmapVersionId` | `guid` | Version id |
+| `versionNumber` | `number` | Internal monotonic version number |
+| `majorVersion` | `number` | Semantic major version |
+| `minorVersion` | `number` | Semantic minor version |
+| `patchVersion` | `number` | Semantic patch version |
+| `versionLabel` | `string` | Display label, for example `v1.1.0` |
+| `releaseType` | `string` | `major`, `minor`, or `patch` |
+| `status` | `string` | `published` or `archived` |
+| `title` | `string` | Version title |
+| `description` | `string/null` | Version description |
+| `changeLog` | `string/null` | Latest `submitted` review event message for the version |
+| `createdAt` | `datetime` | Version creation timestamp |
+| `publishedAt` | `datetime/null` | Version publish timestamp |
+
+Rules:
+
+| Rule | Behavior |
+|---|---|
+| Included statuses | `published` and `archived` |
+| Sorting | Newest semantic version first |
+| Changelog source | Latest `roadmap_version_review_event` with `event_type = submitted` |
+| Missing submitted event | `changeLog = null`; clients may fall back to `description` |
+| Learner UI | Shows current learning version, latest roadmap version, and changelog by version |
 
 ## `availableUpdate`
 

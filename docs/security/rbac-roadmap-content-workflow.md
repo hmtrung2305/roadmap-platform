@@ -38,6 +38,8 @@ The backend must enforce ownership in the service layer. Controller permission c
 
 Reviewer permissions are intentionally separate from draft-edit permissions. Reviewers can review any submitted roadmap, but they do not edit drafts.
 
+The Reviewer workspace must be read-only for roadmap content. Reviewers can inspect metadata, nodes, validation results, changelog, and review history, then either approve or request changes with a written suggestion/reason. They must not receive editor controls for metadata, nodes, skill mappings, resources, or graph layout.
+
 ### Admin
 
 Admin does not receive roadmap draft or roadmap review permissions by default. Admin can manage users, roles, and permissions. To let an admin account author or review roadmaps, assign `content_manager` or `reviewer` explicitly.
@@ -56,6 +58,8 @@ Admin does not receive roadmap draft or roadmap review permissions by default. A
 | Validate draft | `roadmap_draft.update.own` or `roadmap_review.view.any` | Own permission scopes by owner; review permission can validate any submitted version |
 | Submit for review | `roadmap_review.submit.own` | Draft roadmap must be owned by current user |
 | Approve or reject | `roadmap_review.approve.any` or `roadmap_review.reject.any` | Version must be in pending review status |
+
+Reviewer request-changes actions must record review feedback as a `rejected` review event and return the version to `changes_requested`. They do not mutate roadmap content directly.
 
 Ownership failures should behave like not-found responses instead of revealing that another owner's roadmap exists.
 

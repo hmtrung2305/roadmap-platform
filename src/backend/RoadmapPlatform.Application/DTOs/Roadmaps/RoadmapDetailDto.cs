@@ -23,11 +23,29 @@ public sealed class RoadmapDetailDto
     public CareerRoleDto CareerRole { get; set; } = new();
     public RoadmapEnrollmentDto? Enrollment { get; set; }
     public RoadmapVersionUpdateDto? AvailableUpdate { get; set; }
+    public List<RoadmapVersionHistoryItemDto> VersionHistory { get; set; } = [];
     public int TrackableNodeCount { get; set; }
     public int CompletedNodeCount { get; set; }
     public decimal ProgressPercent { get; set; }
     public List<RoadmapNodeDto> Nodes { get; set; } = [];
     public List<RoadmapEdgeDto> Edges { get; set; } = [];
+}
+
+public sealed class RoadmapVersionHistoryItemDto
+{
+    public Guid RoadmapVersionId { get; set; }
+    public int VersionNumber { get; set; }
+    public int MajorVersion { get; set; }
+    public int MinorVersion { get; set; }
+    public int PatchVersion { get; set; }
+    public string VersionLabel { get; set; } = string.Empty;
+    public string ReleaseType { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? ChangeLog { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
 }
 
 public sealed class RoadmapVersionUpdateDto

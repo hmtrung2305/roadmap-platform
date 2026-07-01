@@ -425,23 +425,25 @@ function ReviewHistoryPanel({ events }) {
         </div>
       </div>
 
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="space-y-3 p-4">
         {events.map((event) => (
           <article
             key={event.roadmapVersionReviewEventId || `${event.eventType}-${event.createdAt}`}
-            className="rounded-lg border border-[#B9D8CC]/70 bg-[#F4FBF8] p-3"
+            className="grid gap-3 rounded-lg border border-[#B9D8CC]/70 bg-[#F4FBF8] p-3 md:grid-cols-[150px_minmax(0,1fr)]"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-extrabold uppercase tracking-wide text-[#1F6F5F]">
+            <div className="space-y-1">
+              <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide ${getReviewEventTone(event.eventType)}`}>
                 {getReviewEventLabel(event.eventType)}
               </span>
-              <span className="text-[11px] font-bold text-slate-500">
+              <div className="text-[11px] font-bold text-slate-500">
                 {formatDate(event.createdAt)}
-              </span>
+              </div>
             </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
-              {event.message}
-            </p>
+            <div className="min-w-0">
+              <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                {event.message || "No message recorded."}
+              </p>
+            </div>
           </article>
         ))}
       </div>
@@ -451,8 +453,15 @@ function ReviewHistoryPanel({ events }) {
 
 function getReviewEventLabel(eventType) {
   const normalized = String(eventType || "").toLowerCase();
-  if (normalized === "submitted") return "Submitted";
+  if (normalized === "submitted") return "Changelog";
   if (normalized === "rejected") return "Rejected";
   if (normalized === "approved") return "Approved";
   return eventType || "Review note";
+}
+
+function getReviewEventTone(eventType) {
+  const normalized = String(eventType || "").toLowerCase();
+  if (normalized === "approved") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (normalized === "rejected") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-[#B9D8CC] bg-white text-[#1F6F5F]";
 }

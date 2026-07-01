@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { History, X } from "lucide-react";
 import {
   Background,
   Controls,
@@ -59,6 +60,7 @@ export default function RoadmapViewerPage() {
   const [isMigratingUpdate, setIsMigratingUpdate] = useState(false);
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [flowInstance, setFlowInstance] = useState(null);
   const [isInitialViewportReady, setIsInitialViewportReady] = useState(false);
   const flowWrapperRef = useRef(null);
@@ -374,6 +376,10 @@ export default function RoadmapViewerPage() {
 
   const availableUpdate = roadmap?.availableUpdate || null;
   const isEnrolled = Boolean(roadmap?.enrollment);
+  const versionHistory = normalizeVersionHistory(roadmap);
+  const latestVersion = getLatestRoadmapVersion(roadmap, versionHistory);
+  const learningVersionLabel = getLearningVersionLabel(roadmap, availableUpdate);
+  const latestVersionLabel = getVersionLabel(latestVersion) || roadmap?.versionLabel || "-";
   const progressPercent = isEnrolled
     ? roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0
     : availableUpdate?.progressPercent ?? roadmap?.progressPercent ?? 0;
@@ -387,7 +393,7 @@ export default function RoadmapViewerPage() {
       >
         <section className="grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)]">
           <div className="z-10 border-b border-[#B9D8CC] bg-white/95 px-2 py-1 shadow-sm backdrop-blur">
-            <div className="flex min-h-10 items-center gap-1">
+            <div className="flex min-h-10 flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => navigate("/roadmaps")}
@@ -400,6 +406,19 @@ export default function RoadmapViewerPage() {
                 <h1 className="truncate text-lg font-black tracking-tight text-[#18332D] sm:text-xl">
                   {getViewerHeading(roadmap)}
                 </h1>
+              </div>
+
+              <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                <VersionBadge label="Learning" value={learningVersionLabel} />
+                <VersionBadge label="Latest" value={latestVersionLabel} />
+                <button
+                  type="button"
+                  onClick={() => setIsChangelogOpen((current) => !current)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#B9D8CC] bg-white px-2.5 text-xs font-extrabold text-[#1F6F5F] shadow-sm transition hover:bg-[#F4FBF8]"
+                >
+                  <History size={14} />
+                  Changelog
+                </button>
               </div>
             </div>
 
@@ -536,9 +555,170 @@ export default function RoadmapViewerPage() {
             onProgressChange={handleProgressChange}
           />
         )}
+
+        {isChangelogOpen && (
+          <RoadmapChangelogPanel
+            roadmap={roadmap}
+            versionHistory={versionHistory}
+            learningVersionLabel={learningVersionLabel}
+            latestVersionLabel={latestVersionLabel}
+            onClose={() => setIsChangelogOpen(false)}
+          />
+        )}
       </main>
     </div>
   );
+}
+
+function VersionBadge({ label, value }) {
+  return (
+    <div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#B9D8CC] bg-[#F4FBF8] px-2.5 text-xs font-extrabold text-[#18332D]">
+      <span className="text-slate-500">{label}</span>
+      <span>{value || "-"}</span>
+    </div>
+  );
+}
+
+function RoadmapChangelogPanel({
+  roadmap,
+  versionHistory,
+  learningVersionLabel,
+  latestVersionLabel,
+  onClose,
+}) {
+  const availableUpdate = roadmap?.availableUpdate || null;
+
+  return (
+    <div className="absolute left-3 top-16 z-40 w-[min(440px,calc(100vw-24px))] overflow-hidden rounded-lg border border-[#B9D8CC] bg-white shadow-2xl">
+      <div className="flex items-start justify-between gap-3 border-b border-[#B9D8CC] bg-[#F4FBF8] px-4 py-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-black text-[#18332D]">
+            <History size={16} className="text-[#1F6F5F]" />
+            Roadmap changelog
+          </div>
+          <p className="mt-1 text-xs font-semibold text-slate-600">
+            Learning {learningVersionLabel || "-"} - Latest {latestVersionLabel || "-"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="grid h-8 w-8 place-items-center rounded-md border border-[#B9D8CC] bg-white text-slate-600 transition hover:bg-[#F7F1E8]"
+          aria-label="Close changelog"
+        >
+          <X size={15} />
+        </button>
+      </div>
+
+      {availableUpdate && (
+        <div className="border-b border-[#B9D8CC] px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#1F6F5F]">
+            Update available
+          </p>
+          <p className="mt-1 text-sm font-bold text-[#18332D]">
+            {availableUpdate.currentVersionLabel} -&gt; {availableUpdate.targetVersionLabel}
+          </p>
+        </div>
+      )}
+
+      <div className="max-h-[min(560px,calc(100vh-180px))] overflow-y-auto px-4 py-3">
+        {versionHistory.length === 0 ? (
+          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center text-sm font-bold text-slate-500">
+            No version changelog is available yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {versionHistory.map((version) => (
+              <article
+                key={version.roadmapVersionId || version.versionLabel}
+                className="rounded-md border border-[#B9D8CC]/80 bg-white p-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-[#B9D8CC] bg-[#F7F1E8] px-2 py-0.5 text-xs font-black text-[#18332D]">
+                      {getVersionLabel(version)}
+                    </span>
+                    <span className="text-xs font-extrabold uppercase text-[#1F6F5F]">
+                      {version.releaseType || "release"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    {formatViewerDate(version.publishedAt || version.createdAt)}
+                  </span>
+                </div>
+                <h3 className="mt-2 text-sm font-black text-[#18332D]">
+                  {version.title || roadmap?.title || "Roadmap version"}
+                </h3>
+                <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                  {version.changeLog || version.description || "Initial published roadmap."}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function normalizeVersionHistory(roadmap) {
+  const source = roadmap?.versionHistory || roadmap?.VersionHistory || [];
+  return Array.isArray(source)
+    ? source
+        .filter((version) => version?.roadmapVersionId || version?.versionLabel)
+        .sort(compareVersionsDesc)
+    : [];
+}
+
+function compareVersionsDesc(first, second) {
+  const versionParts = ["majorVersion", "minorVersion", "patchVersion", "versionNumber"];
+
+  for (const key of versionParts) {
+    const delta = Number(second?.[key] || 0) - Number(first?.[key] || 0);
+    if (delta !== 0) return delta;
+  }
+
+  return new Date(second?.publishedAt || second?.createdAt || 0) -
+    new Date(first?.publishedAt || first?.createdAt || 0);
+}
+
+function getLatestRoadmapVersion(roadmap, versionHistory) {
+  return versionHistory.find((version) =>
+    String(version.status || "").toLowerCase() === "published"
+  ) || versionHistory[0] || roadmap;
+}
+
+function getLearningVersionLabel(roadmap, availableUpdate) {
+  if (availableUpdate?.currentVersionLabel) {
+    return availableUpdate.currentVersionLabel;
+  }
+
+  return roadmap?.versionLabel || buildSemanticVersionLabel(roadmap);
+}
+
+function getVersionLabel(version) {
+  return version?.versionLabel || buildSemanticVersionLabel(version);
+}
+
+function buildSemanticVersionLabel(version) {
+  if (!version) return "";
+
+  const major = version.majorVersion;
+  const minor = version.minorVersion;
+  const patch = version.patchVersion;
+
+  if (major == null || minor == null || patch == null) return "";
+  return `v${major}.${minor}.${patch}`;
+}
+
+function formatViewerDate(value) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function getViewerHeading(roadmap) {

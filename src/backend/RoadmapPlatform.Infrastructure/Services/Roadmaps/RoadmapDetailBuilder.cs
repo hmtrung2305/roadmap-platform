@@ -12,6 +12,7 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
     private const string ArchivedStatus = "archived";
     private const string MajorReleaseType = "major";
     private const string MinorReleaseType = "minor";
+    private const string SubmittedReviewEventType = "submitted";
 
     public async Task<RoadmapDetailDto> BuildAsync(
         Guid roadmapVersionId,
@@ -79,6 +80,7 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
         var availableUpdate = enrollment == null
             ? await LoadAvailableUpdateAsync(version, userId, cancellationToken)
             : null;
+        var versionHistory = await LoadVersionHistoryAsync(version.RoadmapId, cancellationToken);
 
         return new RoadmapDetailDto
         {
@@ -103,6 +105,7 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             CareerRole = MapCareerRole(roadmap.CareerRole),
             Enrollment = enrollment == null ? null : MapEnrollment(enrollment),
             AvailableUpdate = availableUpdate,
+            VersionHistory = versionHistory,
             TrackableNodeCount = progressSummary.TotalUnits,
             CompletedNodeCount = progressSummary.CompletedUnits,
             ProgressPercent = enrollment?.ProgressPercent ?? progressSummary.ProgressPercent,
@@ -123,6 +126,67 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
                 .Select(MapEdge)
                 .ToList()
         };
+    }
+
+    public async Task<List<RoadmapVersionHistoryItemDto>> LoadVersionHistoryAsync(
+        Guid roadmapId,
+        CancellationToken cancellationToken)
+    {
+        var versions = await dbContext.Set<RoadmapVersion>()
+            .AsNoTracking()
+            .Where(version =>
+                version.RoadmapId == roadmapId
+                && (version.Status == PublishedStatus || version.Status == ArchivedStatus))
+            .OrderByDescending(version => version.MajorVersion)
+            .ThenByDescending(version => version.MinorVersion)
+            .ThenByDescending(version => version.PatchVersion)
+            .ThenByDescending(version => version.VersionNumber)
+            .ToListAsync(cancellationToken);
+
+        if (versions.Count == 0)
+        {
+            return [];
+        }
+
+        var versionIds = versions
+            .Select(version => version.RoadmapVersionId)
+            .ToList();
+        var submittedEvents = await dbContext.Set<RoadmapVersionReviewEvent>()
+            .AsNoTracking()
+            .Where(reviewEvent =>
+                versionIds.Contains(reviewEvent.RoadmapVersionId)
+                && reviewEvent.EventType == SubmittedReviewEventType)
+            .OrderByDescending(reviewEvent => reviewEvent.CreatedAt)
+            .ToListAsync(cancellationToken);
+        var latestSubmittedEventByVersionId = submittedEvents
+            .GroupBy(reviewEvent => reviewEvent.RoadmapVersionId)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        return versions
+            .Select(version =>
+            {
+                latestSubmittedEventByVersionId.TryGetValue(
+                    version.RoadmapVersionId,
+                    out var submittedEvent);
+
+                return new RoadmapVersionHistoryItemDto
+                {
+                    RoadmapVersionId = version.RoadmapVersionId,
+                    VersionNumber = version.VersionNumber,
+                    MajorVersion = version.MajorVersion,
+                    MinorVersion = version.MinorVersion,
+                    PatchVersion = version.PatchVersion,
+                    VersionLabel = RoadmapVersionLabels.Format(version),
+                    ReleaseType = version.ReleaseType,
+                    Status = version.Status,
+                    Title = version.Title,
+                    Description = version.Description,
+                    ChangeLog = submittedEvent?.Message,
+                    CreatedAt = version.CreatedAt,
+                    PublishedAt = version.PublishedAt
+                };
+            })
+            .ToList();
     }
 
     public async Task<RoadmapVersionUpdateDto?> LoadAvailableUpdateAsync(

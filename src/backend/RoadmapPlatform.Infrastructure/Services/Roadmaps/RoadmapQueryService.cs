@@ -322,6 +322,7 @@ public sealed class RoadmapQueryService(
         var availableUpdate = enrollment == null
             ? await detailBuilder.LoadAvailableUpdateAsync(version, userId, cancellationToken)
             : null;
+        var versionHistory = await detailBuilder.LoadVersionHistoryAsync(version.RoadmapId, cancellationToken);
 
         return new RoadmapGraphDto
         {
@@ -346,6 +347,7 @@ public sealed class RoadmapQueryService(
             CareerRole = RoadmapDetailBuilder.MapCareerRole(roadmap.CareerRole),
             Enrollment = enrollment == null ? null : RoadmapDetailBuilder.MapEnrollment(enrollment),
             AvailableUpdate = availableUpdate,
+            VersionHistory = versionHistory,
             TrackableNodeCount = progressSummary.TotalUnits,
             CompletedNodeCount = progressSummary.CompletedUnits,
             ProgressPercent = enrollment?.ProgressPercent ?? progressSummary.ProgressPercent,
