@@ -27,6 +27,12 @@ import {
   getStatusTone,
   prettyStatus,
 } from "../../../features/roadmapEditor/roadmapEditorUtils";
+import {
+  clearReviewDraftCache,
+  readReviewDraftCache,
+  REVIEW_DRAFT_CACHE_TYPES,
+  writeReviewDraftCache,
+} from "../../../features/roadmapEditor/reviewDraftCache";
 import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
 
 export default function ContentReviewerRoadmapReviewsPage() {
@@ -48,7 +54,10 @@ export default function ContentReviewerRoadmapReviewsPage() {
 
     selectedRoadmapRef.current = roadmap;
     setSelectedRoadmap(roadmap);
-    setReviewSuggestion("");
+    setReviewSuggestion(readReviewDraftCache(
+      REVIEW_DRAFT_CACHE_TYPES.reviewerSuggestion,
+      roadmap.roadmapVersionId,
+    ));
     setIsLoadingDetail(true);
     setError("");
 
@@ -144,6 +153,7 @@ export default function ContentReviewerRoadmapReviewsPage() {
 
     try {
       await contentManagerRoadmapApi.approveVersion(roadmap.roadmapVersionId);
+      clearReviewDraftCache(REVIEW_DRAFT_CACHE_TYPES.reviewerSuggestion, roadmap.roadmapVersionId);
       toast.success("Roadmap version approved and published.");
       await loadReviews();
     } catch (requestError) {
@@ -163,6 +173,7 @@ export default function ContentReviewerRoadmapReviewsPage() {
       await contentManagerRoadmapApi.rejectVersion(roadmap.roadmapVersionId, {
         reason: reviewSuggestion.trim(),
       });
+      clearReviewDraftCache(REVIEW_DRAFT_CACHE_TYPES.reviewerSuggestion, roadmap.roadmapVersionId);
       toast.success("Roadmap version returned for changes.");
       setReviewSuggestion("");
       await loadReviews();
@@ -175,6 +186,14 @@ export default function ContentReviewerRoadmapReviewsPage() {
 
   const activeRoadmap = selectedDetail || selectedRoadmap;
   const activeVersionId = activeRoadmap?.roadmapVersionId;
+  const handleReviewSuggestionChange = (nextValue) => {
+    setReviewSuggestion(nextValue);
+    writeReviewDraftCache(
+      REVIEW_DRAFT_CACHE_TYPES.reviewerSuggestion,
+      activeVersionId,
+      nextValue,
+    );
+  };
 
   return (
     <ModulePageShell>
@@ -310,10 +329,15 @@ export default function ContentReviewerRoadmapReviewsPage() {
                         <textarea
                           className={`${inputClass} min-h-[120px] resize-y bg-white`}
                           value={reviewSuggestion}
-                          onChange={(event) => setReviewSuggestion(event.target.value)}
+                          onChange={(event) => handleReviewSuggestionChange(event.target.value)}
                           placeholder="Suggest what the content manager should change before approval."
                           maxLength={4000}
                         />
+                        {reviewSuggestion ? (
+                          <p className="mt-1.5 text-[11px] font-semibold text-slate-600">
+                            Autosaved locally.
+                          </p>
+                        ) : null}
                       </ReviewPanel>
 
                       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">

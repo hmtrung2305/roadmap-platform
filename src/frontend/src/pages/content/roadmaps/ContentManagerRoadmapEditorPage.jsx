@@ -18,6 +18,12 @@ import NodeEditorGuideModal from "../../../features/roadmapEditor/components/Nod
 import NodeSearchCombobox from "../../../features/roadmapEditor/components/NodeSearchCombobox";
 import RoadmapGraphCanvas from "../../../features/roadmapEditor/components/RoadmapGraphCanvas";
 import useContentRoadmapEditor from "../../../features/roadmapEditor/hooks/useContentRoadmapEditor";
+import {
+  clearReviewDraftCache,
+  readReviewDraftCache,
+  REVIEW_DRAFT_CACHE_TYPES,
+  writeReviewDraftCache,
+} from "../../../features/roadmapEditor/reviewDraftCache";
 import { formatDate, getNextMajorVersionLabel } from "../../../features/roadmapEditor/roadmapEditorUtils";
 
 export default function ContentManagerRoadmapEditorPage() {
@@ -27,7 +33,10 @@ export default function ContentManagerRoadmapEditorPage() {
   const [isCreateNodeOpen, setIsCreateNodeOpen] = useState(false);
   const [createNodeMode, setCreateNodeMode] = useState("child");
   const [isValidationOpen, setIsValidationOpen] = useState(false);
-  const [reviewChangeLog, setReviewChangeLog] = useState("");
+  const [reviewChangeLogDraft, setReviewChangeLogDraft] = useState({
+    roadmapVersionId: "",
+    value: "",
+  });
   const [isCloneConfirmOpen, setIsCloneConfirmOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
@@ -89,6 +98,10 @@ export default function ContentManagerRoadmapEditorPage() {
     handleVersionChange,
     focusNodeFromSearch,
   } = editor;
+  const activeVersionId = detail?.roadmapVersionId;
+  const reviewChangeLog = reviewChangeLogDraft.roadmapVersionId === activeVersionId
+    ? reviewChangeLogDraft.value
+    : "";
 
   const handleBackToRoadmaps = () => {
     navigate("/content/roadmaps");
@@ -156,15 +169,41 @@ export default function ContentManagerRoadmapEditorPage() {
   const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
+    if (activeVersionId && reviewChangeLogDraft.roadmapVersionId !== activeVersionId) {
+      setReviewChangeLogDraft({
+        roadmapVersionId: activeVersionId,
+        value: readReviewDraftCache(
+          REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog,
+          activeVersionId,
+        ),
+      });
+    }
+
     await validateDraft();
     setIsValidationOpen(true);
+  };
+
+  const handleReviewChangeLogChange = (nextValue) => {
+    setReviewChangeLogDraft({
+      roadmapVersionId: activeVersionId || "",
+      value: nextValue,
+    });
+    writeReviewDraftCache(
+      REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog,
+      activeVersionId,
+      nextValue,
+    );
   };
 
   const handleSubmitForReview = async () => {
     const didSubmit = await submitDraftForReview(reviewChangeLog);
 
     if (didSubmit) {
-      setReviewChangeLog("");
+      clearReviewDraftCache(REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog, activeVersionId);
+      setReviewChangeLogDraft({
+        roadmapVersionId: activeVersionId || "",
+        value: "",
+      });
       setIsValidationOpen(false);
     }
   };
@@ -395,12 +434,12 @@ export default function ContentManagerRoadmapEditorPage() {
         isOpen={isValidationOpen}
         result={validationResult}
         changeLog={reviewChangeLog}
-        onChangeLogChange={setReviewChangeLog}
+        onChangeLogChange={handleReviewChangeLogChange}
+        cacheStatus={reviewChangeLog ? "Autosaved locally." : ""}
         isSubmitting={isMutatingDraft}
         onClose={() => {
           setIsValidationOpen(false);
           setValidationResult(null);
-          setReviewChangeLog("");
         }}
         onSubmitForReview={handleSubmitForReview}
       />

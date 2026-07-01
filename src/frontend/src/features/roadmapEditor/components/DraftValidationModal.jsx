@@ -31,6 +31,7 @@ export default function DraftValidationModal({
   onClose,
   onSubmitForReview,
   isSubmitting,
+  cacheStatus,
 }) {
   const panelRef = useRef(null);
 
@@ -51,6 +52,10 @@ export default function DraftValidationModal({
   const warnings = result?.warnings || [];
   const isValid = result?.isValid && errors.length === 0;
   const hasChangeLog = String(changeLog || "").trim().length > 0;
+  const changeLogHint = [
+    "Summarize the content changes, affected nodes, and anything the reviewer should verify.",
+    cacheStatus,
+  ].filter(Boolean).join(" ");
 
   return (
     <div
@@ -78,7 +83,7 @@ export default function DraftValidationModal({
           ) : null}
           <ModuleField
             label="Review changelog"
-            hint="Summarize the content changes, affected nodes, and anything the reviewer should verify."
+            hint={changeLogHint}
           >
             <textarea
               className={`${inputClass} min-h-[120px] resize-y`}
