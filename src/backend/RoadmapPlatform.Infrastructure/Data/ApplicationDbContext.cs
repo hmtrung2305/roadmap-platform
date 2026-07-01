@@ -16,6 +16,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<AiCreditUsage> AiCreditUsages { get; set; }
 
+    public virtual DbSet<AiMentorConversation> AiMentorConversations { get; set; }
+
+    public virtual DbSet<AiMentorMessage> AiMentorMessages { get; set; }
+
     public virtual DbSet<AssessmentLevel> AssessmentLevels { get; set; }
 
     public virtual DbSet<AssessmentLevelGroup> AssessmentLevelGroups { get; set; }
@@ -180,6 +184,73 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.AiCreditUsages)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_ai_credit_usage_user_id");
+        });
+
+        modelBuilder.Entity<AiMentorConversation>(entity =>
+        {
+            entity.HasKey(e => e.AiMentorConversationId).HasName("ai_mentor_conversation_pkey");
+
+            entity.ToTable("ai_mentor_conversation");
+
+            entity.HasIndex(e => new { e.UserId, e.ArchivedAt }, "ix_ai_mentor_conversation_user_active").HasFilter("(archived_at IS NULL)");
+
+            entity.HasIndex(e => new { e.UserId, e.UpdatedAt }, "ix_ai_mentor_conversation_user_updated_at").IsDescending(false, true);
+
+            entity.Property(e => e.AiMentorConversationId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("ai_mentor_conversation_id");
+            entity.Property(e => e.ArchivedAt).HasColumnName("archived_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.PageContext)
+                .HasMaxLength(100)
+                .HasDefaultValueSql("'roadmap_selection'::character varying")
+                .HasColumnName("page_context");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .HasDefaultValueSql("'New conversation'::character varying")
+                .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.AiMentorConversations)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_ai_mentor_conversation_user");
+        });
+
+        modelBuilder.Entity<AiMentorMessage>(entity =>
+        {
+            entity.HasKey(e => e.AiMentorMessageId).HasName("ai_mentor_message_pkey");
+
+            entity.ToTable("ai_mentor_message");
+
+            entity.HasIndex(e => new { e.AiMentorConversationId, e.CreatedAt }, "ix_ai_mentor_message_conversation_created_at");
+
+            entity.Property(e => e.AiMentorMessageId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("ai_mentor_message_id");
+            entity.Property(e => e.AiMentorConversationId).HasColumnName("ai_mentor_conversation_id");
+            entity.Property(e => e.AiModel)
+                .HasMaxLength(100)
+                .HasColumnName("ai_model");
+            entity.Property(e => e.Content).HasColumnName("content");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Role)
+                .HasMaxLength(30)
+                .HasColumnName("role");
+            entity.Property(e => e.Sources)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("sources");
+
+            entity.HasOne(d => d.AiMentorConversation).WithMany(p => p.AiMentorMessages)
+                .HasForeignKey(d => d.AiMentorConversationId)
+                .HasConstraintName("fk_ai_mentor_message_conversation");
         });
 
         modelBuilder.Entity<AssessmentLevel>(entity =>
@@ -922,7 +993,7 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.MarketPulseCrawlRun).WithMany(p => p.MarketPulseFailedItems)
                 .HasForeignKey(d => d.MarketPulseCrawlRunId)
                 .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("market_pulse_failed_item_market_pulse_crawl_run_id_fkey");
+                .HasConstraintName("fk_market_pulse_failed_item_run");
         });
 
         modelBuilder.Entity<MarketPulseInsightSnapshot>(entity =>
@@ -1250,6 +1321,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.OwnerUserId, "ix_roadmap_owner_user_id");
 
+            entity.HasIndex(e => e.Slug, "uq_roadmap_slug").IsUnique();
+
             entity.Property(e => e.RoadmapId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("roadmap_id");
@@ -1259,6 +1332,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
+            entity.Property(e => e.Slug).HasColumnName("slug");
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");
@@ -1413,6 +1487,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasColumnName("difficulty_level");
             entity.Property(e => e.EstimatedHours).HasColumnName("estimated_hours");
+            entity.Property(e => e.IsAssessmentSkill).HasColumnName("is_assessment_skill");
             entity.Property(e => e.IsRequired)
                 .HasDefaultValue(true)
                 .HasColumnName("is_required");
@@ -1521,11 +1596,19 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.CreatedByUserId, "ix_roadmap_version_created_by_user_id");
 
+            entity.HasIndex(e => e.CreatedFromVersionId, "ix_roadmap_version_created_from_version_id");
+
+            entity.HasIndex(e => new { e.Status, e.UpdatedAt }, "ix_roadmap_version_review_queue")
+                .IsDescending(false, true)
+                .HasFilter("((status)::text = ANY ((ARRAY['pending_review'::character varying, 'changes_requested'::character varying])::text[]))");
+
             entity.HasIndex(e => e.RoadmapId, "ix_roadmap_version_roadmap_id");
 
             entity.HasIndex(e => e.Status, "ix_roadmap_version_status");
 
             entity.HasIndex(e => new { e.RoadmapId, e.VersionNumber }, "uq_roadmap_version_number").IsUnique();
+
+            entity.HasIndex(e => new { e.RoadmapId, e.MajorVersion, e.MinorVersion, e.PatchVersion }, "uq_roadmap_version_semver").IsUnique();
 
             entity.Property(e => e.RoadmapVersionId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -1534,6 +1617,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedByUserId).HasColumnName("created_by_user_id");
+            entity.Property(e => e.CreatedFromVersionId).HasColumnName("created_from_version_id");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EstimatedTotalHours).HasColumnName("estimated_total_hours");
             entity.Property(e => e.LayoutAlgorithm)
@@ -1543,7 +1627,16 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'TB'::character varying")
                 .HasColumnName("layout_direction");
+            entity.Property(e => e.MajorVersion)
+                .HasDefaultValue(1)
+                .HasColumnName("major_version");
+            entity.Property(e => e.MinorVersion).HasColumnName("minor_version");
+            entity.Property(e => e.PatchVersion).HasColumnName("patch_version");
             entity.Property(e => e.PublishedAt).HasColumnName("published_at");
+            entity.Property(e => e.ReleaseType)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'initial'::character varying")
+                .HasColumnName("release_type");
             entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
@@ -1552,12 +1645,20 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
             entity.Property(e => e.VersionNumber).HasColumnName("version_number");
 
             entity.HasOne(d => d.CreatedByUser).WithMany(p => p.RoadmapVersions)
                 .HasForeignKey(d => d.CreatedByUserId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_roadmap_version_created_by_user");
+
+            entity.HasOne(d => d.CreatedFromVersion).WithMany(p => p.InverseCreatedFromVersion)
+                .HasForeignKey(d => d.CreatedFromVersionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_roadmap_version_created_from_version");
 
             entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapVersions)
                 .HasForeignKey(d => d.RoadmapId)

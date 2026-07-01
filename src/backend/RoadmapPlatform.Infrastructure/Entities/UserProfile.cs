@@ -9,6 +9,8 @@ public partial class UserProfile
 
     public string? DisplayName { get; set; }
 
+    public string? PhoneNumber { get; set; }
+
     public string? Headline { get; set; }
 
     public string? Bio { get; set; }
@@ -38,8 +40,6 @@ public partial class UserProfile
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
-
-    public string? PhoneNumber { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

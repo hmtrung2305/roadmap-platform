@@ -15,10 +15,6 @@ public partial class SkillGapAnalysisHistory
 
     public string CareerRoleName { get; set; } = null!;
 
-    public string SnapshotJson { get; set; } = null!;
-
-    public DateTime CreatedAt { get; set; }
-
     public string LevelName { get; set; } = null!;
 
     public string LevelSlug { get; set; } = null!;
@@ -28,6 +24,10 @@ public partial class SkillGapAnalysisHistory
     public int TotalSkills { get; set; }
 
     public int MissingSkills { get; set; }
+
+    public string SnapshotJson { get; set; } = null!;
+
+    public DateTime CreatedAt { get; set; }
 
     public bool IsDeleted { get; set; }
 

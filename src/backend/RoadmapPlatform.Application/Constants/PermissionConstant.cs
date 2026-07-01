@@ -162,6 +162,10 @@ public static class PermissionConstant
     // ANALYSIS PERMISSIONS
     // =====================================================
 
+    // =====================================================
+    // AI MENTOR CHAT PERMISSIONS
+    // =====================================================
+    public const string AI_MENTOR_CHAT_USE_SELF = "ai_mentor_chat.use.self";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>
     {
@@ -243,6 +247,7 @@ public static class PermissionConstant
         SYSTEM_HEALTH_VIEW_ANY,
         SKILL_CREATE_ANY,
         SKILL_UPDATE_ANY,
-        SKILL_DELETE_ANY
+        SKILL_DELETE_ANY,
+        AI_MENTOR_CHAT_USE_SELF
     };
 }
