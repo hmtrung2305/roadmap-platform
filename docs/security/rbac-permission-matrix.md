@@ -101,12 +101,17 @@ Assigned to: `content_manager`
 
 | Permission | Purpose |
 |---|---|
-| `skill.view.catalog` | Search/view skills when creating or editing modules |
+| `skill.view.catalog` | Search/view skills when creating or editing modules and roadmaps |
+| `skill.create.catalog` | Create a global skill catalog item |
+| `skill.update.catalog` | Edit an unused skill catalog item only |
+| `learning_resource.view.catalog` | Search/view shared learning resources |
+| `learning_resource.create.catalog` | Create a shared learning resource |
+| `learning_resource.update.catalog` | Update safe learning-resource metadata, including broken URLs |
 | `career_role.view.catalog` | View career-role catalog data when configuring content |
 | `skill_gap_config.view.any` | View skill-gap configuration |
 | `skill_gap_config.update.any` | Update skill-gap configuration |
 
-Content Manager receives catalog skill lookup only. Content Manager should not receive `skill.view.any` because that is platform governance scope.
+Content Manager receives catalog-scope authoring only. Content Manager should not receive `skill.view.any`, `skill.update.any`, or `skill.delete.any` because those are platform governance scope.
 
 ### Module ownership
 
@@ -141,17 +146,15 @@ Content Manager receives catalog skill lookup only. Content Manager should not r
 | `learning_module_quiz_question.delete.own` | Delete questions from own module quizzes |
 | `learning_module_quiz_question.reorder.own` | Reorder questions in own module quizzes |
 
-### Roadmap ownership and review submission
+### Roadmap draft and review submission
 
 | Permission | Purpose |
 |---|---|
-| `roadmap_draft.view.own` | View roadmap list/detail scoped to `roadmap.owner_user_id = current_user_id` |
-| `roadmap_draft.create.own` | Create new owned roadmaps and owned patch/minor/major update drafts |
+| `roadmap_draft.view.own` | View owned roadmap draft/version list and detail in the content workspace |
+| `roadmap_draft.create.own` | Create owned roadmap drafts and patch/minor/major update drafts |
 | `roadmap_draft.update.own` | Edit owned roadmap metadata, nodes, requirements, skills, and resources |
 | `roadmap_draft.delete.own` | Delete owned editable draft or changes-requested versions where allowed |
 | `roadmap_review.submit.own` | Submit an owned editable draft to Reviewer with a changelog |
-
-`own` roadmap permissions must be enforced by service-layer ownership checks against `roadmap.owner_user_id`. The permission only grants access to the content manager workflow. It does not grant access to another content manager's roadmaps.
 
 ## Reviewer permissions
 
@@ -167,7 +170,9 @@ Assigned to: `reviewer`
 
 Assigned to: `admin`
 
-Admin is a platform governance role. It does not receive roadmap authoring or review permissions by default. If a real admin account must author roadmaps or review submissions, assign `content_manager` or `reviewer` explicitly in addition to `admin`.
+### Admin surface
+
+Admin is governance-focused by default. Admin does not receive content-manager roadmap authoring or reviewer permissions unless another role is assigned explicitly.
 
 The built-in `admin` role is protected. Platform governance screens and services must not allow the built-in admin role to be renamed, deleted, or stripped of permissions. An admin user also cannot revoke their own `admin` role. They can still revoke the `admin` role from another account when they have `user_role.revoke.any`.
 
@@ -226,9 +231,9 @@ The built-in `admin` role is protected. Platform governance screens and services
 |---|---|
 | `skill.view.catalog` | Use authenticated skill list/search endpoint where reused by admin UI |
 | `skill.view.any` | View skills in platform governance context |
-| `skill.create.any` | Create skills |
-| `skill.update.any` | Update skills |
-| `skill.delete.any` | Delete skills |
+| `skill.create.any` | Create skills in platform governance context |
+| `skill.update.any` | Update skills in platform governance context |
+| `skill.delete.any` | Delete skills in platform governance context |
 | `market_pulse.manage.any` | Operate Market Pulse admin refreshes, retries, classifier mapping, and source health |
 | `system_health.view.any` | View protected system/database health diagnostics |
 
@@ -238,6 +243,6 @@ The built-in `admin` role is protected. Platform governance screens and services
 |---|---|
 | `content_manager` | Learner enrollment, learner progress, learner portfolio editing, platform user/role/permission governance |
 | `reviewer` | Draft editing, learner enrollment, learner progress, platform user/role/permission governance |
-| `admin` | Learner enrollment, learner progress, content manager module ownership actions, roadmap authoring/review actions, learner portfolio editing |
+| `admin` | Learner enrollment, learner progress, content manager module ownership actions, learner portfolio editing |
 
 If a real user must operate in multiple product personas, assign multiple roles explicitly.

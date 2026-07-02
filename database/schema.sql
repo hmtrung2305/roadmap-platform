@@ -749,6 +749,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_skill_name
 CREATE UNIQUE INDEX IF NOT EXISTS uq_skill_slug
     ON public.skill(slug);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_skill_name_normalized
+    ON public.skill (lower(trim(name)));
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_skill_slug_normalized
+    ON public.skill (lower(trim(slug)));
+
 CREATE TABLE IF NOT EXISTS public.career_role
 (
     career_role_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1228,6 +1234,9 @@ CREATE INDEX IF NOT EXISTS ix_learning_resource_type
 
 CREATE INDEX IF NOT EXISTS ix_learning_resource_provider
     ON public.learning_resource(provider);
+
+CREATE INDEX IF NOT EXISTS ix_learning_resource_url_normalized
+    ON public.learning_resource (lower(trim(url)));
 
 CREATE INDEX IF NOT EXISTS ix_learning_resource_skill_resource
     ON public.learning_resource_skill(learning_resource_id);

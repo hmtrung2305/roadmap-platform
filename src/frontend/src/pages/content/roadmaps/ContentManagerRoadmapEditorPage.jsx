@@ -1,6 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, CheckCircle2, HelpCircle, Layers3, Loader2, Map as MapIcon, MessageSquare, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  CheckCircle2,
+  HelpCircle,
+  Layers3,
+  Loader2,
+  Map as MapIcon,
+  MessageSquare,
+  Plus,
+} from "lucide-react";
 
 import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
 import {
@@ -24,11 +34,22 @@ import {
   REVIEW_DRAFT_CACHE_TYPES,
   writeReviewDraftCache,
 } from "../../../features/roadmapEditor/reviewDraftCache";
-import { formatDate, getNextMajorVersionLabel } from "../../../features/roadmapEditor/roadmapEditorUtils";
+import SkillFormModal from "../../../features/contentCatalog/SkillFormModal";
+import LearningResourceFormModal from "../../../features/contentCatalog/LearningResourceFormModal";
+import { skillApi } from "../../../api/skillApi";
+import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
+import { PERMISSIONS } from "../../../constants/permissions";
+import { hasPermission } from "../../../utils/authorizationUtils";
+import { useAuthStore } from "../../../stores/useAuthStore";
+import {
+  formatDate,
+  getNextMajorVersionLabel,
+} from "../../../features/roadmapEditor/roadmapEditorUtils";
 
 export default function ContentManagerRoadmapEditorPage() {
   const navigate = useNavigate();
   const { roadmapId } = useParams();
+  const user = useAuthStore((state) => state.user);
   const editor = useContentRoadmapEditor(roadmapId);
   const [isCreateNodeOpen, setIsCreateNodeOpen] = useState(false);
   const [createNodeMode, setCreateNodeMode] = useState("child");
@@ -39,6 +60,15 @@ export default function ContentManagerRoadmapEditorPage() {
   });
   const [isCloneConfirmOpen, setIsCloneConfirmOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isCreateSkillOpen, setIsCreateSkillOpen] = useState(false);
+  const [skillCreateInitialName, setSkillCreateInitialName] = useState("");
+  const [isCreateResourceOpen, setIsCreateResourceOpen] = useState(false);
+  const [resourceCreateInitialTitle, setResourceCreateInitialTitle] =
+    useState("");
+  const [resourceCreateInitialUrl, setResourceCreateInitialUrl] = useState("");
+  const [editingResource, setEditingResource] = useState(null);
+  const [catalogFormError, setCatalogFormError] = useState("");
+  const [skillCategories, setSkillCategories] = useState([]);
 
   const {
     detail,
@@ -64,6 +94,7 @@ export default function ContentManagerRoadmapEditorPage() {
     isSearchingSkills,
     isSearchingResources,
     isMutatingDraft,
+    isSavingCatalogItem,
     validationResult,
     setValidationResult,
     selectedNodeChildCount,
@@ -95,13 +126,91 @@ export default function ContentManagerRoadmapEditorPage() {
     removeSkill,
     addResource,
     removeResource,
+    createAndMapSkill,
+    createAndMapResource,
+    updateMappedResource,
     handleVersionChange,
     focusNodeFromSearch,
   } = editor;
   const activeVersionId = detail?.roadmapVersionId;
-  const reviewChangeLog = reviewChangeLogDraft.roadmapVersionId === activeVersionId
-    ? reviewChangeLogDraft.value
-    : "";
+  const reviewChangeLog =
+    reviewChangeLogDraft.roadmapVersionId === activeVersionId
+      ? reviewChangeLogDraft.value
+      : "";
+
+  useEffect(() => {
+    if (!isCreateSkillOpen) return;
+
+    skillApi
+      .getCategories()
+      .then(setSkillCategories)
+      .catch(() => setSkillCategories([]));
+  }, [isCreateSkillOpen]);
+
+  const openCreateSkillFromSearch = (searchText = "") => {
+    setCatalogFormError("");
+    setSkillCreateInitialName(searchText.trim());
+    setIsCreateSkillOpen(true);
+  };
+
+  const openCreateResourceFromSearch = (searchText = "") => {
+    const trimmedSearch = searchText.trim();
+    setCatalogFormError("");
+    setResourceCreateInitialTitle(
+      trimmedSearch.startsWith("http") ? "" : trimmedSearch,
+    );
+    setResourceCreateInitialUrl(
+      trimmedSearch.startsWith("http") ? trimmedSearch : "",
+    );
+    setIsCreateResourceOpen(true);
+  };
+
+  const closeCatalogForms = () => {
+    if (isSavingCatalogItem) return;
+    setIsCreateSkillOpen(false);
+    setIsCreateResourceOpen(false);
+    setEditingResource(null);
+    setCatalogFormError("");
+  };
+
+  const handleCreateSkill = async (payload) => {
+    try {
+      setCatalogFormError("");
+      await createAndMapSkill(payload);
+      closeCatalogForms();
+    } catch (actionError) {
+      setCatalogFormError(
+        getFriendlyApiErrorMessage(actionError, "Unable to create skill."),
+      );
+    }
+  };
+
+  const handleCreateResource = async (payload) => {
+    try {
+      setCatalogFormError("");
+      await createAndMapResource(payload);
+      closeCatalogForms();
+    } catch (actionError) {
+      setCatalogFormError(
+        getFriendlyApiErrorMessage(actionError, "Unable to create resource."),
+      );
+    }
+  };
+
+  const handleUpdateResource = async (payload) => {
+    const resourceId =
+      editingResource?.resourceId || editingResource?.learningResourceId;
+
+    try {
+      setCatalogFormError("");
+      await updateMappedResource(resourceId, payload);
+      closeCatalogForms();
+    } catch (actionError) {
+      setCatalogFormError(
+        getFriendlyApiErrorMessage(actionError, "Unable to update resource."),
+      );
+    }
+  };
 
   const handleBackToRoadmaps = () => {
     navigate("/content/roadmaps");
@@ -166,10 +275,25 @@ export default function ContentManagerRoadmapEditorPage() {
   const isMinorDraft = isDraft && releaseType === "minor";
   const canEditStructure = isDraft && !isPatchDraft;
   const canAddPhaseNode = canEditStructure && !isMinorDraft;
+  const canCreateSkillCatalog = hasPermission(
+    user,
+    PERMISSIONS.SKILL_CREATE_CATALOG,
+  );
+  const canCreateResourceCatalog = hasPermission(
+    user,
+    PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG,
+  );
+  const canUpdateResourceCatalog = hasPermission(
+    user,
+    PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG,
+  );
   const nextMajorVersionLabel = getNextMajorVersionLabel(detail?.versions);
 
   const openValidation = async () => {
-    if (activeVersionId && reviewChangeLogDraft.roadmapVersionId !== activeVersionId) {
+    if (
+      activeVersionId &&
+      reviewChangeLogDraft.roadmapVersionId !== activeVersionId
+    ) {
       setReviewChangeLogDraft({
         roadmapVersionId: activeVersionId,
         value: readReviewDraftCache(
@@ -199,7 +323,10 @@ export default function ContentManagerRoadmapEditorPage() {
     const didSubmit = await submitDraftForReview(reviewChangeLog);
 
     if (didSubmit) {
-      clearReviewDraftCache(REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog, activeVersionId);
+      clearReviewDraftCache(
+        REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog,
+        activeVersionId,
+      );
       setReviewChangeLogDraft({
         roadmapVersionId: activeVersionId || "",
         value: "",
@@ -207,7 +334,6 @@ export default function ContentManagerRoadmapEditorPage() {
       setIsValidationOpen(false);
     }
   };
-
 
   return (
     <ModulePageShell compact>
@@ -236,13 +362,16 @@ export default function ContentManagerRoadmapEditorPage() {
                 <MapIcon size={22} />
               </div>
               <div className="min-w-0">
-                <h1 className="truncate text-2xl font-extrabold text-[#18332D]">{detail.title}</h1>
+                <h1 className="truncate text-2xl font-extrabold text-[#18332D]">
+                  {detail.title}
+                </h1>
                 <p className="truncate text-sm font-semibold text-slate-600">
-                  {detail.careerRole?.name || detail.slug || "Career role not set"}
+                  {detail.careerRole?.name ||
+                    detail.slug ||
+                    "Career role not set"}
                 </p>
               </div>
             </div>
-
           </div>
 
           <div className="flex flex-wrap items-center gap-4 border-t border-[#B9D8CC]/70 px-5 py-3 text-xs font-bold text-slate-600">
@@ -277,7 +406,9 @@ export default function ContentManagerRoadmapEditorPage() {
               onClick={() => setWorkspaceMode("nodes")}
               className={[
                 "rounded-lg px-4 py-2.5 text-center transition",
-                workspaceMode === "nodes" ? "bg-[#1F6F5F] text-white" : "text-[#18332D] hover:bg-[#F7F1E8]",
+                workspaceMode === "nodes"
+                  ? "bg-[#1F6F5F] text-white"
+                  : "text-[#18332D] hover:bg-[#F7F1E8]",
               ].join(" ")}
             >
               <div className="text-sm font-extrabold">Node editor</div>
@@ -287,7 +418,9 @@ export default function ContentManagerRoadmapEditorPage() {
               onClick={() => setWorkspaceMode("metadata")}
               className={[
                 "rounded-lg px-4 py-2.5 text-center transition",
-                workspaceMode === "metadata" ? "bg-[#1F6F5F] text-white" : "text-[#18332D] hover:bg-[#F7F1E8]",
+                workspaceMode === "metadata"
+                  ? "bg-[#1F6F5F] text-white"
+                  : "text-[#18332D] hover:bg-[#F7F1E8]",
               ].join(" ")}
             >
               <div className="text-sm font-extrabold">Roadmap metadata</div>
@@ -313,7 +446,9 @@ export default function ContentManagerRoadmapEditorPage() {
                   <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
                     <Layers3 size={16} />
                   </div>
-                  <h2 className="text-base font-extrabold text-[#18332D]">Node editor</h2>
+                  <h2 className="text-base font-extrabold text-[#18332D]">
+                    Node editor
+                  </h2>
                   <button
                     type="button"
                     onClick={() => setIsGuideOpen(true)}
@@ -340,7 +475,10 @@ export default function ContentManagerRoadmapEditorPage() {
                       <Plus size={14} /> Add Phase Node
                     </ModuleButton>
                   )}
-                  <NodeSearchCombobox nodes={allNodes} onSelect={focusNodeFromSearch} />
+                  <NodeSearchCombobox
+                    nodes={allNodes}
+                    onSelect={focusNodeFromSearch}
+                  />
                 </div>
               </div>
             </div>
@@ -373,6 +511,8 @@ export default function ContentManagerRoadmapEditorPage() {
                 onOpenSkillSearch={loadSkillSuggestions}
                 onAddSkill={addSkill}
                 onRemoveSkill={removeSkill}
+                onCreateSkillFromSearch={openCreateSkillFromSearch}
+                canCreateSkills={canCreateSkillCatalog}
                 resourceSearch={resourceSearch}
                 setResourceSearch={setResourceSearch}
                 resourceResults={resourceResults}
@@ -381,6 +521,13 @@ export default function ContentManagerRoadmapEditorPage() {
                 onOpenResourceSearch={loadResourceSuggestions}
                 onAddResource={addResource}
                 onRemoveResource={removeResource}
+                onCreateResourceFromSearch={openCreateResourceFromSearch}
+                canCreateResources={canCreateResourceCatalog}
+                canUpdateResources={canUpdateResourceCatalog}
+                onEditResource={(resource) => {
+                  setCatalogFormError("");
+                  setEditingResource(resource);
+                }}
                 isDraft={isDraft}
                 isPatchDraft={isPatchDraft}
                 isMinorDraft={isMinorDraft}
@@ -400,7 +547,6 @@ export default function ContentManagerRoadmapEditorPage() {
           </ModuleCard>
         )}
       </div>
-
 
       <ConfirmActionDialog
         isOpen={isCloneConfirmOpen}
@@ -428,7 +574,39 @@ export default function ContentManagerRoadmapEditorPage() {
         onCreate={createNode}
       />
 
-      <NodeEditorGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+      <NodeEditorGuideModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+      />
+
+      <SkillFormModal
+        isOpen={isCreateSkillOpen}
+        initialName={skillCreateInitialName}
+        categories={skillCategories}
+        isSaving={isSavingCatalogItem}
+        error={catalogFormError}
+        onClose={closeCatalogForms}
+        onSubmit={handleCreateSkill}
+      />
+
+      <LearningResourceFormModal
+        isOpen={isCreateResourceOpen}
+        initialTitle={resourceCreateInitialTitle}
+        initialUrl={resourceCreateInitialUrl}
+        isSaving={isSavingCatalogItem}
+        error={catalogFormError}
+        onClose={closeCatalogForms}
+        onSubmit={handleCreateResource}
+      />
+
+      <LearningResourceFormModal
+        isOpen={Boolean(editingResource)}
+        resource={editingResource}
+        isSaving={isSavingCatalogItem}
+        error={catalogFormError}
+        onClose={closeCatalogForms}
+        onSubmit={handleUpdateResource}
+      />
 
       <DraftValidationModal
         isOpen={isValidationOpen}
@@ -458,8 +636,12 @@ function ReviewHistoryPanel({ events }) {
             <MessageSquare size={16} />
           </div>
           <div>
-            <h2 className="text-sm font-extrabold text-[#18332D]">Review history</h2>
-            <p className="text-xs font-semibold text-slate-600">Change logs and reviewer feedback for this version.</p>
+            <h2 className="text-sm font-extrabold text-[#18332D]">
+              Review history
+            </h2>
+            <p className="text-xs font-semibold text-slate-600">
+              Change logs and reviewer feedback for this version.
+            </p>
           </div>
         </div>
       </div>
@@ -467,11 +649,16 @@ function ReviewHistoryPanel({ events }) {
       <div className="space-y-3 p-4">
         {events.map((event) => (
           <article
-            key={event.roadmapVersionReviewEventId || `${event.eventType}-${event.createdAt}`}
+            key={
+              event.roadmapVersionReviewEventId ||
+              `${event.eventType}-${event.createdAt}`
+            }
             className="grid gap-3 rounded-lg border border-[#B9D8CC]/70 bg-[#F4FBF8] p-3 md:grid-cols-[150px_minmax(0,1fr)]"
           >
             <div className="space-y-1">
-              <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide ${getReviewEventTone(event.eventType)}`}>
+              <span
+                className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide ${getReviewEventTone(event.eventType)}`}
+              >
                 {getReviewEventLabel(event.eventType)}
               </span>
               <div className="text-[11px] font-bold text-slate-500">
@@ -500,7 +687,9 @@ function getReviewEventLabel(eventType) {
 
 function getReviewEventTone(eventType) {
   const normalized = String(eventType || "").toLowerCase();
-  if (normalized === "approved") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (normalized === "rejected") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (normalized === "approved")
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (normalized === "rejected")
+    return "border-amber-200 bg-amber-50 text-amber-700";
   return "border-[#B9D8CC] bg-white text-[#1F6F5F]";
 }

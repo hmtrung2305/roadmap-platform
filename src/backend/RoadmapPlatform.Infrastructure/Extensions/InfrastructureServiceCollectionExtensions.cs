@@ -12,6 +12,7 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.Interfaces.LearningResources;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
@@ -34,6 +35,7 @@ using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
 using RoadmapPlatform.Infrastructure.Services.LearningModules;
+using RoadmapPlatform.Infrastructure.Services.LearningResources;
 using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
@@ -137,6 +139,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Skill Services
             services.AddScoped<ISkillLookupService, SkillLookupService>();
+            services.AddScoped<IContentSkillCatalogService, ContentSkillCatalogService>();
+            services.AddScoped<IContentLearningResourceCatalogService, ContentLearningResourceCatalogService>();
 
             // Roadmap Services
             services.AddScoped<RoadmapDetailBuilder>();

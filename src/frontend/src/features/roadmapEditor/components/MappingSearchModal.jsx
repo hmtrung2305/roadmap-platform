@@ -22,6 +22,8 @@ export default function MappingSearchModal({
   onClose,
   emptyTitle = "No results",
   emptyBody = null,
+  emptyActionLabel = "",
+  onEmptyAction,
 }) {
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -100,7 +102,14 @@ export default function MappingSearchModal({
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {items.length === 0 ? (
                 <ModuleEmptyState title={emptyTitle}>
-                  {emptyBody}
+                  <div className="space-y-3">
+                    {emptyBody && <div>{emptyBody}</div>}
+                    {emptyActionLabel && onEmptyAction && (
+                      <ModuleButton variant="primary" onClick={onEmptyAction}>
+                        {emptyActionLabel}
+                      </ModuleButton>
+                    )}
+                  </div>
                 </ModuleEmptyState>
               ) : (
                 <div className="space-y-2">
