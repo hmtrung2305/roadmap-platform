@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -12,6 +12,7 @@ import RequirePermission from "./routes/RequirePermission";
 import PublicRoute from "./routes/PublicRoute";
 import { useAuthStore } from "./stores/useAuthStore";
 import { subscribeToUnauthorizedEvent } from "./utils/authEventUtils";
+import { getDefaultContentManagerRoute } from "./utils/navigationUtils";
 import StudyRoomPage from "./pages/StudyRoomPage";
 import EditPortfolioPage from "./pages/EditPortfolioPage";
 import { ToastContainer } from "react-toastify";
@@ -28,16 +29,20 @@ import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
-import ContentManagerOverviewPage from "./pages/content/ContentManagerOverviewPage";
 import ContentManagerLearningModulesPage from "./pages/content/learningModules/ContentManagerLearningModulesPage";
 import ContentManagerLearningModuleCreatePage from "./pages/content/learningModules/ContentManagerLearningModuleCreatePage";
 import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
 import ContentManagerLearningModulePreviewPage from "./pages/content/learningModules/ContentManagerLearningModulePreviewPage";
 import ContentManagerSettingsPage from "./pages/content/ContentManagerSettingsPage";
 import ContentManagerSkillGapPage from "./pages/content/ContentManagerSkillGapPage";
+import ContentManagerSkillsPage from "./pages/content/catalog/ContentManagerSkillsPage";
+import ContentManagerLearningResourcesPage from "./pages/content/catalog/ContentManagerLearningResourcesPage";
+import ContentReviewerRoadmapReviewsPage from "./pages/content/roadmaps/ContentReviewerRoadmapReviewsPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminMarketPulsePage from "./pages/admin/AdminMarketPulsePage";
+import AdminRolesPermissionsPage from "./pages/admin/AdminRolesPermissionsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import {
   ADMIN_SURFACE_PERMISSIONS,
@@ -45,6 +50,34 @@ import {
   LEARNER_SURFACE_PERMISSIONS,
   PERMISSIONS,
 } from "./constants/permissions";
+
+const ContentManagerRoadmapsPage = lazy(() => import("./pages/content/roadmaps/ContentManagerRoadmapsPage"));
+const ContentManagerRoadmapEditorPage = lazy(() => import("./pages/content/roadmaps/ContentManagerRoadmapEditorPage"));
+
+function ContentRouteLoadingState() {
+  return (
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F1E8] px-4 py-7 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1520px] rounded-xl border border-[#B9D8CC]/80 bg-white/95 p-8 text-center text-sm font-bold text-slate-600 shadow-sm">
+        Loading content workspace...
+      </div>
+    </main>
+  );
+}
+
+function LazyContentPage({ children }) {
+  return <Suspense fallback={<ContentRouteLoadingState />}>{children}</Suspense>;
+}
+
+function ContentWorkspaceDefaultRedirect() {
+  const user = useAuthStore((state) => state.user);
+  const defaultRoute = getDefaultContentManagerRoute(user);
+
+  if (defaultRoute === "/content") {
+    return <Navigate to="/not-found" replace />;
+  }
+
+  return <Navigate to={defaultRoute} replace />;
+}
 
 const publicPaths = ["/", "/login", "/register", "/verify-email", "/logout"];
 
@@ -207,13 +240,104 @@ export default function App() {
               </RequirePermission>
             }
           >
-            <Route path="/content" element={<Navigate to="/content/overview" replace />} />
-            <Route path="/content/overview" element={<ContentManagerOverviewPage />} />
-            <Route path="/content/learning-modules" element={<ContentManagerLearningModulesPage />} />
-            <Route path="/content/learning-modules/create" element={<ContentManagerLearningModuleCreatePage />} />
-            <Route path="/content/learning-modules/:moduleId/edit" element={<ContentManagerLearningModuleEditorPage />} />
-            <Route path="/content/learning-modules/:moduleId/preview" element={<ContentManagerLearningModulePreviewPage />} />
+            <Route path="/content" element={<ContentWorkspaceDefaultRedirect />} />
+            <Route path="/content/overview" element={<ContentWorkspaceDefaultRedirect />} />
+            <Route
+              path="/content/learning-modules"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_VIEW_OWN]}>
+                  <ContentManagerLearningModulesPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-modules/create"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_CREATE_OWN]}>
+                  <ContentManagerLearningModuleCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-modules/:moduleId/edit"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_UPDATE_OWN]}>
+                  <ContentManagerLearningModuleEditorPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-modules/:moduleId/preview"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_MODULE_PREVIEW_OWN]}>
+                  <ContentManagerLearningModulePreviewPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/roadmaps"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN]}>
+                  <LazyContentPage><ContentManagerRoadmapsPage /></LazyContentPage>
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/roadmaps/:roadmapId/edit"
+              element={
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN,
+                    PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
+                  ]}
+                >
+                  <LazyContentPage><ContentManagerRoadmapEditorPage /></LazyContentPage>
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/reviews"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY]}>
+                  <ContentReviewerRoadmapReviewsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/reviews/:roadmapId/:roadmapVersionId"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY]}>
+                  <ContentReviewerRoadmapReviewsPage />
+                </RequirePermission>
+              }
+            />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
+            <Route
+              path="/content/skills"
+              element={
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.SKILL_CREATE_CATALOG,
+                    PERMISSIONS.SKILL_UPDATE_CATALOG,
+                  ]}
+                >
+                  <ContentManagerSkillsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/content/learning-resources"
+              element={
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG,
+                    PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG,
+                  ]}
+                >
+                  <ContentManagerLearningResourcesPage />
+                </RequirePermission>
+              }
+            />
             <Route
               path="/content/skill-gap"
               element={
@@ -226,12 +350,42 @@ export default function App() {
 
           <Route
             element={
-              <RequirePermission anyPermissions={ADMIN_SURFACE_PERMISSIONS}>
+              <RequirePermission
+                anyPermissions={ADMIN_SURFACE_PERMISSIONS}
+                redirectToDefaultOnDeny
+              >
                 <AdminLayout />
               </RequirePermission>
             }
           >
             <Route path="/admin" element={<AdminHomePage />} />
+            <Route
+              path="/admin/users"
+              element={
+                <RequirePermission
+                  allPermissions={[
+                    PERMISSIONS.USER_VIEW_ANY,
+                    PERMISSIONS.USER_ROLE_VIEW_ANY,
+                  ]}
+                >
+                  <AdminUsersPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="/admin/roles"
+              element={
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.ROLE_VIEW_ANY,
+                    PERMISSIONS.PERMISSION_VIEW_ANY,
+                    PERMISSIONS.ROLE_PERMISSION_VIEW_ANY,
+                  ]}
+                >
+                  <AdminRolesPermissionsPage />
+                </RequirePermission>
+              }
+            />
             <Route path="/admin/market-pulse" element={<AdminMarketPulsePage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>

@@ -76,13 +76,22 @@ VALUES
     ('roadmap_node.view.published'),
     ('roadmap_enrollment.view.self'),
     ('roadmap_enrollment.create.self'),
+    ('roadmap_enrollment.migrate.self'),
     ('roadmap_progress.update.self'),
 
     -- Roadmap draft and review workflow permissions
+<<<<<<< HEAD
     ('roadmap_draft.view.any'),
     ('roadmap_draft.create.any'),
     ('roadmap_draft.update.any'),
     ('roadmap_draft.delete.any'),
+||||||| 0933afc
+=======
+    ('roadmap_draft.view.own'),
+    ('roadmap_draft.create.own'),
+    ('roadmap_draft.update.own'),
+    ('roadmap_draft.delete.own'),
+>>>>>>> feature/roadmap-crud-operations
     ('roadmap_review.submit.own'),
     ('roadmap_review.view.any'),
     ('roadmap_review.approve.any'),
@@ -103,7 +112,14 @@ VALUES
     ('career_role.view.catalog'),
     ('skill_gap_analysis.create.self'),
     ('market_pulse.view.catalog'),
+
+    -- Content catalog permissions
     ('skill.view.catalog'),
+    ('skill.create.catalog'),
+    ('skill.update.catalog'),
+    ('learning_resource.view.catalog'),
+    ('learning_resource.create.catalog'),
+    ('learning_resource.update.catalog'),
 
     -- Admin skill governance permissions
     ('skill.view.any'),
@@ -215,17 +231,24 @@ managed_permissions(permission_name) AS (
         ('roadmap_node.view.published'),
         ('roadmap_enrollment.view.self'),
         ('roadmap_enrollment.create.self'),
+        ('roadmap_enrollment.migrate.self'),
         ('roadmap_progress.update.self'),
 
         -- Roadmap draft and review workflow permissions
-        ('roadmap_draft.view.any'),
-        ('roadmap_draft.create.any'),
-        ('roadmap_draft.update.any'),
-        ('roadmap_draft.delete.any'),
+        ('roadmap_draft.view.own'),
+        ('roadmap_draft.create.own'),
+        ('roadmap_draft.update.own'),
+        ('roadmap_draft.delete.own'),
         ('roadmap_review.submit.own'),
         ('roadmap_review.view.any'),
         ('roadmap_review.approve.any'),
         ('roadmap_review.reject.any'),
+
+        -- Legacy broad roadmap draft permissions removed from built-in roles
+        ('roadmap_draft.view.any'),
+        ('roadmap_draft.create.any'),
+        ('roadmap_draft.update.any'),
+        ('roadmap_draft.delete.any'),
 
         -- Learner learning module permissions
         ('learning_module.view.published'),
@@ -243,6 +266,11 @@ managed_permissions(permission_name) AS (
         ('skill_gap_analysis.create.self'),
         ('market_pulse.view.catalog'),
         ('skill.view.catalog'),
+        ('skill.create.catalog'),
+        ('skill.update.catalog'),
+        ('learning_resource.view.catalog'),
+        ('learning_resource.create.catalog'),
+        ('learning_resource.update.catalog'),
 
         -- Content Manager learning module ownership permissions
         ('learning_module.view.own'),
@@ -357,6 +385,7 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'roadmap_node.view.published'),
         ('learner', 'roadmap_enrollment.view.self'),
         ('learner', 'roadmap_enrollment.create.self'),
+        ('learner', 'roadmap_enrollment.migrate.self'),
         ('learner', 'roadmap_progress.update.self'),
 
         -- Learner learning module permissions
@@ -374,14 +403,26 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'career_role.view.catalog'),
         ('learner', 'skill_gap_analysis.create.self'),
         ('learner', 'market_pulse.view.catalog'),
-        ('learner', 'skill.view.catalog'),
 
         -- Content Manager catalog lookup and content management permissions
         ('content_manager', 'skill.view.catalog'),
+<<<<<<< HEAD
         ('content_manager', 'roadmap_draft.view.any'),
         ('content_manager', 'roadmap_draft.create.any'),
         ('content_manager', 'roadmap_draft.update.any'),
         ('content_manager', 'roadmap_draft.delete.any'),
+||||||| 0933afc
+=======
+        ('content_manager', 'skill.create.catalog'),
+        ('content_manager', 'skill.update.catalog'),
+        ('content_manager', 'learning_resource.view.catalog'),
+        ('content_manager', 'learning_resource.create.catalog'),
+        ('content_manager', 'learning_resource.update.catalog'),
+        ('content_manager', 'roadmap_draft.view.own'),
+        ('content_manager', 'roadmap_draft.create.own'),
+        ('content_manager', 'roadmap_draft.update.own'),
+        ('content_manager', 'roadmap_draft.delete.own'),
+>>>>>>> feature/roadmap-crud-operations
         ('content_manager', 'roadmap_review.submit.own'),
         ('content_manager', 'learning_module.view.own'),
         ('content_manager', 'learning_module.create.own'),

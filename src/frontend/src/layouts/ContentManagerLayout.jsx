@@ -2,17 +2,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  BookOpenText,
   ChevronUp,
-  LayoutDashboard,
+  ClipboardCheck,
   LibraryBig,
   ListChecks,
   LogOut,
+  Map as MapIcon,
   Settings,
   Shield,
+  Tag,
 } from "lucide-react";
 
-import { PERMISSIONS } from "../constants/permissions";
-import { hasPermission } from "../utils/authorizationUtils";
+import { LEARNER_SURFACE_PERMISSIONS, PERMISSIONS } from "../constants/permissions";
+import { hasAnyPermission, hasPermission } from "../utils/authorizationUtils";
+import { getDefaultContentManagerRoute } from "../utils/navigationUtils";
 import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -23,17 +27,45 @@ const contentManagerNavGroups = [
     label: "Content",
     items: [
       {
-        label: "Overview",
-        path: "/content/overview",
-        icon: LayoutDashboard,
-        match: (pathname) => pathname === "/content" || pathname === "/content/overview",
-      },
-      {
         label: "Learning Modules",
         path: "/content/learning-modules",
         icon: LibraryBig,
         requiredPermission: PERMISSIONS.LEARNING_MODULE_VIEW_OWN,
         match: (pathname) => pathname.startsWith("/content/learning-modules"),
+      },
+      {
+        label: "Roadmaps",
+        path: "/content/roadmaps",
+        icon: MapIcon,
+        requiredPermission: PERMISSIONS.ROADMAP_DRAFT_VIEW_OWN,
+        match: (pathname) => pathname.startsWith("/content/roadmaps"),
+      },
+      {
+        label: "Roadmap Reviews",
+        path: "/content/reviews",
+        icon: ClipboardCheck,
+        requiredPermission: PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
+        match: (pathname) => pathname.startsWith("/content/reviews"),
+      },
+      {
+        label: "Skills",
+        path: "/content/skills",
+        icon: Tag,
+        requiredAnyPermissions: [
+          PERMISSIONS.SKILL_CREATE_CATALOG,
+          PERMISSIONS.SKILL_UPDATE_CATALOG,
+        ],
+        match: (pathname) => pathname.startsWith("/content/skills"),
+      },
+      {
+        label: "Learning Resources",
+        path: "/content/learning-resources",
+        icon: BookOpenText,
+        requiredAnyPermissions: [
+          PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG,
+          PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG,
+        ],
+        match: (pathname) => pathname.startsWith("/content/learning-resources"),
       },
       {
         label: "Skill Gap Config",
@@ -47,10 +79,6 @@ const contentManagerNavGroups = [
 ];
 
 function getContentManagerPageTitle(pathname) {
-  if (pathname === "/content" || pathname === "/content/overview") {
-    return "Overview";
-  }
-
   if (pathname === "/content/learning-modules/create") {
     return "Create Module";
   }
@@ -67,6 +95,22 @@ function getContentManagerPageTitle(pathname) {
     return "Learning Modules";
   }
 
+  if (pathname.startsWith("/content/roadmaps")) {
+    return "Roadmaps";
+  }
+
+  if (pathname.startsWith("/content/reviews")) {
+    return "Roadmap Reviews";
+  }
+
+  if (pathname.startsWith("/content/skills")) {
+    return "Skills";
+  }
+
+  if (pathname.startsWith("/content/learning-resources")) {
+    return "Learning Resources";
+  }
+
   if (pathname === "/content/skill-gap") {
     return "Skill Gap Config";
   }
@@ -75,17 +119,17 @@ function getContentManagerPageTitle(pathname) {
     return "Settings";
   }
 
-  return "Content Manager";
+  return "Content Workspace";
 }
 
 function getDisplayName(user, accountProfile) {
   return (
-    accountProfile?.displayName
-    || user?.fullName
-    || user?.displayName
-    || user?.name
-    || user?.username
-    || "Content Manager"
+    accountProfile?.displayName ||
+    user?.fullName ||
+    user?.displayName ||
+    user?.name ||
+    user?.username ||
+    "Account"
   );
 }
 
@@ -149,15 +193,41 @@ export default function ContentManagerLayout() {
   const avatarUrl = accountProfile?.avatarUrl?.trim();
   const showAvatar = Boolean(avatarUrl && !avatarFailed);
 
-  const visibleNavItems = useMemo(() => (
-    contentManagerNavGroups
-      .flatMap((group) => group.items)
-      .filter((item) => !item.requiredPermission || hasPermission(user, item.requiredPermission))
-  ), [user]);
+  const visibleNavItems = useMemo(
+    () =>
+      contentManagerNavGroups
+        .flatMap((group) => group.items)
+        .filter((item) => {
+          if (item.requiredAnyPermissions?.length) {
+            return hasAnyPermission(user, item.requiredAnyPermissions);
+          }
+
+          return (
+            !item.requiredPermission ||
+            hasPermission(user, item.requiredPermission)
+          );
+        }),
+    [user],
+  );
+
+  const defaultContentRoute = useMemo(
+    () => getDefaultContentManagerRoute(user),
+    [user],
+  );
+  const canAccessLearningWorkspace = hasAnyPermission(user, LEARNER_SURFACE_PERMISSIONS);
+
+  const goToDefaultContentRoute = () => {
+    navigate(defaultContentRoute === "/content" ? "/content" : defaultContentRoute);
+  };
 
   const goToSettings = () => {
     setIsUserMenuOpen(false);
     navigate("/content/settings");
+  };
+
+  const goToLearningWorkspace = () => {
+    setIsUserMenuOpen(false);
+    navigate("/roadmaps");
   };
 
   const handleLogout = async () => {
@@ -172,7 +242,7 @@ export default function ContentManagerLayout() {
         <div className="border-b border-[#B9D8CC] px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate("/content/overview")}
+            onClick={goToDefaultContentRoute}
             className="block"
           >
             <AuthLogo compact showTagline={false} />
@@ -202,9 +272,23 @@ export default function ContentManagerLayout() {
           })}
         </nav>
 
-        <div ref={userMenuRef} className="relative border-t border-[#B9D8CC] p-3">
+        <div
+          ref={userMenuRef}
+          className="relative border-t border-[#B9D8CC] p-3"
+        >
           {isUserMenuOpen && (
             <div className="absolute bottom-[72px] left-3 right-3 z-50 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-xl">
+              {canAccessLearningWorkspace && (
+                <button
+                  type="button"
+                  onClick={goToLearningWorkspace}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-extrabold text-[#18332D] transition hover:bg-[#F7F1E8]"
+                >
+                  <MapIcon size={15} />
+                  Learning Roadmaps
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={goToSettings}
@@ -273,7 +357,7 @@ export default function ContentManagerLayout() {
               <div className="flex items-center gap-3 lg:hidden">
                 <button
                   type="button"
-                  onClick={() => navigate("/content/overview")}
+                  onClick={goToDefaultContentRoute}
                   className="shrink-0"
                 >
                   <AuthLogo compact showTagline={false} />
@@ -281,7 +365,7 @@ export default function ContentManagerLayout() {
 
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
-                    Content Manager
+                    Content Workspace
                   </p>
                   <h1 className="truncate text-sm font-extrabold text-[#18332D]">
                     {pageTitle}
@@ -291,7 +375,7 @@ export default function ContentManagerLayout() {
 
               <div className="hidden lg:block">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
-                  Content Manager
+                  Content Workspace
                 </p>
                 <h1 className="truncate text-lg font-extrabold text-[#18332D]">
                   {pageTitle}
@@ -338,6 +422,16 @@ export default function ContentManagerLayout() {
 
               {isUserMenuOpen && (
                 <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 text-left shadow-xl">
+                  {canAccessLearningWorkspace && (
+                    <button
+                      type="button"
+                      onClick={goToLearningWorkspace}
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-extrabold text-[#18332D] hover:bg-[#F7F1E8]"
+                    >
+                      <MapIcon size={15} />
+                      Learning Roadmaps
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={goToSettings}

@@ -1,0 +1,211 @@
+using Microsoft.EntityFrameworkCore;
+using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
+using RoadmapPlatform.Infrastructure.Data;
+using RoadmapPlatform.Infrastructure.Entities;
+
+namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
+
+public sealed class ContentManagerRoadmapMappingService(
+    ApplicationDbContext dbContext,
+    ContentManagerRoadmapQueryService queryService)
+{
+    public async Task<ContentRoadmapNodeDto> AddResourceToNodeAsync(
+        Guid roadmapNodeId,
+        AddRoadmapNodeResourceRequestDto request,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        if (roadmapNodeId == Guid.Empty)
+        {
+            throw new ArgumentException("Roadmap node was not provided.", nameof(roadmapNodeId));
+        }
+
+        if (request.LearningResourceId == Guid.Empty)
+        {
+            throw new ArgumentException("Learning resource was not provided.", nameof(request));
+        }
+
+        var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
+        EnsureResourceMappingAllowed(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+
+        var resourceExists = await dbContext.Set<LearningResource>()
+            .AnyAsync(resource => resource.LearningResourceId == request.LearningResourceId, cancellationToken);
+
+        if (!resourceExists)
+        {
+            throw new KeyNotFoundException("Learning resource was not found.");
+        }
+
+        var alreadyMapped = await dbContext.Set<RoadmapNodeResource>()
+            .AnyAsync(mapping =>
+                mapping.RoadmapNodeId == roadmapNodeId
+                && mapping.LearningResourceId == request.LearningResourceId,
+                cancellationToken);
+
+        if (!alreadyMapped)
+        {
+            dbContext.Set<RoadmapNodeResource>().Add(new RoadmapNodeResource
+            {
+                RoadmapNodeId = roadmapNodeId,
+                LearningResourceId = request.LearningResourceId
+            });
+
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return await queryService.LoadNodeAsync(roadmapNodeId, cancellationToken);
+    }
+
+    public async Task<ContentRoadmapNodeDto> RemoveResourceFromNodeAsync(
+        Guid roadmapNodeId,
+        Guid learningResourceId,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
+        EnsureResourceMappingAllowed(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+
+        var mapping = await dbContext.Set<RoadmapNodeResource>()
+            .Where(item =>
+                item.RoadmapNodeId == roadmapNodeId
+                && item.LearningResourceId == learningResourceId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (mapping != null)
+        {
+            dbContext.Set<RoadmapNodeResource>().Remove(mapping);
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return await queryService.LoadNodeAsync(roadmapNodeId, cancellationToken);
+    }
+
+    public async Task<ContentRoadmapNodeDto> AddSkillToNodeAsync(
+        Guid roadmapNodeId,
+        AddRoadmapNodeSkillRequestDto request,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        if (roadmapNodeId == Guid.Empty)
+        {
+            throw new ArgumentException("Roadmap node was not provided.", nameof(roadmapNodeId));
+        }
+
+        if (request.SkillId == Guid.Empty)
+        {
+            throw new ArgumentException("Skill was not provided.", nameof(request));
+        }
+
+        var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
+        EnsureSkillMappingAllowed(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+
+        var skillExists = await dbContext.Set<Skill>()
+            .AnyAsync(skill => skill.SkillId == request.SkillId, cancellationToken);
+
+        if (!skillExists)
+        {
+            throw new KeyNotFoundException("Skill was not found.");
+        }
+
+        var alreadyMapped = await dbContext.Set<RoadmapNodeSkill>()
+            .AnyAsync(mapping =>
+                mapping.RoadmapNodeId == roadmapNodeId
+                && mapping.SkillId == request.SkillId,
+                cancellationToken);
+
+        if (!alreadyMapped)
+        {
+            dbContext.Set<RoadmapNodeSkill>().Add(new RoadmapNodeSkill
+            {
+                RoadmapNodeId = roadmapNodeId,
+                SkillId = request.SkillId
+            });
+
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return await queryService.LoadNodeAsync(roadmapNodeId, cancellationToken);
+    }
+
+    public async Task<ContentRoadmapNodeDto> RemoveSkillFromNodeAsync(
+        Guid roadmapNodeId,
+        Guid skillId,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var node = await LoadNodeForMappingAsync(roadmapNodeId, cancellationToken);
+        ContentManagerRoadmapOwnership.EnsureOwnedByActor(node.RoadmapVersion.Roadmap, actorUserId);
+        EnsureSkillMappingAllowed(node);
+        ContentManagerRoadmapNodeRules.EnsureNodeSupportsMappings(node);
+
+        var mapping = await dbContext.Set<RoadmapNodeSkill>()
+            .Where(item =>
+                item.RoadmapNodeId == roadmapNodeId
+                && item.SkillId == skillId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (mapping != null)
+        {
+            dbContext.Set<RoadmapNodeSkill>().Remove(mapping);
+            await TouchRoadmapVersionAsync(node.RoadmapVersionId, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return await queryService.LoadNodeAsync(roadmapNodeId, cancellationToken);
+    }
+
+    private async Task<RoadmapNode> LoadNodeForMappingAsync(
+        Guid roadmapNodeId,
+        CancellationToken cancellationToken)
+    {
+        var node = await dbContext.Set<RoadmapNode>()
+            .Include(item => item.RoadmapVersion)
+                .ThenInclude(version => version.Roadmap)
+            .Where(item => item.RoadmapNodeId == roadmapNodeId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return node ?? throw new KeyNotFoundException("Roadmap node was not found.");
+    }
+
+    private static void EnsureResourceMappingAllowed(RoadmapNode node)
+    {
+        ContentManagerRoadmapDraftService.EnsureDraftVersion(node.RoadmapVersion);
+    }
+
+    private static void EnsureSkillMappingAllowed(RoadmapNode node)
+    {
+        ContentManagerRoadmapDraftService.EnsureDraftVersion(node.RoadmapVersion);
+
+        if (ContentManagerRoadmapDraftService.IsPatchDraft(node.RoadmapVersion))
+        {
+            throw new ArgumentException("Patch drafts cannot change skill mappings.");
+        }
+    }
+
+    private async Task TouchRoadmapVersionAsync(
+        Guid roadmapVersionId,
+        CancellationToken cancellationToken)
+    {
+        var version = await dbContext.Set<RoadmapVersion>()
+            .Include(item => item.Roadmap)
+            .Where(item => item.RoadmapVersionId == roadmapVersionId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (version == null)
+        {
+            return;
+        }
+
+        version.UpdatedAt = DateTime.UtcNow;
+        version.Roadmap.UpdatedAt = DateTime.UtcNow;
+    }
+}

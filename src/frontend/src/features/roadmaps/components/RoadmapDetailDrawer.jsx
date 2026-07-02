@@ -366,26 +366,20 @@ function NodeSpecificContent({ node, metadata, nodeType, completionCriteria }) {
   return <TopicNodeContent metadata={metadata} />;
 }
 
-function ProjectNodeContent({ node, metadata, completionCriteria }) {
-  const projectPurpose = getFirstMetadataText(metadata, [
+function ProjectNodeContent({ node, metadata }) {
+  const whatToBuild = getFirstMetadataText(metadata, [
+    "whatToBuild",
     "projectBrief",
     "brief",
     "goal",
     "objective",
     "purpose",
   ]);
-  const suggestedSteps = getFirstMetadataList(metadata, [
-    "suggestedSteps",
+  const buildSteps = getFirstMetadataList(metadata, [
     "buildSteps",
+    "suggestedSteps",
     "implementationSteps",
     "steps",
-  ]);
-  const expectedEvidence = getFirstMetadataList(metadata, [
-    "expectedEvidence",
-    "evidence",
-    "deliverables",
-    "artifacts",
-    "outputs",
   ]);
   const fallbackPurpose =
     node.isRequired === false
@@ -404,12 +398,10 @@ function ProjectNodeContent({ node, metadata, completionCriteria }) {
       }
     >
       <TextBlock title="What to build">
-        {projectPurpose || fallbackPurpose}
+        {whatToBuild || fallbackPurpose}
       </TextBlock>
 
-      <ListBlock title="Build steps" items={suggestedSteps} />
-      <ListBlock title="Evidence to submit" items={expectedEvidence} />
-      <ListBlock title="Done when" items={completionCriteria} />
+      <ListBlock title="Build steps" items={buildSteps} />
     </Section>
   );
 }
@@ -422,39 +414,26 @@ function CheckpointNodeContent({ metadata, completionCriteria }) {
     "purpose",
     "reviewPurpose",
   ]);
-  const expectedEvidence = getFirstMetadataList(metadata, [
+  const reviewCriteria = getFirstMetadataList(metadata, [
+    "reviewCriteria",
     "expectedEvidence",
     "evidence",
     "reviewEvidence",
     "artifacts",
   ]);
-  const reviewQuestions = getFirstMetadataList(metadata, [
-    "reviewQuestions",
-    "questions",
-    "reflectionQuestions",
-    "selfCheckQuestions",
-  ]);
-  const nextActions = getFirstMetadataList(metadata, [
-    "nextActions",
-    "followUpActions",
-    "followUps",
-    "nextSteps",
-  ]);
+  const criteria = reviewCriteria.length > 0 ? reviewCriteria : completionCriteria;
 
   return (
     <Section
       title="Checkpoint guide"
-      badge={<SubtleBadge>Progress review</SubtleBadge>}
+      badge={<SubtleBadge>Assessment</SubtleBadge>}
     >
       <TextBlock title="Review focus">
         {reviewFocus ||
           "Use this checkpoint to review the current roadmap segment, collect evidence, and decide whether to continue or revisit selected topics."}
       </TextBlock>
 
-      <ListBlock title="Review criteria" items={completionCriteria} />
-      <ListBlock title="Evidence to prepare" items={expectedEvidence} />
-      <ListBlock title="Reflection prompts" items={reviewQuestions} />
-      <ListBlock title="Next action options" items={nextActions} />
+      <ListBlock title="Review criteria" items={criteria} />
     </Section>
   );
 }
@@ -979,15 +958,10 @@ function shouldShowLearningOutcomes(nodeType) {
 }
 
 function shouldShowGenericCompletionCriteria(nodeType) {
-  return (
-    nodeType !== "project" &&
-    nodeType !== "checkpoint" &&
-    nodeType !== "choice_option"
-  );
+  return nodeType !== "checkpoint" && nodeType !== "choice_option";
 }
 
 function getOutcomeSectionTitle(nodeType) {
-  if (nodeType === "project") return "Project outcomes";
   if (nodeType === "checkpoint") return "Review outcomes";
   if (nodeType === "choice_option") return "Option outcomes";
   return "Learning outcomes";

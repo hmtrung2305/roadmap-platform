@@ -6,6 +6,7 @@ INSERT INTO public.role (role_name)
 VALUES
     ('learner'),
     ('content_manager'),
+    ('reviewer'),
     ('admin')
 ON CONFLICT (role_name) DO NOTHING;
 
@@ -29,6 +30,42 @@ VALUES
     'd877b560-13c7-4a8f-83c2-563c8da7d4a1',
     'ContentManager',
     'contentmanager',
+    'active',
+    now(),
+    now(),
+    NULL
+),
+(
+    '4b760089-bc9d-4775-9d6d-b3a791cb0d02',
+    'ContentManager2',
+    'contentmanager2',
+    'active',
+    now(),
+    now(),
+    NULL
+),
+(
+    'f82a7417-9394-4869-844e-03771b01b2ab',
+    'ContentManager3',
+    'contentmanager3',
+    'active',
+    now(),
+    now(),
+    NULL
+),
+(
+    '71f15afa-83d4-4b31-99ab-c58f6abe0f83',
+    'ContentManager4',
+    'contentmanager4',
+    'active',
+    now(),
+    now(),
+    NULL
+),
+(
+    '6fe7ffed-cb3b-4a33-9a60-a010432f53a4',
+    'Reviewer',
+    'reviewer',
     'active',
     now(),
     now(),
@@ -86,6 +123,54 @@ VALUES
     'AQAAAAIAAYagAAAAEA6TqnazsepY+egZS7ZR0Ji67+lVqUPM/wxonQ4uK4rmt2oiq2Mg4a2XKn9oRrk5Bg==',
     'local',
     'content.manager@roadmap.local',
+    NULL,
+    now(),
+    NULL,
+    now()
+),
+(
+    'd4122665-907a-42f9-bdbf-a00ee3228dde',
+    '4b760089-bc9d-4775-9d6d-b3a791cb0d02',
+    'content.manager2@roadmap.local',
+    'AQAAAAIAAYagAAAAEA6TqnazsepY+egZS7ZR0Ji67+lVqUPM/wxonQ4uK4rmt2oiq2Mg4a2XKn9oRrk5Bg==',
+    'local',
+    'content.manager2@roadmap.local',
+    NULL,
+    now(),
+    NULL,
+    now()
+),
+(
+    '099f89dd-2fd7-45c9-aa1a-717f14a2be73',
+    'f82a7417-9394-4869-844e-03771b01b2ab',
+    'content.manager3@roadmap.local',
+    'AQAAAAIAAYagAAAAEA6TqnazsepY+egZS7ZR0Ji67+lVqUPM/wxonQ4uK4rmt2oiq2Mg4a2XKn9oRrk5Bg==',
+    'local',
+    'content.manager3@roadmap.local',
+    NULL,
+    now(),
+    NULL,
+    now()
+),
+(
+    '78be9511-8bdb-4f0f-bf2c-0d8f2e9b5f2e',
+    '71f15afa-83d4-4b31-99ab-c58f6abe0f83',
+    'content.manager4@roadmap.local',
+    'AQAAAAIAAYagAAAAEA6TqnazsepY+egZS7ZR0Ji67+lVqUPM/wxonQ4uK4rmt2oiq2Mg4a2XKn9oRrk5Bg==',
+    'local',
+    'content.manager4@roadmap.local',
+    NULL,
+    now(),
+    NULL,
+    now()
+),
+(
+    '2c46a189-3408-4a76-a185-5c02f4465a17',
+    '6fe7ffed-cb3b-4a33-9a60-a010432f53a4',
+    'reviewer@roadmap.local',
+    'AQAAAAIAAYagAAAAEA6TqnazsepY+egZS7ZR0Ji67+lVqUPM/wxonQ4uK4rmt2oiq2Mg4a2XKn9oRrk5Bg==',
+    'local',
+    'reviewer@roadmap.local',
     NULL,
     now(),
     NULL,
@@ -150,7 +235,7 @@ INSERT INTO public.user_profile
 VALUES
 (
     '23ef42fc-bc96-4017-8a52-e00cd6a3b985',
-    'Learner',
+    'Minh Dang',
     'Learner Test Account',
     'Development account for validating normal learner flows.',
     'Ho Chi Minh City',
@@ -169,7 +254,7 @@ VALUES
 ),
 (
     'd877b560-13c7-4a8f-83c2-563c8da7d4a1',
-    'Content Manager',
+    'Trong Le',
     'Learning Content Manager',
     'Development account for validating content_manager-only learning module management flows.',
     'Ho Chi Minh City',
@@ -178,6 +263,82 @@ VALUES
     NULL,
     'Content Manager',
     'content.manager@roadmap.local',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    FALSE,
+    now(),
+    now()
+),
+(
+    '4b760089-bc9d-4775-9d6d-b3a791cb0d02',
+    'Khoi Dang',
+    'Learning Content Manager',
+    'Development account for validating owned content manager roadmap flows.',
+    'Ho Chi Minh City',
+    NULL,
+    NULL,
+    NULL,
+    'Content Manager',
+    'content.manager2@roadmap.local',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    FALSE,
+    now(),
+    now()
+),
+(
+    'f82a7417-9394-4869-844e-03771b01b2ab',
+    'Anh Hoang',
+    'Learning Content Manager',
+    'Development account for validating owned content manager roadmap flows.',
+    'Ho Chi Minh City',
+    NULL,
+    NULL,
+    NULL,
+    'Content Manager',
+    'content.manager3@roadmap.local',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    FALSE,
+    now(),
+    now()
+),
+(
+    '71f15afa-83d4-4b31-99ab-c58f6abe0f83',
+    'Phuc Nguyen',
+    'Learning Content Manager',
+    'Development account for validating owned content manager roadmap flows.',
+    'Ho Chi Minh City',
+    NULL,
+    NULL,
+    NULL,
+    'Content Manager',
+    'content.manager4@roadmap.local',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    FALSE,
+    now(),
+    now()
+),
+(
+    '6fe7ffed-cb3b-4a33-9a60-a010432f53a4',
+    'Vu Le',
+    'Content Reviewer',
+    'Development account for validating reviewer-only content approval flows.',
+    'Ho Chi Minh City',
+    NULL,
+    NULL,
+    NULL,
+    'Reviewer',
+    'reviewer@roadmap.local',
     NULL,
     NULL,
     NULL,
@@ -253,11 +414,16 @@ WITH assignments(username_normalized, role_name) AS (
         -- Dedicated role-surface accounts
         ('learner', 'learner'),
         ('contentmanager', 'content_manager'),
+        ('contentmanager2', 'content_manager'),
+        ('contentmanager3', 'content_manager'),
+        ('contentmanager4', 'content_manager'),
+        ('reviewer', 'reviewer'),
         ('admin', 'admin'),
 
         -- All-roles development account
         ('godseed', 'learner'),
         ('godseed', 'content_manager'),
+        ('godseed', 'reviewer'),
         ('godseed', 'admin')
 )
 INSERT INTO public.user_role (user_id, role_id)

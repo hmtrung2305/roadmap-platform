@@ -413,15 +413,12 @@ export function isCenterSpineChildNode(node) {
   const nodeType = getNodeType(node);
   const layoutRole = getLayoutRole(node);
   const checkpointType = node?.checkpointType || node?.checkpoint_type || null;
-  const isRequired = node?.isRequired ?? node?.is_required ?? false;
-
   if (nodeType === "phase") return true;
-  if (nodeType === "checkpoint") return true;
-  if (layoutRole === "checkpoint" || layoutRole === "gate" || layoutRole === "validation") return true;
-  if (checkpointType === "gate" || checkpointType === "assessment" || checkpointType === "review") return true;
+  if (layoutRole === "side" || layoutRole === "side_left" || layoutRole === "side_right" || layoutRole === "hidden") return false;
+  if (nodeType === "checkpoint") return layoutRole === "checkpoint" || layoutRole === "trunk" || layoutRole === "gate" || layoutRole === "validation";
 
   if (nodeType === "project") {
-    return isRequired === true || layoutRole === "required_project" || layoutRole === "validation_project";
+    return false;
   }
 
   return false;
@@ -436,6 +433,7 @@ export function calculateSchemaAwarePositions(sourceNodes, sourceEdges) {
   const nodesById = toNodeMap(sourceNodes);
   const childrenByParent = buildChildrenByParent(sourceNodes, sourceEdges);
   const choiceChildrenByParent = buildChildrenByEdgeType(sourceEdges, "choice");
+  const nestedChildrenByParent = buildNestedChildrenByParent(sourceNodes, sourceEdges);
   const trunkNodes = getOrderedTrunkNodes(sourceNodes, sourceEdges, nodesById);
 
   let phaseStartY = 0;
@@ -447,11 +445,12 @@ export function calculateSchemaAwarePositions(sourceNodes, sourceEdges) {
 
     const centerSpineChildren = children.filter(isCenterSpineChildNode);
     const sideChildren = children.filter((child) => !centerSpineChildren.includes(child));
-    const sideColumns = splitSideChildrenIntoColumns(sideChildren, choiceChildrenByParent);
+    const sideColumns = splitSideChildrenIntoColumns(sideChildren, choiceChildrenByParent, nestedChildrenByParent);
     const phaseHeight = calculatePhaseBlockHeight(
       sideColumns,
       centerSpineChildren,
-      choiceChildrenByParent
+      choiceChildrenByParent,
+      nestedChildrenByParent
     );
 
     const trunkY = phaseStartY + phaseHeight / 2 - NODE_HEIGHT / 2;
@@ -465,6 +464,7 @@ export function calculateSchemaAwarePositions(sourceNodes, sourceEdges) {
       phaseHeight,
       positions,
       choiceChildrenByParent,
+      nestedChildrenByParent,
       nodesById
     );
 
@@ -526,9 +526,9 @@ export function resolveColumnCollisions(sourceNodes, positions) {
   });
 }
 
-export function calculatePhaseBlockHeight(sideColumns, centerSpineChildren, choiceChildrenByParent) {
-  const leftHeight = calculateSideColumnHeight(sideColumns.left, choiceChildrenByParent);
-  const rightHeight = calculateSideColumnHeight(sideColumns.right, choiceChildrenByParent);
+export function calculatePhaseBlockHeight(sideColumns, centerSpineChildren, choiceChildrenByParent, nestedChildrenByParent = new Map()) {
+  const leftHeight = calculateSideColumnHeight(sideColumns.left, choiceChildrenByParent, nestedChildrenByParent);
+  const rightHeight = calculateSideColumnHeight(sideColumns.right, choiceChildrenByParent, nestedChildrenByParent);
 
   const centerSpineHeight = centerSpineChildren.length > 0
     ? ROADMAP_LAYOUT.checkpointBelowPhaseOffsetY +
@@ -538,20 +538,20 @@ export function calculatePhaseBlockHeight(sideColumns, centerSpineChildren, choi
   return Math.max(MIN_PHASE_BLOCK_HEIGHT, leftHeight, rightHeight, centerSpineHeight);
 }
 
-export function calculateSideColumnHeight(children, choiceChildrenByParent) {
+export function calculateSideColumnHeight(children, choiceChildrenByParent, nestedChildrenByParent = new Map()) {
   return calculateStackHeight(
-    children.map((child) => getSideRowHeight(child, choiceChildrenByParent)),
+    children.map((child) => getSideRowHeight(child, choiceChildrenByParent, nestedChildrenByParent)),
     GROUP_ROW_GAP_Y
   );
 }
 
-export function splitSideChildrenIntoColumns(sideChildren, choiceChildrenByParent) {
+export function splitSideChildrenIntoColumns(sideChildren, choiceChildrenByParent, nestedChildrenByParent = new Map()) {
   const columns = { left: [], right: [] };
   const heights = { left: 0, right: 0 };
 
   getSortedChildren(sideChildren).forEach((child) => {
     const preferredSide = getPreferredSide(child);
-    const rowHeight = getSideRowHeight(child, choiceChildrenByParent);
+    const rowHeight = getSideRowHeight(child, choiceChildrenByParent, nestedChildrenByParent);
     const side = preferredSide || (heights.left <= heights.right ? "left" : "right");
 
     columns[side].push(child);
@@ -570,8 +570,8 @@ export function getPreferredSide(node) {
   return null;
 }
 
-export function getSideRowHeight(child, choiceChildrenByParent) {
-  const optionCount = choiceChildrenByParent.get(getNodeId(child))?.length || 0;
+export function getSideRowHeight(child, choiceChildrenByParent, nestedChildrenByParent = new Map()) {
+  const optionCount = getNestedChildIds(child, choiceChildrenByParent, nestedChildrenByParent).length;
 
   if (optionCount === 0) {
     return NODE_HEIGHT;
@@ -603,7 +603,7 @@ export function placeCenterSpineChildren(centerSpineChildren, phaseStartY, phase
   });
 }
 
-export function placeSideChildren(sideColumns, phaseStartY, phaseHeight, positions, choiceChildrenByParent, nodesById) {
+export function placeSideChildren(sideColumns, phaseStartY, phaseHeight, positions, choiceChildrenByParent, nestedChildrenByParent, nodesById) {
   placeSideColumn(
     sideColumns.left,
     "left",
@@ -611,6 +611,7 @@ export function placeSideChildren(sideColumns, phaseStartY, phaseHeight, positio
     phaseHeight,
     positions,
     choiceChildrenByParent,
+    nestedChildrenByParent,
     nodesById
   );
 
@@ -621,6 +622,7 @@ export function placeSideChildren(sideColumns, phaseStartY, phaseHeight, positio
     phaseHeight,
     positions,
     choiceChildrenByParent,
+    nestedChildrenByParent,
     nodesById
   );
 }
@@ -634,10 +636,10 @@ export function getSideColumnOffsetY(children, side, phaseHeight, totalHeight) {
   return side === "left" ? -offset : offset;
 }
 
-export function placeSideColumn(children, side, phaseStartY, phaseHeight, positions, choiceChildrenByParent, nodesById) {
+export function placeSideColumn(children, side, phaseStartY, phaseHeight, positions, choiceChildrenByParent, nestedChildrenByParent, nodesById) {
   if (children.length === 0) return;
 
-  const rowHeights = children.map((child) => getSideRowHeight(child, choiceChildrenByParent));
+  const rowHeights = children.map((child) => getSideRowHeight(child, choiceChildrenByParent, nestedChildrenByParent));
   const totalHeight = calculateStackHeight(rowHeights, GROUP_ROW_GAP_Y);
   const offsetY = getSideColumnOffsetY(children, side, phaseHeight, totalHeight);
   let cursorY = phaseStartY + phaseHeight / 2 - totalHeight / 2 + offsetY;
@@ -654,13 +656,13 @@ export function placeSideColumn(children, side, phaseStartY, phaseHeight, positi
       y: childY,
     });
 
-    const choiceChildren = getSortedChildren(
-      (choiceChildrenByParent.get(childId) || [])
+    const nestedChildren = getSortedChildren(
+      getNestedChildIds(child, choiceChildrenByParent, nestedChildrenByParent)
         .map((id) => nodesById.get(id))
         .filter(Boolean)
     );
 
-    placeChoiceChildren(choiceChildren, rowCenterY, positions, side);
+    placeChoiceChildren(nestedChildren, rowCenterY, positions, side);
 
     cursorY += rowHeight + GROUP_ROW_GAP_Y;
   });
@@ -866,6 +868,30 @@ export function buildChildrenByEdgeType(sourceEdges, edgeType) {
     });
 
   return result;
+}
+
+export function buildNestedChildrenByParent(sourceNodes, sourceEdges) {
+  const childrenByParent = buildChildrenByParent(sourceNodes, sourceEdges);
+  const trunkNodeIds = new Set(sourceNodes
+    .filter((node) => getNodeType(node) === "phase" || getLayoutRole(node) === "trunk")
+    .map(getNodeId));
+  const result = new Map();
+
+  childrenByParent.forEach((children, parentId) => {
+    if (!trunkNodeIds.has(parentId)) {
+      result.set(parentId, children.map(getNodeId));
+    }
+  });
+
+  return result;
+}
+
+export function getNestedChildIds(child, choiceChildrenByParent, nestedChildrenByParent = new Map()) {
+  const childId = getNodeId(child);
+  const choiceChildren = choiceChildrenByParent.get(childId) || [];
+  if (choiceChildren.length > 0) return choiceChildren;
+
+  return nestedChildrenByParent.get(childId) || [];
 }
 
 export function buildFallbackParentEdges(sourceNodes) {
@@ -1125,11 +1151,7 @@ export function getNodeTypeClass(nodeType, checkpointType) {
   if (nodeType === "resource_group") return "border-[#CFE79B] bg-[#E9F5BE] text-[#18332D] hover:bg-[#E0F0AA]";
 
   if (nodeType === "checkpoint") {
-    if (checkpointType === "gate") return "border-[#55C98E] bg-[#81E7AF] text-[#18332D] hover:bg-[#74DEA4]";
-    if (checkpointType === "assessment") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
-    if (checkpointType === "review") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
-    if (checkpointType === "project") return "border-[#E6A66D] bg-[#F1BA88] text-[#18332D] hover:bg-[#EEAE78]";
-    return "border-[#B9D8CC] bg-[#F8FAFC] text-[#18332D] hover:bg-[#F1F5F9]";
+    return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";
   }
 
   return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";

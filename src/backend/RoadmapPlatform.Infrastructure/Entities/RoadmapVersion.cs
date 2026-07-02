@@ -54,4 +54,6 @@ public partial class RoadmapVersion
     public virtual ICollection<RoadmapEnrollment> RoadmapEnrollments { get; set; } = new List<RoadmapEnrollment>();
 
     public virtual ICollection<RoadmapNode> RoadmapNodes { get; set; } = new List<RoadmapNode>();
+
+    public virtual ICollection<RoadmapVersionReviewEvent> RoadmapVersionReviewEvents { get; set; } = new List<RoadmapVersionReviewEvent>();
 }

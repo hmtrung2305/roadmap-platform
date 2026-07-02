@@ -86,6 +86,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<RoadmapVersion> RoadmapVersions { get; set; }
 
+    public virtual DbSet<RoadmapVersionReviewEvent> RoadmapVersionReviewEvents { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<Skill> Skills { get; set; }
@@ -1487,7 +1489,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasColumnName("difficulty_level");
             entity.Property(e => e.EstimatedHours).HasColumnName("estimated_hours");
-            entity.Property(e => e.IsAssessmentSkill).HasColumnName("is_assessment_skill");
             entity.Property(e => e.IsRequired)
                 .HasDefaultValue(true)
                 .HasColumnName("is_required");
@@ -1663,6 +1664,39 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Roadmap).WithMany(p => p.RoadmapVersions)
                 .HasForeignKey(d => d.RoadmapId)
                 .HasConstraintName("fk_roadmap_version_roadmap");
+        });
+
+        modelBuilder.Entity<RoadmapVersionReviewEvent>(entity =>
+        {
+            entity.HasKey(e => e.RoadmapVersionReviewEventId).HasName("roadmap_version_review_event_pkey");
+
+            entity.ToTable("roadmap_version_review_event");
+
+            entity.HasIndex(e => e.ActorUserId, "ix_roadmap_version_review_event_actor_user_id");
+
+            entity.HasIndex(e => e.RoadmapVersionId, "ix_roadmap_version_review_event_version_id");
+
+            entity.Property(e => e.RoadmapVersionReviewEventId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("roadmap_version_review_event_id");
+            entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.EventType)
+                .HasMaxLength(30)
+                .HasColumnName("event_type");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+
+            entity.HasOne(d => d.ActorUser).WithMany(p => p.RoadmapVersionReviewEvents)
+                .HasForeignKey(d => d.ActorUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_roadmap_review_event_actor_user");
+
+            entity.HasOne(d => d.RoadmapVersion).WithMany(p => p.RoadmapVersionReviewEvents)
+                .HasForeignKey(d => d.RoadmapVersionId)
+                .HasConstraintName("fk_roadmap_review_event_version");
         });
 
         modelBuilder.Entity<Role>(entity =>

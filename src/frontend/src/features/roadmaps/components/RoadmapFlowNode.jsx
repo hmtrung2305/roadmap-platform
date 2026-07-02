@@ -135,11 +135,11 @@ function RoadmapFlowNode({ data }) {
     <button
       type="button"
       className={[
-        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border px-4 py-3 text-center shadow-sm outline-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out focus-visible:ring-4 focus-visible:ring-[#81E7AF]/35",
+        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border px-4 py-3 text-center shadow-sm outline-none transition-[background-color,border-color,box-shadow,color,transform] duration-150 ease-out focus-visible:ring-4 focus-visible:ring-[#81E7AF]/35",
         isGuideTarget ? "overflow-visible" : "overflow-hidden",
         getNodeTypeClass(data.nodeType, data.checkpointType),
         getStatusNodeClass(status, data.nodeType),
-        data.isSelected ? "outline outline-4 outline-[#81E7AF]/50" : "",
+        data.isSelected ? "z-10 ring-4 ring-[#1F6F5F]/35 shadow-[0_0_0_2px_#1F6F5F,0_18px_32px_rgba(31,111,95,0.22)] scale-[1.03]" : "",
       ].join(" ")}
       style={{
         width: NODE_WIDTH,
@@ -219,6 +219,16 @@ function RoadmapFlowNode({ data }) {
         style={{ background: getStatusColor(status, data.nodeType) }}
       />
 
+      {data.isSelected && (
+        <span className="absolute right-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#1F6F5F] shadow-sm" />
+      )}
+
+      {data.isNew && (
+        <span className="absolute right-1.5 bottom-1.5 rounded-full border border-white/80 bg-[#F7F1E8] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#1F6F5F] shadow-sm">
+          New
+        </span>
+      )}
+
       {isLocked && (
         <span
           className="absolute right-2 top-1 text-xs font-black text-[#111827]"
@@ -247,7 +257,7 @@ function RoadmapFlowNode({ data }) {
 
       {data.nodeType === "checkpoint" && (
         <span className="rounded-lg border border-[#B9D8CC] bg-white/95 px-2 py-0.5 text-[9px] font-extrabold tracking-[0.08em] text-[#18332D]">
-          {data.checkpointType || "checkpoint"}
+          {data.checkpointType || "assessment"}
         </span>
       )}
     </button>
@@ -268,7 +278,8 @@ function areRoadmapFlowNodePropsEqual(previousProps, nextProps) {
     previousData.status === nextData.status &&
     previousData.isSelected === nextData.isSelected &&
     previousData.isGuideTarget === nextData.isGuideTarget &&
-    previousData.guideTargetLabel === nextData.guideTargetLabel
+    previousData.guideTargetLabel === nextData.guideTargetLabel &&
+    previousData.isNew === nextData.isNew
   );
 }
 

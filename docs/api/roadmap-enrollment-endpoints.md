@@ -20,6 +20,7 @@ Related services / DTOs:
 IRoadmapEnrollmentService
 IRoadmapProgressService
 EnrollRoadmapRequestDto
+MigrateRoadmapEnrollmentRequestDto
 RoadmapEnrollmentDto
 UpdateNodeProgressRequestDto
 UpdateNodeProgressResultDto
@@ -28,7 +29,7 @@ UserNodeProgressDto
 
 ## Summary
 
-Roadmap enrollment endpoints let authenticated learners enroll in a published roadmap version, fetch their current enrollment, and update node progress.
+Roadmap enrollment endpoints let authenticated learners enroll in a published roadmap version, fetch their current enrollment, migrate to approved minor/major updates, and update node progress.
 
 Progress updates are only allowed for manual progress nodes. Container nodes and computed nodes cannot be updated directly.
 
@@ -38,6 +39,7 @@ Progress updates are only allowed for manual progress nodes. Container nodes and
 |---|---|---:|---|
 | `POST` | `/api/roadmap-enrollments` | Yes | Enroll current user in a published roadmap version |
 | `GET` | `/api/roadmap-enrollments/current?roadmapVersionId={id}` | Yes | Get current user's enrollment for a roadmap version |
+| `POST` | `/api/roadmap-enrollments/{roadmapEnrollmentId}/migrate` | Yes | Migrate current user's enrollment to a newer published minor/major version |
 | `PATCH` | `/api/roadmap-enrollments/{roadmapEnrollmentId}/nodes/{roadmapNodeId}/progress` | Yes | Update progress for one roadmap node |
 
 ## Authentication
@@ -56,6 +58,15 @@ Progress updates are only allowed for manual progress nodes. Container nodes and
 | Date format | ISO 8601 datetime string |
 | Error format | Shared `ApiErrorResponse` object |
 | Enrollment ownership | Enrollment updates are scoped to the authenticated user |
+
+## Permissions
+
+| Endpoint | Permission |
+|---|---|
+| `POST /api/roadmap-enrollments` | `roadmap_enrollment.create.self` |
+| `GET /api/roadmap-enrollments/current` | `roadmap_enrollment.view.self` |
+| `POST /api/roadmap-enrollments/{roadmapEnrollmentId}/migrate` | `roadmap_enrollment.migrate.self` |
+| `PATCH /api/roadmap-enrollments/{roadmapEnrollmentId}/nodes/{roadmapNodeId}/progress` | `roadmap_progress.update.self` |
 
 ## `POST /api/roadmap-enrollments`
 
@@ -155,6 +166,68 @@ Status when no enrollment exists:
 | Missing `roadmapVersionId` | `400 Bad Request` with `INVALID_REQUEST` |
 | Enrollment exists | Returns enrollment |
 | Enrollment missing | Returns `204 No Content` |
+
+## `POST /api/roadmap-enrollments/{roadmapEnrollmentId}/migrate`
+
+Migrates the current user's existing enrollment to a newer published roadmap version.
+
+Use this only for `minor` and `major` roadmap updates. `patch` updates are applied automatically when the patch version is approved and published.
+
+### Path Parameters
+
+| Parameter | Type | Required | Notes |
+|---|---|---:|---|
+| `roadmapEnrollmentId` | `guid` | Yes | Existing enrollment owned by the current user |
+
+### Request Body
+
+| Field | Type | Required | Validation / Notes |
+|---|---|---:|---|
+| `targetRoadmapVersionId` | `guid` | Yes | Must be a newer published version in the same roadmap, with release type `minor` or `major` |
+
+Example:
+
+```json
+{
+  "targetRoadmapVersionId": "33333333-3333-3333-3333-333333333333"
+}
+```
+
+### Success Response
+
+Status:
+
+```text
+200 OK
+```
+
+Body:
+
+```json
+{
+  "roadmapEnrollmentId": "11111111-1111-1111-1111-111111111111",
+  "roadmapVersionId": "33333333-3333-3333-3333-333333333333",
+  "status": "active",
+  "progressPercent": 18.75,
+  "startedAt": "2026-06-16T10:00:00Z",
+  "completedAt": null
+}
+```
+
+### Rules
+
+| Rule | Behavior |
+|---|---|
+| Enrollment missing or not owned by current user | Not found |
+| Target version missing or not published | Not found |
+| Target version belongs to another roadmap | Invalid request |
+| Target version is not newer than the enrolled version | Invalid request |
+| Target release type is `patch` | Invalid request; patch updates are automatic |
+| Target release type is not `minor` or `major` | Invalid request |
+| User already has an enrollment on target version | Existing target enrollment is returned |
+| Matching progress rows | Remapped by `nodeType + slug` |
+| Progress rows with no matching target node | Removed from the current enrollment progress set |
+| Progress percent and status | Recomputed after remapping |
 
 ## `PATCH /api/roadmap-enrollments/{roadmapEnrollmentId}/nodes/{roadmapNodeId}/progress`
 
@@ -269,4 +342,4 @@ Body:
 
 ## Summary
 
-Enroll first, then update manual node progress through the enrollment-specific progress endpoint. Computed nodes and locked nodes are protected from direct manual updates.
+Enroll first, then update manual node progress through the enrollment-specific progress endpoint. When a minor or major roadmap update is available, migrate the existing enrollment explicitly through the migration endpoint. Computed nodes and locked nodes are protected from direct manual updates.

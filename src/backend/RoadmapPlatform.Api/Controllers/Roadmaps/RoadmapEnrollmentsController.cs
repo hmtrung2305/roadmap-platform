@@ -60,6 +60,27 @@ public sealed class RoadmapEnrollmentsController(
         return result == null ? NoContent() : Ok(result);
     }
 
+    [HttpPost("{roadmapEnrollmentId:guid}/migrate")]
+    [RequirePermission(PermissionConstant.ROADMAP_ENROLLMENT_MIGRATE_SELF)]
+    [ProducesResponseType(typeof(RoadmapEnrollmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MigrateEnrollment(
+        Guid roadmapEnrollmentId,
+        [FromBody] MigrateRoadmapEnrollmentRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var result = await roadmapEnrollmentService.MigrateEnrollmentAsync(
+            userId,
+            roadmapEnrollmentId,
+            request,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     private Guid GetCurrentUserId()
     {
         var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);

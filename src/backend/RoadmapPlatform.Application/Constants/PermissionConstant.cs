@@ -43,7 +43,20 @@ public static class PermissionConstant
     public const string ROADMAP_NODE_VIEW_PUBLISHED = "roadmap_node.view.published";
     public const string ROADMAP_ENROLLMENT_VIEW_SELF = "roadmap_enrollment.view.self";
     public const string ROADMAP_ENROLLMENT_CREATE_SELF = "roadmap_enrollment.create.self";
+    public const string ROADMAP_ENROLLMENT_MIGRATE_SELF = "roadmap_enrollment.migrate.self";
     public const string ROADMAP_PROGRESS_UPDATE_SELF = "roadmap_progress.update.self";
+
+    // =====================================================
+    // CONTENT REVIEW WORKFLOW PERMISSIONS
+    // =====================================================
+    public const string ROADMAP_DRAFT_VIEW_OWN = "roadmap_draft.view.own";
+    public const string ROADMAP_DRAFT_CREATE_OWN = "roadmap_draft.create.own";
+    public const string ROADMAP_DRAFT_UPDATE_OWN = "roadmap_draft.update.own";
+    public const string ROADMAP_DRAFT_DELETE_OWN = "roadmap_draft.delete.own";
+    public const string ROADMAP_REVIEW_SUBMIT_OWN = "roadmap_review.submit.own";
+    public const string ROADMAP_REVIEW_VIEW_ANY = "roadmap_review.view.any";
+    public const string ROADMAP_REVIEW_APPROVE_ANY = "roadmap_review.approve.any";
+    public const string ROADMAP_REVIEW_REJECT_ANY = "roadmap_review.reject.any";
 
     // =====================================================
     // LEARNER LEARNING MODULE PERMISSIONS
@@ -59,13 +72,18 @@ public static class PermissionConstant
     public const string LEARNING_MODULE_CHAT_USE_ENROLLED = "learning_module_chat.use.enrolled";
 
     // =====================================================
-    // LEARNER DISCOVERY AND ANALYSIS PERMISSIONS
+    // DISCOVERY, CATALOG, AND ANALYSIS PERMISSIONS
     // =====================================================
     public const string CAREER_ROLE_VIEW_CATALOG = "career_role.view.catalog";
     public const string SKILL_GAP_ANALYSIS_CREATE_SELF = "skill_gap_analysis.create.self";
     public const string MARKET_PULSE_VIEW_CATALOG = "market_pulse.view.catalog";
     public const string MARKET_PULSE_MANAGE_ANY = "market_pulse.manage.any";
     public const string SKILL_VIEW_CATALOG = "skill.view.catalog";
+    public const string SKILL_CREATE_CATALOG = "skill.create.catalog";
+    public const string SKILL_UPDATE_CATALOG = "skill.update.catalog";
+    public const string LEARNING_RESOURCE_VIEW_CATALOG = "learning_resource.view.catalog";
+    public const string LEARNING_RESOURCE_CREATE_CATALOG = "learning_resource.create.catalog";
+    public const string LEARNING_RESOURCE_UPDATE_CATALOG = "learning_resource.update.catalog";
 
     public const string SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF = "skill_gap_analysis_history.view.self";
     public const string SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF = "skill_gap_analysis_history.delete.self";
@@ -191,7 +209,16 @@ public static class PermissionConstant
         ROADMAP_NODE_VIEW_PUBLISHED,
         ROADMAP_ENROLLMENT_VIEW_SELF,
         ROADMAP_ENROLLMENT_CREATE_SELF,
+        ROADMAP_ENROLLMENT_MIGRATE_SELF,
         ROADMAP_PROGRESS_UPDATE_SELF,
+        ROADMAP_DRAFT_VIEW_OWN,
+        ROADMAP_DRAFT_CREATE_OWN,
+        ROADMAP_DRAFT_UPDATE_OWN,
+        ROADMAP_DRAFT_DELETE_OWN,
+        ROADMAP_REVIEW_SUBMIT_OWN,
+        ROADMAP_REVIEW_VIEW_ANY,
+        ROADMAP_REVIEW_APPROVE_ANY,
+        ROADMAP_REVIEW_REJECT_ANY,
         LEARNING_MODULE_VIEW_PUBLISHED,
         LEARNING_MODULE_ENROLLMENT_VIEW_SELF,
         LEARNING_MODULE_ENROLLMENT_CREATE_SELF,
@@ -206,7 +233,16 @@ public static class PermissionConstant
         MARKET_PULSE_VIEW_CATALOG,
         MARKET_PULSE_MANAGE_ANY,
         SKILL_VIEW_CATALOG,
+        SKILL_CREATE_CATALOG,
+        SKILL_UPDATE_CATALOG,
+        LEARNING_RESOURCE_VIEW_CATALOG,
+        LEARNING_RESOURCE_CREATE_CATALOG,
+        LEARNING_RESOURCE_UPDATE_CATALOG,
         SKILL_VIEW_ANY,
+        SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF,
+        SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF,
+        SKILL_GAP_CONFIG_VIEW_ANY,
+        SKILL_GAP_CONFIG_UPDATE_ANY,
         LEARNING_MODULE_VIEW_OWN,
         LEARNING_MODULE_CREATE_OWN,
         LEARNING_MODULE_UPDATE_OWN,

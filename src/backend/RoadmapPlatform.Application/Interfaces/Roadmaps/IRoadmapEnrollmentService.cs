@@ -13,4 +13,10 @@ public interface IRoadmapEnrollmentService
         Guid userId,
         Guid roadmapVersionId,
         CancellationToken cancellationToken);
+
+    Task<RoadmapEnrollmentDto> MigrateEnrollmentAsync(
+        Guid userId,
+        Guid roadmapEnrollmentId,
+        MigrateRoadmapEnrollmentRequestDto request,
+        CancellationToken cancellationToken);
 }

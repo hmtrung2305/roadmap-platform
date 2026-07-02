@@ -9,9 +9,11 @@ using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.AiMentor;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
+using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
+using RoadmapPlatform.Application.Interfaces.LearningResources;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
@@ -29,11 +31,13 @@ using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.AiMentor;
 using RoadmapPlatform.Infrastructure.Services.Auth;
+using RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 using RoadmapPlatform.Infrastructure.Services.CareerRoleSkill;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
 using RoadmapPlatform.Infrastructure.Services.LearningModules;
+using RoadmapPlatform.Infrastructure.Services.LearningResources;
 using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
@@ -96,6 +100,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // User Services
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IAdminUserService, AdminUserService>();
             services.AddScoped<IAccountProfileService, AccountProfileService>();
 
             // RBAC Services
@@ -136,6 +141,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Skill Services
             services.AddScoped<ISkillLookupService, SkillLookupService>();
+            services.AddScoped<IContentSkillCatalogService, ContentSkillCatalogService>();
+            services.AddScoped<IContentLearningResourceCatalogService, ContentLearningResourceCatalogService>();
 
             // Roadmap Services
             services.AddScoped<RoadmapDetailBuilder>();
@@ -143,6 +150,14 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IRoadmapEnrollmentService, RoadmapEnrollmentService>();
             services.AddScoped<IRoadmapProgressService, RoadmapProgressService>();
             services.AddScoped<IRoadmapLayoutService, RoadmapLayoutService>();
+            services.AddScoped<ContentManagerRoadmapQueryService>();
+            services.AddScoped<ContentManagerRoadmapMetadataService>();
+            services.AddScoped<ContentManagerRoadmapMappingService>();
+            services.AddScoped<ContentManagerRoadmapStructureService>();
+            services.AddScoped<ContentManagerRoadmapDraftService>();
+            services.AddScoped<ContentManagerRoadmapValidationService>();
+            services.AddScoped<ContentManagerLearningResourceSearchService>();
+            services.AddScoped<IContentManagerRoadmapService, ContentManagerRoadmapService>();
 
             // File Storage
             services.AddScoped<LocalFileStorage>();
@@ -183,6 +198,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Authorize Handler
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+            services.AddScoped<IAuthorizationHandler, AnyPermissionHandler>();
 
             // Skill gap, Career role skill
             services.AddScoped<ISkillGapAnalysisService, SkillGapAnalysisService>();

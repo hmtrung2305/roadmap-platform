@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.ai_mentor_conversation
 	CONSTRAINT fk_ai_mentor_conversation_user
 		FOREIGN KEY (user_id)
 		REFERENCES public."user"(user_id)
-		ON DELETE CASCADE		
+		ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS ix_ai_mentor_conversation_user_updated_at

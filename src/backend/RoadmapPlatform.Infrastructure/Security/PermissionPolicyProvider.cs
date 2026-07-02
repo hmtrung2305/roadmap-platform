@@ -18,14 +18,22 @@ public sealed class PermissionPolicyProvider : DefaultAuthorizationPolicyProvide
             return policy;
         }
 
-        if (!PermissionPolicyNames.TryGetPermission(policyName, out var permission))
+        if (PermissionPolicyNames.TryGetPermission(policyName, out var permission))
         {
-            return null;
+            return new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .AddRequirements(new PermissionRequirement(permission))
+                .Build();
         }
 
-        return new AuthorizationPolicyBuilder()
-            .RequireAuthenticatedUser()
-            .AddRequirements(new PermissionRequirement(permission))
-            .Build();
+        if (PermissionPolicyNames.TryGetAnyPermissions(policyName, out var permissions))
+        {
+            return new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .AddRequirements(new AnyPermissionRequirement(permissions))
+                .Build();
+        }
+
+        return null;
     }
 }

@@ -173,7 +173,7 @@ export default function AvatarDropdown({ user, profile, onLogout }) {
             {canAccessContentManagerConsole && (
               <DropdownItem
                 icon={<LibraryBig size={18} />}
-                label="Content Manager Console"
+                label="Content Workspace"
                 onClick={handleGoToContentManagerConsole}
               />
             )}

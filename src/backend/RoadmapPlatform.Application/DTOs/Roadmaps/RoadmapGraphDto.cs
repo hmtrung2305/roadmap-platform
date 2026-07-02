@@ -9,6 +9,12 @@ public sealed class RoadmapGraphDto
     public string? Description { get; set; }
     public string Visibility { get; set; } = string.Empty;
     public int VersionNumber { get; set; }
+    public int MajorVersion { get; set; }
+    public int MinorVersion { get; set; }
+    public int PatchVersion { get; set; }
+    public string VersionLabel { get; set; } = string.Empty;
+    public string ReleaseType { get; set; } = string.Empty;
+    public Guid? CreatedFromVersionId { get; set; }
     public int? EstimatedTotalHours { get; set; }
     public decimal EstimatedRequiredHours { get; set; }
     public decimal EstimatedOptionalHours { get; set; }
@@ -16,6 +22,8 @@ public sealed class RoadmapGraphDto
     public string? LayoutAlgorithm { get; set; }
     public CareerRoleDto CareerRole { get; set; } = new();
     public RoadmapEnrollmentDto? Enrollment { get; set; }
+    public RoadmapVersionUpdateDto? AvailableUpdate { get; set; }
+    public List<RoadmapVersionHistoryItemDto> VersionHistory { get; set; } = [];
     public int TrackableNodeCount { get; set; }
     public int CompletedNodeCount { get; set; }
     public decimal ProgressPercent { get; set; }

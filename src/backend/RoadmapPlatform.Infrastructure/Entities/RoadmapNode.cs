@@ -45,8 +45,6 @@ public partial class RoadmapNode
 
     public DateTime CreatedAt { get; set; }
 
-    public bool IsAssessmentSkill { get; set; }
-
     public virtual ICollection<AssessmentLevelGroup> AssessmentLevelGroups { get; set; } = new List<AssessmentLevelGroup>();
 
     public virtual ICollection<RoadmapNode> InverseParentNode { get; set; } = new List<RoadmapNode>();

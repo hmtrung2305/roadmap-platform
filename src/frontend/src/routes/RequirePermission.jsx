@@ -1,8 +1,8 @@
 import { Navigate, useLocation } from "react-router-dom";
 import AppLoading from "../components/common/AppLoading";
-import NotFoundPage from "../pages/NotFoundPage";
 import { useAuthStore } from "../stores/useAuthStore";
 import { canAccessRoute } from "../utils/authorizationUtils";
+import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
 
 export default function RequirePermission({
   children,
@@ -10,6 +10,7 @@ export default function RequirePermission({
   allPermissions = [],
   anyRoles = [],
   allRoles = [],
+  redirectToDefaultOnDeny = false,
 }) {
   const location = useLocation();
 
@@ -32,7 +33,11 @@ export default function RequirePermission({
   }
 
   if (!canAccessRoute(user, { anyPermissions, allPermissions, anyRoles, allRoles })) {
-    return <NotFoundPage />;
+    if (redirectToDefaultOnDeny) {
+      return <Navigate to={getDefaultAuthenticatedRoute(user)} replace />;
+    }
+
+    return <Navigate to="/not-found" replace />;
   }
 
   return children;
