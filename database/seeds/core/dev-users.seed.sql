@@ -6,6 +6,7 @@ INSERT INTO public.role (role_name)
 VALUES
     ('learner'),
     ('content_manager'),
+    ('reviewer'),
     ('admin')
 ON CONFLICT (role_name) DO NOTHING;
 
@@ -56,6 +57,15 @@ VALUES
     '71f15afa-83d4-4b31-99ab-c58f6abe0f83',
     'ContentManager4',
     'contentmanager4',
+    'active',
+    now(),
+    now(),
+    NULL
+),
+(
+    '6fe7ffed-cb3b-4a33-9a60-a010432f53a4',
+    'Reviewer',
+    'reviewer',
     'active',
     now(),
     now(),
@@ -155,6 +165,18 @@ VALUES
     now()
 ),
 (
+    '2c46a189-3408-4a76-a185-5c02f4465a17',
+    '6fe7ffed-cb3b-4a33-9a60-a010432f53a4',
+    'reviewer@roadmap.local',
+    'AQAAAAIAAYagAAAAEA6TqnazsepY+egZS7ZR0Ji67+lVqUPM/wxonQ4uK4rmt2oiq2Mg4a2XKn9oRrk5Bg==',
+    'local',
+    'reviewer@roadmap.local',
+    NULL,
+    now(),
+    NULL,
+    now()
+),
+(
     'e24e9350-8fbc-4738-8625-3eb513fc9178',
     'c9fb5f8e-6cc5-42d6-9a66-7cf21a2f3876',
     'admin@roadmap.local',
@@ -213,7 +235,7 @@ INSERT INTO public.user_profile
 VALUES
 (
     '23ef42fc-bc96-4017-8a52-e00cd6a3b985',
-    'Learner',
+    'Minh Dang',
     'Learner Test Account',
     'Development account for validating normal learner flows.',
     'Ho Chi Minh City',
@@ -307,6 +329,25 @@ VALUES
     now()
 ),
 (
+    '6fe7ffed-cb3b-4a33-9a60-a010432f53a4',
+    'Vu Le',
+    'Content Reviewer',
+    'Development account for validating reviewer-only content approval flows.',
+    'Ho Chi Minh City',
+    NULL,
+    NULL,
+    NULL,
+    'Reviewer',
+    'reviewer@roadmap.local',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    FALSE,
+    now(),
+    now()
+),
+(
     'c9fb5f8e-6cc5-42d6-9a66-7cf21a2f3876',
     'Admin',
     'Platform Administrator',
@@ -376,11 +417,13 @@ WITH assignments(username_normalized, role_name) AS (
         ('contentmanager2', 'content_manager'),
         ('contentmanager3', 'content_manager'),
         ('contentmanager4', 'content_manager'),
+        ('reviewer', 'reviewer'),
         ('admin', 'admin'),
 
         -- All-roles development account
         ('godseed', 'learner'),
         ('godseed', 'content_manager'),
+        ('godseed', 'reviewer'),
         ('godseed', 'admin')
 )
 INSERT INTO public.user_role (user_id, role_id)
