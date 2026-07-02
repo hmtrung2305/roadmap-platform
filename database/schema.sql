@@ -442,7 +442,7 @@ CREATE INDEX IF NOT EXISTS ix_job_posting_published_at
 
 CREATE INDEX IF NOT EXISTS ix_job_posting_daily_snapshot_date
     ON public.job_posting_daily_snapshot(snapshot_date);
-    
+
 CREATE INDEX IF NOT EXISTS ix_skill_trend_snapshot_date
     ON public.skill_trend_snapshot(snapshot_date);
 
@@ -541,7 +541,7 @@ CREATE TABLE IF NOT EXISTS public.ai_credit_plan
 INSERT INTO public.ai_credit_plan
     (plan_code, daily_credit_limit, monthly_credit_limit, description)
 VALUES
-    ('free', 5, NULL, 'Default experimental plan for regular users.'),
+    ('free', 10, NULL, 'Default experimental plan for regular users.'),
     ('premium', 100, NULL, 'Higher daily credit limit for future paid users.'),
     ('admin', 1000, NULL, 'High daily credit limit for administrators and internal testing.')
 ON CONFLICT (plan_code) DO UPDATE
@@ -1842,13 +1842,13 @@ CREATE TABLE IF NOT EXISTS public.assessment_level
 
     career_role_id UUID NOT NULL,
     name VARCHAR(50) NOT NULL,
-	slug VARCHAR(50) NOT NULL, 
+	slug VARCHAR(50) NOT NULL,
     sort_order INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
 
 	CONSTRAINT uq_assessment_level_slug
-    	UNIQUE(career_role_id, slug),	
-	
+    	UNIQUE(career_role_id, slug),
+
     CONSTRAINT fk_assessment_level_career_role
         FOREIGN KEY (career_role_id)
         REFERENCES career_role(career_role_id) ON DELETE CASCADE
