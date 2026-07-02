@@ -69,11 +69,17 @@ export function getDefaultContentManagerRoute(user) {
     return "/content/reviews";
   }
 
-  if (hasAnyPermission(user, [PERMISSIONS.SKILL_VIEW_CATALOG])) {
+  if (hasAnyPermission(user, [
+    PERMISSIONS.SKILL_CREATE_CATALOG,
+    PERMISSIONS.SKILL_UPDATE_CATALOG,
+  ])) {
     return "/content/skills";
   }
 
-  if (hasAnyPermission(user, [PERMISSIONS.LEARNING_RESOURCE_VIEW_CATALOG])) {
+  if (hasAnyPermission(user, [
+    PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG,
+    PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG,
+  ])) {
     return "/content/learning-resources";
   }
 

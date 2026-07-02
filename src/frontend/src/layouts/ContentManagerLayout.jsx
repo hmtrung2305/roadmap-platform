@@ -51,14 +51,20 @@ const contentManagerNavGroups = [
         label: "Skills",
         path: "/content/skills",
         icon: Tag,
-        requiredPermission: PERMISSIONS.SKILL_VIEW_CATALOG,
+        requiredAnyPermissions: [
+          PERMISSIONS.SKILL_CREATE_CATALOG,
+          PERMISSIONS.SKILL_UPDATE_CATALOG,
+        ],
         match: (pathname) => pathname.startsWith("/content/skills"),
       },
       {
         label: "Learning Resources",
         path: "/content/learning-resources",
         icon: BookOpenText,
-        requiredPermission: PERMISSIONS.LEARNING_RESOURCE_VIEW_CATALOG,
+        requiredAnyPermissions: [
+          PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG,
+          PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG,
+        ],
         match: (pathname) => pathname.startsWith("/content/learning-resources"),
       },
       {
@@ -113,7 +119,7 @@ function getContentManagerPageTitle(pathname) {
     return "Settings";
   }
 
-  return "Content Manager";
+  return "Content Workspace";
 }
 
 function getDisplayName(user, accountProfile) {
@@ -123,7 +129,7 @@ function getDisplayName(user, accountProfile) {
     user?.displayName ||
     user?.name ||
     user?.username ||
-    "Content Manager"
+    "Account"
   );
 }
 
@@ -191,11 +197,16 @@ export default function ContentManagerLayout() {
     () =>
       contentManagerNavGroups
         .flatMap((group) => group.items)
-        .filter(
-          (item) =>
+        .filter((item) => {
+          if (item.requiredAnyPermissions?.length) {
+            return hasAnyPermission(user, item.requiredAnyPermissions);
+          }
+
+          return (
             !item.requiredPermission ||
-            hasPermission(user, item.requiredPermission),
-        ),
+            hasPermission(user, item.requiredPermission)
+          );
+        }),
     [user],
   );
 
@@ -354,7 +365,7 @@ export default function ContentManagerLayout() {
 
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#1F6F5F]">
-                    Content Manager
+                    Content Workspace
                   </p>
                   <h1 className="truncate text-sm font-extrabold text-[#18332D]">
                     {pageTitle}
@@ -364,7 +375,7 @@ export default function ContentManagerLayout() {
 
               <div className="hidden lg:block">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
-                  Content Manager
+                  Content Workspace
                 </p>
                 <h1 className="truncate text-lg font-extrabold text-[#18332D]">
                   {pageTitle}

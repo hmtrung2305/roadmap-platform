@@ -14,7 +14,7 @@ public sealed class ContentManagerSkillsController(
     IContentSkillCatalogService skillCatalogService) : ControllerBase
 {
     [HttpGet]
-    [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
+    [RequireAnyPermission(PermissionConstant.SKILL_CREATE_CATALOG, PermissionConstant.SKILL_UPDATE_CATALOG)]
     [ProducesResponseType(typeof(ContentSkillSearchResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchSkills(
         [FromQuery] ContentSkillSearchQueryDto query,
@@ -26,7 +26,7 @@ public sealed class ContentManagerSkillsController(
     }
 
     [HttpGet("{skillId:guid}")]
-    [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
+    [RequireAnyPermission(PermissionConstant.SKILL_CREATE_CATALOG, PermissionConstant.SKILL_UPDATE_CATALOG)]
     [ProducesResponseType(typeof(ContentSkillDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSkill(

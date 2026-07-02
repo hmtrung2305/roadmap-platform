@@ -235,10 +235,7 @@ export default function App() {
 
           <Route
             element={
-              <RequirePermission
-                anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}
-                redirectToDefaultOnDeny
-              >
+              <RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
                 <ContentManagerLayout />
               </RequirePermission>
             }
@@ -318,7 +315,12 @@ export default function App() {
             <Route
               path="/content/skills"
               element={
-                <RequirePermission anyPermissions={[PERMISSIONS.SKILL_VIEW_CATALOG]}>
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.SKILL_CREATE_CATALOG,
+                    PERMISSIONS.SKILL_UPDATE_CATALOG,
+                  ]}
+                >
                   <ContentManagerSkillsPage />
                 </RequirePermission>
               }
@@ -326,7 +328,12 @@ export default function App() {
             <Route
               path="/content/learning-resources"
               element={
-                <RequirePermission anyPermissions={[PERMISSIONS.LEARNING_RESOURCE_VIEW_CATALOG]}>
+                <RequirePermission
+                  anyPermissions={[
+                    PERMISSIONS.LEARNING_RESOURCE_CREATE_CATALOG,
+                    PERMISSIONS.LEARNING_RESOURCE_UPDATE_CATALOG,
+                  ]}
+                >
                   <ContentManagerLearningResourcesPage />
                 </RequirePermission>
               }

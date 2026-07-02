@@ -1,6 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
 import AppLoading from "../components/common/AppLoading";
-import NotFoundPage from "../pages/NotFoundPage";
 import { useAuthStore } from "../stores/useAuthStore";
 import { canAccessRoute } from "../utils/authorizationUtils";
 import { getDefaultAuthenticatedRoute } from "../utils/navigationUtils";
@@ -38,7 +37,7 @@ export default function RequirePermission({
       return <Navigate to={getDefaultAuthenticatedRoute(user)} replace />;
     }
 
-    return <NotFoundPage />;
+    return <Navigate to="/not-found" replace />;
   }
 
   return children;

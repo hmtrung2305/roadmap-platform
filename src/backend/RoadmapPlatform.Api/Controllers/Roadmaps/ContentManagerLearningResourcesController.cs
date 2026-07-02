@@ -14,7 +14,7 @@ public sealed class ContentManagerLearningResourcesController(
     IContentLearningResourceCatalogService learningResourceCatalogService) : ControllerBase
 {
     [HttpGet]
-    [RequirePermission(PermissionConstant.LEARNING_RESOURCE_VIEW_CATALOG)]
+    [RequireAnyPermission(PermissionConstant.LEARNING_RESOURCE_CREATE_CATALOG, PermissionConstant.LEARNING_RESOURCE_UPDATE_CATALOG)]
     [ProducesResponseType(typeof(ContentLearningResourceSearchResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchLearningResources(
         [FromQuery] ContentLearningResourceSearchQueryDto query,
@@ -26,7 +26,7 @@ public sealed class ContentManagerLearningResourcesController(
     }
 
     [HttpGet("{learningResourceId:guid}")]
-    [RequirePermission(PermissionConstant.LEARNING_RESOURCE_VIEW_CATALOG)]
+    [RequireAnyPermission(PermissionConstant.LEARNING_RESOURCE_CREATE_CATALOG, PermissionConstant.LEARNING_RESOURCE_UPDATE_CATALOG)]
     [ProducesResponseType(typeof(ContentLearningResourceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetLearningResource(
