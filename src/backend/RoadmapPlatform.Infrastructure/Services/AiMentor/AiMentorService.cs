@@ -21,7 +21,7 @@ public sealed class AiMentorService : IAiMentorService
     private const string AiMentorFeatureName = "ai_mentor_chat";
     private const int AiMentorCreditCost = 1;
     private const int RecentMessageLimit = 10;
-    private const int PublishedRoadmapLimit = 8;
+    private const int RoadmapsPerCareerRole = 3;
     private const int RepositoryInsightLimit = 5;
     private const int SkillGapHistoryLimit = 3;
 
@@ -310,53 +310,69 @@ public sealed class AiMentorService : IAiMentorService
         List<AiMentorSourceDto> sources,
         CancellationToken cancellationToken)
     {
-        var roadmaps = await _context.RoadmapVersions
-            .AsNoTracking()
-            .Include(version => version.Roadmap)
-                .ThenInclude(roadmap => roadmap.CareerRole)
-            .Where(version =>
-                version.Status == "published" &&
-                version.Roadmap.Visibility == "public")
-            .OrderByDescending(version => version.PublishedAt ?? version.UpdatedAt)
-            .Take(PublishedRoadmapLimit)
-            .Select(version => new
+        var roadmapCandidates = await _context.RoadmapVersions
+           .AsNoTracking()
+           .Include(version => version.Roadmap)
+               .ThenInclude(roadmap => roadmap.CareerRole)
+           .Where(version =>
+               version.Status == "published" &&
+               version.Roadmap.Visibility == "public")
+           .OrderBy(version => version.Roadmap.CareerRole.Name)
+           .ThenByDescending(version => version.PublishedAt ?? version.UpdatedAt)
+           .Select(version => new
+           {
+               RoadmapTitle = version.Roadmap.Title,
+               RoadmapDescription = version.Roadmap.Description,
+               CareerRole = version.Roadmap.CareerRole.Name,
+               VersionTitle = version.Title,
+               EstimatedHours = version.EstimatedTotalHours,
+               PublishedAt = version.PublishedAt,
+               UpdatedAt = version.UpdatedAt
+           })
+           .ToListAsync(cancellationToken);
+
+        var roadmapsByCareerRole = roadmapCandidates
+            .GroupBy(roadmap => roadmap.CareerRole)
+            .OrderBy(group => group.Key)
+            .Select(group => new
             {
-                RoadmapTitle = version.Roadmap.Title,
-                RoadmapSlug = version.Roadmap.Slug,
-                RoadmapDescription = version.Roadmap.Description,
-                CareerRole = version.Roadmap.CareerRole.Name,
-                CareerRoleSlug = version.Roadmap.CareerRole.Slug,
-                VersionTitle = version.Title,
-                VersionNumber = version.VersionNumber,
-                EstimatedHours = version.EstimatedTotalHours
+                CareerRole = group.Key,
+                Roadmaps = group
+                    .OrderByDescending(roadmap => roadmap.PublishedAt ?? roadmap.UpdatedAt)
+                    .Take(RoadmapsPerCareerRole)
+                    .ToList()
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         builder.AppendLine();
-        builder.AppendLine("[PUBLISHED ROADMAP CATALOG]");
+        builder.AppendLine("[PUBLISHED ROADMAP CATALOG BY CAREER ROLE]");
 
-        if (roadmaps.Count == 0)
+        if (roadmapsByCareerRole.Count == 0)
         {
             builder.AppendLine("No published roadmaps are available.");
-            return;
         }
-
-        foreach (var roadmap in roadmaps)
+        else
         {
-            builder.AppendLine($"- {roadmap.RoadmapTitle} ({roadmap.CareerRole})");
-            builder.AppendLine($"  Roadmap slug: {roadmap.RoadmapSlug}");
-            builder.AppendLine($"  Career role slug: {roadmap.CareerRoleSlug}");
-            builder.AppendLine($"  Version: {roadmap.VersionTitle} v{roadmap.VersionNumber}");
-            builder.AppendLine($"  Estimated hours: {roadmap.EstimatedHours?.ToString() ?? "Unknown"}");
-            builder.AppendLine($"  Description: {TrimForPrompt(roadmap.RoadmapDescription, 300)}");
+            foreach (var roleGroup in roadmapsByCareerRole)
+            {
+                builder.AppendLine($"Career role: {roleGroup.CareerRole}");
+
+                foreach (var roadmap in roleGroup.Roadmaps)
+                {
+                    builder.AppendLine($"- {roadmap.RoadmapTitle}");
+                    builder.AppendLine($"  Version: {roadmap.VersionTitle}");
+                    builder.AppendLine($"  Estimated hours: {roadmap.EstimatedHours?.ToString() ?? "Unknown"}");
+                    builder.AppendLine($"  Description: {TrimForPrompt(roadmap.RoadmapDescription, 250)}");
+                }
+            }
+
+            sources.Add(new AiMentorSourceDto
+            {
+                Type = "roadmap_catalog",
+                Title = "Published roadmap catalog by career role",
+                Detail = $"{roadmapsByCareerRole.Count} career role(s), up to {RoadmapsPerCareerRole} roadmap(s) per role included."
+            });
         }
-
-        sources.Add(new AiMentorSourceDto
-        {
-            Type = "roadmap_catalog",
-            Title = "Published roadmap catalog",
-            Detail = $"{roadmaps.Count} published roadmap(s) included."
-        });
     }
 
     private async Task AppendGitHubInsightContextAsync(
