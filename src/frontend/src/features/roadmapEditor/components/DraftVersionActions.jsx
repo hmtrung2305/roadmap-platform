@@ -1,13 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Clock3,
-  GitBranch,
-  History,
-  Loader2,
-  Send,
-  ShieldCheck,
-  Wrench,
-} from "lucide-react";
+import { Clock3, GitBranch, History, Loader2, Wrench } from "lucide-react";
 
 import AppSelect from "../../../components/common/AppSelect";
 import {
@@ -20,25 +12,43 @@ import {
   getNextMinorVersionLabel,
   getNextPatchVersionLabel,
   prettyReleaseType,
-  prettyStatus,
 } from "../roadmapEditorUtils";
 
 const updateTypeCopy = {
   patch: {
     icon: Wrench,
     label: "Patch update",
-    description: "Safe wording, guide, and resource fixes.",
   },
   minor: {
     icon: GitBranch,
     label: "Minor update",
-    description:
-      "Optional content additions without changing the required path.",
   },
   major: {
     icon: GitBranch,
     label: "Major update",
-    description: "Structural changes for a new roadmap version.",
+  },
+};
+
+const statusTagCopy = {
+  draft: {
+    label: "Draft",
+    className: "border-slate-200 bg-slate-50 text-slate-700",
+  },
+  pending_review: {
+    label: "Awaiting reviewer approval",
+    className: "border-amber-200 bg-amber-50 text-amber-800",
+  },
+  changes_requested: {
+    label: "Changes requested",
+    className: "border-rose-200 bg-rose-50 text-rose-700",
+  },
+  published: {
+    label: "Published",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  archived: {
+    label: "Archived",
+    className: "border-slate-200 bg-slate-100 text-slate-600",
   },
 };
 
@@ -64,33 +74,32 @@ export default function DraftVersionActions({
   onCloneDraft,
   onCreatePatchDraft,
   onCreateMinorDraft,
-  onSubmitDraftForReview,
 }) {
   const [selectedUpdateType, setSelectedUpdateType] = useState("patch");
   const status = String(detail?.status || "").toLowerCase();
   const releaseType = String(detail?.releaseType || "").toLowerCase();
   const currentVersionLabel = formatVersionLabel(detail);
-  const isEditableDraft = status === "draft" || status === "changes_requested";
-  const isPendingReview = status === "pending_review";
-  const submitLabel =
-    status === "changes_requested" ? "Resubmit for review" : "Submit for review";
+  const releaseLabel = releaseType ? prettyReleaseType(releaseType) : "Roadmap";
+  const statusTag = statusTagCopy[status] || {
+    label: status ? status.replace(/_/g, " ") : "Unknown status",
+    className: "border-slate-200 bg-slate-50 text-slate-700",
+  };
 
   const drafts = useMemo(
     () =>
       sortDraftsNewestFirst(
-        detail?.versions?.filter(
-          (version) =>
-            ["draft", "changes_requested", "pending_review"].includes(
-              String(version.status).toLowerCase(),
-            ),
-        ) || [],
+        detail?.versions?.filter((version) => {
+          const versionStatus = String(version.status).toLowerCase();
+          return ["draft", "changes_requested", "pending_review"].includes(
+            versionStatus,
+          );
+        }) || [],
       ),
     [detail?.versions],
   );
 
   const existingDraft = drafts[0] || null;
   const existingDraftLabel = formatVersionLabel(existingDraft);
-  const existingDraftStatus = String(existingDraft?.status || "").toLowerCase();
   const existingDraftReleaseType = String(
     existingDraft?.releaseType || "",
   ).toLowerCase();
@@ -118,6 +127,9 @@ export default function DraftVersionActions({
   const selectedUpdateCopy =
     updateTypeCopy[selectedUpdateType] || updateTypeCopy.patch;
   const SelectedUpdateIcon = selectedUpdateCopy.icon;
+  const selectedUpdateLabel =
+    updateOptions.find((option) => option.value === selectedUpdateType)?.label ||
+    selectedUpdateCopy.label;
 
   const handleCreateUpdateDraft = () => {
     if (selectedUpdateType === "minor") {
@@ -134,28 +146,29 @@ export default function DraftVersionActions({
   };
 
   return (
-    <div className="space-y-3">
-      <ModuleCard className="overflow-visible p-0">
-        <div className="border-b border-[#B9D8CC]/70 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-slate-700">
-              <History size={14} className="text-[#1F6F5F]" /> Versions
-            </div>
-            {versionOptions.length > 0 && (
-              <div className="w-44 sm:w-48">
-                <AppSelect
-                  className="min-w-0"
-                  buttonClassName="!h-11 !px-3 !text-[15px] !font-bold"
-                  optionClassName="!text-sm"
-                  value={detail.roadmapVersionId}
-                  options={versionOptions}
-                  ariaLabel="Select roadmap version"
-                  onChange={onVersionChange}
-                />
-              </div>
-            )}
+    <ModuleCard className="overflow-visible p-0">
+      <div className="border-b border-[#B9D8CC]/70 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-slate-700">
+            <History size={14} className="text-[#1F6F5F]" /> Versions
           </div>
+          {versionOptions.length > 0 && (
+            <div className="w-64 sm:w-72">
+              <AppSelect
+                className="min-w-0"
+                buttonClassName="!h-10 !px-3 !text-sm !font-medium"
+                optionClassName="!text-sm !font-medium"
+                value={detail.roadmapVersionId}
+                options={versionOptions}
+                ariaLabel="Select roadmap version"
+                onChange={onVersionChange}
+              />
+            </div>
+          )}
         </div>
+      </div>
+
+      <div className="space-y-0">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-10 min-w-16 shrink-0 place-items-center rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-3 text-xs font-black text-[#18332D]">
@@ -166,142 +179,91 @@ export default function DraftVersionActions({
                 Current version
               </p>
               <p className="truncate text-xs font-semibold text-slate-600">
-                {prettyStatus(status)} · {detail?.nodeCount || 0} nodes
+                {releaseLabel} version
               </p>
             </div>
           </div>
+
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold ${statusTag.className}`}
+          >
+            {status === "pending_review" ? <Clock3 size={13} /> : null}
+            {statusTag.label}
+          </span>
         </div>
-      </ModuleCard>
 
-      {isEditableDraft && (
-        <ModuleCard className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
-                <ShieldCheck size={18} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="min-w-0 text-sm font-extrabold text-[#18332D]">
-                  {status === "changes_requested"
-                    ? "Changes requested"
-                    : "Draft tools"}
-                </h2>
-                {releaseType === "patch" ? (
-                  <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                    Patch drafts allow wording and resource fixes only.
+        {status === "published" && existingDraft && (
+          <div className="border-t border-[#B9D8CC]/70 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F7F1E8] text-[#B7791F]">
+                  <ExistingDraftIcon size={18} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-sm font-extrabold text-[#18332D]">
+                    Open workflow
+                  </h2>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">
+                    {existingDraftLabel} ·{" "}
+                    {prettyReleaseType(existingDraftReleaseType)} update
                   </p>
-                ) : null}
-                {releaseType === "minor" ? (
-                  <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                    Minor drafts allow optional additions and safe content
-                    edits.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            <ModuleButton onClick={onSubmitDraftForReview} disabled={isBusy}>
-              {isBusy ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Send size={14} />
-              )}
-              {submitLabel}
-            </ModuleButton>
-          </div>
-        </ModuleCard>
-      )}
-
-      {isPendingReview && (
-        <ModuleCard className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-amber-50 text-amber-700">
-                <Clock3 size={18} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="min-w-0 text-sm font-extrabold text-[#18332D]">
-                  Awaiting reviewer approval
-                </h2>
-                <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                  The published version remains live until a reviewer approves this update.
-                </p>
-              </div>
-            </div>
-          </div>
-        </ModuleCard>
-      )}
-
-      {status === "published" && existingDraft && (
-        <ModuleCard className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F7F1E8] text-[#B7791F]">
-                <ExistingDraftIcon size={18} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-extrabold text-[#18332D]">
-                  Open workflow: {existingDraftLabel}
-                </h2>
-                <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                  {prettyStatus(existingDraftStatus)}{" "}
-                  {prettyReleaseType(existingDraftReleaseType).toLowerCase()} version exists.
-                  Finish this workflow before creating another update.
-                </p>
-              </div>
-            </div>
-            <ModuleButton
-              variant="secondary"
-              onClick={() => onVersionChange(existingDraft.roadmapVersionId)}
-              disabled={isBusy}
-            >
-              Open version
-            </ModuleButton>
-          </div>
-        </ModuleCard>
-      )}
-
-      {status === "published" && !existingDraft && (
-        <ModuleCard className="overflow-visible p-0">
-          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
-                <SelectedUpdateIcon size={18} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-extrabold text-[#18332D]">
-                  Create update draft
-                </h2>
-                <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                  {selectedUpdateCopy.description}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="w-full sm:w-56">
-                <AppSelect
-                  value={selectedUpdateType}
-                  options={updateOptions}
-                  ariaLabel="Select update draft type"
-                  onChange={setSelectedUpdateType}
-                />
+                </div>
               </div>
               <ModuleButton
-                onClick={handleCreateUpdateDraft}
+                variant="secondary"
+                onClick={() => onVersionChange(existingDraft.roadmapVersionId)}
                 disabled={isBusy}
-                size="md"
               >
-                {isBusy ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <SelectedUpdateIcon size={14} />
-                )}
-                Create draft
+                Open version
               </ModuleButton>
             </div>
           </div>
-        </ModuleCard>
-      )}
-    </div>
+        )}
+
+        {status === "published" && !existingDraft && (
+          <div className="border-t border-[#B9D8CC]/70 p-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#6FCF97]/16 text-[#1F6F5F]">
+                  <SelectedUpdateIcon size={18} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-sm font-extrabold text-[#18332D]">
+                    Create update draft
+                  </h2>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">
+                    {selectedUpdateLabel}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="w-full sm:w-64">
+                  <AppSelect
+                    buttonClassName="!text-sm !font-medium"
+                    optionClassName="!text-sm !font-medium"
+                    value={selectedUpdateType}
+                    options={updateOptions}
+                    ariaLabel="Select update draft type"
+                    onChange={setSelectedUpdateType}
+                  />
+                </div>
+                <ModuleButton
+                  onClick={handleCreateUpdateDraft}
+                  disabled={isBusy}
+                  size="md"
+                >
+                  {isBusy ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <SelectedUpdateIcon size={14} />
+                  )}
+                  Create draft
+                </ModuleButton>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </ModuleCard>
   );
 }

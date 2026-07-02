@@ -218,22 +218,27 @@ export default function useContentRoadmapEditor(roadmapId) {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNodeForm(createNodeForm(selectedNode));
     setSkillResults([]);
     setResourceResults([]);
     setSkillSearch("");
     setResourceSearch("");
+    // The form should reset only when the selected node changes, not when the
+    // selected node object is refreshed after saving mappings or metadata.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNode?.roadmapNodeId]);
 
   useEffect(() => {
     if (!selectedNode && allNodes.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedNodeId(getDefaultSelectedNodeId(allNodes));
     }
   }, [allNodes, selectedNode]);
   const selectedNodeChildCount = useMemo(() => {
     if (!selectedNode?.roadmapNodeId) return 0;
     return getDescendantIds(selectedNode.roadmapNodeId, allNodes).length - 1;
-  }, [allNodes, selectedNode?.roadmapNodeId]);
+  }, [allNodes, selectedNode]);
 
   const missingMappingCount = useMemo(() => countMissingMappings(allNodes.filter(canEditMappings)), [allNodes]);
   const versionOptions = useMemo(() => {
@@ -243,7 +248,7 @@ export default function useContentRoadmapEditor(roadmapId) {
       value: version.roadmapVersionId,
       label: `${formatVersionLabel(version)} · ${prettyStatus(String(version.status || "").toLowerCase())}`,
     }));
-  }, [detail?.versions]);
+  }, [detail]);
 
   const hasMetadataChanges = useMemo(() => {
     if (!detail) return false;
@@ -364,7 +369,7 @@ export default function useContentRoadmapEditor(roadmapId) {
   };
 
   const saveNode = async () => {
-    if (!selectedNode) return;
+    if (!selectedNode) return false;
 
     const payload = {
       title: nodeForm.title,
@@ -391,8 +396,10 @@ export default function useContentRoadmapEditor(roadmapId) {
 
       updateNodeInDetail(updatedNode);
       toast.success("Node updated.");
+      return true;
     } catch (saveError) {
       toast.error(saveError?.message || "Unable to update node.");
+      return false;
     } finally {
       setIsSavingNode(false);
     }
