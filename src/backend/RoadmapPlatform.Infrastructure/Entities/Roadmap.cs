@@ -13,6 +13,8 @@ public partial class Roadmap
 
     public string Title { get; set; } = null!;
 
+    public string Slug { get; set; } = null!;
+
     public string? Description { get; set; }
 
     public string Visibility { get; set; } = null!;

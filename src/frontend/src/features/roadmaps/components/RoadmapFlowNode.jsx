@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import {
   NODE_WIDTH,
@@ -123,17 +124,19 @@ function getStatusNodeClass(status, nodeType) {
   return statusNodeClassMap[status] || "border-[#B9D8CC]";
 }
 
-export default function RoadmapFlowNode({ data }) {
+function RoadmapFlowNode({ data }) {
   const status = data.status || "pending";
   const isCompleted = status === "completed";
   const isSkipped = status === "skipped";
   const isLocked = status === "locked";
+  const isGuideTarget = Boolean(data.isGuideTarget);
 
   return (
     <button
       type="button"
       className={[
-        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border px-4 py-3 text-center shadow-sm outline-none transition-colors duration-150 focus-visible:ring-4 focus-visible:ring-[#81E7AF]/35",
+        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border px-4 py-3 text-center shadow-sm outline-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out focus-visible:ring-4 focus-visible:ring-[#81E7AF]/35",
+        isGuideTarget ? "overflow-visible" : "overflow-hidden",
         getNodeTypeClass(data.nodeType, data.checkpointType),
         getStatusNodeClass(status, data.nodeType),
         data.isSelected ? "outline outline-4 outline-[#81E7AF]/50" : "",
@@ -141,6 +144,10 @@ export default function RoadmapFlowNode({ data }) {
       style={{
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
+        transform: "translate3d(0,0,0)",
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+        willChange: isGuideTarget || data.isSelected ? "box-shadow" : "auto",
         ...(isCompleted ? getCompletedNodeStyle(data.nodeType) : null),
         ...(status === "in_progress" && data.nodeType === "choice_group"
           ? inProgressChoiceGroupStyle
@@ -149,6 +156,15 @@ export default function RoadmapFlowNode({ data }) {
         ...(isSkipped ? skippedNodeStyle : null),
       }}
     >
+      {isGuideTarget && (
+        <>
+          <span className="roadmap-node-guide-ring pointer-events-none absolute -inset-2 rounded-xl border-2 border-[#2FA084] shadow-[0_0_0_7px_rgba(47,160,132,0.14)]" />
+          <span className="roadmap-node-guide-halo pointer-events-none absolute -inset-5 rounded-2xl border border-[#A8D3C4] opacity-70" />
+          <span className="roadmap-node-guide-label pointer-events-none absolute left-1/2 top-0 z-20 whitespace-nowrap rounded-full border border-[#A8D3C4] bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-[#1F6F5F] shadow-lg">
+            {data.guideTargetLabel || "Click this node"}
+          </span>
+        </>
+      )}
       <Handle
         id="top-target"
         type="target"
@@ -237,3 +253,23 @@ export default function RoadmapFlowNode({ data }) {
     </button>
   );
 }
+
+
+function areRoadmapFlowNodePropsEqual(previousProps, nextProps) {
+  const previousData = previousProps.data || {};
+  const nextData = nextProps.data || {};
+
+  return (
+    previousData.title === nextData.title &&
+    previousData.nodeType === nextData.nodeType &&
+    previousData.checkpointType === nextData.checkpointType &&
+    previousData.selectionType === nextData.selectionType &&
+    previousData.requiredCount === nextData.requiredCount &&
+    previousData.status === nextData.status &&
+    previousData.isSelected === nextData.isSelected &&
+    previousData.isGuideTarget === nextData.isGuideTarget &&
+    previousData.guideTargetLabel === nextData.guideTargetLabel
+  );
+}
+
+export default memo(RoadmapFlowNode, areRoadmapFlowNodePropsEqual);

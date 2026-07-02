@@ -1,6 +1,6 @@
 -- ============================================================
 -- Consolidated database schema
--- Represents the final schema after migrations 002 through 025.
+-- Represents the final schema after migrations 002 through 026.
 -- Intended for provisioning a new PostgreSQL database.
 -- ============================================================
 
@@ -442,7 +442,7 @@ CREATE INDEX IF NOT EXISTS ix_job_posting_published_at
 
 CREATE INDEX IF NOT EXISTS ix_job_posting_daily_snapshot_date
     ON public.job_posting_daily_snapshot(snapshot_date);
-    
+
 CREATE INDEX IF NOT EXISTS ix_skill_trend_snapshot_date
     ON public.skill_trend_snapshot(snapshot_date);
 
@@ -541,7 +541,7 @@ CREATE TABLE IF NOT EXISTS public.ai_credit_plan
 INSERT INTO public.ai_credit_plan
     (plan_code, daily_credit_limit, monthly_credit_limit, description)
 VALUES
-    ('free', 5, NULL, 'Default experimental plan for regular users.'),
+    ('free', 10, NULL, 'Default experimental plan for regular users.'),
     ('premium', 100, NULL, 'Higher daily credit limit for future paid users.'),
     ('admin', 1000, NULL, 'High daily credit limit for administrators and internal testing.')
 ON CONFLICT (plan_code) DO UPDATE
@@ -823,6 +823,7 @@ CREATE TABLE IF NOT EXISTS public.roadmap
     career_role_id uuid NOT NULL,
     owner_user_id uuid,
     title varchar(200) NOT NULL,
+    slug text NOT NULL,
     description text,
     visibility varchar(30) NOT NULL DEFAULT 'public',
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -847,20 +848,31 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
     roadmap_version_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     roadmap_id uuid NOT NULL,
     version_number int NOT NULL,
+    major_version int NOT NULL DEFAULT 1,
+    minor_version int NOT NULL DEFAULT 0,
+    patch_version int NOT NULL DEFAULT 0,
+    release_type varchar(30) NOT NULL DEFAULT 'initial',
     status varchar(30) NOT NULL DEFAULT 'draft',
     title varchar(200) NOT NULL,
     description text,
     estimated_total_hours int,
     layout_direction varchar(20) NOT NULL DEFAULT 'TB',
     layout_algorithm varchar(50),
+    created_from_version_id uuid,
     created_by_user_id uuid,
     published_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_roadmap_version_roadmap
         FOREIGN KEY (roadmap_id)
         REFERENCES public.roadmap(roadmap_id)
         ON DELETE CASCADE,
+
+    CONSTRAINT fk_roadmap_version_created_from_version
+        FOREIGN KEY (created_from_version_id)
+        REFERENCES public.roadmap_version(roadmap_version_id)
+        ON DELETE SET NULL,
 
     CONSTRAINT fk_roadmap_version_created_by_user
         FOREIGN KEY (created_by_user_id)
@@ -870,8 +882,21 @@ CREATE TABLE IF NOT EXISTS public.roadmap_version
     CONSTRAINT uq_roadmap_version_number
         UNIQUE (roadmap_id, version_number),
 
+    CONSTRAINT uq_roadmap_version_semver
+        UNIQUE (roadmap_id, major_version, minor_version, patch_version),
+
     CONSTRAINT chk_roadmap_version_status
-        CHECK (status IN ('draft', 'published', 'archived')),
+        CHECK (status IN ('draft', 'pending_review', 'changes_requested', 'published', 'archived')),
+
+    CONSTRAINT chk_roadmap_version_release_type
+        CHECK (release_type IN ('initial', 'patch', 'minor', 'major')),
+
+    CONSTRAINT chk_roadmap_version_semver
+        CHECK (
+            major_version >= 1
+            AND minor_version >= 0
+            AND patch_version >= 0
+        ),
 
     CONSTRAINT chk_roadmap_version_layout_direction
         CHECK (layout_direction IN ('TB', 'BT', 'LR', 'RL')),
@@ -1190,7 +1215,11 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_career_role_id
 CREATE INDEX IF NOT EXISTS ix_roadmap_owner_user_id
     ON public.roadmap(owner_user_id);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_slug
+    ON public.roadmap(slug);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_career_role_title
+    ON public.roadmap(career_role_id, lower(btrim(title)));
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_roadmap_id
     ON public.roadmap_version(roadmap_id);
@@ -1198,9 +1227,15 @@ CREATE INDEX IF NOT EXISTS ix_roadmap_version_roadmap_id
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_status
     ON public.roadmap_version(status);
 
+CREATE INDEX IF NOT EXISTS ix_roadmap_version_review_queue
+    ON public.roadmap_version(status, updated_at DESC)
+    WHERE status IN ('pending_review', 'changes_requested');
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_version_created_by_user_id
     ON public.roadmap_version(created_by_user_id);
+
+CREATE INDEX IF NOT EXISTS ix_roadmap_version_created_from_version_id
+    ON public.roadmap_version(created_from_version_id);
 
 CREATE INDEX IF NOT EXISTS ix_roadmap_node_version_id
     ON public.roadmap_node(roadmap_version_id);
@@ -1807,13 +1842,13 @@ CREATE TABLE IF NOT EXISTS public.assessment_level
 
     career_role_id UUID NOT NULL,
     name VARCHAR(50) NOT NULL,
-	slug VARCHAR(50) NOT NULL, 
+	slug VARCHAR(50) NOT NULL,
     sort_order INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
 
 	CONSTRAINT uq_assessment_level_slug
-    	UNIQUE(career_role_id, slug),	
-	
+    	UNIQUE(career_role_id, slug),
+
     CONSTRAINT fk_assessment_level_career_role
         FOREIGN KEY (career_role_id)
         REFERENCES career_role(career_role_id) ON DELETE CASCADE
@@ -1836,3 +1871,59 @@ CREATE TABLE IF NOT EXISTS public.assessment_level_group
         FOREIGN KEY (roadmap_node_id)
         REFERENCES roadmap_node(roadmap_node_id) ON DELETE CASCADE
 );
+
+-- =========================
+-- AI Mentor Chat History
+-- =========================
+
+CREATE TABLE IF NOT EXISTS public.ai_mentor_conversation
+(
+    ai_mentor_conversation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL,
+
+    title varchar(255) NOT NULL DEFAULT 'New conversation',
+    page_context varchar(100) NOT NULL DEFAULT 'roadmap_selection',
+
+    archived_at timestamptz,
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_ai_mentor_conversation_user
+        FOREIGN KEY (user_id)
+        REFERENCES public."user"(user_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_mentor_conversation_user_updated_at
+    ON public.ai_mentor_conversation(user_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS ix_ai_mentor_conversation_user_active
+    ON public.ai_mentor_conversation(user_id, archived_at)
+    WHERE archived_at IS NULL;
+
+
+CREATE TABLE IF NOT EXISTS public.ai_mentor_message
+(
+    ai_mentor_message_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    ai_mentor_conversation_id uuid NOT NULL,
+
+    role varchar(30) NOT NULL,
+    content text NOT NULL,
+
+    sources jsonb NOT NULL DEFAULT '[]'::jsonb,
+    ai_model varchar(100),
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_ai_mentor_message_conversation
+        FOREIGN KEY (ai_mentor_conversation_id)
+        REFERENCES public.ai_mentor_conversation(ai_mentor_conversation_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_ai_mentor_message_role
+        CHECK (role IN ('user', 'assistant'))
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_mentor_message_conversation_created_at
+    ON public.ai_mentor_message(ai_mentor_conversation_id, created_at ASC);

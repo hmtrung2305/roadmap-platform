@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
+using RoadmapPlatform.Application.Interfaces.AiMentor;
 using RoadmapPlatform.Application.Interfaces.Auth;
 using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
 using RoadmapPlatform.Application.Interfaces.GitHub;
@@ -26,6 +27,7 @@ using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Security;
 using RoadmapPlatform.Infrastructure.Services;
 using RoadmapPlatform.Infrastructure.Services.AiCredits;
+using RoadmapPlatform.Infrastructure.Services.AiMentor;
 using RoadmapPlatform.Infrastructure.Services.Auth;
 using RoadmapPlatform.Infrastructure.Services.CareerRoleSkill;
 using RoadmapPlatform.Infrastructure.Services.Email;
@@ -37,8 +39,8 @@ using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 using RoadmapPlatform.Infrastructure.Services.Security;
 using RoadmapPlatform.Infrastructure.Services.Skills;
-using RoadmapPlatform.Infrastructure.Services.Streaks;
 using RoadmapPlatform.Infrastructure.Services.Storage;
+using RoadmapPlatform.Infrastructure.Services.Streaks;
 using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Extensions
@@ -184,6 +186,9 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Skill gap, Career role skill
             services.AddScoped<ISkillGapAnalysisService, SkillGapAnalysisService>();
+
+            // Ai Mentor Chat
+            services.AddScoped<IAiMentorService, AiMentorService>();
 
             return services;
         }

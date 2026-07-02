@@ -21,6 +21,8 @@ public partial class User
 
     public virtual ICollection<AiCreditUsage> AiCreditUsages { get; set; } = new List<AiCreditUsage>();
 
+    public virtual ICollection<AiMentorConversation> AiMentorConversations { get; set; } = new List<AiMentorConversation>();
+
     public virtual ICollection<EmailVerificationToken> EmailVerificationTokens { get; set; } = new List<EmailVerificationToken>();
 
     public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();

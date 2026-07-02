@@ -45,7 +45,7 @@ export default function EditPortfolioStatsGrid({
       : "Not connected";
 
   return (
-    <section className="grid grid-cols-1 gap-3 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-4">
+    <section className="grid grid-cols-1 gap-2 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-3">
       <EditPortfolioInfoTile
         icon={isPortfolioPublic ? <Eye size={16} /> : <EyeOff size={16} />}
         label="Visibility"
@@ -59,7 +59,7 @@ export default function EditPortfolioStatsGrid({
         onClick={onManageVisibility}
       />
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:gap-4">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:gap-3">
         <article className="group rounded-2xl border border-[#B9D8CC]/75 bg-white p-3.5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#2FA084] hover:shadow-md">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

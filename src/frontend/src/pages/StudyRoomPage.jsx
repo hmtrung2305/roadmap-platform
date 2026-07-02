@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Bot, Clock, FileText, PanelLeftOpen } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -29,6 +29,18 @@ import {
 export default function StudyRoomPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnRoadmapSlug = searchParams.get("fromRoadmap");
+  const returnNodeId = searchParams.get("roadmapNodeId");
+  const guideToken = searchParams.get("guideToken");
+  const shouldContinueRoadmapGuide =
+    searchParams.get("guide") === "1" && Boolean(guideToken);
+  const returnToRoadmapUrl = buildReturnToRoadmapUrl(
+    returnRoadmapSlug,
+    returnNodeId,
+    shouldContinueRoadmapGuide,
+    guideToken,
+  );
   const [activeLessonId, setActiveLessonId] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
   const hasTrackedLearningStreakRef = useRef(false);
@@ -285,11 +297,11 @@ export default function StudyRoomPage() {
       <div className="min-h-screen bg-[#F7F1E8] p-6 text-[#18332D]">
         <button
           type="button"
-          onClick={() => navigate("/learning-modules")}
+          onClick={() => navigate(returnToRoadmapUrl || "/learning-modules")}
           className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-[#1F6F5F]"
         >
           <ArrowLeft size={16} />
-          Back to learning modules
+          {returnToRoadmapUrl ? "Back to roadmap node" : "Back to learning modules"}
         </button>
 
         <section className="mx-auto max-w-4xl rounded-xl border border-[#B9D8CC] bg-white p-7 shadow-[0_20px_60px_rgba(31,111,95,0.10)]">
@@ -347,8 +359,9 @@ export default function StudyRoomPage() {
           showQuiz={showQuiz}
           activeLessonStatus={activeLessonStatus}
           isCompletingLesson={isUpdatingActiveLessonProgress}
-          onBack={() => navigate("/learning-modules")}
+          onBack={() => navigate(returnToRoadmapUrl || "/learning-modules")}
           onCompleteLesson={handleCompleteLesson}
+          backLabel={returnToRoadmapUrl ? "Back to roadmap" : "Back to modules"}
         />
       </div>
 
@@ -397,6 +410,22 @@ export default function StudyRoomPage() {
         }}
       >
         <section className="mx-auto min-w-0 max-w-5xl">
+          {returnToRoadmapUrl && (
+            <div className="mb-4 flex flex-col gap-3 rounded-lg border border-[#A8D3C4] bg-[#EAF8F1] px-4 py-3 text-sm font-bold leading-6 text-[#18332D] shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                Roadmap flow: complete lessons, use Module chat when stuck, do
+                the quiz when unlocked, then return and mark the roadmap node Done.
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate(returnToRoadmapUrl)}
+                className="shrink-0 rounded-lg border border-[#A8D3C4] bg-white px-3 py-2 text-xs font-black text-[#1F6F5F] shadow-sm hover:bg-[#F7F1E8]"
+              >
+                Return to roadmap
+              </button>
+            </div>
+          )}
+
           {module.status === "archived" && (
             <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800 shadow-sm">
               This module is archived. You can still access lessons, quiz
@@ -446,4 +475,23 @@ export default function StudyRoomPage() {
       )}
     </div>
   );
+}
+
+
+function buildReturnToRoadmapUrl(
+  roadmapSlug,
+  roadmapNodeId,
+  shouldContinueGuide,
+  guideToken,
+) {
+  if (!roadmapSlug) return null;
+
+  const params = new URLSearchParams();
+  if (roadmapNodeId) params.set("nodeId", roadmapNodeId);
+  if (shouldContinueGuide && guideToken) {
+    params.set("guide", "1");
+    params.set("guideToken", guideToken);
+  }
+
+  return `/roadmaps/${roadmapSlug}${params.toString() ? `?${params.toString()}` : ""}`;
 }

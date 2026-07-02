@@ -2,72 +2,69 @@
 
 ## Why this matters
 
-Control flow decides which code runs and how many times it runs. Functions package reusable logic behind a name and inputs. Together, they let programs respond to data instead of executing the same instructions every time.
+Python control flow uses readable keywords and indentation to branch and repeat work. Functions group reusable logic and make programs easier to test.
 
 ## Learning goals
 
-- Use `if`, `else`, comparison operators, and logical operators.
-- Use loops for repeated work.
+- Use `if`, `elif`, and `else`.
+- Loop through ranges and lists.
 - Write functions with parameters and return values.
-- Separate calculation logic from display logic.
+- Use clear function names for business rules.
 
 ## Core concepts
 
 ### Conditionals
 
-An `if` statement runs a block only when a condition is truthy. Conditions often use comparison operators like `>`, `<`, `===`, and logical operators like `&&`, `||`, and `!`.
+Python uses `if`, `elif`, and `else` for branching. Conditions can combine comparisons with `and`, `or`, and `not`.
 
 ### Loops
 
-Loops repeat work over a range or collection. Use `for...of` when iterating values from an array. Use classic `for` loops when you need index control.
+Use `for item in collection` to loop over values directly. Use `range()` when a numeric sequence is needed.
 
 ### Functions
 
-A function should do one clear job. Parameters are inputs. A return value is the output. Functions make code easier to test because you can call them with different inputs.
+A function starts with `def`, receives parameters, and can return a result. Functions should usually do one clear job.
 
-### Pure calculation
+### Truthiness
 
-A function that only calculates and returns a value is easier to reuse than one that directly manipulates the page or logs every result. Keep side effects intentional.
+Python treats empty strings, empty lists, zero, and `None` as falsey. This is useful but should be used carefully when zero is a valid value.
 
 ## Worked example
 
-```js
-function getPassStatus(score, totalQuestions) {
-  const percentage = (score / totalQuestions) * 100;
+```python
+def get_status(completed, total):
+if completed == 0:
+    return "not started"
+elif completed >= total:
+    return "completed"
+else:
+    return "in progress"
 
-  if (percentage >= 80) {
-return "passed";
-  }
+lesson_counts = [0, 2, 4]
 
-  return "needs review";
-}
-
-const scores = [10, 7, 9];
-
-for (const score of scores) {
-  console.log(getPassStatus(score, 10));
-}
+for count in lesson_counts:
+print(get_status(count, 4))
 ```
 
-The function hides the pass rule behind a name. If the pass threshold changes, only the function needs to change.
+The function returns a status string instead of printing directly. That makes it easier to reuse in a web API, CLI script, or test.
 
 ## Applied practice
 
-Write a function that accepts a lesson progress percentage and returns `not started`, `in progress`, or `completed`. Test it with at least five different values.
+Write a function that receives a quiz score and total questions. Return `passed` if the score is at least 80 percent, otherwise return `needs review`.
 
 ## Common mistakes
 
-- Forgetting to return a value from a function.
-- Writing one giant function that handles validation, calculation, and UI updates together.
-- Using assignment `=` when comparison `===` was intended.
-- Creating loops with conditions that never become false.
+- Forgetting the colon after `if`, `for`, or `def`.
+- Using inconsistent indentation.
+- Printing inside every function instead of returning values.
+- Using a mutable default argument like `items=[]` without understanding the consequences.
 
 ## Self-check questions
 
-- What is the difference between parameter and argument?
-- Why are return values useful?
-- When should you use `for...of`?
-- How can condition order affect results?
+- What does `elif` mean?
+- Why should functions return values?
+- When should you loop over values directly?
+- What values are falsey in Python?
 
 ## Chatbox test prompts
 

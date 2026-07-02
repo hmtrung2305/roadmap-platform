@@ -11,6 +11,14 @@ public partial class RoadmapVersion
 
     public int VersionNumber { get; set; }
 
+    public int MajorVersion { get; set; }
+
+    public int MinorVersion { get; set; }
+
+    public int PatchVersion { get; set; }
+
+    public string ReleaseType { get; set; } = null!;
+
     public string Status { get; set; } = null!;
 
     public string Title { get; set; } = null!;
@@ -23,13 +31,21 @@ public partial class RoadmapVersion
 
     public string? LayoutAlgorithm { get; set; }
 
+    public Guid? CreatedFromVersionId { get; set; }
+
     public Guid? CreatedByUserId { get; set; }
 
     public DateTime? PublishedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime UpdatedAt { get; set; }
+
     public virtual User? CreatedByUser { get; set; }
+
+    public virtual RoadmapVersion? CreatedFromVersion { get; set; }
+
+    public virtual ICollection<RoadmapVersion> InverseCreatedFromVersion { get; set; } = new List<RoadmapVersion>();
 
     public virtual Roadmap Roadmap { get; set; } = null!;
 

@@ -7,14 +7,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
-  useEdgesState,
-  useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -29,6 +27,10 @@ import {
   focusRoadmapStart,
   getMiniMapColor,
   getNodeId,
+  getNodeType,
+  isManuallyTrackableNode,
+  NODE_HEIGHT,
+  NODE_WIDTH,
   mergeGraphNodeWithDetail,
   patchNodeProgress,
   applyProgressUpdateResult,
@@ -38,6 +40,7 @@ import BalancedRoadmapEdge from "../features/roadmaps/components/BalancedRoadmap
 import RoadmapFlowNode from "../features/roadmaps/components/RoadmapFlowNode";
 import RoadmapFullScreen from "../features/roadmaps/components/RoadmapFullScreen";
 import RoadmapDetailDrawer from "../features/roadmaps/components/RoadmapDetailDrawer";
+import RoadmapStudyGuide from "../features/roadmaps/components/RoadmapStudyGuide";
 const nodeTypes = {
   roadmapNode: RoadmapFlowNode,
 };
@@ -46,9 +49,16 @@ const edgeTypes = {
   balanced: BalancedRoadmapEdge,
 };
 
+const ROADMAP_GUIDE_RETURN_TOKEN_KEY = "techmap:roadmapGuideReturnToken";
+
 export default function RoadmapViewerPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  const returnNodeId = searchParams.get("nodeId");
+  const returnGuideToken = searchParams.get("guideToken");
+  const shouldResumeGuideFromReturn =
+    searchParams.get("guide") === "1" && Boolean(returnGuideToken);
 
   const [roadmap, setRoadmap] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -58,10 +68,16 @@ export default function RoadmapViewerPage() {
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
+  const [guideTargetRect, setGuideTargetRect] = useState(null);
   const [flowInstance, setFlowInstance] = useState(null);
   const [isInitialViewportReady, setIsInitialViewportReady] = useState(false);
   const flowWrapperRef = useRef(null);
   const focusedRoadmapKeyRef = useRef(null);
+  const openedReturnNodeRef = useRef(null);
+  const guideReturnDecisionRef = useRef(new Map());
+  const lastGuideTargetRectRef = useRef(null);
   const loadRoadmapGraph = useRoadmapStore((state) => state.loadRoadmapGraph);
   const loadNodeDetailFromStore = useRoadmapStore((state) => state.loadNodeDetail);
   const enrollInRoadmap = useRoadmapStore((state) => state.enroll);
@@ -70,28 +86,65 @@ export default function RoadmapViewerPage() {
   const loadRequestRef = useRef(0);
   const nodeDetailRequestRef = useRef(0);
   const roadmapVersionId = getRoadmapVersionId(roadmap);
+  const isEnrolled = Boolean(roadmap?.enrollment);
 
-  const { flowNodes, flowEdges, nodeLookup } = useMemo(() => {
+  const baseFlow = useMemo(() => {
     if (!roadmap?.nodes?.length) {
       return { flowNodes: [], flowEdges: [], nodeLookup: new Map() };
     }
 
-    return buildRoadmapFlow(
-      roadmap,
-      selectedNode ? getNodeId(selectedNode) : null,
-    );
-  }, [roadmap, selectedNode]);
+    return buildRoadmapFlow(roadmap, null);
+  }, [roadmap]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const guideTargets = useMemo(
+    () => getRoadmapGuideTargets(roadmap, baseFlow.flowNodes),
+    [roadmap, baseFlow.flowNodes],
+  );
 
-  useEffect(() => {
-    setNodes(flowNodes);
-    setEdges(flowEdges);
-  }, [flowNodes, flowEdges, setNodes, setEdges]);
+  const selectedNodeId = selectedNode ? getNodeId(selectedNode) : null;
+  const guideNodeTarget = useMemo(
+    () =>
+      getRoadmapGuideNodeTarget({
+        stepIndex: guideStep,
+        isGuideOpen,
+        isEnrolled,
+        phaseNodeId: guideTargets.phase ? getNodeId(guideTargets.phase) : null,
+        topicNodeId: guideTargets.topic ? getNodeId(guideTargets.topic) : null,
+      }),
+    [guideStep, isGuideOpen, isEnrolled, guideTargets.phase, guideTargets.topic],
+  );
+
+  const flowNodes = useMemo(
+    () =>
+      decorateRoadmapFlowNodes(baseFlow.flowNodes, {
+        selectedNodeId,
+        guideNodeTargetId: guideNodeTarget?.nodeId,
+        guideTargetLabel: guideNodeTarget?.label,
+      }),
+    [baseFlow.flowNodes, selectedNodeId, guideNodeTarget?.nodeId, guideNodeTarget?.label],
+  );
+  const flowEdges = baseFlow.flowEdges;
+  const nodeLookup = baseFlow.nodeLookup;
+
+  const guideTargetSelector = useMemo(
+    () =>
+      getRoadmapGuideTargetSelector({
+        stepIndex: guideStep,
+        isEnrolled,
+      }),
+    [guideStep, isEnrolled],
+  );
+
+  const selectedNodeModuleSlug = getFirstLearningModuleSlug(selectedNode);
+  const hasSelectedNodeModule = Boolean(selectedNodeModuleSlug);
+
+  const nodes = flowNodes;
+  const edges = flowEdges;
+  const onNodesChange = useCallback(() => {}, []);
+  const onEdgesChange = useCallback(() => {}, []);
 
   useLayoutEffect(() => {
-    if (!flowInstance || flowNodes.length === 0) return;
+    if (!flowInstance || baseFlow.flowNodes.length === 0) return;
 
     const roadmapFocusKey =
       roadmapVersionId || slug || "current-roadmap";
@@ -102,9 +155,9 @@ export default function RoadmapViewerPage() {
     }
 
     focusedRoadmapKeyRef.current = roadmapFocusKey;
-    focusRoadmapStart(flowInstance, flowNodes, flowWrapperRef.current);
+    focusRoadmapStart(flowInstance, baseFlow.flowNodes, flowWrapperRef.current);
     setIsInitialViewportReady(true);
-  }, [flowInstance, flowNodes, roadmapVersionId, slug]);
+  }, [flowInstance, baseFlow.flowNodes, roadmapVersionId, slug]);
 
   useEffect(() => {
     loadPage();
@@ -121,15 +174,180 @@ export default function RoadmapViewerPage() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
+  useEffect(() => {
+    if (!isGuideOpen || !guideTargetSelector) {
+      lastGuideTargetRectRef.current = null;
+      const clearFrameId = window.requestAnimationFrame(() => {
+        setGuideTargetRect(null);
+      });
+
+      return () => window.cancelAnimationFrame(clearFrameId);
+    }
+
+    let animationFrameId = 0;
+    let resizeObserver = null;
+    const timeoutIds = [];
+
+    function commitTargetRect(rect) {
+      const nextRect = rect
+        ? {
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height,
+          }
+        : null;
+
+      if (areGuideRectsClose(lastGuideTargetRectRef.current, nextRect)) {
+        return;
+      }
+
+      lastGuideTargetRectRef.current = nextRect;
+      setGuideTargetRect(nextRect);
+    }
+
+    function readTargetRect() {
+      const targetElement = document.querySelector(guideTargetSelector);
+
+      if (!targetElement) {
+        commitTargetRect(null);
+        return null;
+      }
+
+      commitTargetRect(targetElement.getBoundingClientRect());
+      return targetElement;
+    }
+
+    function scheduleUpdate(delay = 0) {
+      if (delay > 0) {
+        const timeoutId = window.setTimeout(() => scheduleUpdate(0), delay);
+        timeoutIds.push(timeoutId);
+        return;
+      }
+
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = window.requestAnimationFrame(readTargetRect);
+    }
+
+    const targetElement = readTargetRect();
+
+    if (targetElement && typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => scheduleUpdate());
+      resizeObserver.observe(targetElement);
+    }
+
+    [0, 80, 180, 320].forEach((delay) => scheduleUpdate(delay));
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("scroll", scheduleUpdate, true);
+    window.addEventListener("transitionend", scheduleUpdate, true);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("scroll", scheduleUpdate, true);
+      window.removeEventListener("transitionend", scheduleUpdate, true);
+    };
+  }, [
+    isGuideOpen,
+    guideTargetSelector,
+    guideStep,
+    selectedNodeModuleSlug,
+    selectedNodeId,
+  ]);
+
+  useEffect(() => {
+    if (!returnNodeId || !roadmapVersionId || !nodeLookup.size || !flowInstance) {
+      return;
+    }
+
+    const returnNode = nodeLookup.get(String(returnNodeId));
+    if (!returnNode) return;
+
+    const guideReturnKey = `${roadmapVersionId}:${returnNodeId}:${
+      returnGuideToken || "no-token"
+    }`;
+    const shouldResumeGuide = shouldResumeGuideFromReturn
+      ? getGuideReturnDecision({
+          cache: guideReturnDecisionRef.current,
+          key: guideReturnKey,
+          token: returnGuideToken,
+        })
+      : false;
+
+    const returnKey = `${roadmapVersionId}:${returnNodeId}:${
+      shouldResumeGuide ? "guide" : "normal"
+    }:${returnGuideToken || ""}`;
+    if (openedReturnNodeRef.current === returnKey) return;
+
+    openedReturnNodeRef.current = returnKey;
+
+    const openFrameId = window.requestAnimationFrame(() => {
+      if (shouldResumeGuide) {
+        setGuideStep(5);
+        setIsGuideOpen(true);
+      } else {
+        setIsGuideOpen(false);
+        if (searchParams.has("guide") || searchParams.has("guideToken")) {
+          clearGuideReturnFlag();
+        }
+      }
+
+      focusFlowNode(returnNodeId);
+      loadNodeDetail(returnNode);
+    });
+
+    return () => window.cancelAnimationFrame(openFrameId);
+  }, [
+    returnNodeId,
+    returnGuideToken,
+    roadmapVersionId,
+    nodeLookup,
+    flowInstance,
+    shouldResumeGuideFromReturn,
+  ]);
+
   const handleNodeClick = useCallback(
     (_, node) => {
       const sourceNode = nodeLookup.get(node.id);
 
       if (sourceNode) {
+        const clickedNodeId = getNodeId(sourceNode);
+        const phaseNodeId = guideTargets.phase ? getNodeId(guideTargets.phase) : null;
+        const topicNodeId = guideTargets.topic ? getNodeId(guideTargets.topic) : null;
+
+        if (isGuideOpen && guideStep === 1 && clickedNodeId === phaseNodeId) {
+          const nextLearningNode = guideTargets.topic || sourceNode;
+
+          setSelectedNode(null);
+          setGuideStep(2);
+
+          window.requestAnimationFrame(() => {
+            focusFlowNode(getNodeId(nextLearningNode));
+          });
+
+          return;
+        }
+
+        if (isGuideOpen && guideStep === 2 && clickedNodeId === topicNodeId) {
+          setGuideStep(3);
+        }
+
         loadNodeDetail(sourceNode);
       }
     },
-    [nodeLookup, roadmapVersionId, nodeDetailByKey],
+    [
+      nodeLookup,
+      roadmapVersionId,
+      nodeDetailByKey,
+      isGuideOpen,
+      guideStep,
+      guideTargets.phase,
+      guideTargets.topic,
+    ],
   );
 
   async function loadNodeDetail(graphNode) {
@@ -224,12 +442,144 @@ export default function RoadmapViewerPage() {
       } else {
         await loadPage({ force: true });
       }
+
+      setGuideStep(1);
+      setIsGuideOpen(true);
     } catch (error) {
       console.error(error);
       setMessage(error?.message || "Failed to enroll in roadmap.");
     } finally {
       setIsEnrolling(false);
     }
+  }
+
+  function handleOpenGuide() {
+    setGuideStep(isEnrolled ? 1 : 0);
+    setIsGuideOpen(true);
+  }
+
+  function clearGuideReturnFlag() {
+    if (!searchParams.has("guide")) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("guide");
+    nextParams.delete("guideToken");
+
+    navigate(
+      {
+        pathname: `/roadmaps/${slug}`,
+        search: nextParams.toString() ? `?${nextParams.toString()}` : "",
+      },
+      { replace: true },
+    );
+  }
+
+  function handleCloseGuide() {
+    setIsGuideOpen(false);
+    setGuideTargetRect(null);
+    clearGuideReturnFlag();
+  }
+
+  function focusFlowNode(nodeId) {
+    if (!flowInstance || !nodeId) return;
+
+    const flowNode = baseFlow.flowNodes.find((node) => node.id === String(nodeId));
+    if (!flowNode?.position) return;
+
+    const bounds = flowWrapperRef.current?.getBoundingClientRect?.();
+    const viewportWidth = bounds?.width || window.innerWidth || 1200;
+    const viewportHeight = bounds?.height || window.innerHeight || 720;
+    const zoom = 0.72;
+    const nodeCenterX = flowNode.position.x + NODE_WIDTH / 2;
+    const nodeCenterY = flowNode.position.y + NODE_HEIGHT / 2;
+
+    flowInstance.setViewport(
+      {
+        x: viewportWidth / 2 - nodeCenterX * zoom,
+        y: viewportHeight * 0.42 - nodeCenterY * zoom,
+        zoom,
+      },
+      { duration: 360 },
+    );
+  }
+
+  async function focusGuideNode(graphNode) {
+    if (!graphNode) return;
+
+    const nodeId = getNodeId(graphNode);
+    focusFlowNode(nodeId);
+    await loadNodeDetail(graphNode);
+  }
+
+  function previewGuideTopicNode() {
+    const nextLearningNode = guideTargets.topic || guideTargets.phase;
+
+    setSelectedNode(null);
+
+    if (!nextLearningNode) return;
+
+    window.requestAnimationFrame(() => {
+      focusFlowNode(getNodeId(nextLearningNode));
+    });
+  }
+
+  function handleGuideStepChange(nextStep) {
+    const normalizedStep = Math.min(Math.max(Number(nextStep) || 0, 0), 5);
+
+    if (normalizedStep === 1 && guideTargets.phase) {
+      setSelectedNode(null);
+      window.requestAnimationFrame(() => {
+        focusFlowNode(getNodeId(guideTargets.phase));
+      });
+    }
+
+    if (normalizedStep === 2) {
+      previewGuideTopicNode();
+    }
+
+    setGuideStep(normalizedStep);
+  }
+
+  function handleGuideFocusPhase() {
+    handleGuideStepChange(1);
+  }
+
+  function handleGuideMoveToTopic() {
+    previewGuideTopicNode();
+    setGuideStep(2);
+  }
+
+  async function handleGuideFocusTopic() {
+    await focusGuideNode(guideTargets.topic || guideTargets.phase);
+    setGuideStep(3);
+  }
+
+  function handleOpenSelectedModule() {
+    if (!selectedNodeModuleSlug) return;
+
+    const params = new URLSearchParams();
+    const selectedNodeId = selectedNode ? getNodeId(selectedNode) : null;
+
+    if (slug) params.set("fromRoadmap", slug);
+    if (selectedNodeId) params.set("roadmapNodeId", selectedNodeId);
+
+    if (isGuideOpen && guideStep === 3 && selectedNodeId) {
+      const guideToken = createGuideReturnToken({
+        roadmapSlug: slug,
+        nodeId: selectedNodeId,
+      });
+
+      if (guideToken) {
+        params.set("guide", "1");
+        params.set("guideToken", guideToken);
+      }
+    }
+
+    navigate(
+      `/learning-modules/${selectedNodeModuleSlug}/overview${
+        params.toString() ? `?${params.toString()}` : ""
+      }`,
+    );
   }
 
   async function handleProgressChange(nextStatus) {
@@ -286,6 +636,10 @@ export default function RoadmapViewerPage() {
           },
         };
       });
+
+      if (isGuideOpen && guideStep === 5 && nextStatus === "completed") {
+        handleCloseGuide();
+      }
     } catch (error) {
       console.error(error);
       setRoadmap(previousRoadmap);
@@ -338,8 +692,7 @@ export default function RoadmapViewerPage() {
 
   const progressPercent =
     roadmap?.progressPercent ?? roadmap?.enrollment?.progressPercent ?? 0;
-  const isEnrolled = Boolean(roadmap?.enrollment);
-  const shouldShowMiniMap = nodes.length <= 150;
+  const shouldShowMiniMap = flowNodes.length <= 150;
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] flex-col bg-[#F7F1E8] text-[#18332D]">
@@ -373,7 +726,7 @@ export default function RoadmapViewerPage() {
           </div>
 
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
-            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-row items-stretch gap-2">
+            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col items-end gap-2">
               <div className="pointer-events-auto flex h-12 w-36 flex-col justify-center rounded-lg border border-[#B9D8CC] bg-white/95 px-3 shadow-sm backdrop-blur sm:w-44">
                 <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold tracking-tight text-slate-500">
                   <span>Progress</span>
@@ -390,17 +743,30 @@ export default function RoadmapViewerPage() {
                 </div>
               </div>
 
-              {!isEnrolled && (
+              <div className="pointer-events-auto flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={handleEnroll}
-                  disabled={isEnrolling}
-                  className="pointer-events-auto h-12 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
+                  data-roadmap-guide-target="how-to-learn"
+                  onClick={handleOpenGuide}
+                  className="h-8 rounded-lg border border-[#B9D8CC] bg-white/95 px-3 text-[11px] font-black tracking-[0.08em] text-[#1F6F5F] shadow-sm backdrop-blur transition hover:bg-[#EAF8F1]"
                 >
-                  {isEnrolling ? "Starting..." : "Start roadmap"}
+                  How to learn
                 </button>
-              )}
+
+                {!isEnrolled && (
+                  <button
+                    type="button"
+                    data-roadmap-guide-target="start-roadmap"
+                    onClick={handleEnroll}
+                    disabled={isEnrolling}
+                    className="h-8 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-3 text-[11px] font-black tracking-[0.08em] text-white shadow-sm transition hover:bg-[#1F6F5F] disabled:opacity-60"
+                  >
+                    {isEnrolling ? "Starting..." : "Start roadmap"}
+                  </button>
+                )}
+              </div>
             </div>
+
             {nodes.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8">
                 <div className="rounded-lg border border-[#B9D8CC] bg-white p-6 text-center shadow-lg">
@@ -461,6 +827,8 @@ export default function RoadmapViewerPage() {
                     isOpen={isLegendOpen}
                     onToggle={() => setIsLegendOpen((current) => !current)}
                   />
+
+                  <LearningOrderHint />
                 </ReactFlow>
               </div>
             )}
@@ -473,13 +841,253 @@ export default function RoadmapViewerPage() {
             isEnrolled={isEnrolled}
             isUpdating={isUpdatingProgress}
             isLoadingDetail={isLoadingNodeDetail}
+            roadmapSlug={slug}
+            shouldContinueGuide={isGuideOpen && guideStep === 3}
             onClose={() => setSelectedNode(null)}
             onProgressChange={handleProgressChange}
           />
         )}
+
+        <RoadmapStudyGuide
+          isOpen={isGuideOpen}
+          stepIndex={guideStep}
+          targetRect={guideTargetRect}
+          isEnrolled={isEnrolled}
+          isEnrolling={isEnrolling}
+          recommendedPhaseTitle={guideTargets.phase?.title}
+          recommendedTopicTitle={guideTargets.topic?.title}
+          hasSelectedNodeModule={hasSelectedNodeModule}
+          onClose={handleCloseGuide}
+          onStepChange={handleGuideStepChange}
+          onStartRoadmap={handleEnroll}
+          onFocusPhase={handleGuideFocusPhase}
+          onMoveToTopic={handleGuideMoveToTopic}
+          onFocusTopic={handleGuideFocusTopic}
+          onOpenSelectedModule={handleOpenSelectedModule}
+        />
       </main>
     </div>
   );
+}
+
+function LearningOrderHint() {
+  const [isPinnedOpen, setIsPinnedOpen] = useState(false);
+
+  return (
+    <div className="pointer-events-auto absolute left-[154px] top-4 z-20">
+      <div className="group relative">
+        <button
+          type="button"
+          aria-label="Learning order"
+          aria-expanded={isPinnedOpen}
+          onClick={() => setIsPinnedOpen((current) => !current)}
+          className="grid h-9 w-9 place-items-center rounded-full border border-[#B9D8CC] bg-white text-sm font-black text-[#1F6F5F] shadow-sm transition hover:bg-[#EAF8F1]"
+        >
+          ?
+        </button>
+
+        <div
+          className={[
+            "absolute left-0 top-11 w-[min(300px,calc(100vw-32px))] rounded-lg border border-[#B9D8CC] bg-white/95 px-3 py-2.5 text-xs font-bold leading-5 text-slate-600 shadow-lg backdrop-blur",
+            isPinnedOpen ? "block" : "hidden group-hover:block group-focus-within:block",
+          ].join(" ")}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p>
+              <span className="font-black text-[#1F6F5F]">Learning order:</span>{" "}
+              follow phases from top to bottom. Inside the same phase, left or
+              right nodes can be learned flexibly unless a node is locked.
+            </p>
+            {isPinnedOpen && (
+              <button
+                type="button"
+                onClick={() => setIsPinnedOpen(false)}
+                className="rounded-md border border-[#D6E4DE] px-1.5 text-[10px] font-black text-slate-500 hover:bg-[#F7F1E8]"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function createGuideReturnToken({ roadmapSlug, nodeId }) {
+  if (typeof window === "undefined") return null;
+
+  const token = [
+    roadmapSlug || "roadmap",
+    nodeId || "node",
+    Date.now(),
+    Math.random().toString(36).slice(2),
+  ].join(":");
+
+  try {
+    window.sessionStorage.setItem(ROADMAP_GUIDE_RETURN_TOKEN_KEY, token);
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+function getGuideReturnDecision({ cache, key, token }) {
+  if (!token) return false;
+
+  if (cache.has(key)) {
+    return cache.get(key);
+  }
+
+  const shouldResume = consumeGuideReturnToken(token);
+  cache.set(key, shouldResume);
+  return shouldResume;
+}
+
+function consumeGuideReturnToken(token) {
+  if (typeof window === "undefined" || !token) return false;
+
+  try {
+    const storedToken = window.sessionStorage.getItem(
+      ROADMAP_GUIDE_RETURN_TOKEN_KEY,
+    );
+    const shouldResume = storedToken === token;
+
+    if (shouldResume) {
+      window.sessionStorage.removeItem(ROADMAP_GUIDE_RETURN_TOKEN_KEY);
+    }
+
+    return shouldResume;
+  } catch {
+    return false;
+  }
+}
+
+function getRoadmapGuideNodeTarget({
+  stepIndex,
+  isGuideOpen,
+  isEnrolled,
+  phaseNodeId,
+  topicNodeId,
+}) {
+  if (!isGuideOpen) return null;
+
+  if ((stepIndex === 0 && isEnrolled) || stepIndex === 1) {
+    return phaseNodeId
+      ? { nodeId: phaseNodeId, label: stepIndex === 1 ? "First phase" : "Go to phase" }
+      : null;
+  }
+
+  if (stepIndex === 2) {
+    return topicNodeId ? { nodeId: topicNodeId, label: "Click this node" } : null;
+  }
+
+  return null;
+}
+
+function decorateRoadmapFlowNodes(
+  flowNodes,
+  { selectedNodeId, guideNodeTargetId, guideTargetLabel },
+) {
+  if (!selectedNodeId && !guideNodeTargetId) return flowNodes;
+
+  return flowNodes.map((node) => {
+    const isSelected = selectedNodeId === node.id;
+    const isGuideTarget = guideNodeTargetId === node.id;
+
+    if (node.data?.isSelected === isSelected &&
+      node.data?.isGuideTarget === isGuideTarget &&
+      node.data?.guideTargetLabel === (isGuideTarget ? guideTargetLabel : undefined)) {
+      return node;
+    }
+
+    return {
+      ...node,
+      zIndex: isGuideTarget ? 60 : isSelected ? 40 : node.zIndex,
+      data: {
+        ...node.data,
+        isSelected,
+        isGuideTarget,
+        guideTargetLabel: isGuideTarget ? guideTargetLabel : undefined,
+      },
+    };
+  });
+}
+
+function getRoadmapGuideTargetSelector({ stepIndex, isEnrolled }) {
+  if (stepIndex === 0 && !isEnrolled) {
+    return '[data-roadmap-guide-target="start-roadmap"]';
+  }
+
+  if (stepIndex === 3) {
+    return '[data-roadmap-guide-target="open-module"]';
+  }
+
+  if (stepIndex === 5) {
+    return '[data-roadmap-guide-target="node-status-select"]';
+  }
+
+  return null;
+}
+
+function areGuideRectsClose(previousRect, nextRect) {
+  if (!previousRect || !nextRect) return previousRect === nextRect;
+
+  return (
+    Math.abs(previousRect.left - nextRect.left) < 0.75 &&
+    Math.abs(previousRect.top - nextRect.top) < 0.75 &&
+    Math.abs(previousRect.width - nextRect.width) < 0.75 &&
+    Math.abs(previousRect.height - nextRect.height) < 0.75
+  );
+}
+
+function getRoadmapGuideTargets(roadmap, flowNodes) {
+  const roadmapNodes = roadmap?.nodes || [];
+  const flowNodeById = new Map(flowNodes.map((node) => [node.id, node]));
+  const sortedNodes = [...roadmapNodes].sort((a, b) => {
+    const nodeA = flowNodeById.get(getNodeId(a));
+    const nodeB = flowNodeById.get(getNodeId(b));
+    const positionA = nodeA?.position || { x: 0, y: 0 };
+    const positionB = nodeB?.position || { x: 0, y: 0 };
+
+    if (Math.abs(positionA.y - positionB.y) > 24) {
+      return positionA.y - positionB.y;
+    }
+
+    return positionA.x - positionB.x;
+  });
+
+  const phase =
+    sortedNodes.find((node) => getNodeType(node) === "phase") ||
+    sortedNodes[0] ||
+    null;
+
+  const topic =
+    sortedNodes.find((node) => isRecommendedLearningNode(node)) ||
+    sortedNodes.find((node) => isManuallyTrackableNode(node)) ||
+    null;
+
+  return { phase, topic };
+}
+
+function isRecommendedLearningNode(node) {
+  if (!node || !isManuallyTrackableNode(node)) return false;
+
+  const status = node.progress?.status || "pending";
+  const nodeType = getNodeType(node);
+
+  return (
+    status !== "locked" &&
+    status !== "completed" &&
+    ["topic", "choice_option", "project", "checkpoint"].includes(nodeType)
+  );
+}
+
+function getFirstLearningModuleSlug(node) {
+  const modules = node?.learningModules || node?.LearningModules || [];
+  const firstModule = modules.find(Boolean);
+
+  return firstModule?.slug || firstModule?.Slug || null;
 }
 
 function getViewerHeading(roadmap) {

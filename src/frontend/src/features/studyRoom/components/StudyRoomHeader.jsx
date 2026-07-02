@@ -9,6 +9,7 @@ export default function StudyRoomHeader({
   isCompletingLesson = false,
   onBack,
   onCompleteLesson,
+  backLabel = "Back to modules",
 }) {
   return (
     <header className="h-[72px] border-b border-[#B9D8CC] bg-white/95 shadow-sm shadow-emerald-900/5 backdrop-blur-xl">
@@ -20,7 +21,7 @@ export default function StudyRoomHeader({
             className="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-[#6FCF97]/20 hover:text-[#1F6F5F]"
           >
             <ArrowLeft size={18} />
-            Back to modules
+            {backLabel}
           </button>
 
           <div className="hidden h-8 w-px bg-[#B9D8CC] sm:block" />
