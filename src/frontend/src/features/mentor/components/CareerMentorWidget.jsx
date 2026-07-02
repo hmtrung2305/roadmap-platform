@@ -2,12 +2,11 @@ import {
   Bot,
   ChevronDown,
   ChevronRight,
-  Briefcase,
-  Calendar,
   Clock3,
-  Map,
+  Coins,
   Pin,
   Plus,
+  Loader2,
   SendHorizontal,
   Sparkles,
   Trash2,
@@ -27,29 +26,6 @@ import {
   getCreditStatus,
   getFriendlyApiErrorMessage,
 } from "../../../utils/apiErrorUtils";
-
-const starterPrompts = [
-  {
-    label: "Suggest roadmap",
-    icon: Map,
-    prompt: "Which roadmap should I choose if I want to become a full-stack developer?",
-  },
-  {
-    label: "Weekly plan",
-    icon: Calendar,
-    prompt: "Create a weekly learning plan from my current roadmap progress.",
-  },
-  {
-    label: "Portfolio ideas",
-    icon: Briefcase,
-    prompt: "What project should I build next for my portfolio?",
-  },
-  {
-    label: "Skill assessment",
-    icon: Sparkles,
-    prompt: "Which skills should I improve first for internship preparation?",
-  },
-];
 
 const PAGE_CONTEXT = "roadmap_selection";
 const LOCAL_SESSION_PREFIX = "local-session-";
@@ -185,6 +161,7 @@ export default function CareerMentorWidget() {
   const profile = useProfileStore((state) => state.profile);
   const loadProfile = useProfileStore((state) => state.loadProfile);
   const creditStatus = useAiCreditStore((state) => state.creditStatus);
+  const isLoadingCreditStatus = useAiCreditStore((state) => state.isLoadingCreditStatus);
   const loadCreditStatus = useAiCreditStore((state) => state.loadCreditStatus);
   const patchCreditStatus = useAiCreditStore((state) => state.patchCreditStatus);
   const invalidateCreditStatus = useAiCreditStore((state) => state.invalidateCreditStatus);
@@ -468,9 +445,6 @@ export default function CareerMentorWidget() {
     );
   }
 
-  function handlePrompt(prompt) {
-    setInput(prompt);
-  }
 
   function handleCloseWidget() {
     setActiveStatus(null);
@@ -947,22 +921,27 @@ export default function CareerMentorWidget() {
                       {activeSession?.title || "Career mentor"}
                     </h2>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Ask about roles, projects, GitHub, or career growth.
+                      Ask about roles, projects, synced GitHub, or career growth.
                     </p>
                   </div>
 
                   <div ref={statusAreaRef} className="flex flex-wrap items-center gap-2 overflow-visible">
+                    <MentorCreditPill
+                      status={creditStatus}
+                      isLoading={isLoadingCreditStatus}
+                    />
+
                     <MentorStatusPill
                       icon={FaGithub}
-                      label={connectionState.githubConnected ? "GitHub connected" : "GitHub not connected"}
+                      label={connectionState.githubConnected ? "GitHub synced" : "Sync GitHub"}
                       connected={connectionState.githubConnected}
-                      reason="Connect GitHub so the mentor can understand your public projects, tech stack, README quality, and portfolio evidence."
-                      actionLabel="Connect GitHub"
+                      reason="Sync GitHub so the mentor can personalize advice with your public projects, tech stack, README quality, and portfolio evidence."
+                      actionLabel="Sync GitHub"
                       isOpen={activeStatus === "github"}
                       onToggle={() =>
                         setActiveStatus((current) => (current === "github" ? null : "github"))
                       }
-                      onAction={() => handleNavigate("/settings/account")}
+                      onAction={() => handleNavigate("/portfolio/edit")}
                     />
 
                     <MentorStatusPill
@@ -1019,30 +998,6 @@ export default function CareerMentorWidget() {
               </div>
 
               <div className="border-t border-[#B9D8CC] bg-white px-5 py-4">
-                <div className="mb-3">
-                  <p className="mb-2 !text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">
-                    Quick actions
-                  </p>
-
-                  <div className="mentor-scrollbar-hidden flex gap-2 overflow-x-auto pb-1">
-                    {starterPrompts.map((item) => {
-                      const Icon = item.icon;
-
-                      return (
-                        <button
-                          key={item.label}
-                          type="button"
-                          onClick={() => handlePrompt(item.prompt)}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#FDFBF7] px-2.5 py-1.5 !text-[12px] font-bold text-slate-600 transition hover:border-[#2FA084] hover:bg-[#EAF8F1] hover:text-[#1F6F5F]"
-                        >
-                          <Icon size={14} className="text-[#1F6F5F]" />
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 <form
                   onSubmit={handleSubmit}
                   className="flex items-end gap-2 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-2 shadow-sm focus-within:border-[#2FA084] focus-within:ring-4 focus-within:ring-[#2FA084]/10"
@@ -1055,7 +1010,7 @@ export default function CareerMentorWidget() {
                     placeholder={
                       creditStatus?.remainingCreditsToday <= 0
                         ? "Daily AI credits used up"
-                        : "Ask anything about roles, projects, GitHub, or career growth..."
+                        : "Ask anything about roles, projects, synced GitHub, or career growth..."
                     }
                     className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm font-semibold text-[#18332D] outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     onKeyDown={(event) => {
@@ -1082,6 +1037,48 @@ export default function CareerMentorWidget() {
       )}
     </>,
     document.body,
+  );
+}
+
+
+function MentorCreditPill({ status, isLoading }) {
+  if (isLoading && !status) {
+    return (
+      <div className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#B9D8CC] bg-[#F7F1E8] px-2.5 !text-[13px] font-bold text-slate-500 shadow-sm">
+        <Loader2 size={14} className="animate-spin text-[#1F6F5F]" />
+        <span>Loading credits</span>
+      </div>
+    );
+  }
+
+  if (!status) {
+    return (
+      <div
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 !text-[13px] font-bold text-slate-500 shadow-sm"
+        title="AI credit status is unavailable right now."
+      >
+        <Coins size={14} />
+        <span>AI credits --/--</span>
+      </div>
+    );
+  }
+
+  const remaining = Number(status.remainingCreditsToday ?? 0);
+  const limit = Number(status.dailyCreditLimit ?? 0);
+  const isEmpty = remaining <= 0;
+
+  return (
+    <div
+      className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 !text-[13px] font-bold shadow-sm ${
+        isEmpty
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : "border-[#B9D8CC] bg-[#F7F1E8] text-[#1F6F5F]"
+      }`}
+      title="Daily AI credits. Each mentor reply uses 1 credit."
+    >
+      <Coins size={14} />
+      <span>{remaining}/{limit} credits</span>
+    </div>
   );
 }
 
