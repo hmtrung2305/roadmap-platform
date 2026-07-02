@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDown, ArrowUp, BookOpenText, Plus, Save, Tag, Trash2 } from "lucide-react";
 import ConfirmActionDialog from "../../learningModules/components/ConfirmActionDialog";
 import AppSelect from "../../../components/common/AppSelect";
@@ -132,6 +132,23 @@ function createGroupRuleForm(node = null, nodes = []) {
   };
 }
 
+function getNodeDetailsPanelKey(selectedNode, allNodes = []) {
+  const groupChildFingerprint = getDirectGroupChildren(allNodes, selectedNode?.roadmapNodeId)
+    .map((child) => [
+      child.roadmapNodeId,
+      child.isRequired ? "required" : "optional",
+      child.orderIndex ?? "",
+    ].join(":"))
+    .join("|");
+
+  return [
+    selectedNode?.roadmapNodeId || "",
+    selectedNode?.selectionType || "",
+    selectedNode?.requiredCount ?? "",
+    groupChildFingerprint,
+  ].join("::");
+}
+
 function getGroupRuleSummary(selectionType, requiredCount, requiredChildCount, optionalChildCount) {
   if (requiredChildCount === 0) {
     return "Mark at least one child as required.";
@@ -152,7 +169,27 @@ function getGroupRuleSummary(selectionType, requiredCount, requiredChildCount, o
   return `Complete all ${requiredChildCount} required children.${optionalText}`;
 }
 
-export default function NodeDetailsPanel({
+export default function NodeDetailsPanel(props) {
+  const { selectedNode, allNodes = [] } = props;
+
+  if (!selectedNode) {
+    return (
+      <ModuleCard className="h-[640px] p-6">
+        <ModuleEmptyState title="Select a node" />
+      </ModuleCard>
+    );
+  }
+
+  return (
+    <NodeDetailsPanelContent
+      key={getNodeDetailsPanelKey(selectedNode, allNodes)}
+      {...props}
+      allNodes={allNodes}
+    />
+  );
+}
+
+function NodeDetailsPanelContent({
   selectedNode,
   allNodes = [],
   nodeForm,
@@ -194,26 +231,12 @@ export default function NodeDetailsPanel({
   childNodeCount = 0,
   onOpenCreateChild,
 }) {
-  const [panelMode, setPanelMode] = useState("details");
+  const [panelMode, setPanelMode] = useState(
+    () => normalizeNodeType(selectedNode) === "choice_group" ? "requirements" : "details",
+  );
   const [mappingModal, setMappingModal] = useState(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [groupRuleForm, setGroupRuleForm] = useState(() => createGroupRuleForm(selectedNode, allNodes));
-
-  useEffect(() => {
-    const nextNodeType = normalizeNodeType(selectedNode);
-    setPanelMode(nextNodeType === "choice_group" ? "requirements" : "details");
-    setMappingModal(null);
-    setIsDeleteConfirmOpen(false);
-    setGroupRuleForm(createGroupRuleForm(selectedNode, allNodes));
-  }, [allNodes, selectedNode?.roadmapNodeId, selectedNode?.selectionType, selectedNode?.requiredCount]);
-
-  if (!selectedNode) {
-    return (
-      <ModuleCard className="h-[640px] p-6">
-        <ModuleEmptyState title="Select a node" />
-      </ModuleCard>
-    );
-  }
 
   const mappedSkillIds = new Set((selectedNode.skills || []).map(getSkillId));
   const mappedResourceIds = new Set((selectedNode.resources || []).map(getResourceId));

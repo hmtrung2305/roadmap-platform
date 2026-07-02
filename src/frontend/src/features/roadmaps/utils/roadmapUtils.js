@@ -412,7 +412,6 @@ export function buildRoadmapFlow(roadmap, selectedNodeId) {
 export function isCenterSpineChildNode(node) {
   const nodeType = getNodeType(node);
   const layoutRole = getLayoutRole(node);
-  const checkpointType = node?.checkpointType || node?.checkpoint_type || null;
   if (nodeType === "phase") return true;
   if (layoutRole === "side" || layoutRole === "side_left" || layoutRole === "side_right" || layoutRole === "hidden") return false;
   if (nodeType === "checkpoint") return layoutRole === "checkpoint" || layoutRole === "trunk" || layoutRole === "gate" || layoutRole === "validation";
@@ -1142,7 +1141,7 @@ export function getMiniMapColor(status, nodeType) {
   return "#FFE08A";
 }
 
-export function getNodeTypeClass(nodeType, checkpointType) {
+export function getNodeTypeClass(nodeType) {
   if (nodeType === "phase") return "border-[#028C7C] bg-[#03A791] text-white";
   if (nodeType === "choice_group") return "border-[#7FDDB6] bg-[#A8EFCB] text-[#18332D] hover:bg-[#A8EFCB]";
   if (nodeType === "choice_option") return "border-[#E9C85F] bg-[#FFE08A] text-[#18332D] hover:bg-[#FFD975]";

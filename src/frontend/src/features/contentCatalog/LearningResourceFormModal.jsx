@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Save, X } from "lucide-react";
 
@@ -30,11 +30,21 @@ export default function LearningResourceFormModal({
     () => normalizeResourceForm(resource, initialTitle, initialUrl),
     [initialTitle, initialUrl, resource],
   );
-  const [form, setForm] = useState(baseForm);
-
-  useEffect(() => {
-    if (isOpen) setForm(baseForm);
-  }, [baseForm, isOpen]);
+  const formKey = useMemo(() => JSON.stringify(baseForm), [baseForm]);
+  const [formState, setFormState] = useState(() => ({
+    key: formKey,
+    form: baseForm,
+  }));
+  const form = formState.key === formKey ? formState.form : baseForm;
+  const setForm = (updater) => {
+    setFormState((current) => {
+      const currentForm = current.key === formKey ? current.form : baseForm;
+      return {
+        key: formKey,
+        form: typeof updater === "function" ? updater(currentForm) : updater,
+      };
+    });
+  };
 
   const isEdit = Boolean(resource?.resourceId);
   const isDirty = !areResourceFormsEqual(form, baseForm);

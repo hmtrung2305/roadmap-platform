@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Save, X } from "lucide-react";
 
@@ -15,6 +15,20 @@ import {
 } from "./catalogConstants";
 
 const customCategoryValue = "__custom_category__";
+
+function createSkillFormState(key, baseForm, categoryOptions) {
+  const hasExistingCategory = categoryOptions.some(
+    (item) => item === baseForm.category,
+  );
+  const usesCustomCategory = Boolean(baseForm.category && !hasExistingCategory);
+
+  return {
+    key,
+    form: baseForm,
+    isCustomCategory: usesCustomCategory,
+    customCategory: usesCustomCategory ? baseForm.category : "",
+  };
+}
 
 export default function SkillFormModal({
   isOpen,
@@ -34,22 +48,36 @@ export default function SkillFormModal({
     () => categories.filter(Boolean),
     [categories],
   );
-  const [form, setForm] = useState(baseForm);
-  const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [customCategory, setCustomCategory] = useState("");
+  const formKey = useMemo(
+    () => JSON.stringify({ baseForm, categoryOptions }),
+    [baseForm, categoryOptions],
+  );
+  const [formState, setFormState] = useState(() => (
+    createSkillFormState(formKey, baseForm, categoryOptions)
+  ));
+  const resolvedFormState = formState.key === formKey
+    ? formState
+    : createSkillFormState(formKey, baseForm, categoryOptions);
+  const { form, isCustomCategory, customCategory } = resolvedFormState;
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const hasExistingCategory = categoryOptions.some(
-      (item) => item === baseForm.category,
-    );
-    setForm(baseForm);
-    setIsCustomCategory(Boolean(baseForm.category && !hasExistingCategory));
-    setCustomCategory(
-      baseForm.category && !hasExistingCategory ? baseForm.category : "",
-    );
-  }, [baseForm, categoryOptions, isOpen]);
+  const updateFormState = (updater) => {
+    setFormState((current) => {
+      const currentState = current.key === formKey
+        ? current
+        : createSkillFormState(formKey, baseForm, categoryOptions);
+      const patch = typeof updater === "function" ? updater(currentState) : updater;
+      return {
+        ...currentState,
+        ...patch,
+        key: formKey,
+      };
+    });
+  };
+  const setForm = (updater) => {
+    updateFormState((current) => ({
+      form: typeof updater === "function" ? updater(current.form) : updater,
+    }));
+  };
 
   const isEdit = Boolean(skill?.skillId);
   const isDirty = !areSkillFormsEqual(form, baseForm);
@@ -83,13 +111,17 @@ export default function SkillFormModal({
 
   const handleCategoryChange = (value) => {
     if (value === customCategoryValue) {
-      setIsCustomCategory(true);
-      setForm((current) => ({ ...current, category: customCategory }));
+      updateFormState((current) => ({
+        isCustomCategory: true,
+        form: { ...current.form, category: current.customCategory },
+      }));
       return;
     }
 
-    setIsCustomCategory(false);
-    setForm((current) => ({ ...current, category: value }));
+    updateFormState((current) => ({
+      isCustomCategory: false,
+      form: { ...current.form, category: value },
+    }));
   };
 
   return (
@@ -174,10 +206,12 @@ export default function SkillFormModal({
                     value={customCategory}
                     onChange={(event) => {
                       const nextValue = event.target.value;
-                      setCustomCategory(nextValue);
-                      setForm((current) => ({
-                        ...current,
-                        category: nextValue,
+                      updateFormState((current) => ({
+                        customCategory: nextValue,
+                        form: {
+                          ...current.form,
+                          category: nextValue,
+                        },
                       }));
                     }}
                     className={inputClass}

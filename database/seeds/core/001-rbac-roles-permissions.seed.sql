@@ -80,18 +80,10 @@ VALUES
     ('roadmap_progress.update.self'),
 
     -- Roadmap draft and review workflow permissions
-<<<<<<< HEAD
-    ('roadmap_draft.view.any'),
-    ('roadmap_draft.create.any'),
-    ('roadmap_draft.update.any'),
-    ('roadmap_draft.delete.any'),
-||||||| 0933afc
-=======
     ('roadmap_draft.view.own'),
     ('roadmap_draft.create.own'),
     ('roadmap_draft.update.own'),
     ('roadmap_draft.delete.own'),
->>>>>>> feature/roadmap-crud-operations
     ('roadmap_review.submit.own'),
     ('roadmap_review.view.any'),
     ('roadmap_review.approve.any'),
@@ -406,13 +398,6 @@ WITH role_permissions(role_name, permission_name) AS (
 
         -- Content Manager catalog lookup and content management permissions
         ('content_manager', 'skill.view.catalog'),
-<<<<<<< HEAD
-        ('content_manager', 'roadmap_draft.view.any'),
-        ('content_manager', 'roadmap_draft.create.any'),
-        ('content_manager', 'roadmap_draft.update.any'),
-        ('content_manager', 'roadmap_draft.delete.any'),
-||||||| 0933afc
-=======
         ('content_manager', 'skill.create.catalog'),
         ('content_manager', 'skill.update.catalog'),
         ('content_manager', 'learning_resource.view.catalog'),
@@ -422,7 +407,6 @@ WITH role_permissions(role_name, permission_name) AS (
         ('content_manager', 'roadmap_draft.create.own'),
         ('content_manager', 'roadmap_draft.update.own'),
         ('content_manager', 'roadmap_draft.delete.own'),
->>>>>>> feature/roadmap-crud-operations
         ('content_manager', 'roadmap_review.submit.own'),
         ('content_manager', 'learning_module.view.own'),
         ('content_manager', 'learning_module.create.own'),
@@ -449,14 +433,6 @@ WITH role_permissions(role_name, permission_name) AS (
         ('reviewer', 'roadmap_review.reject.any'),
 
         -- Admin platform governance permissions
-        ('admin', 'roadmap_draft.view.any'),
-        ('admin', 'roadmap_draft.create.any'),
-        ('admin', 'roadmap_draft.update.any'),
-        ('admin', 'roadmap_draft.delete.any'),
-        ('admin', 'roadmap_review.submit.own'),
-        ('admin', 'roadmap_review.view.any'),
-        ('admin', 'roadmap_review.approve.any'),
-        ('admin', 'roadmap_review.reject.any'),
         ('admin', 'user.view.any'),
         ('admin', 'user.update.any'),
         ('admin', 'user.suspend.any'),

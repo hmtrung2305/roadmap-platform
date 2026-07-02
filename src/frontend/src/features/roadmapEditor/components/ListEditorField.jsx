@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 
 import { ModuleButton, ModuleField } from "../../learningModules/components/learningModuleUi";
@@ -27,11 +27,25 @@ export default function ListEditorField({
   placeholder = "List item",
   disabled = false,
 }) {
-  const [draftItems, setDraftItems] = useState(() => normalizeDraftItems(value));
-
-  useEffect(() => {
-    setDraftItems(normalizeDraftItems(value));
-  }, [value]);
+  const valueKey = useMemo(() => listToText(normalizeDraftItems(value)), [value]);
+  const [draftState, setDraftState] = useState(() => ({
+    key: valueKey,
+    items: normalizeDraftItems(value),
+  }));
+  const draftItems = draftState.key === valueKey
+    ? draftState.items
+    : normalizeDraftItems(value);
+  const setDraftItems = (updater) => {
+    setDraftState((current) => {
+      const currentItems = current.key === valueKey
+        ? current.items
+        : normalizeDraftItems(value);
+      return {
+        key: valueKey,
+        items: typeof updater === "function" ? updater(currentItems) : updater,
+      };
+    });
+  };
 
   function commit(nextItems) {
     const visibleItems = nextItems.length > 0 ? nextItems : [""];

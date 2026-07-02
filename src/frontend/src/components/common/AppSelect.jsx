@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 
@@ -29,7 +29,7 @@ export default function AppSelect({
   );
   const selectedOption = options[selectedIndex] || options[0];
 
-  const updateFixedRect = () => {
+  const updateFixedRect = useCallback(() => {
     if (dropdownMode !== "fixed" || !rootRef.current) return;
     const rect = rootRef.current.getBoundingClientRect();
     setFixedRect({
@@ -37,7 +37,7 @@ export default function AppSelect({
       top: rect.bottom + 8,
       width: rect.width,
     });
-  };
+  }, [dropdownMode]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -62,7 +62,7 @@ export default function AppSelect({
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("scroll", handleViewportChange, true);
     };
-  }, [isOpen, dropdownMode]);
+  }, [isOpen, listboxId, updateFixedRect]);
 
   const openSelect = () => {
     setActiveIndex(selectedIndex);

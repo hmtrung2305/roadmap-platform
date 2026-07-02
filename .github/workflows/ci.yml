@@ -88,6 +88,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Reject unresolved merge conflict markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '^(<<<<<<<|=======|>>>>>>>|\|\|\|\|\|\|\|)( .*)?$' \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=bin --exclude-dir=obj --exclude-dir=dist .; then
+            echo "Unresolved merge conflict markers must be removed before CI can pass."
+            exit 1
+          fi
+
       - name: Reject committed runtime files
         shell: bash
         run: |

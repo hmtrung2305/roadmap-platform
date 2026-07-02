@@ -41,7 +41,43 @@ const initialForm = {
   referenceNodeId: "",
 };
 
-export default function NodeCreateModal({
+function createInitialNodeForm({ isPhaseCreate, isMinorDraft, nodeTypeOptions }) {
+  const nextNodeType = isPhaseCreate ? "phase" : nodeTypeOptions[0]?.value || "topic";
+
+  return {
+    ...initialForm,
+    nodeType: nextNodeType,
+    requirement: isMinorDraft && ["topic", "project"].includes(nextNodeType)
+      ? "optional"
+      : nextNodeType === "project" ? "optional" : "required",
+  };
+}
+
+function getNodeCreateModalKey({
+  createMode = "child",
+  isMinorDraft = false,
+  selectedNode,
+}) {
+  return [
+    createMode,
+    isMinorDraft ? "minor" : "editable",
+    getNodeId(selectedNode),
+    selectedNode?.nodeType || "",
+  ].join(":");
+}
+
+export default function NodeCreateModal(props) {
+  if (!props.isOpen) return null;
+
+  return (
+    <NodeCreateModalContent
+      key={getNodeCreateModalKey(props)}
+      {...props}
+    />
+  );
+}
+
+function NodeCreateModalContent({
   isOpen,
   nodes = [],
   selectedNode,
@@ -52,7 +88,6 @@ export default function NodeCreateModal({
   onCreate,
 }) {
   const panelRef = useRef(null);
-  const [form, setForm] = useState(initialForm);
 
   const isPhaseCreate = createMode === "phase";
   const allowedNodeTypes = useMemo(() => {
@@ -64,21 +99,13 @@ export default function NodeCreateModal({
   const nodeTypeOptions = useMemo(() => (
     draftNodeTypeOptions.filter((option) => allowedNodeTypes.includes(option.value))
   ), [allowedNodeTypes]);
+  const defaultForm = useMemo(
+    () => createInitialNodeForm({ isPhaseCreate, isMinorDraft, nodeTypeOptions }),
+    [isMinorDraft, isPhaseCreate, nodeTypeOptions],
+  );
+  const [form, setForm] = useState(() => defaultForm);
   const phaseOptions = useMemo(() => getPhaseOptions(nodes), [nodes]);
   const selectedReferencePhase = phaseOptions.find((option) => option.value === form.referenceNodeId);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const nextNodeType = isPhaseCreate ? "phase" : nodeTypeOptions[0]?.value || "topic";
-    setForm({
-      ...initialForm,
-      nodeType: nextNodeType,
-      requirement: isMinorDraft && ["topic", "project"].includes(nextNodeType)
-        ? "optional"
-        : nextNodeType === "project" ? "optional" : "required",
-    });
-  }, [isOpen, isMinorDraft, isPhaseCreate, nodeTypeOptions]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -90,8 +117,6 @@ export default function NodeCreateModal({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
 
   const parentNodeId = isPhaseCreate ? null : getNodeId(selectedNode);
   const canUseLearningFields = ["topic", "project", "checkpoint"].includes(form.nodeType);
