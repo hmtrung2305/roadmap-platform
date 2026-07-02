@@ -13,6 +13,20 @@ admin
 
 Content Manager and admin do not automatically inherit learner workflow permissions. Shared account permissions are intentionally assigned to all roles because every authenticated account needs basic account management.
 
+## Surface routing rules
+
+Frontend workspace access is intentionally stricter than individual lookup permissions:
+
+| Surface | Default entry | Opens with |
+|---|---|---|
+| Learner app | `/roadmaps` | Learner surface permissions such as `roadmap.view.published`, `learning_module.view.published`, or `portfolio.view.self` |
+| Content workspace | `/content` | Content authoring/review/config permissions such as `learning_module.view.own`, `roadmap_draft.view.own`, `roadmap_review.view.any`, `skill.view.catalog`, catalog create/update permissions, or `skill_gap_config.view.any` |
+| Admin workspace | `/admin` | Platform governance permissions such as `user.view.any`, `role.view.any`, `permission.view.any`, `market_pulse.manage.any`, or `system_health.view.any` |
+
+`skill.view.catalog` belongs to content/admin skill catalog lookup. Learner skill-gap workflows use learner-specific permissions such as `career_role.view.catalog` and `skill_gap_analysis.create.self`; the learner role must not receive `skill.view.catalog`.
+
+When an authenticated learner tries to open an operator workspace without matching operator permissions, the frontend redirects them back to their default learner entry point, `/roadmaps`.
+
 ## Shared authenticated account permissions
 
 Assigned to: `learner`, `content_manager`, `reviewer`, `admin`
@@ -91,7 +105,6 @@ Assigned to: `learner`
 | `skill_gap_analysis_history.view.self` | View own skill-gap analysis history |
 | `skill_gap_analysis_history.delete.self` | Delete own skill-gap analysis history |
 | `market_pulse.view.catalog` | View authenticated market pulse catalog data |
-| `skill.view.catalog` | Search/view skills for authenticated app use |
 
 ## Content Manager permissions
 
@@ -112,6 +125,8 @@ Assigned to: `content_manager`
 | `skill_gap_config.update.any` | Update skill-gap configuration |
 
 Content Manager receives catalog-scope authoring only. Content Manager should not receive `skill.view.any`, `skill.update.any`, or `skill.delete.any` because those are platform governance scope.
+
+`skill.view.catalog` can open the Content workspace because the learner role no longer receives it. Learner-only endpoints must use learner-specific permissions instead of reusing the content/admin skill catalog permission.
 
 ### Module ownership
 

@@ -56,4 +56,13 @@ WHERE p.permission_name IN (
 )
 ON CONFLICT (permission_id, role_id) DO NOTHING;
 
+-- Learner skill-gap flows use learner-specific permissions and must not inherit
+-- the content/admin skill catalog surface.
+DELETE FROM public.permission_role pr
+USING public.permission p, public.role r
+WHERE pr.permission_id = p.permission_id
+  AND pr.role_id = r.role_id
+  AND r.role_name = 'learner'
+  AND p.permission_name = 'skill.view.catalog';
+
 COMMIT;

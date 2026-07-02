@@ -104,6 +104,8 @@ VALUES
     ('career_role.view.catalog'),
     ('skill_gap_analysis.create.self'),
     ('market_pulse.view.catalog'),
+
+    -- Content catalog permissions
     ('skill.view.catalog'),
     ('skill.create.catalog'),
     ('skill.update.catalog'),
@@ -393,7 +395,6 @@ WITH role_permissions(role_name, permission_name) AS (
         ('learner', 'career_role.view.catalog'),
         ('learner', 'skill_gap_analysis.create.self'),
         ('learner', 'market_pulse.view.catalog'),
-        ('learner', 'skill.view.catalog'),
 
         -- Content Manager catalog lookup and content management permissions
         ('content_manager', 'skill.view.catalog'),

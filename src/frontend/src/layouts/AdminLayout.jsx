@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Activity,
+  Map as MapIcon,
   Settings,
   Shield,
   UsersRound,
@@ -14,7 +15,7 @@ import {
 
 import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
-import { PERMISSIONS } from "../constants/permissions";
+import { LEARNER_SURFACE_PERMISSIONS, PERMISSIONS } from "../constants/permissions";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useProfileStore } from "../stores/useProfileStore";
 import { hasAllPermissions, hasAnyPermission } from "../utils/authorizationUtils";
@@ -157,10 +158,16 @@ export default function AdminLayout() {
 
   const displayName = getDisplayName(user, profile);
   const email = getEmail(user, profile);
+  const canAccessLearningWorkspace = hasAnyPermission(user, LEARNER_SURFACE_PERMISSIONS);
 
   const goToSettings = () => {
     setIsUserMenuOpen(false);
     navigate("/admin/settings");
+  };
+
+  const goToLearningWorkspace = () => {
+    setIsUserMenuOpen(false);
+    navigate("/roadmaps");
   };
 
   const handleLogout = async () => {
@@ -208,6 +215,17 @@ export default function AdminLayout() {
         <div ref={userMenuRef} className="relative border-t border-[#B9D8CC] p-3">
           {isUserMenuOpen && (
             <div className="absolute bottom-[72px] left-3 right-3 z-50 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-xl">
+              {canAccessLearningWorkspace && (
+                <button
+                  type="button"
+                  onClick={goToLearningWorkspace}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-extrabold text-[#18332D] transition hover:bg-[#F7F1E8]"
+                >
+                  <MapIcon size={15} />
+                  Learning Roadmaps
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={goToSettings}

@@ -235,7 +235,10 @@ export default function App() {
 
           <Route
             element={
-              <RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
+              <RequirePermission
+                anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}
+                redirectToDefaultOnDeny
+              >
                 <ContentManagerLayout />
               </RequirePermission>
             }
@@ -340,7 +343,10 @@ export default function App() {
 
           <Route
             element={
-              <RequirePermission anyPermissions={ADMIN_SURFACE_PERMISSIONS}>
+              <RequirePermission
+                anyPermissions={ADMIN_SURFACE_PERMISSIONS}
+                redirectToDefaultOnDeny
+              >
                 <AdminLayout />
               </RequirePermission>
             }

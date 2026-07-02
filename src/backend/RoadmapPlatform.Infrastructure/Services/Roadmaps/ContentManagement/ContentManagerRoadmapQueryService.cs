@@ -361,6 +361,8 @@ public sealed class ContentManagerRoadmapQueryService(ApplicationDbContext dbCon
 
         var events = await dbContext.Set<RoadmapVersionReviewEvent>()
             .AsNoTracking()
+            .Include(item => item.ActorUser)
+                .ThenInclude(user => user!.UserProfile)
             .Where(item => versionIds.Contains(item.RoadmapVersionId))
             .OrderByDescending(item => item.CreatedAt)
             .ToListAsync(cancellationToken);

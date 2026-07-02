@@ -161,6 +161,8 @@ internal static class ContentManagerRoadmapMapper
                 RoadmapVersionReviewEventId = item.RoadmapVersionReviewEventId,
                 RoadmapVersionId = item.RoadmapVersionId,
                 ActorUserId = item.ActorUserId,
+                ActorUsername = item.ActorUser?.Username,
+                ActorDisplayName = item.ActorUser?.UserProfile?.DisplayName,
                 EventType = item.EventType,
                 Message = item.Message,
                 CreatedAt = item.CreatedAt

@@ -14,6 +14,8 @@ This document defines the roadmap-specific RBAC rules for the Content Manager co
 
 A user that needs multiple responsibilities must receive multiple roles explicitly.
 
+Learner access does not imply access to this workspace. Learners enter the app through `/roadmaps`; they should not see Content Manager, Reviewer, or Admin workspace links unless they also have the corresponding operator permissions.
+
 ## Permission model
 
 ### Content Manager

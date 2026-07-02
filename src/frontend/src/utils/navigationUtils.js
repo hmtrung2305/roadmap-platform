@@ -85,15 +85,19 @@ export function getDefaultContentManagerRoute(user) {
 }
 
 export function getDefaultAuthenticatedRoute(user) {
-  if (hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS)) {
+  const canAccessAdmin = hasAnyPermission(user, ADMIN_SURFACE_PERMISSIONS);
+  const canAccessContent = hasAnyPermission(user, CONTENT_MANAGER_SURFACE_PERMISSIONS);
+  const canAccessLearner = hasAnyPermission(user, LEARNER_SURFACE_PERMISSIONS);
+
+  if (canAccessAdmin) {
     return DEFAULT_ADMIN_ROUTE;
   }
 
-  if (hasAnyPermission(user, CONTENT_MANAGER_SURFACE_PERMISSIONS)) {
+  if (canAccessContent) {
     return getDefaultContentManagerRoute(user);
   }
 
-  if (hasAnyPermission(user, LEARNER_SURFACE_PERMISSIONS)) {
+  if (canAccessLearner) {
     return DEFAULT_LEARNER_ROUTE;
   }
 

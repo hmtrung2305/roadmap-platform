@@ -349,13 +349,26 @@ export default function ContentManagerRoadmapEditorPage() {
 
   const openReviewWorkflow = () => {
     if (activeVersionId) {
+      const cachedChangeLog = readReviewDraftCache(
+        REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog,
+        activeVersionId,
+      );
+      const latestSubmittedChangeLog =
+        getLatestReviewEvent(detail.reviewEvents, "submitted")?.message || "";
+      const nextChangeLog = cachedChangeLog || latestSubmittedChangeLog;
+
       setReviewChangeLogDraft({
         roadmapVersionId: activeVersionId,
-        value: readReviewDraftCache(
+        value: nextChangeLog,
+      });
+
+      if (nextChangeLog) {
+        writeReviewDraftCache(
           REVIEW_DRAFT_CACHE_TYPES.contentManagerChangelog,
           activeVersionId,
-        ),
-      });
+          nextChangeLog,
+        );
+      }
     }
 
     setWorkspaceMode("review");
@@ -859,9 +872,12 @@ function ReviewWorkflowPanel({
                 className={`${inputClass} min-h-[220px] flex-1 resize-none`}
                 value={changeLog}
                 onChange={(event) => onChangeLogChange?.(event.target.value)}
-                placeholder="Summarize the changes for the reviewer."
+                placeholder="Summarize the final roadmap changes learners should understand in this version."
                 maxLength={4000}
               />
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+                This is the learner-facing changelog for the version. Keep reviewer discussion in feedback, not here.
+              </p>
 
               <div className="mt-4 flex justify-end">
                 <ModuleButton
@@ -1099,6 +1115,9 @@ function LatestReviewerFeedbackAlert({ event }) {
               {formatDate(event.createdAt)}
             </span>
           </div>
+          <p className="mt-1 text-xs font-bold text-amber-800">
+            Reviewer: {formatReviewActor(event)}
+          </p>
           <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-amber-900">
             {event.message || "No feedback message recorded."}
           </p>
@@ -1144,6 +1163,9 @@ function ReviewHistoryPanel({ events }) {
                   <div className="text-[11px] font-bold text-slate-500">
                     {formatDate(event.createdAt)}
                   </div>
+                  <div className="text-[11px] font-semibold leading-4 text-slate-600">
+                    {getReviewEventActorLabel(event)}: {formatReviewActor(event)}
+                  </div>
                 </div>
                 <div className="min-w-0">
                   <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
@@ -1174,6 +1196,31 @@ function getReviewEventTone(eventType) {
   if (normalized === "rejected")
     return "border-amber-200 bg-amber-50 text-amber-700";
   return "border-[#B9D8CC] bg-white text-[#1F6F5F]";
+}
+
+function getReviewEventActorLabel(event) {
+  const normalized = String(event?.eventType || "").toLowerCase();
+  if (normalized === "submitted") return "Author";
+  if (normalized === "approved" || normalized === "rejected") return "Reviewer";
+  return "Actor";
+}
+
+function formatReviewActor(event) {
+  const displayName = String(event?.actorDisplayName || "").trim();
+  const username = String(event?.actorUsername || "").trim();
+  const userId = String(event?.actorUserId || "").trim();
+  const primary = displayName || username || "Unknown user";
+  const details = [];
+
+  if (username && username.toLowerCase() !== primary.toLowerCase()) {
+    details.push(`@${username}`);
+  }
+
+  if (userId) {
+    details.push(`ID ${userId.slice(0, 8)}`);
+  }
+
+  return details.length > 0 ? `${primary} (${details.join(", ")})` : primary;
 }
 
 function getLatestReviewEvent(events = [], eventType) {

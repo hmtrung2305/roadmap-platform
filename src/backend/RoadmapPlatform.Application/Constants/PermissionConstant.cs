@@ -72,7 +72,7 @@ public static class PermissionConstant
     public const string LEARNING_MODULE_CHAT_USE_ENROLLED = "learning_module_chat.use.enrolled";
 
     // =====================================================
-    // LEARNER DISCOVERY AND ANALYSIS PERMISSIONS
+    // DISCOVERY, CATALOG, AND ANALYSIS PERMISSIONS
     // =====================================================
     public const string CAREER_ROLE_VIEW_CATALOG = "career_role.view.catalog";
     public const string SKILL_GAP_ANALYSIS_CREATE_SELF = "skill_gap_analysis.create.self";

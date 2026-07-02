@@ -99,6 +99,8 @@ public sealed class ContentRoadmapReviewEventDto
     public Guid RoadmapVersionReviewEventId { get; set; }
     public Guid RoadmapVersionId { get; set; }
     public Guid? ActorUserId { get; set; }
+    public string? ActorUsername { get; set; }
+    public string? ActorDisplayName { get; set; }
     public string EventType { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }

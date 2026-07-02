@@ -217,9 +217,16 @@ function RoadmapReviewQueuePage() {
                           </ModuleBadge>
                         </td>
                         <td className="px-4 py-4 font-semibold text-slate-600">
-                          {formatDate(
-                            submittedEvent?.createdAt || roadmap.updatedAt,
-                          )}
+                          <div>
+                            {formatDate(
+                              submittedEvent?.createdAt || roadmap.updatedAt,
+                            )}
+                          </div>
+                          {submittedEvent ? (
+                            <div className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
+                              Author: {formatReviewActor(submittedEvent)}
+                            </div>
+                          ) : null}
                         </td>
                         <td className="max-w-sm px-4 py-4 text-xs font-semibold leading-5 text-slate-600">
                           <span className="line-clamp-2">
@@ -269,6 +276,11 @@ function RoadmapReviewQueuePage() {
                     <p className="mt-3 line-clamp-2 text-xs font-semibold leading-5 text-slate-600">
                       {submittedEvent?.message || "No changelog submitted."}
                     </p>
+                    {submittedEvent ? (
+                      <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">
+                        Author: {formatReviewActor(submittedEvent)}
+                      </p>
+                    ) : null}
                     <div className="mt-4">
                       <ModuleButton onClick={() => openReview(roadmap)}>
                         <Eye size={14} />
@@ -580,11 +592,17 @@ function RoadmapReviewDetailPage() {
               Submitted{" "}
               {formatDate(latestSubmittedEvent?.createdAt || detail.updatedAt)}
             </span>
+            {latestSubmittedEvent ? (
+              <span className="inline-flex items-center gap-2">
+                <MessageSquare size={14} className="text-[#1F6F5F]" />
+                Author {formatReviewActor(latestSubmittedEvent)}
+              </span>
+            ) : null}
           </div>
         </ModuleCard>
 
         <LatestChangelogCard
-          message={latestSubmittedEvent?.message}
+          event={latestSubmittedEvent}
           isMutating={isMutatingThisVersion}
           isActionDisabled={Boolean(mutatingVersionId)}
           onViewHistory={() => setIsHistoryOpen(true)}
@@ -671,13 +689,15 @@ function RoadmapReviewDetailPage() {
 }
 
 function LatestChangelogCard({
-  message,
+  event,
   isMutating,
   isActionDisabled,
   onViewHistory,
   onRequestChanges,
   onApprove,
 }) {
+  const message = event?.message;
+
   return (
     <ModuleCard className="p-4">
       <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_240px] xl:grid-cols-[minmax(0,1fr)_260px]">
@@ -691,6 +711,11 @@ function LatestChangelogCard({
           <p className="max-h-36 overflow-y-auto whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
             {message || "No changelog was submitted for this version."}
           </p>
+          {event ? (
+            <p className="mt-2 text-xs font-bold text-slate-500">
+              Author: {formatReviewActor(event)}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex min-h-32 flex-col items-stretch justify-between gap-4 sm:items-end">
@@ -1081,6 +1106,9 @@ function ReviewHistoryDialog({ isOpen, events, onClose }) {
                     <div className="text-[11px] font-bold text-slate-500">
                       {formatDate(event.createdAt)}
                     </div>
+                    <div className="text-[11px] font-semibold leading-4 text-slate-600">
+                      {getReviewEventActorLabel(event)}: {formatReviewActor(event)}
+                    </div>
                   </div>
                   <div className="min-w-0">
                     <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
@@ -1137,6 +1165,31 @@ function getReviewEventLabel(eventType) {
   if (normalized === "rejected") return "Rejected";
   if (normalized === "approved") return "Approved";
   return eventType || "Review note";
+}
+
+function getReviewEventActorLabel(event) {
+  const normalized = String(event?.eventType || "").toLowerCase();
+  if (normalized === "submitted") return "Author";
+  if (normalized === "approved" || normalized === "rejected") return "Reviewer";
+  return "Actor";
+}
+
+function formatReviewActor(event) {
+  const displayName = String(event?.actorDisplayName || "").trim();
+  const username = String(event?.actorUsername || "").trim();
+  const userId = String(event?.actorUserId || "").trim();
+  const primary = displayName || username || "Unknown user";
+  const details = [];
+
+  if (username && username.toLowerCase() !== primary.toLowerCase()) {
+    details.push(`@${username}`);
+  }
+
+  if (userId) {
+    details.push(`ID ${userId.slice(0, 8)}`);
+  }
+
+  return details.length > 0 ? `${primary} (${details.join(", ")})` : primary;
 }
 
 function getReviewEventTone(eventType) {

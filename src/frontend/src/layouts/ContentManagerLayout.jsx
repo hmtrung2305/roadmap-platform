@@ -14,8 +14,8 @@ import {
   Tag,
 } from "lucide-react";
 
-import { PERMISSIONS } from "../constants/permissions";
-import { hasPermission } from "../utils/authorizationUtils";
+import { LEARNER_SURFACE_PERMISSIONS, PERMISSIONS } from "../constants/permissions";
+import { hasAnyPermission, hasPermission } from "../utils/authorizationUtils";
 import { getDefaultContentManagerRoute } from "../utils/navigationUtils";
 import AuthLogo from "../features/auth/components/AuthLogo";
 import StreakAnimation from "../components/streak/StreakAnimation";
@@ -203,6 +203,7 @@ export default function ContentManagerLayout() {
     () => getDefaultContentManagerRoute(user),
     [user],
   );
+  const canAccessLearningWorkspace = hasAnyPermission(user, LEARNER_SURFACE_PERMISSIONS);
 
   const goToDefaultContentRoute = () => {
     navigate(defaultContentRoute === "/content" ? "/content" : defaultContentRoute);
@@ -211,6 +212,11 @@ export default function ContentManagerLayout() {
   const goToSettings = () => {
     setIsUserMenuOpen(false);
     navigate("/content/settings");
+  };
+
+  const goToLearningWorkspace = () => {
+    setIsUserMenuOpen(false);
+    navigate("/roadmaps");
   };
 
   const handleLogout = async () => {
@@ -261,6 +267,17 @@ export default function ContentManagerLayout() {
         >
           {isUserMenuOpen && (
             <div className="absolute bottom-[72px] left-3 right-3 z-50 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 shadow-xl">
+              {canAccessLearningWorkspace && (
+                <button
+                  type="button"
+                  onClick={goToLearningWorkspace}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-extrabold text-[#18332D] transition hover:bg-[#F7F1E8]"
+                >
+                  <MapIcon size={15} />
+                  Learning Roadmaps
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={goToSettings}
@@ -394,6 +411,16 @@ export default function ContentManagerLayout() {
 
               {isUserMenuOpen && (
                 <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-lg border border-[#B9D8CC] bg-white py-1 text-left shadow-xl">
+                  {canAccessLearningWorkspace && (
+                    <button
+                      type="button"
+                      onClick={goToLearningWorkspace}
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-extrabold text-[#18332D] hover:bg-[#F7F1E8]"
+                    >
+                      <MapIcon size={15} />
+                      Learning Roadmaps
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={goToSettings}

@@ -29,6 +29,7 @@ The platform uses separate personas, not automatic role inheritance.
 |---|---|---|
 | `learner` | Learner app | Uses learning workflows |
 | `content_manager` | Content Manager console | Manages authored learning content |
+| `reviewer` | Content review console | Reviews and approves submitted content |
 | `admin` | Admin console | Manages platform governance |
 
 A user can hold multiple roles, but one role does not automatically inherit another role's feature domain.
@@ -237,12 +238,17 @@ Frontend constants must match backend constants and seed values exactly.
 Use surface-level route guards for major route groups.
 
 ```jsx
-<RequirePermission anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}>
+<RequirePermission
+  anyPermissions={CONTENT_MANAGER_SURFACE_PERMISSIONS}
+  redirectToDefaultOnDeny
+>
   <ContentManagerLayout />
 </RequirePermission>
 ```
 
-Surface guards decide whether a user can enter a whole area, such as learner app, content manager console, or admin console.
+Surface guards decide whether a user can enter a whole area, such as learner app, content manager console, reviewer console, or admin console.
+
+Do not assign operator catalog permissions to learner roles. For example, `skill.view.catalog` is reserved for content/admin skill catalog lookup and can open `/content`; learner skill-gap assessment data should be protected by learner-specific permissions such as `career_role.view.catalog` and `skill_gap_analysis.create.self`.
 
 ### 3. Guard sensitive actions by action permission
 
@@ -270,14 +276,16 @@ content manager -> no learner/admin nav unless also granted those permissions
 admin -> no learner/content nav unless also granted those permissions
 ```
 
-### 5. Use neutral not-found for wrong-surface routes
+### 5. Redirect wrong-surface route groups to the user's default surface
 
 Frontend route behavior:
 
 | User state | Route result |
 |---|---|
 | Anonymous opens protected route | Redirect to login |
-| Authenticated but wrong surface | Neutral not-found page |
+| Learner opens `/content` or `/admin` without operator permissions | Redirect to `/roadmaps` |
+| Content/admin user opens a different unavailable surface | Redirect to their default accessible surface |
+| Authenticated user opens a missing sub-route inside an allowed surface | Neutral not-found page |
 | Authenticated and authorized | Render route |
 
 Do not show a dedicated "you do not have permission" page for hidden staff/admin surfaces.
