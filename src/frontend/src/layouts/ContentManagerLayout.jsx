@@ -41,7 +41,7 @@ const contentManagerNavGroups = [
         match: (pathname) => pathname.startsWith("/content/roadmaps"),
       },
       {
-        label: "Approvals",
+        label: "Roadmap Reviews",
         path: "/content/reviews",
         icon: ClipboardCheck,
         requiredPermission: PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY,
@@ -94,7 +94,7 @@ function getContentManagerPageTitle(pathname) {
   }
 
   if (pathname.startsWith("/content/reviews")) {
-    return "Approvals";
+    return "Roadmap Reviews";
   }
 
   if (pathname.startsWith("/content/skills")) {

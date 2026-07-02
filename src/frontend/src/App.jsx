@@ -303,6 +303,14 @@ export default function App() {
                 </RequirePermission>
               }
             />
+            <Route
+              path="/content/reviews/:roadmapId/:roadmapVersionId"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.ROADMAP_REVIEW_VIEW_ANY]}>
+                  <ContentReviewerRoadmapReviewsPage />
+                </RequirePermission>
+              }
+            />
             <Route path="/content/settings" element={<ContentManagerSettingsPage />} />
             <Route
               path="/content/skills"

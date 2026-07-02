@@ -31,6 +31,8 @@ const edgeTypes = {
   balanced: BalancedRoadmapEdge,
 };
 
+const EMPTY_NODE_IDS = [];
+
 function buildEditorRoadmapGraph(detail, sourceNodes) {
   return normalizeRoadmap({
     ...detail,
@@ -65,8 +67,9 @@ const RoadmapGraphCanvas = memo(function RoadmapGraphCanvas({
   nodes: sourceNodes,
   selectedNodeId,
   focusNodeRequest,
-  newNodeIds = [],
+  newNodeIds = EMPTY_NODE_IDS,
   onSelect,
+  className = "h-[640px] min-h-[460px]",
 }) {
   const flowWrapperRef = useRef(null);
   const [flowInstance, setFlowInstance] = useState(null);
@@ -169,7 +172,7 @@ const RoadmapGraphCanvas = memo(function RoadmapGraphCanvas({
   }
 
   return (
-    <div className="h-[640px] min-h-[460px] overflow-hidden rounded-xl border border-[#B9D8CC] bg-[#F7F1E8]">
+    <div className={`${className} overflow-hidden rounded-xl border border-[#B9D8CC] bg-[#F7F1E8]`}>
       <div
         ref={flowWrapperRef}
         className={[

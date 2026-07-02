@@ -232,7 +232,7 @@ VALUES
 ),
 (
     'd877b560-13c7-4a8f-83c2-563c8da7d4a1',
-    'Content Manager',
+    'Trong Le',
     'Learning Content Manager',
     'Development account for validating content_manager-only learning module management flows.',
     'Ho Chi Minh City',
@@ -251,7 +251,7 @@ VALUES
 ),
 (
     '4b760089-bc9d-4775-9d6d-b3a791cb0d02',
-    'Content Manager 2',
+    'Khoi Dang',
     'Learning Content Manager',
     'Development account for validating owned content manager roadmap flows.',
     'Ho Chi Minh City',
@@ -270,7 +270,7 @@ VALUES
 ),
 (
     'f82a7417-9394-4869-844e-03771b01b2ab',
-    'Content Manager 3',
+    'Anh Hoang',
     'Learning Content Manager',
     'Development account for validating owned content manager roadmap flows.',
     'Ho Chi Minh City',
@@ -289,7 +289,7 @@ VALUES
 ),
 (
     '71f15afa-83d4-4b31-99ab-c58f6abe0f83',
-    'Content Manager 4',
+    'Phuc Nguyen',
     'Learning Content Manager',
     'Development account for validating owned content manager roadmap flows.',
     'Ho Chi Minh City',
