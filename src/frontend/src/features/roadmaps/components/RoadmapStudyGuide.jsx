@@ -50,13 +50,13 @@ const GUIDE_STEPS = [
     ],
   },
   {
-    title: "Mark the node Done",
+    title: "Set status to Done",
     eyebrow: "Step 6",
-    targetLabel: "Mark Done",
+    targetLabel: "Set Done",
     body:
-      "After finishing the module, return to this node and mark it Done.",
+      "Open the status menu and choose Done after you finish the module.",
     tips: [
-      "Then continue with the next available node using the same steps.",
+      "Then continue with the next available node.",
     ],
   },
 ];
@@ -221,46 +221,47 @@ function GuideMotionStyles() {
   return (
     <style>{`
       @keyframes roadmapGuideCardIn {
-        from { opacity: 0; transform: translate3d(-22px, 28px, 0) scale(0.955); filter: blur(1.5px); }
-        70% { opacity: 1; transform: translate3d(2px, -2px, 0) scale(1.008); filter: blur(0); }
+        from { opacity: 0; transform: translate3d(-42px, 52px, 0) scale(0.9); filter: blur(2.5px); }
+        60% { opacity: 1; transform: translate3d(7px, -7px, 0) scale(1.026); filter: blur(0); }
         to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
       }
 
       @keyframes roadmapGuideStepIn {
-        from { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.975); filter: blur(1.25px); }
-        72% { opacity: 1; transform: translate3d(0, -2px, 0) scale(1.004); filter: blur(0); }
+        from { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.91); filter: blur(2.25px); }
+        58% { opacity: 1; transform: translate3d(0, -7px, 0) scale(1.026); filter: blur(0); }
         to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
       }
 
       @keyframes roadmapGuideTipIn {
-        from { opacity: 0; transform: translate3d(-14px, 6px, 0); }
+        from { opacity: 0; transform: translate3d(-32px, 12px, 0); }
+        70% { opacity: 1; transform: translate3d(4px, -2px, 0); }
         to { opacity: 1; transform: translate3d(0, 0, 0); }
       }
 
       @keyframes roadmapGuideDotActive {
-        0% { transform: scaleX(0.45); opacity: 0.55; }
-        65% { transform: scaleX(1.18); opacity: 1; }
-        100% { transform: scaleX(1); opacity: 1; }
+        0% { transform: scaleX(0.3) scaleY(0.75); opacity: 0.4; }
+        62% { transform: scaleX(1.38) scaleY(1.45); opacity: 1; }
+        100% { transform: scaleX(1) scaleY(1); opacity: 1; }
       }
 
       @keyframes roadmapGuideTargetPulse {
-        0%, 100% { opacity: 0.78; transform: scale(1); }
-        50% { opacity: 0.14; transform: scale(1.14); }
+        0%, 100% { opacity: 0.9; transform: scale(1); }
+        50% { opacity: 0.08; transform: scale(1.3); }
       }
 
       @keyframes roadmapGuideBadgeFloat {
         0%, 100% { transform: translate3d(0, 0, 0); }
-        50% { transform: translate3d(0, -4px, 0); }
+        50% { transform: translate3d(0, -6px, 0); }
       }
 
       @keyframes roadmapGuideNodeRing {
-        0%, 100% { opacity: 0.96; transform: scale(1); }
-        50% { opacity: 0.58; transform: scale(1.045); }
+        0%, 100% { opacity: 0.98; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.07); }
       }
 
       @keyframes roadmapGuideNodeHalo {
-        0%, 100% { opacity: 0.55; transform: scale(1); }
-        50% { opacity: 0.16; transform: scale(1.095); }
+        0%, 100% { opacity: 0.62; transform: scale(1); }
+        50% { opacity: 0.12; transform: scale(1.16); }
       }
 
       @keyframes roadmapGuideNodeLabelIn {
@@ -269,24 +270,24 @@ function GuideMotionStyles() {
       }
 
       .roadmap-guide-card {
-        animation: roadmapGuideCardIn 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: roadmapGuideCardIn 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
         backface-visibility: hidden;
         transform-origin: left bottom;
       }
 
       .roadmap-guide-step {
         transform-origin: left bottom;
-        animation: roadmapGuideStepIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: roadmapGuideStepIn 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .roadmap-guide-tip {
         opacity: 0;
-        animation: roadmapGuideTipIn 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: roadmapGuideTipIn 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
         animation-delay: var(--guide-tip-delay, 0ms);
       }
 
       .roadmap-guide-step-dot.is-active {
-        animation: roadmapGuideDotActive 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: roadmapGuideDotActive 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
         transform-origin: center;
       }
 
@@ -300,21 +301,21 @@ function GuideMotionStyles() {
       }
 
       .roadmap-guide-target-pulse {
-        animation: roadmapGuideTargetPulse 1550ms ease-in-out infinite;
+        animation: roadmapGuideTargetPulse 1100ms ease-in-out infinite;
         transform-origin: center;
       }
 
       .roadmap-guide-target-badge {
-        animation: roadmapGuideBadgeFloat 1550ms ease-in-out infinite;
+        animation: roadmapGuideBadgeFloat 1250ms ease-in-out infinite;
       }
 
       .roadmap-node-guide-ring {
-        animation: roadmapGuideNodeRing 1450ms ease-in-out infinite;
+        animation: roadmapGuideNodeRing 1250ms ease-in-out infinite;
         transform-origin: center;
       }
 
       .roadmap-node-guide-halo {
-        animation: roadmapGuideNodeHalo 1450ms ease-in-out infinite;
+        animation: roadmapGuideNodeHalo 1250ms ease-in-out infinite;
         transform-origin: center;
       }
 
@@ -341,7 +342,7 @@ function GuideMotionStyles() {
 }
 
 function GuideTargetHighlight({ rect, label }) {
-  const highlightPadding = 8;
+  const highlightPadding = label === "Set Done" ? 5 : 8;
   const highlightStyle = {
     left: Math.max(8, rect.left - highlightPadding),
     top: Math.max(8, rect.top - highlightPadding),

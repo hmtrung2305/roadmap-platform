@@ -118,6 +118,7 @@ export default function RoadmapDetailDrawer({
   isUpdating,
   isLoadingDetail,
   roadmapSlug,
+  shouldContinueGuide = false,
   onClose,
   onProgressChange,
 }) {
@@ -282,6 +283,7 @@ export default function RoadmapDetailDrawer({
                       module={module}
                       roadmapSlug={roadmapSlug}
                       roadmapNodeId={getNodeId(node)}
+                      shouldContinueGuide={shouldContinueGuide}
                     />
                   ))}
                 </div>
@@ -803,11 +805,17 @@ function ListBlock({ title, items }) {
   );
 }
 
-function LearningModuleRow({ module, roadmapSlug, roadmapNodeId }) {
+function LearningModuleRow({ module, roadmapSlug, roadmapNodeId, shouldContinueGuide }) {
   const title = module.title || module.Title || "Learning module";
   const slug = module.slug || module.Slug;
   const overviewUrl = slug
-    ? buildLearningModuleUrl(slug, "overview", roadmapSlug, roadmapNodeId)
+    ? buildLearningModuleUrl(
+        slug,
+        "overview",
+        roadmapSlug,
+        roadmapNodeId,
+        shouldContinueGuide,
+      )
     : null;
   const content = (
     <div className="min-w-0 flex-1">
@@ -845,7 +853,7 @@ function LearningModuleRow({ module, roadmapSlug, roadmapNodeId }) {
   );
 }
 
-function buildLearningModuleUrl(moduleSlug, mode, roadmapSlug, roadmapNodeId) {
+function buildLearningModuleUrl(moduleSlug, mode, roadmapSlug, roadmapNodeId, shouldContinueGuide) {
   const path =
     mode === "study"
       ? `/learning-modules/${moduleSlug}/study`
@@ -854,6 +862,7 @@ function buildLearningModuleUrl(moduleSlug, mode, roadmapSlug, roadmapNodeId) {
 
   if (roadmapSlug) params.set("fromRoadmap", roadmapSlug);
   if (roadmapNodeId) params.set("roadmapNodeId", roadmapNodeId);
+  if (shouldContinueGuide) params.set("guide", "1");
 
   return `${path}${params.toString() ? `?${params.toString()}` : ""}`;
 }

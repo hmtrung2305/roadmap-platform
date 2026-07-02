@@ -20,7 +20,15 @@ export default function LearningModuleOverviewPage() {
   const [searchParams] = useSearchParams();
   const returnRoadmapSlug = searchParams.get("fromRoadmap");
   const returnNodeId = searchParams.get("roadmapNodeId");
-  const returnToRoadmapUrl = buildReturnToRoadmapUrl(returnRoadmapSlug, returnNodeId);
+  const guideToken = searchParams.get("guideToken");
+  const shouldContinueRoadmapGuide =
+    searchParams.get("guide") === "1" && Boolean(guideToken);
+  const returnToRoadmapUrl = buildReturnToRoadmapUrl(
+    returnRoadmapSlug,
+    returnNodeId,
+    shouldContinueRoadmapGuide,
+    guideToken,
+  );
   const returnSearch = buildReturnSearch(searchParams);
   const module = useLearningModuleStore((state) => state.getModuleSnapshot(slug));
   const moduleLoaded = useLearningModuleStore((state) => state.getModuleLoaded(slug));
@@ -221,18 +229,34 @@ function buildReturnSearch(searchParams) {
   const params = new URLSearchParams();
   const fromRoadmap = searchParams.get("fromRoadmap");
   const roadmapNodeId = searchParams.get("roadmapNodeId");
+  const guideToken = searchParams.get("guideToken");
+  const shouldContinueGuide =
+    searchParams.get("guide") === "1" && Boolean(guideToken);
 
   if (fromRoadmap) params.set("fromRoadmap", fromRoadmap);
   if (roadmapNodeId) params.set("roadmapNodeId", roadmapNodeId);
+  if (shouldContinueGuide) {
+    params.set("guide", "1");
+    params.set("guideToken", guideToken);
+  }
 
   return params.toString() ? `?${params.toString()}` : "";
 }
 
-function buildReturnToRoadmapUrl(roadmapSlug, roadmapNodeId) {
+function buildReturnToRoadmapUrl(
+  roadmapSlug,
+  roadmapNodeId,
+  shouldContinueGuide,
+  guideToken,
+) {
   if (!roadmapSlug) return null;
 
   const params = new URLSearchParams();
   if (roadmapNodeId) params.set("nodeId", roadmapNodeId);
+  if (shouldContinueGuide && guideToken) {
+    params.set("guide", "1");
+    params.set("guideToken", guideToken);
+  }
 
   return `/roadmaps/${roadmapSlug}${params.toString() ? `?${params.toString()}` : ""}`;
 }

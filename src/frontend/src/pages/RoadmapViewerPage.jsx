@@ -49,11 +49,16 @@ const edgeTypes = {
   balanced: BalancedRoadmapEdge,
 };
 
+const ROADMAP_GUIDE_RETURN_TOKEN_KEY = "techmap:roadmapGuideReturnToken";
+
 export default function RoadmapViewerPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const returnNodeId = searchParams.get("nodeId");
+  const returnGuideToken = searchParams.get("guideToken");
+  const shouldResumeGuideFromReturn =
+    searchParams.get("guide") === "1" && Boolean(returnGuideToken);
 
   const [roadmap, setRoadmap] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -71,6 +76,7 @@ export default function RoadmapViewerPage() {
   const flowWrapperRef = useRef(null);
   const focusedRoadmapKeyRef = useRef(null);
   const openedReturnNodeRef = useRef(null);
+  const guideReturnDecisionRef = useRef(new Map());
   const lastGuideTargetRectRef = useRef(null);
   const loadRoadmapGraph = useRoadmapStore((state) => state.loadRoadmapGraph);
   const loadNodeDetailFromStore = useRoadmapStore((state) => state.loadNodeDetail);
@@ -258,23 +264,51 @@ export default function RoadmapViewerPage() {
       return;
     }
 
-    const returnKey = `${roadmapVersionId}:${returnNodeId}`;
-    if (openedReturnNodeRef.current === returnKey) return;
-
     const returnNode = nodeLookup.get(String(returnNodeId));
     if (!returnNode) return;
+
+    const guideReturnKey = `${roadmapVersionId}:${returnNodeId}:${
+      returnGuideToken || "no-token"
+    }`;
+    const shouldResumeGuide = shouldResumeGuideFromReturn
+      ? getGuideReturnDecision({
+          cache: guideReturnDecisionRef.current,
+          key: guideReturnKey,
+          token: returnGuideToken,
+        })
+      : false;
+
+    const returnKey = `${roadmapVersionId}:${returnNodeId}:${
+      shouldResumeGuide ? "guide" : "normal"
+    }:${returnGuideToken || ""}`;
+    if (openedReturnNodeRef.current === returnKey) return;
 
     openedReturnNodeRef.current = returnKey;
 
     const openFrameId = window.requestAnimationFrame(() => {
-      setGuideStep(5);
-      setIsGuideOpen(true);
+      if (shouldResumeGuide) {
+        setGuideStep(5);
+        setIsGuideOpen(true);
+      } else {
+        setIsGuideOpen(false);
+        if (searchParams.has("guide") || searchParams.has("guideToken")) {
+          clearGuideReturnFlag();
+        }
+      }
+
       focusFlowNode(returnNodeId);
       loadNodeDetail(returnNode);
     });
 
     return () => window.cancelAnimationFrame(openFrameId);
-  }, [returnNodeId, roadmapVersionId, nodeLookup, flowInstance]);
+  }, [
+    returnNodeId,
+    returnGuideToken,
+    roadmapVersionId,
+    nodeLookup,
+    flowInstance,
+    shouldResumeGuideFromReturn,
+  ]);
 
   const handleNodeClick = useCallback(
     (_, node) => {
@@ -424,6 +458,28 @@ export default function RoadmapViewerPage() {
     setIsGuideOpen(true);
   }
 
+  function clearGuideReturnFlag() {
+    if (!searchParams.has("guide")) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("guide");
+    nextParams.delete("guideToken");
+
+    navigate(
+      {
+        pathname: `/roadmaps/${slug}`,
+        search: nextParams.toString() ? `?${nextParams.toString()}` : "",
+      },
+      { replace: true },
+    );
+  }
+
+  function handleCloseGuide() {
+    setIsGuideOpen(false);
+    setGuideTargetRect(null);
+    clearGuideReturnFlag();
+  }
+
   function focusFlowNode(nodeId) {
     if (!flowInstance || !nodeId) return;
 
@@ -502,8 +558,22 @@ export default function RoadmapViewerPage() {
     if (!selectedNodeModuleSlug) return;
 
     const params = new URLSearchParams();
+    const selectedNodeId = selectedNode ? getNodeId(selectedNode) : null;
+
     if (slug) params.set("fromRoadmap", slug);
-    if (selectedNode) params.set("roadmapNodeId", getNodeId(selectedNode));
+    if (selectedNodeId) params.set("roadmapNodeId", selectedNodeId);
+
+    if (isGuideOpen && guideStep === 3 && selectedNodeId) {
+      const guideToken = createGuideReturnToken({
+        roadmapSlug: slug,
+        nodeId: selectedNodeId,
+      });
+
+      if (guideToken) {
+        params.set("guide", "1");
+        params.set("guideToken", guideToken);
+      }
+    }
 
     navigate(
       `/learning-modules/${selectedNodeModuleSlug}/overview${
@@ -566,6 +636,10 @@ export default function RoadmapViewerPage() {
           },
         };
       });
+
+      if (isGuideOpen && guideStep === 5 && nextStatus === "completed") {
+        handleCloseGuide();
+      }
     } catch (error) {
       console.error(error);
       setRoadmap(previousRoadmap);
@@ -652,7 +726,7 @@ export default function RoadmapViewerPage() {
           </div>
 
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
-            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-row items-stretch gap-2">
+            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col items-end gap-2">
               <div className="pointer-events-auto flex h-12 w-36 flex-col justify-center rounded-lg border border-[#B9D8CC] bg-white/95 px-3 shadow-sm backdrop-blur sm:w-44">
                 <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold tracking-tight text-slate-500">
                   <span>Progress</span>
@@ -669,26 +743,28 @@ export default function RoadmapViewerPage() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                data-roadmap-guide-target="how-to-learn"
-                onClick={handleOpenGuide}
-                className="pointer-events-auto h-12 rounded-lg border border-[#B9D8CC] bg-white/95 px-4 text-xs font-extrabold tracking-[0.08em] text-[#1F6F5F] shadow-sm backdrop-blur transition hover:bg-[#EAF8F1]"
-              >
-                How to learn
-              </button>
-
-              {!isEnrolled && (
+              <div className="pointer-events-auto flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  data-roadmap-guide-target="start-roadmap"
-                  onClick={handleEnroll}
-                  disabled={isEnrolling}
-                  className="pointer-events-auto h-12 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm transition hover:bg-[#1F6F5F] disabled:opacity-60"
+                  data-roadmap-guide-target="how-to-learn"
+                  onClick={handleOpenGuide}
+                  className="h-8 rounded-lg border border-[#B9D8CC] bg-white/95 px-3 text-[11px] font-black tracking-[0.08em] text-[#1F6F5F] shadow-sm backdrop-blur transition hover:bg-[#EAF8F1]"
                 >
-                  {isEnrolling ? "Starting..." : "Start roadmap"}
+                  How to learn
                 </button>
-              )}
+
+                {!isEnrolled && (
+                  <button
+                    type="button"
+                    data-roadmap-guide-target="start-roadmap"
+                    onClick={handleEnroll}
+                    disabled={isEnrolling}
+                    className="h-8 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-3 text-[11px] font-black tracking-[0.08em] text-white shadow-sm transition hover:bg-[#1F6F5F] disabled:opacity-60"
+                  >
+                    {isEnrolling ? "Starting..." : "Start roadmap"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {nodes.length === 0 ? (
@@ -766,6 +842,7 @@ export default function RoadmapViewerPage() {
             isUpdating={isUpdatingProgress}
             isLoadingDetail={isLoadingNodeDetail}
             roadmapSlug={slug}
+            shouldContinueGuide={isGuideOpen && guideStep === 3}
             onClose={() => setSelectedNode(null)}
             onProgressChange={handleProgressChange}
           />
@@ -780,7 +857,7 @@ export default function RoadmapViewerPage() {
           recommendedPhaseTitle={guideTargets.phase?.title}
           recommendedTopicTitle={guideTargets.topic?.title}
           hasSelectedNodeModule={hasSelectedNodeModule}
-          onClose={() => setIsGuideOpen(false)}
+          onClose={handleCloseGuide}
           onStepChange={handleGuideStepChange}
           onStartRoadmap={handleEnroll}
           onFocusPhase={handleGuideFocusPhase}
@@ -835,6 +912,55 @@ function LearningOrderHint() {
       </div>
     </div>
   );
+}
+
+function createGuideReturnToken({ roadmapSlug, nodeId }) {
+  if (typeof window === "undefined") return null;
+
+  const token = [
+    roadmapSlug || "roadmap",
+    nodeId || "node",
+    Date.now(),
+    Math.random().toString(36).slice(2),
+  ].join(":");
+
+  try {
+    window.sessionStorage.setItem(ROADMAP_GUIDE_RETURN_TOKEN_KEY, token);
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+function getGuideReturnDecision({ cache, key, token }) {
+  if (!token) return false;
+
+  if (cache.has(key)) {
+    return cache.get(key);
+  }
+
+  const shouldResume = consumeGuideReturnToken(token);
+  cache.set(key, shouldResume);
+  return shouldResume;
+}
+
+function consumeGuideReturnToken(token) {
+  if (typeof window === "undefined" || !token) return false;
+
+  try {
+    const storedToken = window.sessionStorage.getItem(
+      ROADMAP_GUIDE_RETURN_TOKEN_KEY,
+    );
+    const shouldResume = storedToken === token;
+
+    if (shouldResume) {
+      window.sessionStorage.removeItem(ROADMAP_GUIDE_RETURN_TOKEN_KEY);
+    }
+
+    return shouldResume;
+  } catch {
+    return false;
+  }
 }
 
 function getRoadmapGuideNodeTarget({
