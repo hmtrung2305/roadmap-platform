@@ -246,6 +246,9 @@ function NodeDetailsPanelContent({
   ));
   const canEditLearning = canEditLearningFields(selectedNode);
   const canMapLearning = canEditMappings(selectedNode);
+  const canShowContent = canEditLearning;
+  const canShowSkills = canMapLearning;
+  const canShowResources = canMapLearning;
   const canManageSkills = isDraft && !isPatchDraft && canMapLearning;
   const canManageResources = isDraft && canMapLearning;
   const canAddChildNode = canEditStructure && canCreateChildNodes(selectedNode);
@@ -425,7 +428,7 @@ function NodeDetailsPanelContent({
         <div className="border-b border-[#B9D8CC]/70 bg-[#F7F1E8]/45 p-2">
           <div
             className="grid gap-2 rounded-xl bg-white p-1 ring-1 ring-[#B9D8CC]/70"
-            style={{ gridTemplateColumns: `repeat(${1 + (isGroupNode ? 1 : 0) + (canEditLearning ? 1 : 0) + (canManageSkills ? 1 : 0) + (canManageResources ? 1 : 0)}, minmax(0, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${1 + (isGroupNode ? 1 : 0) + (canShowContent ? 1 : 0) + (canShowSkills ? 1 : 0) + (canShowResources ? 1 : 0)}, minmax(0, 1fr))` }}
           >
             <button
               type="button"
@@ -443,7 +446,7 @@ function NodeDetailsPanelContent({
                 Requirements
               </button>
             )}
-            {canEditLearning && (
+            {canShowContent && (
               <button
                 type="button"
                 onClick={() => setPanelMode("content")}
@@ -452,7 +455,7 @@ function NodeDetailsPanelContent({
                 Content
               </button>
             )}
-            {canManageSkills && (
+            {canShowSkills && (
               <button
                 type="button"
                 onClick={() => setPanelMode("skills")}
@@ -461,7 +464,7 @@ function NodeDetailsPanelContent({
                 Skills
               </button>
             )}
-            {canManageResources && (
+            {canShowResources && (
               <button
                 type="button"
                 onClick={() => setPanelMode("resources")}
@@ -690,7 +693,7 @@ function NodeDetailsPanelContent({
             </section>
           )}
 
-          {panelMode === "content" && (
+          {panelMode === "content" && canShowContent && (
             <NodeContentFields
               selectedNode={selectedNode}
               nodeForm={nodeForm}
@@ -699,18 +702,20 @@ function NodeDetailsPanelContent({
             />
           )}
 
-          {panelMode === "skills" && canManageSkills && (
+          {panelMode === "skills" && canShowSkills && (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs font-extrabold uppercase tracking-wide text-slate-600">
                   {skillCount} mapped skills
                 </div>
-                <ModuleButton size="xs" variant="secondary" onClick={() => {
-                  setMappingModal("skills");
-                  onOpenSkillSearch();
-                }}>
-                  <Plus size={14} /> Add skill
-                </ModuleButton>
+                {canManageSkills && (
+                  <ModuleButton size="xs" variant="secondary" onClick={() => {
+                    setMappingModal("skills");
+                    onOpenSkillSearch();
+                  }}>
+                    <Plus size={14} /> Add skill
+                  </ModuleButton>
+                )}
               </div>
               <MappingList
                 title="Skills"
@@ -719,23 +724,25 @@ function NodeDetailsPanelContent({
                 getId={getSkillId}
                 getLabel={getSkillName}
                 emptyText="No skills mapped yet."
-                onRemove={onRemoveSkill}
+                onRemove={canManageSkills ? onRemoveSkill : null}
               />
             </section>
           )}
 
-          {panelMode === "resources" && canManageResources && (
+          {panelMode === "resources" && canShowResources && (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs font-extrabold uppercase tracking-wide text-slate-600">
                   {resourceCount} mapped resources
                 </div>
-                <ModuleButton size="xs" variant="secondary" onClick={() => {
-                  setMappingModal("resources");
-                  onOpenResourceSearch();
-                }}>
-                  <Plus size={14} /> Add resource
-                </ModuleButton>
+                {canManageResources && (
+                  <ModuleButton size="xs" variant="secondary" onClick={() => {
+                    setMappingModal("resources");
+                    onOpenResourceSearch();
+                  }}>
+                    <Plus size={14} /> Add resource
+                  </ModuleButton>
+                )}
               </div>
               <MappingList
                 title="Resources"
@@ -744,8 +751,8 @@ function NodeDetailsPanelContent({
                 getId={getResourceId}
                 getLabel={getResourceTitle}
                 emptyText="No resources mapped yet."
-                onRemove={onRemoveResource}
-                onEdit={canUpdateResources ? onEditResource : null}
+                onRemove={canManageResources ? onRemoveResource : null}
+                onEdit={canManageResources && canUpdateResources ? onEditResource : null}
               />
             </section>
           )}

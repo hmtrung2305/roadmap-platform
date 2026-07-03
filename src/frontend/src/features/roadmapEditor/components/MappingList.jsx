@@ -20,16 +20,20 @@ export default function MappingList({ title, icon: Icon, items, getId, getLabel,
               className="flex items-center justify-between gap-2 rounded-lg border border-[#B9D8CC]/70 bg-white px-3 py-2"
             >
               <span className="min-w-0 truncate text-sm font-bold text-[#18332D]">{getLabel(item)}</span>
-              <div className="flex shrink-0 items-center gap-1">
-                {onEdit && (
-                  <ModuleButton variant="ghost" size="icon" onClick={() => onEdit(item)}>
-                    <Edit3 size={14} />
-                  </ModuleButton>
-                )}
-                <ModuleButton variant="ghost" size="icon" onClick={() => onRemove(getId(item))}>
-                  <Trash2 size={14} />
-                </ModuleButton>
-              </div>
+              {(onEdit || onRemove) && (
+                <div className="flex shrink-0 items-center gap-1">
+                  {onEdit && (
+                    <ModuleButton variant="ghost" size="icon" onClick={() => onEdit(item)}>
+                      <Edit3 size={14} />
+                    </ModuleButton>
+                  )}
+                  {onRemove && (
+                    <ModuleButton variant="ghost" size="icon" onClick={() => onRemove(getId(item))}>
+                      <Trash2 size={14} />
+                    </ModuleButton>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
