@@ -92,6 +92,6 @@
 
 \echo 'Learning module seed completed.'
 
-\echo 'Seeding assessment levels...'
-\i database/seeds/assessments/assessment-levels.seed.sql
-\echo 'Assessment levels seed completed.'
+\echo 'Seeding skill gap category config...'
+\i database/seeds/assessments/populate-skill-gap-category-config.seed.sql
+\echo 'Skill gap category config seed completed.'

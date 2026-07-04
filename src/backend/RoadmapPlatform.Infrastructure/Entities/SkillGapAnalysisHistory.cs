@@ -11,13 +11,17 @@ public partial class SkillGapAnalysisHistory
 
     public Guid CareerRoleId { get; set; }
 
-    public string CareerRoleSlug { get; set; } = null!;
+    public Guid RoadmapId { get; set; }
 
-    public string CareerRoleName { get; set; } = null!;
+    public Guid RoadmapVersionId { get; set; }
 
-    public string LevelName { get; set; } = null!;
+    public string CareerRoleNameSnapshot { get; set; } = null!;
 
-    public string LevelSlug { get; set; } = null!;
+    public string RoadmapTitleSnapshot { get; set; } = null!;
+
+    public string RoadmapVersionTitleSnapshot { get; set; } = null!;
+
+    public string AuthorNameSnapshot { get; set; } = null!;
 
     public int MatchedSkills { get; set; }
 
@@ -33,11 +37,11 @@ public partial class SkillGapAnalysisHistory
 
     public DateTime? DeletedAt { get; set; }
 
-    public int RoadmapVersionNumber { get; set; }
-
-    public string RoadmapVersionTitle { get; set; } = null!;
-
     public virtual CareerRole CareerRole { get; set; } = null!;
+
+    public virtual Roadmap Roadmap { get; set; } = null!;
+
+    public virtual RoadmapVersion RoadmapVersion { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
 }

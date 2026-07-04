@@ -46,16 +46,16 @@ export default function SkillGapAnalysisPage() {
   const [historyResult, setHistoryResult] = useState(null);
   const {
     roles,
-    levels,
+    roadmaps,
     selectedRole,
-    selectedLevel,
-    groups,
-    selectedNodeIds,
+    selectedRoadmap,
+    categories,
+    selectedSkillIds,
     result,
     step,
     isRolesLoading,
-    isLevelsLoading,
-    isGroupsLoading,
+    isRoadmapsLoading,
+    isAssessmentLoading,
     isAnalyzing,
     error,
     actions,
@@ -63,7 +63,7 @@ export default function SkillGapAnalysisPage() {
 
   const handleSelectRole = async (role) => {
     actions.selectRole(role);
-    await actions.loadLevels({ role });
+    await actions.loadRoadmaps({ role });
   };
 
   const handleChangeTab = (tabId) => {
@@ -95,7 +95,6 @@ export default function SkillGapAnalysisPage() {
         ) : activeTab === "historyDetail" && historyResult ? (
           <SkillGapResultStep
             result={historyResult}
-            selectedSkillCount={historyResult?.matchedSkills ?? 0}
             canUpdateSelection={false}
             isHistoryView
             onBackToHistory={() => setActiveTab("history")}
@@ -114,25 +113,25 @@ export default function SkillGapAnalysisPage() {
                 {step === 1 && (
                   <SkillGapRoleStep
                     roles={roles}
-                    levels={levels}
+                    roadmaps={roadmaps}
                     selectedRole={selectedRole}
-                    selectedLevel={selectedLevel}
+                    selectedRoadmap={selectedRoadmap}
                     isLoading={isRolesLoading}
-                    isLoadingLevels={isLevelsLoading}
-                    isLoadingGroups={isGroupsLoading}
+                    isLoadingRoadmaps={isRoadmapsLoading}
+                    isLoadingAssessment={isAssessmentLoading}
                     onSelectRole={handleSelectRole}
-                    onSelectLevel={actions.selectLevel}
-                    onNext={actions.loadGroups}
+                    onSelectRoadmap={actions.selectRoadmap}
+                    onNext={actions.loadAssessment}
                   />
                 )}
 
                 {step === 2 && (
                   <SkillGapSkillsStep
                     role={selectedRole}
-                    level={selectedLevel}
-                    groups={groups}
-                    selectedNodeIds={selectedNodeIds}
-                    isLoading={isGroupsLoading}
+                    roadmap={selectedRoadmap}
+                    categories={categories}
+                    selectedSkillIds={selectedSkillIds}
+                    isLoading={isAssessmentLoading}
                     isAnalyzing={isAnalyzing}
                     onToggleSkill={actions.toggleSkill}
                     onBack={actions.goToRoleStep}
@@ -143,8 +142,7 @@ export default function SkillGapAnalysisPage() {
                 {step === 3 && result && (
                   <SkillGapResultStep
                     result={result}
-                    selectedSkillCount={selectedNodeIds.length}
-                    canUpdateSelection={Boolean(selectedRole && selectedLevel)}
+                    canUpdateSelection={Boolean(selectedRole && selectedRoadmap)}
                     onBack={actions.goToSkillStep}
                     onReset={actions.reset}
                   />
@@ -154,11 +152,10 @@ export default function SkillGapAnalysisPage() {
               {step < 3 && (
                 <SkillGapInsightPanel
                   step={step}
-                  roles={roles}
                   selectedRole={selectedRole}
-                  selectedLevel={selectedLevel}
-                  groups={groups}
-                  selectedNodeIds={selectedNodeIds}
+                  selectedRoadmap={selectedRoadmap}
+                  categories={categories}
+                  selectedSkillIds={selectedSkillIds}
                   result={result}
                 />
               )}

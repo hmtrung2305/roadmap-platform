@@ -1847,67 +1847,78 @@ CREATE TABLE IF NOT EXISTS public.payment_transaction
 
 CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
 (
-    skill_gap_analysis_history_id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
-    career_role_id UUID NOT NULL,
-    career_role_slug VARCHAR(200) NOT NULL,
-    career_role_name VARCHAR(500) NOT NULL,
-    level_name VARCHAR(50) NOT NULL DEFAULT '',
-    level_slug VARCHAR(50) NOT NULL DEFAULT '',
+    skill_gap_analysis_history_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL
+        REFERENCES public."user"(user_id)
+        ON DELETE CASCADE,
+
+    career_role_id UUID NOT NULL
+        REFERENCES public.career_role(career_role_id)
+        ON DELETE RESTRICT,
+
+    roadmap_id UUID NOT NULL
+        REFERENCES public.roadmap(roadmap_id)
+        ON DELETE RESTRICT,
+
+    roadmap_version_id UUID NOT NULL
+        REFERENCES public.roadmap_version(roadmap_version_id)
+        ON DELETE RESTRICT,
+
+    career_role_name_snapshot VARCHAR(255) NOT NULL,
+
+    roadmap_title_snapshot VARCHAR(255) NOT NULL,
+
+    roadmap_version_title_snapshot VARCHAR(255) NOT NULL,
+
+    author_name_snapshot VARCHAR(255) NOT NULL,
+
     matched_skills INT NOT NULL DEFAULT 0,
+
     total_skills INT NOT NULL DEFAULT 0,
+
     missing_skills INT NOT NULL DEFAULT 0,
+
     snapshot_json JSONB NOT NULL,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT fk_skill_gap_history_user
-        FOREIGN KEY(user_id)
-        REFERENCES "user"(user_id),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
 
-    CONSTRAINT fk_skill_gap_history_role
-        FOREIGN KEY(career_role_id)
-        REFERENCES career_role(career_role_id)
+    deleted_at TIMESTAMPTZ NULL
 );
 
 
+
 -- =========================
--- SKILL GAP LEVEL ASSESSMENT
+-- SKILL GAP CONFIG
 -- =========================
-
-CREATE TABLE IF NOT EXISTS public.assessment_level
+CREATE TABLE IF NOT EXISTS public.skill_gap_category_config
 (
-    assessment_level_id UUID PRIMARY KEY,
+    skill_gap_category_config_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    career_role_id UUID NOT NULL,
-    name VARCHAR(50) NOT NULL,
-	slug VARCHAR(50) NOT NULL,
-    sort_order INT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    roadmap_id UUID NOT NULL
+        REFERENCES public.roadmap(roadmap_id)
+        ON DELETE CASCADE,
 
-	CONSTRAINT uq_assessment_level_slug
-    	UNIQUE(career_role_id, slug),
+    roadmap_version_id UUID NOT NULL
+        REFERENCES public.roadmap_version(roadmap_version_id)
+        ON DELETE CASCADE,
 
-    CONSTRAINT fk_assessment_level_career_role
-        FOREIGN KEY (career_role_id)
-        REFERENCES career_role(career_role_id) ON DELETE CASCADE
-);
+    category_name VARCHAR(100) NOT NULL,
 
-CREATE TABLE IF NOT EXISTS public.assessment_level_group
-(
-    assessment_level_group_id UUID PRIMARY KEY,
-    assessment_level_id UUID NOT NULL,
-    roadmap_node_id UUID NOT NULL,
+    display_order INT NOT NULL DEFAULT 0,
 
-	CONSTRAINT uq_assessment_level_group
-	    UNIQUE(assessment_level_id, roadmap_node_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT fk_assessment_level_group_level
-        FOREIGN KEY (assessment_level_id)
-        REFERENCES assessment_level(assessment_level_id) ON DELETE CASCADE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT fk_assessment_level_group_node
-        FOREIGN KEY (roadmap_node_id)
-        REFERENCES roadmap_node(roadmap_node_id) ON DELETE CASCADE
+    CONSTRAINT uq_skill_gap_category
+        UNIQUE
+        (
+            roadmap_id,
+            category_name
+        )
 );
 
 -- =========================

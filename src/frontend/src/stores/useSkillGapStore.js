@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import { skillGapApi } from "../api/skillGapApi";
 import {
-  normalizeAssessmentGroups,
-  normalizeAssessmentLevels,
+  getRoadmapId,
+  getRoleSlug,
+  normalizeAssessmentResponse,
   normalizeCareerRole,
   normalizeCareerRoles,
   normalizeId,
+  normalizeRoadmapOptions,
   normalizeSkillGapResult,
 } from "../features/skillGap/utils/skillGapUtils";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
@@ -16,71 +18,36 @@ import {
 } from "../utils/requestCacheUtils";
 
 const ROLES_CACHE_KEY = "skill-gap:career-roles";
-const LEVELS_CACHE_PREFIX = "skill-gap:assessment-levels";
-const GROUPS_CACHE_PREFIX = "skill-gap:assessment-groups";
+const ROADMAPS_CACHE_PREFIX = "skill-gap:published-roadmaps";
+const ASSESSMENT_CACHE_PREFIX = "skill-gap:assessment";
 const ROLES_CACHE_MS = 5 * 60 * 1000;
-const LEVELS_CACHE_MS = 5 * 60 * 1000;
-const GROUPS_CACHE_MS = 5 * 60 * 1000;
+const ROADMAPS_CACHE_MS = 5 * 60 * 1000;
+const ASSESSMENT_CACHE_MS = 2 * 60 * 1000;
 
-let skillGapRequestVersion = 0;
-let skillGapLevelsRequestVersion = 0;
-let skillGapGroupsRequestVersion = 0;
-let skillGapAnalysisRequestVersion = 0;
+let rolesRequestVersion = 0;
+let roadmapsRequestVersion = 0;
+let assessmentRequestVersion = 0;
+let analysisRequestVersion = 0;
 
-function normalizeSlug(value) {
-  return String(value || "").trim();
+function getRoadmapsCacheKey(roleSlug) {
+  return [ROADMAPS_CACHE_PREFIX, roleSlug].join(":");
 }
 
-function getRoleSlug(role) {
-  return normalizeSlug(
-    role?.slug ||
-      role?.Slug ||
-      role?.careerRoleSlug ||
-      role?.CareerRoleSlug ||
-      role?.roleSlug ||
-      role?.RoleSlug,
-  );
+function getAssessmentCacheKey(roadmapId) {
+  return [ASSESSMENT_CACHE_PREFIX, roadmapId].join(":");
 }
 
-function getLevelSlug(level) {
-  return normalizeSlug(
-    level?.slug || level?.Slug || level?.levelSlug || level?.LevelSlug,
-  );
-}
-
-function getLevelsCacheKey(roleSlug) {
-  return [LEVELS_CACHE_PREFIX, normalizeSlug(roleSlug)].join(":");
-}
-
-function getGroupsCacheKey(roleSlug, levelSlug) {
-  return [
-    GROUPS_CACHE_PREFIX,
-    normalizeSlug(roleSlug),
-    normalizeSlug(levelSlug),
-  ].join(":");
-}
-
-function createAnalysisKey(roleSlug, levelSlug, selectedNodeIds = []) {
-  const normalizedNodes = [
-    ...new Set(selectedNodeIds.map(normalizeId).filter(Boolean)),
+function createAnalysisKey(roadmapId, selectedSkillIds = []) {
+  const normalizedSkills = [
+    ...new Set(selectedSkillIds.map(normalizeId).filter(Boolean)),
   ].sort();
 
-  return [
-    "skill-gap",
-    "analysis",
-    normalizeSlug(roleSlug),
-    normalizeSlug(levelSlug),
-    normalizedNodes.join(","),
-  ].join(":");
+  return ["skill-gap", "analysis", normalizeId(roadmapId), normalizedSkills.join(",")].join(":");
 }
 
 function hasSameSelection(left = [], right = []) {
-  const normalizedLeft = [
-    ...new Set(left.map(normalizeId).filter(Boolean)),
-  ].sort();
-  const normalizedRight = [
-    ...new Set(right.map(normalizeId).filter(Boolean)),
-  ].sort();
+  const normalizedLeft = [...new Set(left.map(normalizeId).filter(Boolean))].sort();
+  const normalizedRight = [...new Set(right.map(normalizeId).filter(Boolean))].sort();
 
   if (normalizedLeft.length !== normalizedRight.length) return false;
   return normalizedLeft.every((item, index) => item === normalizedRight[index]);
@@ -88,30 +55,28 @@ function hasSameSelection(left = [], right = []) {
 
 export const useSkillGapStore = create((set, get) => ({
   roles: [],
-  levels: [],
+  roadmaps: [],
   selectedRole: null,
-  selectedLevel: null,
-  groups: [],
-  levelsByRoleSlug: {},
-  groupsByRoleLevelKey: {},
-  selectedNodeIds: [],
+  selectedRoadmap: null,
+  assessment: null,
+  categories: [],
+  roadmapsByRoleSlug: {},
+  assessmentsByRoadmapId: {},
+  selectedSkillIds: [],
   result: null,
   analysisByKey: {},
   step: 1,
   isRolesLoading: true,
-  isLevelsLoading: false,
-  isGroupsLoading: false,
+  isRoadmapsLoading: false,
+  isAssessmentLoading: false,
   isAnalyzing: false,
   error: "",
 
   loadRoles: async ({ force = false } = {}) => {
-    const requestVersion = ++skillGapRequestVersion;
+    const requestVersion = ++rolesRequestVersion;
     const hasRoles = get().roles.length > 0;
 
-    set({
-      isRolesLoading: !hasRoles,
-      error: "",
-    });
+    set({ isRolesLoading: !hasRoles, error: "" });
 
     try {
       const roles = await cachedRequest(
@@ -120,25 +85,17 @@ export const useSkillGapStore = create((set, get) => ({
         { ttlMs: ROLES_CACHE_MS, force },
       );
 
-      if (requestVersion !== skillGapRequestVersion) return roles;
+      if (requestVersion !== rolesRequestVersion) return roles;
 
-      set({
-        roles,
-        isRolesLoading: false,
-      });
-
+      set({ roles, isRolesLoading: false });
       return roles;
     } catch (error) {
-      if (requestVersion !== skillGapRequestVersion) return [];
+      if (requestVersion !== rolesRequestVersion) return [];
 
       set({
-        error: getFriendlyApiErrorMessage(
-          error,
-          "Unable to load career roles.",
-        ),
+        error: getFriendlyApiErrorMessage(error, "Unable to load career roles."),
         isRolesLoading: false,
       });
-
       return [];
     }
   },
@@ -153,204 +110,164 @@ export const useSkillGapStore = create((set, get) => ({
       return;
     }
 
-    skillGapLevelsRequestVersion += 1;
-    skillGapGroupsRequestVersion += 1;
-    skillGapAnalysisRequestVersion += 1;
+    roadmapsRequestVersion += 1;
+    assessmentRequestVersion += 1;
+    analysisRequestVersion += 1;
 
     set((state) => ({
       selectedRole: normalizedRole,
-      levels: roleSlug ? state.levelsByRoleSlug[roleSlug] || [] : [],
-      selectedLevel: null,
-      groups: [],
-      selectedNodeIds: [],
+      roadmaps: roleSlug ? state.roadmapsByRoleSlug[roleSlug] || [] : [],
+      selectedRoadmap: null,
+      assessment: null,
+      categories: [],
+      selectedSkillIds: [],
       result: null,
       error: "",
-      isLevelsLoading: false,
-      isGroupsLoading: false,
+      isRoadmapsLoading: false,
+      isAssessmentLoading: false,
       isAnalyzing: false,
     }));
   },
 
-  loadLevels: async ({ role = null, force = false } = {}) => {
+  loadRoadmaps: async ({ role = null, force = false } = {}) => {
     const selectedRole = role ? normalizeCareerRole(role) : get().selectedRole;
     const roleSlug = getRoleSlug(selectedRole);
 
     if (!roleSlug) return [];
 
-    const requestVersion = ++skillGapLevelsRequestVersion;
-    const cachedLevels = get().levelsByRoleSlug[roleSlug];
+    const requestVersion = ++roadmapsRequestVersion;
+    const cachedRoadmaps = get().roadmapsByRoleSlug[roleSlug];
 
-    set({
-      isLevelsLoading: !cachedLevels?.length,
-      error: "",
-    });
+    set({ isRoadmapsLoading: !cachedRoadmaps?.length, error: "" });
 
     try {
-      const levels = await cachedRequest(
-        getLevelsCacheKey(roleSlug),
-        async () =>
-          normalizeAssessmentLevels(
-            await skillGapApi.getAssessmentLevels(roleSlug),
-          ),
-        { ttlMs: LEVELS_CACHE_MS, force },
+      const roadmaps = await cachedRequest(
+        getRoadmapsCacheKey(roleSlug),
+        async () => normalizeRoadmapOptions(await skillGapApi.getPublishedRoadmapsByRole(roleSlug)),
+        { ttlMs: ROADMAPS_CACHE_MS, force },
       );
 
-      if (
-        requestVersion !== skillGapLevelsRequestVersion ||
-        getRoleSlug(get().selectedRole) !== roleSlug
-      ) {
-        return levels;
+      if (requestVersion !== roadmapsRequestVersion || getRoleSlug(get().selectedRole) !== roleSlug) {
+        return roadmaps;
       }
 
       set((state) => ({
-        levelsByRoleSlug: {
-          ...state.levelsByRoleSlug,
-          [roleSlug]: levels,
+        roadmapsByRoleSlug: {
+          ...state.roadmapsByRoleSlug,
+          [roleSlug]: roadmaps,
         },
-        levels,
-        selectedLevel: force ? null : state.selectedLevel,
-        groups: [],
-        selectedNodeIds: [],
+        roadmaps,
+        selectedRoadmap: force ? null : state.selectedRoadmap,
+        assessment: null,
+        categories: [],
+        selectedSkillIds: [],
         result: null,
         error: "",
       }));
 
-      return levels;
+      return roadmaps;
     } catch (error) {
-      if (
-        requestVersion !== skillGapLevelsRequestVersion ||
-        getRoleSlug(get().selectedRole) !== roleSlug
-      ) {
+      if (requestVersion !== roadmapsRequestVersion || getRoleSlug(get().selectedRole) !== roleSlug) {
         return [];
       }
 
       set({
-        error: getFriendlyApiErrorMessage(
-          error,
-          "Unable to load assessment levels for this role.",
-        ),
+        error: getFriendlyApiErrorMessage(error, "Unable to load published roadmaps for this role."),
       });
-
       return [];
     } finally {
-      if (
-        requestVersion === skillGapLevelsRequestVersion &&
-        getRoleSlug(get().selectedRole) === roleSlug
-      ) {
-        set({ isLevelsLoading: false });
+      if (requestVersion === roadmapsRequestVersion && getRoleSlug(get().selectedRole) === roleSlug) {
+        set({ isRoadmapsLoading: false });
       }
     }
   },
 
-  selectLevel: (level) => {
-    const normalizedLevel = normalizeAssessmentLevels([level])[0] || null;
-    const levelSlug = getLevelSlug(normalizedLevel);
-    const currentLevelSlug = getLevelSlug(get().selectedLevel);
+  selectRoadmap: (roadmap) => {
+    const normalizedRoadmap = normalizeRoadmapOptions([roadmap])[0] || null;
+    const roadmapId = getRoadmapId(normalizedRoadmap);
+    const currentRoadmapId = getRoadmapId(get().selectedRoadmap);
 
-    if (levelSlug && levelSlug === currentLevelSlug) {
+    if (roadmapId && roadmapId === currentRoadmapId) {
       set({ error: "" });
       return;
     }
 
-    skillGapGroupsRequestVersion += 1;
-    skillGapAnalysisRequestVersion += 1;
+    assessmentRequestVersion += 1;
+    analysisRequestVersion += 1;
 
     set({
-      selectedLevel: normalizedLevel,
-      groups: [],
-      selectedNodeIds: [],
+      selectedRoadmap: normalizedRoadmap,
+      assessment: null,
+      categories: [],
+      selectedSkillIds: [],
       result: null,
       error: "",
-      isGroupsLoading: false,
+      isAssessmentLoading: false,
       isAnalyzing: false,
     });
   },
 
-  loadGroups: async ({ force = false } = {}) => {
-    const selectedRole = get().selectedRole;
-    const selectedLevel = get().selectedLevel;
-    const roleSlug = getRoleSlug(selectedRole);
-    const levelSlug = getLevelSlug(selectedLevel);
+  loadAssessment: async ({ force = false } = {}) => {
+    const selectedRoadmap = get().selectedRoadmap;
+    const roadmapId = getRoadmapId(selectedRoadmap);
 
-    if (!roleSlug || !levelSlug) return [];
+    if (!roadmapId) return null;
 
-    const requestVersion = ++skillGapGroupsRequestVersion;
-    const cacheKey = getGroupsCacheKey(roleSlug, levelSlug);
-    const cachedGroups = get().groupsByRoleLevelKey[cacheKey];
+    const requestVersion = ++assessmentRequestVersion;
+    const cachedAssessment = get().assessmentsByRoadmapId[roadmapId];
 
-    set({
-      isGroupsLoading: !cachedGroups?.length,
-      error: "",
-    });
+    set({ isAssessmentLoading: !cachedAssessment?.categories?.length, error: "" });
 
     try {
-      const groups = await cachedRequest(
-        cacheKey,
-        async () =>
-          normalizeAssessmentGroups(
-            await skillGapApi.getAssessmentByLevel(roleSlug, levelSlug),
-          ),
-        { ttlMs: GROUPS_CACHE_MS, force },
+      const assessment = await cachedRequest(
+        getAssessmentCacheKey(roadmapId),
+        async () => normalizeAssessmentResponse(await skillGapApi.getAssessmentByRoadmap(roadmapId)),
+        { ttlMs: ASSESSMENT_CACHE_MS, force },
       );
 
-      if (
-        requestVersion !== skillGapGroupsRequestVersion ||
-        getRoleSlug(get().selectedRole) !== roleSlug ||
-        getLevelSlug(get().selectedLevel) !== levelSlug
-      ) {
-        return groups;
+      if (requestVersion !== assessmentRequestVersion || getRoadmapId(get().selectedRoadmap) !== roadmapId) {
+        return assessment;
       }
 
       set((state) => ({
-        groupsByRoleLevelKey: {
-          ...state.groupsByRoleLevelKey,
-          [cacheKey]: groups,
+        assessmentsByRoadmapId: {
+          ...state.assessmentsByRoadmapId,
+          [roadmapId]: assessment,
         },
-        groups,
-        selectedNodeIds: force ? [] : state.selectedNodeIds,
+        assessment,
+        categories: assessment?.categories || [],
+        selectedSkillIds: force ? [] : state.selectedSkillIds,
         result: null,
         step: 2,
         error: "",
       }));
 
-      return groups;
+      return assessment;
     } catch (error) {
-      if (
-        requestVersion !== skillGapGroupsRequestVersion ||
-        getRoleSlug(get().selectedRole) !== roleSlug ||
-        getLevelSlug(get().selectedLevel) !== levelSlug
-      ) {
-        return [];
+      if (requestVersion !== assessmentRequestVersion || getRoadmapId(get().selectedRoadmap) !== roadmapId) {
+        return null;
       }
 
       set({
-        error: getFriendlyApiErrorMessage(
-          error,
-          "Unable to load assessment skills for this level.",
-        ),
+        error: getFriendlyApiErrorMessage(error, "Unable to load skill checklist for this roadmap."),
       });
-
-      return [];
+      return null;
     } finally {
-      if (
-        requestVersion === skillGapGroupsRequestVersion &&
-        getRoleSlug(get().selectedRole) === roleSlug &&
-        getLevelSlug(get().selectedLevel) === levelSlug
-      ) {
-        set({ isGroupsLoading: false });
+      if (requestVersion === assessmentRequestVersion && getRoadmapId(get().selectedRoadmap) === roadmapId) {
+        set({ isAssessmentLoading: false });
       }
     }
   },
 
-  toggleSkill: (nodeId) => {
-    const normalizedNodeId = normalizeId(nodeId);
+  toggleSkill: (skillId) => {
+    const normalizedSkillId = normalizeId(skillId);
 
-    if (!normalizedNodeId || get().isAnalyzing || get().isGroupsLoading) return;
+    if (!normalizedSkillId || get().isAnalyzing || get().isAssessmentLoading) return;
 
     set((state) => ({
-      selectedNodeIds: state.selectedNodeIds.includes(normalizedNodeId)
-        ? state.selectedNodeIds.filter((item) => item !== normalizedNodeId)
-        : [...state.selectedNodeIds, normalizedNodeId],
+      selectedSkillIds: state.selectedSkillIds.includes(normalizedSkillId)
+        ? state.selectedSkillIds.filter((item) => item !== normalizedSkillId)
+        : [...state.selectedSkillIds, normalizedSkillId],
       result: null,
       error: "",
     }));
@@ -358,55 +275,36 @@ export const useSkillGapStore = create((set, get) => ({
 
   analyze: async ({ force = false } = {}) => {
     const state = get();
-    const roleSlug = getRoleSlug(state.selectedRole);
-    const levelSlug = getLevelSlug(state.selectedLevel);
+    const roadmapId = getRoadmapId(state.selectedRoadmap);
 
-    if (!roleSlug || !levelSlug || state.isGroupsLoading) return null;
+    if (!roadmapId || state.isAssessmentLoading) return null;
 
-    const selectedNodeIds = [...state.selectedNodeIds];
-    const analysisKey = createAnalysisKey(roleSlug, levelSlug, selectedNodeIds);
+    const selectedSkillIds = [...state.selectedSkillIds];
+    const analysisKey = createAnalysisKey(roadmapId, selectedSkillIds);
     const cachedResult = state.analysisByKey[analysisKey];
 
     if (!force && cachedResult) {
-      set({
-        result: cachedResult,
-        step: 3,
-        error: "",
-      });
-
+      set({ result: cachedResult, step: 3, error: "" });
       return cachedResult;
     }
 
-    const requestVersion = ++skillGapAnalysisRequestVersion;
+    const requestVersion = ++analysisRequestVersion;
 
-    set({
-      isAnalyzing: true,
-      error: "",
-    });
+    set({ isAnalyzing: true, error: "" });
 
     try {
       const result = await guardedMutation(analysisKey, async () => {
-        const response = await skillGapApi.analyzeSkillGap({
-          careerRoleSlug: roleSlug,
-          levelSlug,
-          selectedNodeIds,
-        });
-
-        return normalizeSkillGapResult(response, {
-          groups: state.groups,
-          selectedNodeIds,
-        });
+        const response = await skillGapApi.analyzeSkillGap({ roadmapId, selectedSkillIds });
+        return normalizeSkillGapResult(response);
       });
 
       const currentState = get();
-      const currentRoleSlug = getRoleSlug(currentState.selectedRole);
-      const currentLevelSlug = getLevelSlug(currentState.selectedLevel);
+      const currentRoadmapId = getRoadmapId(currentState.selectedRoadmap);
 
       if (
-        requestVersion !== skillGapAnalysisRequestVersion ||
-        currentRoleSlug !== roleSlug ||
-        currentLevelSlug !== levelSlug ||
-        !hasSameSelection(currentState.selectedNodeIds, selectedNodeIds)
+        requestVersion !== analysisRequestVersion ||
+        currentRoadmapId !== roadmapId ||
+        !hasSameSelection(currentState.selectedSkillIds, selectedSkillIds)
       ) {
         return result;
       }
@@ -426,78 +324,66 @@ export const useSkillGapStore = create((set, get) => ({
       const currentState = get();
 
       if (
-        requestVersion !== skillGapAnalysisRequestVersion ||
-        getRoleSlug(currentState.selectedRole) !== roleSlug ||
-        getLevelSlug(currentState.selectedLevel) !== levelSlug ||
-        !hasSameSelection(currentState.selectedNodeIds, selectedNodeIds)
+        requestVersion !== analysisRequestVersion ||
+        getRoadmapId(currentState.selectedRoadmap) !== roadmapId ||
+        !hasSameSelection(currentState.selectedSkillIds, selectedSkillIds)
       ) {
         return null;
       }
 
       set({
-        error: getFriendlyApiErrorMessage(
-          error,
-          "Unable to analyze your skill gap.",
-        ),
+        error: getFriendlyApiErrorMessage(error, "Unable to analyze your skill gap."),
       });
-
       return null;
     } finally {
-      if (requestVersion === skillGapAnalysisRequestVersion) {
+      if (requestVersion === analysisRequestVersion) {
         set({ isAnalyzing: false });
       }
     }
   },
 
-  goToRoleStep: () => {
-    set({ step: 1, error: "" });
-  },
+  goToRoleStep: () => set({ step: 1, error: "" }),
 
   goToSkillStep: () => {
-    const hasRoleAndLevel = Boolean(
-      getRoleSlug(get().selectedRole) && getLevelSlug(get().selectedLevel),
-    );
-
-    set({
-      step: hasRoleAndLevel ? 2 : 1,
-      error: "",
-    });
+    set({ step: getRoadmapId(get().selectedRoadmap) ? 2 : 1, error: "" });
   },
 
   showHistoryResult: (result) => {
     const normalizedResult = normalizeSkillGapResult(result);
-
     if (!normalizedResult) return;
 
-    skillGapLevelsRequestVersion += 1;
-    skillGapGroupsRequestVersion += 1;
-    skillGapAnalysisRequestVersion += 1;
+    roadmapsRequestVersion += 1;
+    assessmentRequestVersion += 1;
+    analysisRequestVersion += 1;
 
     set({
       selectedRole: null,
-      selectedLevel: null,
-      groups: [],
-      selectedNodeIds: [],
+      roadmaps: [],
+      selectedRoadmap: null,
+      assessment: null,
+      categories: [],
+      selectedSkillIds: [],
       result: normalizedResult,
       step: 3,
       error: "",
-      isLevelsLoading: false,
-      isGroupsLoading: false,
+      isRoadmapsLoading: false,
+      isAssessmentLoading: false,
       isAnalyzing: false,
     });
   },
 
   reset: () => {
-    skillGapLevelsRequestVersion += 1;
-    skillGapGroupsRequestVersion += 1;
-    skillGapAnalysisRequestVersion += 1;
+    roadmapsRequestVersion += 1;
+    assessmentRequestVersion += 1;
+    analysisRequestVersion += 1;
 
     set({
       selectedRole: null,
-      levels: [],
-      selectedLevel: null,
-      groups: [],
-      selectedNodeIds: [],
+      roadmaps: [],
+      selectedRoadmap: null,
+      assessment: null,
+      categories: [],
+      selectedSkillIds: [],
       result: null,
       error: "",
       step: 1,
@@ -505,27 +391,28 @@ export const useSkillGapStore = create((set, get) => ({
   },
 
   resetSkillGap: () => {
-    skillGapRequestVersion += 1;
-    skillGapLevelsRequestVersion += 1;
-    skillGapGroupsRequestVersion += 1;
-    skillGapAnalysisRequestVersion += 1;
+    rolesRequestVersion += 1;
+    roadmapsRequestVersion += 1;
+    assessmentRequestVersion += 1;
+    analysisRequestVersion += 1;
     invalidateRequestCacheByPrefix("skill-gap");
 
     set({
       roles: [],
-      levels: [],
+      roadmaps: [],
       selectedRole: null,
-      selectedLevel: null,
-      groups: [],
-      levelsByRoleSlug: {},
-      groupsByRoleLevelKey: {},
-      selectedNodeIds: [],
+      selectedRoadmap: null,
+      assessment: null,
+      categories: [],
+      roadmapsByRoleSlug: {},
+      assessmentsByRoadmapId: {},
+      selectedSkillIds: [],
       result: null,
       analysisByKey: {},
       step: 1,
       isRolesLoading: false,
-      isLevelsLoading: false,
-      isGroupsLoading: false,
+      isRoadmapsLoading: false,
+      isAssessmentLoading: false,
       isAnalyzing: false,
       error: "",
     });

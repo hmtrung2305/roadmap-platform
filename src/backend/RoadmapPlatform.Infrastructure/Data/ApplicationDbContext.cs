@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Infrastructure.Entities;
@@ -19,10 +19,6 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<AiMentorConversation> AiMentorConversations { get; set; }
 
     public virtual DbSet<AiMentorMessage> AiMentorMessages { get; set; }
-
-    public virtual DbSet<AssessmentLevel> AssessmentLevels { get; set; }
-
-    public virtual DbSet<AssessmentLevelGroup> AssessmentLevelGroups { get; set; }
 
     public virtual DbSet<CareerRole> CareerRoles { get; set; }
 
@@ -93,6 +89,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<SkillGapAnalysisHistory> SkillGapAnalysisHistories { get; set; }
+
+    public virtual DbSet<SkillGapCategoryConfig> SkillGapCategoryConfigs { get; set; }
 
     public virtual DbSet<SkillModule> SkillModules { get; set; }
 
@@ -253,57 +251,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.AiMentorConversation).WithMany(p => p.AiMentorMessages)
                 .HasForeignKey(d => d.AiMentorConversationId)
                 .HasConstraintName("fk_ai_mentor_message_conversation");
-        });
-
-        modelBuilder.Entity<AssessmentLevel>(entity =>
-        {
-            entity.HasKey(e => e.AssessmentLevelId).HasName("assessment_level_pkey");
-
-            entity.ToTable("assessment_level");
-
-            entity.HasIndex(e => new { e.CareerRoleId, e.Slug }, "uq_assessment_level_slug").IsUnique();
-
-            entity.Property(e => e.AssessmentLevelId)
-                .ValueGeneratedNever()
-                .HasColumnName("assessment_level_id");
-            entity.Property(e => e.CareerRoleId).HasColumnName("career_role_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Name)
-                .HasMaxLength(50)
-                .HasColumnName("name");
-            entity.Property(e => e.Slug)
-                .HasMaxLength(50)
-                .HasColumnName("slug");
-            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
-
-            entity.HasOne(d => d.CareerRole).WithMany(p => p.AssessmentLevels)
-                .HasForeignKey(d => d.CareerRoleId)
-                .HasConstraintName("fk_assessment_level_career_role");
-        });
-
-        modelBuilder.Entity<AssessmentLevelGroup>(entity =>
-        {
-            entity.HasKey(e => e.AssessmentLevelGroupId).HasName("assessment_level_group_pkey");
-
-            entity.ToTable("assessment_level_group");
-
-            entity.HasIndex(e => new { e.AssessmentLevelId, e.RoadmapNodeId }, "uq_assessment_level_group").IsUnique();
-
-            entity.Property(e => e.AssessmentLevelGroupId)
-                .ValueGeneratedNever()
-                .HasColumnName("assessment_level_group_id");
-            entity.Property(e => e.AssessmentLevelId).HasColumnName("assessment_level_id");
-            entity.Property(e => e.RoadmapNodeId).HasColumnName("roadmap_node_id");
-
-            entity.HasOne(d => d.AssessmentLevel).WithMany(p => p.AssessmentLevelGroups)
-                .HasForeignKey(d => d.AssessmentLevelId)
-                .HasConstraintName("fk_assessment_level_group_level");
-
-            entity.HasOne(d => d.RoadmapNode).WithMany(p => p.AssessmentLevelGroups)
-                .HasForeignKey(d => d.RoadmapNodeId)
-                .HasConstraintName("fk_assessment_level_group_node");
         });
 
         modelBuilder.Entity<CareerRole>(entity =>
@@ -1760,37 +1707,30 @@ public partial class ApplicationDbContext : DbContext
             entity.ToTable("skill_gap_analysis_history");
 
             entity.Property(e => e.SkillGapAnalysisHistoryId)
-                .ValueGeneratedNever()
+                .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("skill_gap_analysis_history_id");
+            entity.Property(e => e.AuthorNameSnapshot)
+                .HasMaxLength(255)
+                .HasColumnName("author_name_snapshot");
             entity.Property(e => e.CareerRoleId).HasColumnName("career_role_id");
-            entity.Property(e => e.CareerRoleName)
-                .HasMaxLength(500)
-                .HasColumnName("career_role_name");
-            entity.Property(e => e.CareerRoleSlug)
-                .HasMaxLength(200)
-                .HasColumnName("career_role_slug");
+            entity.Property(e => e.CareerRoleNameSnapshot)
+                .HasMaxLength(255)
+                .HasColumnName("career_role_name_snapshot");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted");
-            entity.Property(e => e.LevelName)
-                .HasMaxLength(50)
-                .HasDefaultValueSql("''::character varying")
-                .HasColumnName("level_name");
-            entity.Property(e => e.LevelSlug)
-                .HasMaxLength(50)
-                .HasDefaultValueSql("''::character varying")
-                .HasColumnName("level_slug");
             entity.Property(e => e.MatchedSkills).HasColumnName("matched_skills");
             entity.Property(e => e.MissingSkills).HasColumnName("missing_skills");
-            entity.Property(e => e.RoadmapVersionNumber)
-                .HasDefaultValue(1)
-                .HasColumnName("roadmap_version_number");
-            entity.Property(e => e.RoadmapVersionTitle)
+            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
+            entity.Property(e => e.RoadmapTitleSnapshot)
                 .HasMaxLength(255)
-                .HasDefaultValueSql("''::character varying")
-                .HasColumnName("roadmap_version_title");
+                .HasColumnName("roadmap_title_snapshot");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+            entity.Property(e => e.RoadmapVersionTitleSnapshot)
+                .HasMaxLength(255)
+                .HasColumnName("roadmap_version_title_snapshot");
             entity.Property(e => e.SnapshotJson)
                 .HasColumnType("jsonb")
                 .HasColumnName("snapshot_json");
@@ -1799,13 +1739,55 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.CareerRole).WithMany(p => p.SkillGapAnalysisHistories)
                 .HasForeignKey(d => d.CareerRoleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_skill_gap_history_role");
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("skill_gap_analysis_history_career_role_id_fkey");
+
+            entity.HasOne(d => d.Roadmap).WithMany(p => p.SkillGapAnalysisHistories)
+                .HasForeignKey(d => d.RoadmapId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("skill_gap_analysis_history_roadmap_id_fkey");
+
+            entity.HasOne(d => d.RoadmapVersion).WithMany(p => p.SkillGapAnalysisHistories)
+                .HasForeignKey(d => d.RoadmapVersionId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("skill_gap_analysis_history_roadmap_version_id_fkey");
 
             entity.HasOne(d => d.User).WithMany(p => p.SkillGapAnalysisHistories)
                 .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_skill_gap_history_user");
+                .HasConstraintName("skill_gap_analysis_history_user_id_fkey");
+        });
+
+        modelBuilder.Entity<SkillGapCategoryConfig>(entity =>
+        {
+            entity.HasKey(e => e.SkillGapCategoryConfigId).HasName("skill_gap_category_config_pkey");
+
+            entity.ToTable("skill_gap_category_config");
+
+            entity.HasIndex(e => new { e.RoadmapId, e.CategoryName }, "uq_skill_gap_category").IsUnique();
+
+            entity.Property(e => e.SkillGapCategoryConfigId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("skill_gap_category_config_id");
+            entity.Property(e => e.CategoryName)
+                .HasMaxLength(100)
+                .HasColumnName("category_name");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DisplayOrder).HasColumnName("display_order");
+            entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
+            entity.Property(e => e.RoadmapVersionId).HasColumnName("roadmap_version_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Roadmap).WithMany(p => p.SkillGapCategoryConfigs)
+                .HasForeignKey(d => d.RoadmapId)
+                .HasConstraintName("skill_gap_category_config_roadmap_id_fkey");
+
+            entity.HasOne(d => d.RoadmapVersion).WithMany(p => p.SkillGapCategoryConfigs)
+                .HasForeignKey(d => d.RoadmapVersionId)
+                .HasConstraintName("skill_gap_category_config_roadmap_version_id_fkey");
         });
 
         modelBuilder.Entity<SkillModule>(entity =>

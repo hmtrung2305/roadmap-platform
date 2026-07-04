@@ -1,182 +1,97 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  BarChart3,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  Loader2,
-} from "lucide-react";
-import {
-  getPriorityStyle,
-  getRuleDescription,
-  isGroupCompleted,
-  toArray,
-} from "../utils/skillGapUtils";
+import { ArrowLeft, BarChart3, Check, Loader2, SearchCheck } from "lucide-react";
+import { normalizeId, toArray } from "../utils/skillGapUtils";
 
 export default function SkillGapSkillsStep({
   role,
-  level,
-  groups,
-  selectedNodeIds,
+  roadmap,
+  categories,
+  selectedSkillIds,
   isLoading,
   isAnalyzing,
   onToggleSkill,
   onBack,
   onAnalyze,
 }) {
-  const [expandedGroupKey, setExpandedGroupKey] = useState("");
-  const selectedSet = useMemo(
-    () => new Set(selectedNodeIds),
-    [selectedNodeIds],
+  const selectedSet = new Set(toArray(selectedSkillIds).map(normalizeId));
+  const totalSkills = toArray(categories).reduce(
+    (sum, category) => sum + toArray(category.skills).length,
+    0,
   );
 
-  useEffect(() => {
-    if (groups.length === 0) {
-      setExpandedGroupKey("");
-      return;
-    }
-
-    const firstGroup = groups[0];
-    setExpandedGroupKey(
-      String(firstGroup.skillGroupId || firstGroup.groupName),
-    );
-  }, [groups]);
-
-  const toggleGroup = (groupKey) => {
-    setExpandedGroupKey((current) => (current === groupKey ? "" : groupKey));
-  };
-
   return (
-    <section className="rounded-2xl border border-[#B9D8CC]/80 bg-white/95 p-5 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="rounded-3xl border border-[#B9D8CC]/80 bg-white/95 p-5 shadow-sm sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[#1F6F5F]">
-            Step 2
+          <p className="inline-flex items-center gap-2 rounded-full border border-[#B9D8CC] bg-[#EAF7F1] px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
+            <SearchCheck size={14} /> Step 2
           </p>
-          <h2 className="mt-1 text-xl font-extrabold text-[#18332D]">
-            Mark the skills you already have
-          </h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-            Target role: <span className="text-[#1F6F5F]">{role?.name}</span> ·
-            Level:{" "}
-            <span className="text-[#1F6F5F]">
-              {level?.levelName || level?.name}
-            </span>
-            . Open one group at a time so the checklist stays focused.
+          <h2 className="mt-3 text-2xl font-black text-[#18332D]">Mark the skills you already have</h2>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+            Roadmap: <span className="text-[#1F6F5F]">{roadmap?.title || roadmap?.roadmapName || "Selected roadmap"}</span>
+            {role?.name ? ` · Role: ${role.name}` : ""}
           </p>
         </div>
-        <div className="rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-3 py-1.5 text-xs font-extrabold text-[#1F6F5F]">
-          {selectedNodeIds.length} skills marked
+        <div className="rounded-2xl border border-[#B9D8CC] bg-[#F7F1E8] px-4 py-3 text-right">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Selected</p>
+          <p className="mt-1 text-2xl font-black text-[#18332D]">
+            {selectedSet.size}<span className="text-sm text-slate-500">/{totalSkills}</span>
+          </p>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="mt-6 grid min-h-64 place-items-center rounded-xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/60 text-sm font-bold text-slate-600">
-          <Loader2 className="mb-2 animate-spin text-[#2FA084]" size={22} />
-          Loading assessment skills...
+        <div className="mt-6 grid place-items-center rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 py-14 text-sm font-bold text-slate-500">
+          <Loader2 className="mb-2 animate-spin text-[#2FA084]" size={24} /> Loading skill checklist...
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 p-8 text-center">
+          <p className="text-sm font-extrabold text-[#18332D]">No skills found for this roadmap</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">
+            Ask the content manager to add skills and publish/generate category configuration.
+          </p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-3">
-          {groups.map((group) => {
-            const groupKey = String(group.skillGroupId || group.groupName);
-            const skills = toArray(group.skills);
-            const matchedCount = skills.filter((skill) =>
-              selectedSet.has(skill.nodeId),
-            ).length;
-            const total = skills.length;
-            const percent = total
-              ? Math.round((matchedCount / total) * 100)
-              : 0;
-            const isCompleted = isGroupCompleted(group, selectedNodeIds);
-            const isExpanded = expandedGroupKey === groupKey;
-            const priority = getPriorityStyle(group.priority);
+        <div className="mt-6 space-y-4">
+          {categories.map((category) => {
+            const skills = toArray(category.skills);
+            const matched = skills.filter((skill) => selectedSet.has(skill.skillId)).length;
 
             return (
               <article
-                key={groupKey}
-                className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
-                  isCompleted
-                    ? "border-[#2FA084] bg-[#6FCF97]/10"
-                    : "border-[#B9D8CC]/80"
-                }`}
+                key={category.categoryName}
+                className="overflow-hidden rounded-2xl border border-[#B9D8CC]/80 bg-white shadow-sm"
               >
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(groupKey)}
-                  className="flex w-full items-start justify-between gap-4 p-4 text-left transition hover:bg-[#F7F1E8]/50"
-                  aria-expanded={isExpanded}
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${priority.dot}`}
-                      />
-                      <h3 className="text-sm font-extrabold text-[#18332D]">
-                        {group.groupName}
-                      </h3>
-                      {isCompleted && (
-                        <CheckCircle2 className="text-[#2FA084]" size={16} />
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                      {group.requirementDescription ||
-                        getRuleDescription(group)}
-                    </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E4ECE8] bg-[#F7F1E8]/70 px-4 py-3">
+                  <div>
+                    <h3 className="text-sm font-black text-[#18332D]">{category.categoryName}</h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">Display order {category.displayOrder || "—"}</p>
                   </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full border border-[#B9D8CC] bg-[#F7F1E8] px-2.5 py-1 text-[11px] font-extrabold text-[#1F6F5F]">
-                      {matchedCount}/{total} selected
-                    </span>
-                    <ChevronDown
-                      size={18}
-                      className={`text-slate-500 transition ${isExpanded ? "rotate-180" : ""}`}
-                    />
-                  </div>
-                </button>
-
-                <div className="px-4 pb-3">
-                  <div className="h-2 overflow-hidden rounded-full bg-[#E4ECE8]">
-                    <div
-                      className={`h-full rounded-full transition-all ${priority.bar}`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
+                  <span className="rounded-full border border-[#B9D8CC] bg-white px-3 py-1 text-xs font-extrabold text-[#1F6F5F]">
+                    {matched}/{skills.length} selected
+                  </span>
                 </div>
 
-                <div
-                  className={`grid transition-all duration-300 ease-out ${
-                    isExpanded
-                      ? "grid-rows-[1fr] opacity-100"
-                      : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-4">
-                      {skills.map((skill) => {
-                        const selected = selectedSet.has(skill.nodeId);
+                <div className="flex flex-wrap gap-2 px-4 py-4">
+                  {skills.map((skill) => {
+                    const selected = selectedSet.has(skill.skillId);
 
-                        return (
-                          <button
-                            key={skill.nodeId || skill.skillId || skill.slug}
-                            type="button"
-                            onClick={() => onToggleSkill(skill.nodeId)}
-                            disabled={isAnalyzing || isLoading}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 ${
-                              selected
-                                ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
-                                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#2FA084] hover:bg-white"
-                            } disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0`}
-                          >
-                            {selected && <Check size={12} />}
-                            {skill.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    return (
+                      <button
+                        key={skill.skillId}
+                        type="button"
+                        onClick={() => onToggleSkill(skill.skillId)}
+                        disabled={isAnalyzing || isLoading}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 ${
+                          selected
+                            ? "border-[#2FA084] bg-[#6FCF97]/20 text-[#1F6F5F]"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#2FA084] hover:bg-white"
+                        } disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0`}
+                      >
+                        {selected && <Check size={12} />}
+                        {skill.skillName}
+                      </button>
+                    );
+                  })}
                 </div>
               </article>
             );
@@ -191,19 +106,15 @@ export default function SkillGapSkillsStep({
           disabled={isLoading || isAnalyzing}
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-extrabold text-[#18332D] transition hover:border-[#2FA084] hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <ArrowLeft size={16} /> Back to roles
+          <ArrowLeft size={16} /> Back to roadmap selection
         </button>
         <button
           type="button"
-          disabled={isLoading || isAnalyzing || groups.length === 0}
+          disabled={isLoading || isAnalyzing || totalSkills === 0}
           onClick={onAnalyze}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:hover:translate-y-0"
         >
-          {isAnalyzing ? (
-            <Loader2 className="animate-spin" size={16} />
-          ) : (
-            <BarChart3 size={16} />
-          )}
+          {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <BarChart3 size={16} />}
           Analyze gap
         </button>
       </div>
