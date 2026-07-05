@@ -1763,7 +1763,7 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("skill_gap_category_config");
 
-            entity.HasIndex(e => new { e.RoadmapId, e.CategoryName }, "uq_skill_gap_category").IsUnique();
+            entity.HasIndex(e => new { e.RoadmapId, e.RoadmapVersionId, e.CategoryName }, "uq_skill_gap_category").IsUnique();
 
             entity.Property(e => e.SkillGapCategoryConfigId)
                 .HasDefaultValueSql("gen_random_uuid()")

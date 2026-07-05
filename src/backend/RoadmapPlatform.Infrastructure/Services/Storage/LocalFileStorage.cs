@@ -75,7 +75,8 @@ public sealed class LocalFileStorage : IFileStorage
 
         if (!File.Exists(fullPath))
         {
-            throw new FileNotFoundException("Stored file was not found.", fullPath);
+            fullPath = GetReadFallbackPath(safeObjectPath)
+                ?? throw new FileNotFoundException("Stored file was not found.", fullPath);
         }
 
         Stream stream = new FileStream(
@@ -116,6 +117,32 @@ public sealed class LocalFileStorage : IFileStorage
 
         Directory.CreateDirectory(rootFolder);
         return rootFolder;
+    }
+
+    private string? GetReadFallbackPath(string safeObjectPath)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.ReadFallbackFolder))
+        {
+            return null;
+        }
+
+        var fallbackRoot = Path.IsPathRooted(_settings.ReadFallbackFolder)
+            ? _settings.ReadFallbackFolder
+            : Path.Combine(AppContext.BaseDirectory, _settings.ReadFallbackFolder);
+
+        fallbackRoot = Path.GetFullPath(fallbackRoot);
+        var fallbackPath = Path.GetFullPath(Path.Combine(fallbackRoot, safeObjectPath));
+        var fallbackPrefix = fallbackRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        if (!fallbackPath.StartsWith(fallbackPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Fallback object path cannot leave the fallback folder.");
+        }
+
+        return File.Exists(fallbackPath)
+            ? fallbackPath
+            : null;
     }
 
     private static string NormalizeObjectPath(string objectPath)

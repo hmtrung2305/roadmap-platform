@@ -87,9 +87,6 @@
 \echo 'Seeding published learning modules...'
 \i database/seeds/learning-modules/published-learning-modules.seed.sql
 
-\echo 'Seeding Frontend primary skill preview v3 focused...'
-\i database/seeds/learning-modules/frontend-roadmap-primary-skill-preview-v3-focused.seed.sql
-
 \echo 'Learning module seed completed.'
 
 \echo 'Seeding skill gap category config...'

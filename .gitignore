@@ -9,6 +9,11 @@ src/backend/RoadmapPlatform.Api/wwwroot/docs/*
 # dotenv files
 .env
 
+# Local runtime artifacts and tool caches
+src/backend/RoadmapPlatform.Api/storage/
+src/frontend/.npm-cache/
+src/frontend/dist/
+
 # Local appsettings overrides
 appsettings.Local.json
 appsettings.*.local.json

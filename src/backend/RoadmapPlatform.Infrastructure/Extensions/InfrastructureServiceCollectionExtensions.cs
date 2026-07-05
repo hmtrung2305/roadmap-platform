@@ -80,6 +80,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // AI, RAG Settings
             services.Configure<LearningModuleRagSettings>(configuration.GetSection("Rag"));
+            services.Configure<LearningModuleIndexingSettings>(
+                configuration.GetSection(LearningModuleIndexingSettings.SectionName));
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
@@ -190,7 +192,14 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<ILearningModuleQuizService, LearningModuleQuizService>();
             services.AddScoped<ILearnerLearningModuleService, LearnerLearningModuleService>();
             services.AddScoped<ILearningModuleChatService, LearningModuleChatService>();
-            services.AddHostedService<LearningModuleIndexingWorker>();
+            var learningModuleIndexingEnabled =
+                configuration.GetValue<bool?>($"{LearningModuleIndexingSettings.SectionName}:Enabled") ?? true;
+            var aiApiKeyConfigured = !string.IsNullOrWhiteSpace(configuration.GetValue<string>("Ai:ApiKey"));
+
+            if (learningModuleIndexingEnabled && aiApiKeyConfigured)
+            {
+                services.AddHostedService<LearningModuleIndexingWorker>();
+            }
 
             // Cache memory
             services.AddMemoryCache();

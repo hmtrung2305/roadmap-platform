@@ -2,10 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Exceptions;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
 using RoadmapPlatform.Application.Interfaces.Storage;
+using RoadmapPlatform.Infrastructure.Configurations;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using System.Data;
@@ -15,20 +17,26 @@ namespace RoadmapPlatform.Infrastructure.Services.LearningModules;
 
 public sealed class LearningModuleIndexingWorker : BackgroundService
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
-    private static readonly TimeSpan StaleIndexingTimeout = TimeSpan.FromMinutes(15);
-    private const int BatchSize = 5;
     private const int MaxErrorLength = 1000;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<LearningModuleIndexingWorker> _logger;
+    private readonly TimeSpan _pollInterval;
+    private readonly TimeSpan _staleIndexingTimeout;
+    private readonly int _batchSize;
 
     public LearningModuleIndexingWorker(
         IServiceScopeFactory scopeFactory,
-        ILogger<LearningModuleIndexingWorker> logger)
+        ILogger<LearningModuleIndexingWorker> logger,
+        IOptions<LearningModuleIndexingSettings> options)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+
+        var settings = options.Value;
+        _pollInterval = TimeSpan.FromSeconds(Math.Clamp(settings.PollIntervalSeconds, 5, 3600));
+        _staleIndexingTimeout = TimeSpan.FromMinutes(Math.Clamp(settings.StaleIndexingMinutes, 1, 1440));
+        _batchSize = Math.Clamp(settings.BatchSize, 1, 100);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -48,7 +56,7 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
                 _logger.LogError(ex, "Learning module indexing worker failed while polling.");
             }
 
-            await Task.Delay(PollInterval, stoppingToken);
+            await Task.Delay(_pollInterval, stoppingToken);
         }
     }
 
@@ -110,11 +118,11 @@ public sealed class LearningModuleIndexingWorker : BackgroundService
             AddParameter(command, "pending_status", LearningModuleLessonIndexingStatusValues.Pending);
             AddParameter(command, "needs_reindex_status", LearningModuleLessonIndexingStatusValues.NeedsReindex);
             AddParameter(command, "indexing_status", LearningModuleLessonIndexingStatusValues.Indexing);
-            AddParameter(command, "stale_before", DateTime.UtcNow.Subtract(StaleIndexingTimeout));
+            AddParameter(command, "stale_before", DateTime.UtcNow.Subtract(_staleIndexingTimeout));
             AddParameter(command, "claimed_at", DateTime.UtcNow);
-            AddParameter(command, "batch_size", BatchSize);
+            AddParameter(command, "batch_size", _batchSize);
 
-            var lessonIds = new List<Guid>(BatchSize);
+            var lessonIds = new List<Guid>(_batchSize);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 

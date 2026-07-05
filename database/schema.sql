@@ -1917,6 +1917,7 @@ CREATE TABLE IF NOT EXISTS public.skill_gap_category_config
         UNIQUE
         (
             roadmap_id,
+            roadmap_version_id,
             category_name
         )
 );

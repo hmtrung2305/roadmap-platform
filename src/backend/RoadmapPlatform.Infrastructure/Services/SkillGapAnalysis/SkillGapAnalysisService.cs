@@ -132,7 +132,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
             var categoryConfigs = await _dbContext.SkillGapCategoryConfigs
                 .AsNoTracking()
-                .Where(x => x.RoadmapId == request.RoadmapId)
+                .Where(x => x.RoadmapVersionId == roadmap.PublishedVersion.RoadmapVersionId)
                 .Select(x => new
                 {
                     x.CategoryName,

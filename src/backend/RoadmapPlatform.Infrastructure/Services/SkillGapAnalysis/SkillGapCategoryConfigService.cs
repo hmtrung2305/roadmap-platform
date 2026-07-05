@@ -48,7 +48,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
             }
 
             var existingConfigs = await _dbContext.SkillGapCategoryConfigs
-                .Where(x => x.RoadmapId == roadmapId)
+                .Where(x => x.RoadmapVersionId == publishedVersion.RoadmapVersionId)
                 .ToListAsync();
 
             if (existingConfigs.Count > 0)
@@ -137,7 +137,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
             var categoryConfigs = await _dbContext.SkillGapCategoryConfigs
                 .AsNoTracking()
-                .Where(x => x.RoadmapId == roadmapId)
+                .Where(x => x.RoadmapVersionId == roadmap.PublishedVersion.RoadmapVersionId)
                 .OrderBy(x => x.DisplayOrder)
                 .Select(x => new
                 {
@@ -249,13 +249,21 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                 roadmapId,
                 actorUserId);
 
-            var roadmapExists = await _dbContext.Roadmaps
+            var publishedVersion = await _dbContext.Roadmaps
                     .AsNoTracking()
-                    .AnyAsync(x => x.RoadmapId == roadmapId);
+                    .Where(x => x.RoadmapId == roadmapId)
+                    .Select(x => x.RoadmapVersions
+                        .Where(v => v.Status == "published")
+                        .Select(v => new
+                        {
+                            v.RoadmapVersionId,
+                        })
+                        .SingleOrDefault())
+                    .SingleOrDefaultAsync();
 
-            if (!roadmapExists)
+            if (publishedVersion is null)
             {
-                throw new NotFoundException("Roadmap not found.");
+                throw new ConflictException("Roadmap does not have a published version.");
             }
 
             if (request == null || request.Count == 0)
@@ -289,7 +297,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
             }
 
             var configs = await _dbContext.SkillGapCategoryConfigs
-                .Where(x => x.RoadmapId == roadmapId)
+                .Where(x => x.RoadmapVersionId == publishedVersion.RoadmapVersionId)
                 .ToListAsync();
 
             if (configs.Count == 0)

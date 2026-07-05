@@ -5,9 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { skillApi } from "../../../api/skillApi";
 import SkillSearchPicker from "./SkillSearchPicker";
 
-vi.mock("../../api/skillApi", () => ({
+vi.mock("../../../api/skillApi", () => ({
   skillApi: {
     searchSkills: vi.fn(),
+    getSuggestions: vi.fn(),
     getSkillById: vi.fn(),
     getCategories: vi.fn(),
   },
@@ -36,6 +37,7 @@ describe("SkillSearchPicker", () => {
     vi.clearAllMocks();
     localStorage.clear();
     skillApi.getCategories.mockResolvedValue(["Database", "Frontend"]);
+    skillApi.getSuggestions.mockResolvedValue([sqlSkill, cssSkill]);
     skillApi.searchSkills.mockResolvedValue({
       items: [sqlSkill, cssSkill],
       totalCount: 2,
@@ -45,24 +47,16 @@ describe("SkillSearchPicker", () => {
     });
   });
 
-  it("opens with recently used skills instead of the full catalog", async () => {
-    localStorage.setItem(
-      "content-manager.recent-skills",
-      JSON.stringify([sqlSkill]),
-    );
-
+  it("opens with suggested skills before searching", async () => {
     const user = userEvent.setup();
-    const { container } = render(
-      <SkillSearchPicker value="" onChange={vi.fn()} />,
-    );
+    render(<SkillSearchPicker value="" onChange={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Choose a skill" }));
 
-    expect(await screen.findByText("Recently used")).toBeInTheDocument();
+    expect(await screen.findByText("Suggested skills")).toBeInTheDocument();
     expect(screen.getByText("SQL Fundamentals")).toBeInTheDocument();
-    expect(
-      container.contains(screen.getByRole("listbox", { name: "Skills" })),
-    ).toBe(false);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    expect(skillApi.getSuggestions).toHaveBeenCalledWith({ limit: 6 });
     expect(skillApi.searchSkills).not.toHaveBeenCalled();
   });
 
@@ -121,49 +115,26 @@ describe("SkillSearchPicker", () => {
       "xyz123",
     );
 
-    expect(await screen.findByText("No skills found.")).toBeInTheDocument();
+    expect(await screen.findByText("No skills found")).toBeInTheDocument();
   });
 
-  it("requires the actions menu before removing a selected skill", async () => {
-    const onChange = vi.fn();
+  it("shows selected skill details and reopens the picker", async () => {
     const user = userEvent.setup();
 
     render(
       <SkillSearchPicker
         value={sqlSkill.skillId}
         initialSkill={sqlSkill}
-        onChange={onChange}
+        onChange={vi.fn()}
       />,
     );
 
-    expect(
-      screen.queryByRole("button", { name: "Remove skill" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Selected skill")).toBeInTheDocument();
+    expect(screen.getByText("SQL Fundamentals")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose a skill" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Skill actions" }));
-    await user.click(screen.getByRole("button", { name: "Remove skill" }));
+    await user.click(screen.getByRole("button", { name: "Change" }));
 
-    expect(onChange).toHaveBeenCalledWith("", null);
-    expect(
-      screen.getByRole("button", { name: "Choose a skill" }),
-    ).toBeInTheDocument();
-  });
-
-  it("filters suggestions by category", async () => {
-    const user = userEvent.setup();
-    render(<SkillSearchPicker value="" onChange={vi.fn()} />);
-
-    await user.click(screen.getByRole("button", { name: "Choose a skill" }));
-    await screen.findByText("Suggested");
-    await user.click(await screen.findByRole("button", { name: "Database" }));
-
-    await waitFor(() => {
-      expect(skillApi.searchSkills).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          category: "Database",
-          sort: "popular",
-        }),
-      );
-    });
+    expect(await screen.findByRole("dialog", { name: "Choose skill" })).toBeInTheDocument();
   });
 });

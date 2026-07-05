@@ -34,14 +34,14 @@ jobs:
       - name: Build
         run: dotnet build src/backend/RoadmapPlatform.slnx --configuration Release --no-restore
 
-      - name: Test if test projects exist
+      - name: Test
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t test_projects < <(find src/backend tests -type f \( -name '*Test*.csproj' -o -name '*Tests*.csproj' \) 2>/dev/null || true)
           if [ "${#test_projects[@]}" -eq 0 ]; then
-            echo "No .NET test projects found; build verification completed."
-            exit 0
+            echo "No .NET test projects found. Backend CI requires tests."
+            exit 1
           fi
 
           for project in "${test_projects[@]}"; do
@@ -49,7 +49,7 @@ jobs:
           done
 
   frontend:
-    name: Frontend lint and build
+    name: Frontend lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -74,10 +74,57 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm test
+
       - name: Build
         env:
           VITE_BACKEND_BASE_URL: http://127.0.0.1:5208
         run: npm run build
+
+  database:
+    name: Database schema and seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: roadmap_platform_ci
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d roadmap_platform_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/roadmap_platform_ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply schema
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/schema.sql
+
+      - name: Seed database
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed.sql
+
+      - name: Verify seed idempotency
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed.sql
+
+      - name: Verify learning module seed
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seeds/learning-modules/verify-learning-modules.sql
 
   security-guardrails:
     name: Secret and runtime artifact guardrails

@@ -372,6 +372,7 @@ export default function SkillSearchPicker({
                     placeholder={placeholder}
                     className={`${inputClass} pl-10`}
                     role="combobox"
+                    aria-label={placeholder}
                     aria-expanded="true"
                     aria-controls="skill-picker-results"
                     aria-activedescendant={

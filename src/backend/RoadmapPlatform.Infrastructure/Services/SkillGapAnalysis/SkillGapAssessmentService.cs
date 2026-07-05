@@ -76,13 +76,19 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
             var categoryConfigs = await _dbContext.SkillGapCategoryConfigs
                 .AsNoTracking()
-                .Where(x => x.RoadmapId == roadmapId)
+                .Where(x => x.RoadmapVersionId == roadmap.PublishedVersion.RoadmapVersionId)
                 .Select(x => new
                 {
                     x.CategoryName,
                     x.DisplayOrder,
                 })
                 .ToListAsync();
+
+            if (categoryConfigs.Count == 0)
+            {
+                throw new ConflictException(
+                    "Category configuration has not been generated.");
+            }
 
             var categories = categoryConfigs
                 .GroupJoin(
