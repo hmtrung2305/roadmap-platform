@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.DTOs.Roadmaps.ContentManagement;
+using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
@@ -9,7 +10,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
 public sealed class ContentManagerRoadmapDraftService(
     ApplicationDbContext dbContext,
     ContentManagerRoadmapQueryService queryService,
-    ContentManagerRoadmapValidationService validationService)
+    ContentManagerRoadmapValidationService validationService,
+    ISkillGapCategoryConfigService skillGapCategoryConfigService)
 {
     private const string DraftStatus = "draft";
     private const string PendingReviewStatus = "pending_review";
@@ -545,6 +547,8 @@ public sealed class ContentManagerRoadmapDraftService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await skillGapCategoryConfigService.GenerateCategoryConfigurationAsync(draftVersion.RoadmapId);
+
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
@@ -750,6 +754,8 @@ public sealed class ContentManagerRoadmapDraftService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await skillGapCategoryConfigService.GenerateCategoryConfigurationAsync(draftVersion.RoadmapId);
+
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,
             draftVersion.RoadmapVersionId,
@@ -841,6 +847,8 @@ public sealed class ContentManagerRoadmapDraftService(
         draftVersion.Roadmap.UpdatedAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await skillGapCategoryConfigService.GenerateCategoryConfigurationAsync(draftVersion.RoadmapId);
 
         return await queryService.GetRoadmapDetailAsync(
             draftVersion.RoadmapId,

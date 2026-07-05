@@ -1,453 +1,239 @@
-import {
-  ASSESSMENT_LEVEL_STYLES,
-  SKILL_GAP_PRIORITY_STYLES,
-} from "../constants/skillGapConstants";
-
 export function toArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
-export function getValue(source, camelKey, pascalKey, fallback = null) {
-  return source?.[camelKey] ?? source?.[pascalKey] ?? fallback;
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
 }
 
 export function normalizeId(value) {
-  return String(value || "").trim();
+  if (value == null) return "";
+  return String(value).trim();
 }
 
-export function getPriorityNumber(value) {
-  if (typeof value === "number") return value;
-
-  const normalized = String(value || "").toLowerCase();
-  if (normalized === "critical") return 1;
-  if (normalized === "high") return 2;
-  if (normalized === "medium") return 3;
-  return 4;
+function pick(obj, keys, fallback = "") {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return fallback;
 }
 
-export function getPriorityStyle(value) {
-  return (
-    SKILL_GAP_PRIORITY_STYLES[getPriorityNumber(value)] ||
-    SKILL_GAP_PRIORITY_STYLES[4]
-  );
-}
-
-export function getAssessmentLevelStyle(levelSlug) {
-  const normalized = String(levelSlug || "").toLowerCase();
-  return ASSESSMENT_LEVEL_STYLES[normalized] || ASSESSMENT_LEVEL_STYLES.default;
-}
-
-export function getSelectionRuleLabel(selectionType) {
-  const normalized = String(selectionType || "").toLowerCase();
-  if (normalized === "complete_all" || normalized === "all") return "ALL";
-  if (normalized === "choose_many" || normalized === "count") return "COUNT";
-  if (normalized === "choose_one" || normalized === "any") return "ANY";
-  return "ANY";
-}
-
-export function getRuleDescription(group) {
-  const selectionType = group.selectionType || group.SelectionType;
-  const rule = getSelectionRuleLabel(
-    selectionType || group.completionRule || group.CompletionRule,
-  );
-  const requiredCount = group.requiredCount ?? group.requiredSkillCount ?? 1;
-  const total =
-    group.totalSkillCount ?? group.totalSkills ?? group.skills?.length ?? 0;
-
-  if (rule === "ALL") return `All ${total} required`;
-  if (rule === "COUNT") return `${requiredCount} of ${total} required`;
-  return "Any 1 required";
-}
-
-export function isGroupCompleted(group, selectedNodeIds) {
-  const selected = new Set(toArray(selectedNodeIds).map(normalizeId));
-  const skills = toArray(group.skills);
-  const matchedCount = skills.filter((skill) =>
-    selected.has(
-      normalizeId(skill.nodeId || skill.skillId || skill.id || skill.slug),
-    ),
-  ).length;
-  const total = skills.length;
-  const rule = getSelectionRuleLabel(
-    group.selectionType || group.completionRule,
-  );
-
-  if (rule === "ALL") return matchedCount === total && total > 0;
-  if (rule === "COUNT")
-    return (
-      matchedCount >= (group.requiredCount ?? group.requiredSkillCount ?? 1)
-    );
-  return matchedCount >= 1;
+function toNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 
 export function normalizeCareerRole(role) {
   if (!role) return null;
 
-  const careerRoleId =
-    getValue(role, "careerRoleId", "CareerRoleId") ??
-    getValue(role, "id", "Id");
-  const name =
-    getValue(role, "name", "Name") ??
-    getValue(role, "roleName", "RoleName") ??
-    getValue(role, "title", "Title", "Unnamed role");
-  const slug =
-    getValue(role, "slug", "Slug") ??
-    getValue(role, "careerRoleSlug", "CareerRoleSlug") ??
-    getValue(role, "roleSlug", "RoleSlug", "");
+  const careerRoleId = normalizeId(
+    pick(role, ["careerRoleId", "CareerRoleId", "id", "Id"]),
+  );
+  const name = String(pick(role, ["name", "Name", "title", "Title"], "Untitled role"));
+  const slug = String(
+    pick(role, ["slug", "Slug", "careerRoleSlug", "CareerRoleSlug", "roleSlug", "RoleSlug"], ""),
+  );
 
   return {
     ...role,
     careerRoleId,
-    id: getValue(role, "id", "Id", careerRoleId),
+    id: careerRoleId,
     name,
-    slug: String(slug || "").trim(),
-    description: getValue(role, "description", "Description", ""),
+    slug,
   };
 }
 
-export function normalizeCareerRoles(response) {
-  return toArray(response).map(normalizeCareerRole).filter(Boolean);
+export function normalizeCareerRoles(roles) {
+  return toArray(roles).map(normalizeCareerRole).filter(Boolean);
 }
 
-export function normalizeAssessmentLevel(level) {
-  if (!level) return null;
+export function normalizeRoadmapOption(roadmap) {
+  if (!roadmap) return null;
 
-  const levelId = getValue(level, "levelId", "LevelId");
-  const levelName = getValue(
-    level,
-    "levelName",
-    "LevelName",
-    getValue(level, "name", "Name", "Assessment level"),
+  const roadmapId = normalizeId(pick(roadmap, ["roadmapId", "RoadmapId", "id", "Id"]));
+  const publishedRoadmapVersionId = normalizeId(
+    pick(roadmap, ["publishedRoadmapVersionId", "PublishedRoadmapVersionId"]),
   );
-  const slug = getValue(
-    level,
-    "slug",
-    "Slug",
-    getValue(level, "levelSlug", "LevelSlug", ""),
+  const title = String(
+    pick(roadmap, ["title", "Title", "roadmapName", "RoadmapName", "name", "Name"], "Untitled roadmap"),
   );
-  const groupCount = getValue(level, "groupCount", "GroupCount", null);
 
   return {
-    ...level,
-    levelId,
-    id: levelId,
-    levelName,
-    name: levelName,
-    slug: String(slug || "").trim(),
-    groupCount,
+    ...roadmap,
+    roadmapId,
+    id: roadmapId,
+    publishedRoadmapVersionId,
+    title,
+    roadmapName: String(pick(roadmap, ["roadmapName", "RoadmapName"], title)),
+    careerRoleName: String(pick(roadmap, ["careerRoleName", "CareerRoleName"], "")),
+    authorName: String(pick(roadmap, ["authorName", "AuthorName"], "")),
+    roadmapVersionTitle: String(pick(roadmap, ["roadmapVersionTitle", "RoadmapVersionTitle"], "")),
+    versionNumber: toNumber(pick(roadmap, ["versionNumber", "VersionNumber", "roadmapVersionNumber", "RoadmapVersionNumber"]), 0),
+    roadmapVersionNumber: toNumber(pick(roadmap, ["roadmapVersionNumber", "RoadmapVersionNumber", "versionNumber", "VersionNumber"]), 0),
+    publishedAt: pick(roadmap, ["publishedAt", "PublishedAt"], null),
+    totalSkills: toNumber(pick(roadmap, ["totalSkills", "TotalSkills"], 0), 0),
   };
 }
 
-export function normalizeAssessmentLevels(response) {
-  return toArray(response)
-    .map(normalizeAssessmentLevel)
-    .filter((level) => level?.slug);
+export function normalizeRoadmapOptions(roadmaps) {
+  return toArray(roadmaps).map(normalizeRoadmapOption).filter((item) => item?.roadmapId);
 }
 
 export function normalizeAssessmentSkill(skill) {
-  const nodeId = normalizeId(
-    getValue(skill, "nodeId", "NodeId") ??
-      getValue(skill, "skillId", "SkillId") ??
-      getValue(skill, "id", "Id") ??
-      getValue(skill, "slug", "Slug"),
-  );
+  if (!skill) return null;
+
+  const skillId = normalizeId(pick(skill, ["skillId", "SkillId", "id", "Id"]));
+  const skillName = String(pick(skill, ["skillName", "SkillName", "name", "Name"], "Untitled skill"));
 
   return {
     ...skill,
-    nodeId,
-    skillId: nodeId,
-    id: nodeId,
-    name: getValue(skill, "name", "Name", "Unnamed skill"),
-    slug: getValue(skill, "slug", "Slug", nodeId),
+    skillId,
+    id: skillId,
+    skillName,
+    name: skillName,
+    isMatched: Boolean(pick(skill, ["isMatched", "IsMatched"], false)),
   };
 }
 
-export function normalizeAssessmentGroups(response) {
-  const groups = toArray(
-    getValue(
-      response,
-      "groups",
-      "Groups",
-      getValue(response, "skillGroups", "SkillGroups", response),
-    ),
+export function normalizeAssessmentCategory(category) {
+  if (!category) return null;
+
+  const categoryName = String(
+    pick(category, ["categoryName", "CategoryName", "name", "Name"], "Uncategorized"),
   );
+  const skills = toArray(pick(category, ["skills", "Skills"], []))
+    .map(normalizeAssessmentSkill)
+    .filter((skill) => skill?.skillId);
 
-  return groups.map((group, index) => {
-    const groupId = normalizeId(
-      getValue(group, "groupId", "GroupId") ??
-        getValue(group, "skillGroupId", "SkillGroupId") ??
-        getValue(group, "id", "Id") ??
-        getValue(group, "groupSlug", "GroupSlug") ??
-        index,
-    );
-    const selectionType = getValue(
-      group,
-      "selectionType",
-      "SelectionType",
-      "choose_one",
-    );
-    const requiredCount = getValue(
-      group,
-      "requiredCount",
-      "RequiredCount",
-      getValue(group, "requiredSkillCount", "RequiredSkillCount", null),
-    );
-    const skills = toArray(getValue(group, "skills", "Skills")).map(
-      normalizeAssessmentSkill,
-    );
-
-    return {
-      ...group,
-      groupId,
-      skillGroupId: groupId,
-      groupName: getValue(group, "groupName", "GroupName", "Unnamed group"),
-      groupSlug: getValue(group, "groupSlug", "GroupSlug", ""),
-      phaseName: getValue(group, "phaseName", "PhaseName", ""),
-      sortOrder: Number(getValue(group, "sortOrder", "SortOrder", index)),
-      priority: getPriorityNumber(index < 2 ? 1 : index < 5 ? 2 : 3),
-      selectionType,
-      completionRule: getSelectionRuleLabel(selectionType),
-      requiredCount,
-      requiredSkillCount: requiredCount,
-      requirementDescription: getRuleDescription({
-        selectionType,
-        requiredCount,
-        totalSkillCount: skills.length,
-        skills,
-      }),
-      skills,
-    };
-  });
+  return {
+    ...category,
+    categoryName,
+    name: categoryName,
+    displayOrder: toNumber(pick(category, ["displayOrder", "DisplayOrder"], 0), 0),
+    totalSkills: toNumber(pick(category, ["totalSkills", "TotalSkills"], skills.length), skills.length),
+    matchedSkills: toNumber(pick(category, ["matchedSkills", "MatchedSkills"], skills.filter((skill) => skill.isMatched).length), 0),
+    missingSkills: toNumber(pick(category, ["missingSkills", "MissingSkills"], Math.max(0, skills.length - skills.filter((skill) => skill.isMatched).length)), 0),
+    skills,
+  };
 }
 
-function buildSelectedSkillNameMap(groups, selectedNodeIds) {
-  const selected = new Set(toArray(selectedNodeIds).map(normalizeId));
-  const nameMap = new Map();
+export function normalizeAssessmentCategories(input) {
+  const rawCategories = Array.isArray(input)
+    ? input
+    : toArray(pick(input, ["categories", "Categories"], []));
 
-  toArray(groups).forEach((group) => {
-    toArray(group.skills).forEach((skill) => {
-      const nodeId = normalizeId(
-        skill.nodeId || skill.skillId || skill.id || skill.slug,
-      );
-      if (selected.has(nodeId)) {
-        nameMap.set(nodeId, skill.name || skill.slug || nodeId);
-      }
-    });
-  });
-
-  return nameMap;
+  return rawCategories
+    .map(normalizeAssessmentCategory)
+    .filter(Boolean)
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.categoryName.localeCompare(right.categoryName));
 }
 
-export function normalizeSkillItems(value) {
-  return toArray(value)
-    .map((item) => {
-      if (typeof item === "string") return item;
+export function normalizeAssessmentResponse(response) {
+  if (!response) return null;
 
-      const nodeId = getValue(
-        item,
-        "nodeId",
-        "NodeId",
-        getValue(item, "skillId", "SkillId", getValue(item, "id", "Id", "")),
-      );
-      const name = getValue(
-        item,
-        "name",
-        "Name",
-        getValue(
-          item,
-          "title",
-          "Title",
-          getValue(item, "slug", "Slug", "Unnamed skill"),
-        ),
-      );
-      const slug = getValue(item, "slug", "Slug", "");
-
-      return {
-        ...item,
-        nodeId,
-        skillId: nodeId,
-        id: nodeId,
-        name,
-        slug,
-      };
-    })
-    .filter((item) => (typeof item === "string" ? item.trim() : item?.name));
-}
-
-export function normalizeMissingSkills(value) {
-  return normalizeSkillItems(value);
-}
-
-export function normalizeSkillGapResult(rawResult, context = {}) {
-  if (!rawResult) return null;
-
-  const selected = new Set(toArray(context.selectedNodeIds).map(normalizeId));
-  const selectedNameMap = buildSelectedSkillNameMap(
-    context.groups,
-    context.selectedNodeIds,
-  );
-
-  const groups = toArray(getValue(rawResult, "groups", "Groups")).map(
-    (group, index) => {
-      const groupId = normalizeId(
-        getValue(group, "groupId", "GroupId") ??
-          getValue(group, "skillGroupId", "SkillGroupId") ??
-          `${getValue(group, "groupName", "GroupName", "group")}-${index}`,
-      );
-      const selectionType = getValue(
-        group,
-        "selectionType",
-        "SelectionType",
-        "choose_one",
-      );
-      const totalSkillCount = Number(
-        getValue(
-          group,
-          "totalSkills",
-          "TotalSkills",
-          getValue(group, "totalSkillCount", "TotalSkillCount", 0),
-        ),
-      );
-      const matchedSkillCount = Number(
-        getValue(
-          group,
-          "matchedSkills",
-          "MatchedSkills",
-          getValue(group, "matchedSkillCount", "MatchedSkillCount", 0),
-        ),
-      );
-      const matchingAssessmentGroup = toArray(context.groups).find(
-        (item) =>
-          normalizeId(item.groupId || item.skillGroupId) === groupId ||
-          item.groupName === getValue(group, "groupName", "GroupName"),
-      );
-      const matchedSkillItems = normalizeSkillItems(
-        getValue(
-          group,
-          "matchedSkillItems",
-          "MatchedSkillItems",
-          getValue(group, "alreadyHaveSkills", "AlreadyHaveSkills", []),
-        ),
-      );
-      const matchedSkills =
-        matchedSkillItems.length > 0
-          ? matchedSkillItems
-          : toArray(matchingAssessmentGroup?.skills)
-              .filter((skill) =>
-                selected.has(
-                  normalizeId(
-                    skill.nodeId || skill.skillId || skill.id || skill.slug,
-                  ),
-                ),
-              )
-              .map((skill) => ({
-                nodeId: skill.nodeId || skill.skillId || skill.id || skill.slug,
-                name:
-                  skill.name || selectedNameMap.get(skill.nodeId) || skill.slug,
-                slug: skill.slug || skill.nodeId || skill.skillId || skill.id,
-              }))
-              .filter((skill) => skill.name);
-
-      return {
-        ...group,
-        groupId,
-        skillGroupId: groupId,
-        groupName: getValue(group, "groupName", "GroupName", "Unnamed group"),
-        phaseName: getValue(group, "phaseName", "PhaseName", ""),
-        sortOrder: Number(getValue(group, "sortOrder", "SortOrder", index)),
-        priority: getPriorityNumber(index < 2 ? 1 : index < 5 ? 2 : 3),
-        learningPriority: getPriorityNumber(index < 2 ? 1 : index < 5 ? 2 : 3),
-        matchedSkillCount,
-        totalSkillCount,
-        completionRule: getSelectionRuleLabel(selectionType),
-        selectionType,
-        requiredCount: getValue(group, "requiredCount", "RequiredCount", null),
-        requiredSkillCount: getValue(
-          group,
-          "requiredCount",
-          "RequiredCount",
-          null,
-        ),
-        isCompleted: Boolean(
-          getValue(group, "isCompleted", "IsCompleted", false),
-        ),
-        matchedSkillItems,
-        alreadyHaveSkills: matchedSkills,
-        matchedSkills,
-        suggestedSkills: normalizeMissingSkills(
-          getValue(
-            group,
-            "missingSkills",
-            "MissingSkills",
-            getValue(group, "suggestedSkills", "SuggestedSkills", []),
-          ),
-        ),
-      };
-    },
-  );
-
-  const totalSkills = Number(
-    getValue(
-      rawResult,
-      "totalSkills",
-      "TotalSkills",
-      groups.reduce((sum, group) => sum + group.totalSkillCount, 0),
-    ),
-  );
-  const matchedSkills = Number(
-    getValue(
-      rawResult,
-      "matchedSkills",
-      "MatchedSkills",
-      groups.reduce((sum, group) => sum + group.matchedSkillCount, 0),
-    ),
-  );
-  const totalGroups = Number(
-    getValue(rawResult, "totalGroups", "TotalGroups", groups.length),
-  );
-  const completedGroups = Number(
-    getValue(rawResult, "completedGroups", "CompletedGroups", 0),
-  );
-  const missingSkills = Number(
-    getValue(
-      rawResult,
-      "missingSkills",
-      "MissingSkills",
-      Math.max(totalSkills - matchedSkills, 0),
-    ),
+  const roadmapId = normalizeId(pick(response, ["roadmapId", "RoadmapId", "id", "Id"]));
+  const roadmapName = String(
+    pick(response, ["roadmapName", "RoadmapName", "title", "Title"], "Selected roadmap"),
   );
 
   return {
-    ...rawResult,
-    careerRoleName: getValue(
-      rawResult,
-      "careerRoleName",
-      "CareerRoleName",
-      "Selected role",
+    ...response,
+    roadmapId,
+    roadmapName,
+    careerRoleName: String(pick(response, ["careerRoleName", "CareerRoleName"], "")),
+    roadmapVersionTitle: String(pick(response, ["roadmapVersionTitle", "RoadmapVersionTitle"], "")),
+    roadmapVersionNumber: toNumber(pick(response, ["roadmapVersionNumber", "RoadmapVersionNumber"], 0), 0),
+    authorName: String(pick(response, ["authorName", "AuthorName"], "")),
+    categories: normalizeAssessmentCategories(response),
+  };
+}
+
+export function normalizeSkillGapResult(response) {
+  if (!response) return null;
+
+  const categories = normalizeAssessmentCategories(response);
+  const roadmapId = normalizeId(pick(response, ["roadmapId", "RoadmapId", "id", "Id"]));
+  const totalSkills = toNumber(
+    pick(response, ["totalSkills", "TotalSkills"], categories.reduce((sum, category) => sum + category.skills.length, 0)),
+    0,
+  );
+  const matchedSkills = toNumber(
+    pick(response, ["matchedSkills", "MatchedSkills"], categories.reduce((sum, category) => sum + category.skills.filter((skill) => skill.isMatched).length, 0)),
+    0,
+  );
+
+  return {
+    ...response,
+    skillGapAnalysisHistoryId: normalizeId(
+      pick(response, ["skillGapAnalysisHistoryId", "SkillGapAnalysisHistoryId", "historyId", "HistoryId"]),
     ),
-    levelName: getValue(
-      rawResult,
-      "levelName",
-      "LevelName",
-      "Assessment level",
+    roadmapId,
+    roadmapName: String(
+      pick(response, ["roadmapName", "RoadmapName", "roadmapTitle", "RoadmapTitle", "title", "Title"], "Selected roadmap"),
     ),
-    levelSlug: getValue(rawResult, "levelSlug", "LevelSlug", ""),
-    totalSkills,
+    careerRoleName: String(pick(response, ["careerRoleName", "CareerRoleName"], "")),
+    roadmapVersionTitle: String(pick(response, ["roadmapVersionTitle", "RoadmapVersionTitle"], "")),
+    roadmapVersionNumber: toNumber(pick(response, ["roadmapVersionNumber", "RoadmapVersionNumber"], 0), 0),
+    authorName: String(pick(response, ["authorName", "AuthorName"], "")),
     matchedSkills,
-    missingSkills,
-    totalGroups,
-    completedGroups,
-    missingGroups: Number(
-      getValue(
-        rawResult,
-        "missingGroups",
-        "MissingGroups",
-        Math.max(totalGroups - completedGroups, 0),
-      ),
+    totalSkills,
+    missingSkills: toNumber(pick(response, ["missingSkills", "MissingSkills"], Math.max(0, totalSkills - matchedSkills)), 0),
+    categories,
+  };
+}
+
+export function normalizeSkillGapHistoryItem(item) {
+  if (!item) return null;
+
+  return {
+    ...item,
+    skillGapAnalysisHistoryId: normalizeId(
+      pick(item, ["skillGapAnalysisHistoryId", "SkillGapAnalysisHistoryId", "historyId", "HistoryId", "id", "Id"]),
     ),
-    groups,
-    missingGroupList: groups
-      .filter((group) => !group.isCompleted)
-      .map((group) => group.groupName),
+    roadmapId: normalizeId(pick(item, ["roadmapId", "RoadmapId"])),
+    roadmapTitle: String(pick(item, ["roadmapTitle", "RoadmapTitle", "roadmapName", "RoadmapName"], "Untitled roadmap")),
+    careerRoleName: String(pick(item, ["careerRoleName", "CareerRoleName"], "")),
+    authorName: String(pick(item, ["authorName", "AuthorName"], "")),
+    matchedSkills: toNumber(pick(item, ["matchedSkills", "MatchedSkills"], 0), 0),
+    totalSkills: toNumber(pick(item, ["totalSkills", "TotalSkills"], 0), 0),
+    missingSkills: toNumber(pick(item, ["missingSkills", "MissingSkills"], 0), 0),
+    createdAt: pick(item, ["createdAt", "CreatedAt"], null),
+  };
+}
+
+export function normalizeSkillGapHistory(items) {
+  return toArray(items).map(normalizeSkillGapHistoryItem).filter(Boolean);
+}
+
+export function getRoadmapId(roadmap) {
+  return normalizeId(roadmap?.roadmapId || roadmap?.RoadmapId || roadmap?.id || roadmap?.Id);
+}
+
+export function getRoleSlug(role) {
+  return String(role?.slug || role?.Slug || role?.careerRoleSlug || role?.CareerRoleSlug || "").trim();
+}
+
+export function formatDateTime(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function getSelectionSummary(categories, selectedSkillIds) {
+  const selectedSet = new Set(toArray(selectedSkillIds).map(normalizeId).filter(Boolean));
+  const allSkills = normalizeAssessmentCategories(categories).flatMap((category) => category.skills);
+
+  return {
+    selectedCount: allSkills.filter((skill) => selectedSet.has(skill.skillId)).length,
+    totalCount: allSkills.length,
   };
 }

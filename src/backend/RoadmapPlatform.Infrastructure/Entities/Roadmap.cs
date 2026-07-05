@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
@@ -28,4 +28,8 @@ public partial class Roadmap
     public virtual User? OwnerUser { get; set; }
 
     public virtual ICollection<RoadmapVersion> RoadmapVersions { get; set; } = new List<RoadmapVersion>();
+
+    public virtual ICollection<SkillGapAnalysisHistory> SkillGapAnalysisHistories { get; set; } = new List<SkillGapAnalysisHistory>();
+
+    public virtual ICollection<SkillGapCategoryConfig> SkillGapCategoryConfigs { get; set; } = new List<SkillGapCategoryConfig>();
 }

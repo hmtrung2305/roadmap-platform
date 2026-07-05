@@ -5,6 +5,7 @@ const encode = (value) => encodeURIComponent(String(value || ""));
 function normalizeArray(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
   return [];
 }
 
@@ -14,23 +15,24 @@ export const skillGapApi = {
     return normalizeArray(response.data);
   },
 
-  getAssessmentLevels: async (careerRoleSlug) => {
-    const response = await axiosClient.get(`/skill-gap/${encode(careerRoleSlug)}/levels`);
+  getPublishedRoadmapsByRole: async (careerRoleSlug) => {
+    const response = await axiosClient.get(
+      `/skill-gap/career-roles/${encode(careerRoleSlug)}/roadmaps`,
+    );
     return normalizeArray(response.data);
   },
 
-  getAssessmentByLevel: async (careerRoleSlug, levelSlug) => {
+  getAssessmentByRoadmap: async (roadmapId) => {
     const response = await axiosClient.get(
-      `/skill-gap/${encode(careerRoleSlug)}/assessment/${encode(levelSlug)}`,
+      `/skill-gap/roadmaps/${encode(roadmapId)}/assessment`,
     );
     return response.data;
   },
 
-  analyzeSkillGap: async ({ careerRoleSlug, levelSlug, selectedNodeIds = [] }) => {
-    const response = await axiosClient.post("/skill-gap/analyze", {
-      careerRoleSlug,
-      levelSlug,
-      selectedNodeIds,
+  analyzeSkillGap: async ({ roadmapId, selectedSkillIds = [] }) => {
+    const response = await axiosClient.post("/me/skill-gap/analyze", {
+      roadmapId,
+      selectedSkillIds,
     });
 
     return response.data;
@@ -42,7 +44,9 @@ export const skillGapApi = {
   },
 
   getHistoryDetail: async (historyId) => {
-    const response = await axiosClient.get(`/me/skill-gap/history/${encode(historyId)}`);
+    const response = await axiosClient.get(
+      `/me/skill-gap/history/${encode(historyId)}`,
+    );
     return response.data;
   },
 
@@ -50,22 +54,25 @@ export const skillGapApi = {
     await axiosClient.delete(`/me/skill-gap/history/${encode(historyId)}`);
   },
 
-  getAdminAssessmentLevels: async (careerRoleSlug) => {
-    const response = await axiosClient.get(`/content/skill-gap/${encode(careerRoleSlug)}/levels`);
+  getMyPublishedRoadmaps: async () => {
+    const response = await axiosClient.get("/content/published-roadmaps");
     return normalizeArray(response.data);
   },
 
-  getAdminGroupsByLevel: async (careerRoleSlug, levelSlug) => {
+  getRoadmapCategories: async (roadmapId) => {
     const response = await axiosClient.get(
-      `/content/skill-gap/${encode(careerRoleSlug)}/levels/${encode(levelSlug)}/groups`,
+      `/content/roadmaps/${encode(roadmapId)}/categories`,
     );
     return response.data;
   },
 
-  updateAdminGroupsByLevel: async ({ careerRoleSlug, levelSlug, groupIds = [] }) => {
+  updateRoadmapCategories: async ({ roadmapId, categories = [] }) => {
     await axiosClient.put(
-      `/content/skill-gap/${encode(careerRoleSlug)}/levels/${encode(levelSlug)}/groups`,
-      { groupIds },
+      `/content/roadmaps/${encode(roadmapId)}/categories`,
+      categories.map((category, index) => ({
+        categoryName: category.categoryName,
+        displayOrder: category.displayOrder ?? index + 1,
+      })),
     );
   },
 };

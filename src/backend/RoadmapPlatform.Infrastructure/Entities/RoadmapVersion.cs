@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
@@ -56,4 +56,8 @@ public partial class RoadmapVersion
     public virtual ICollection<RoadmapNode> RoadmapNodes { get; set; } = new List<RoadmapNode>();
 
     public virtual ICollection<RoadmapVersionReviewEvent> RoadmapVersionReviewEvents { get; set; } = new List<RoadmapVersionReviewEvent>();
+
+    public virtual ICollection<SkillGapAnalysisHistory> SkillGapAnalysisHistories { get; set; } = new List<SkillGapAnalysisHistory>();
+
+    public virtual ICollection<SkillGapCategoryConfig> SkillGapCategoryConfigs { get; set; } = new List<SkillGapCategoryConfig>();
 }

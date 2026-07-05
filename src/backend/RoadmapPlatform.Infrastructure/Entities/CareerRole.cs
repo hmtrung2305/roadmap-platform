@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
@@ -20,8 +20,6 @@ public partial class CareerRole
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
-
-    public virtual ICollection<AssessmentLevel> AssessmentLevels { get; set; } = new List<AssessmentLevel>();
 
     public virtual ICollection<Roadmap> Roadmaps { get; set; } = new List<Roadmap>();
 

@@ -8,7 +8,6 @@ using RoadmapPlatform.Application.Interfaces;
 using RoadmapPlatform.Application.Interfaces.AiCredits;
 using RoadmapPlatform.Application.Interfaces.AiMentor;
 using RoadmapPlatform.Application.Interfaces.Auth;
-using RoadmapPlatform.Application.Interfaces.CareerRoleSkill;
 using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 using RoadmapPlatform.Application.Interfaces.GitHub;
 using RoadmapPlatform.Application.Interfaces.Identity;
@@ -19,6 +18,7 @@ using RoadmapPlatform.Application.Interfaces.Portfolio;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 using RoadmapPlatform.Application.Interfaces.Security;
 using RoadmapPlatform.Application.Interfaces.Skills;
+using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Application.Interfaces.Streaks;
 using RoadmapPlatform.Application.Interfaces.Users;
@@ -32,7 +32,6 @@ using RoadmapPlatform.Infrastructure.Services.AiCredits;
 using RoadmapPlatform.Infrastructure.Services.AiMentor;
 using RoadmapPlatform.Infrastructure.Services.Auth;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps.ContentManagement;
-using RoadmapPlatform.Infrastructure.Services.CareerRoleSkill;
 using RoadmapPlatform.Infrastructure.Services.Email;
 using RoadmapPlatform.Infrastructure.Services.GitHub;
 using RoadmapPlatform.Infrastructure.Services.Identity;
@@ -43,6 +42,7 @@ using RoadmapPlatform.Infrastructure.Services.Portfolio;
 using RoadmapPlatform.Infrastructure.Services.Roadmaps;
 using RoadmapPlatform.Infrastructure.Services.Security;
 using RoadmapPlatform.Infrastructure.Services.Skills;
+using RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis;
 using RoadmapPlatform.Infrastructure.Services.Storage;
 using RoadmapPlatform.Infrastructure.Services.Streaks;
 using RoadmapPlatform.Infrastructure.Services.Users;
@@ -80,6 +80,8 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // AI, RAG Settings
             services.Configure<LearningModuleRagSettings>(configuration.GetSection("Rag"));
+            services.Configure<LearningModuleIndexingSettings>(
+                configuration.GetSection(LearningModuleIndexingSettings.SectionName));
             services.Configure<AiSettings>(configuration.GetSection("Ai"));
             services.Configure<CaptchaSettings>(configuration.GetSection("Captcha"));
             services.Configure<MarketPulseSettings>(configuration.GetSection("MarketPulse"));
@@ -190,7 +192,14 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<ILearningModuleQuizService, LearningModuleQuizService>();
             services.AddScoped<ILearnerLearningModuleService, LearnerLearningModuleService>();
             services.AddScoped<ILearningModuleChatService, LearningModuleChatService>();
-            services.AddHostedService<LearningModuleIndexingWorker>();
+            var learningModuleIndexingEnabled =
+                configuration.GetValue<bool?>($"{LearningModuleIndexingSettings.SectionName}:Enabled") ?? true;
+            var aiApiKeyConfigured = !string.IsNullOrWhiteSpace(configuration.GetValue<string>("Ai:ApiKey"));
+
+            if (learningModuleIndexingEnabled && aiApiKeyConfigured)
+            {
+                services.AddHostedService<LearningModuleIndexingWorker>();
+            }
 
             // Cache memory
             services.AddMemoryCache();
@@ -200,8 +209,12 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
             services.AddScoped<IAuthorizationHandler, AnyPermissionHandler>();
 
-            // Skill gap, Career role skill
+            // Skill gap analysis
             services.AddScoped<ISkillGapAnalysisService, SkillGapAnalysisService>();
+            services.AddScoped<ISkillGapCatalogService, SkillGapCatalogService>();
+            services.AddScoped<ISkillGapAssessmentService, SkillGapAssessmentService>();
+            services.AddScoped<ISkillGapCategoryConfigService, SkillGapCategoryConfigService>();
+            services.AddScoped<ISkillGapHistoryService, SkillGapHistoryService>();
 
             // Ai Mentor Chat
             services.AddScoped<IAiMentorService, AiMentorService>();

@@ -8,6 +8,8 @@ public sealed class FileStorageSettings
 
     public string LocalFolder { get; set; } = "storage";
 
+    public string? ReadFallbackFolder { get; set; }
+
     public SupabaseFileStorageSettings Supabase { get; set; } = new();
 }
 

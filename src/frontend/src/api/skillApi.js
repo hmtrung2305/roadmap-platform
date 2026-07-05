@@ -57,14 +57,23 @@ export function clearSkillApiCache(skillId = null) {
 }
 
 export const skillApi = {
-  searchSkills: async ({ search = "", category = "", limit = 20, offset = 0 } = {}) => {
+  searchSkills: async ({
+    search = "",
+    category = "",
+    sort = "",
+    limit = 20,
+    offset = 0,
+    signal,
+  } = {}) => {
     const response = await axiosClient.get("/skills", {
       params: {
         search: search || undefined,
         category: category || undefined,
+        sort: sort || undefined,
         limit,
         offset,
       },
+      signal,
     });
 
     const items = rememberSkills(

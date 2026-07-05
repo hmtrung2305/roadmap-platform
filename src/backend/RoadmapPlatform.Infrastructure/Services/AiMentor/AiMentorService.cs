@@ -448,12 +448,12 @@ public sealed class AiMentorService : IAiMentorService
             .Take(SkillGapHistoryLimit)
             .Select(history => new
             {
-                history.CareerRoleName,
-                history.LevelName,
+                CareerRoleName = history.CareerRoleNameSnapshot,
+                RoadmapTitle = history.RoadmapTitleSnapshot,
+                RoadmapVersionTitle = history.RoadmapVersionTitleSnapshot,
                 history.MatchedSkills,
                 history.TotalSkills,
                 history.MissingSkills,
-                history.RoadmapVersionTitle,
                 history.CreatedAt
             })
             .ToListAsync(cancellationToken);
@@ -470,7 +470,7 @@ public sealed class AiMentorService : IAiMentorService
         foreach (var history in skillGapHistories)
         {
             builder.AppendLine(
-                $"- {history.CareerRoleName} / {history.LevelName}: {history.MatchedSkills}/{history.TotalSkills} matched, {history.MissingSkills} missing skills. Roadmap: {history.RoadmapVersionTitle}. Created at {history.CreatedAt:u}");
+                $"- {history.CareerRoleName} / {history.RoadmapTitle}: {history.MatchedSkills}/{history.TotalSkills} matched, {history.MissingSkills} missing skills. Roadmap version: {history.RoadmapVersionTitle}. Created at {history.CreatedAt:u}");
         }
 
         sources.Add(new AiMentorSourceDto
