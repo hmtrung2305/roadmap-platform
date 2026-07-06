@@ -3,6 +3,10 @@ using RoadmapPlatform.Application.Constants;
 
 namespace RoadmapPlatform.Api.Authorization;
 
+
+/// <summary>
+/// 
+/// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
 public sealed class RequirePermissionAttribute : AuthorizeAttribute
 {
