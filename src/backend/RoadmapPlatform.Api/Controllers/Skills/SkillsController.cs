@@ -31,7 +31,6 @@ public sealed class SkillsController(ISkillLookupService skillLookupService) : C
         return Ok(result);
     }
 
-
     [HttpGet("suggestions")]
     [RequirePermission(PermissionConstant.SKILL_VIEW_CATALOG)]
     [ProducesResponseType(typeof(IReadOnlyList<SkillLookupDto>), StatusCodes.Status200OK)]

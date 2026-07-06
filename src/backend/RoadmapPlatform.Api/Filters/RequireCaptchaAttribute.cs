@@ -1,9 +1,9 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.Interfaces.Security;
-using System.Reflection;
 
 namespace RoadmapPlatform.Api.Filters;
 
@@ -71,9 +71,7 @@ public sealed class RequireCaptchaAttribute : Attribute, IAsyncActionFilter
                 .GetType()
                 .GetProperty(
                     nameof(ICaptchaProtectedRequest.CaptchaToken),
-                    BindingFlags.Instance |
-                    BindingFlags.Public |
-                    BindingFlags.IgnoreCase);
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
 
             if (captchaTokenProperty?.PropertyType == typeof(string))
             {

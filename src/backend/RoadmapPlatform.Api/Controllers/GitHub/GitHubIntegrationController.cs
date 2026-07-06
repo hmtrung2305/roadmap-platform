@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using RoadmapPlatform.Api.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
+using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Constants;

@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
@@ -18,7 +18,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
             _skillGapHistoryService = skillGapHistoryService;
         }
 
-
         [Authorize]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF)]
         [HttpGet("me/skill-gap/history")]
@@ -31,8 +30,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 
             return Ok(result);
         }
-
-
 
         [Authorize]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_HISTORY_VIEW_SELF)]
@@ -48,7 +45,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 
             return Ok(result);
         }
-
 
         [Authorize]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_HISTORY_DELETE_SELF)]

@@ -116,7 +116,6 @@ public sealed class LearningModulesController(
         return Ok(result);
     }
 
-
     [HttpGet("{moduleId:guid}/quiz/attempts")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_QUIZ_ATTEMPT_VIEW_SELF)]
     [ProducesResponseType(typeof(IReadOnlyList<QuizAttemptSummaryDto>), StatusCodes.Status200OK)]

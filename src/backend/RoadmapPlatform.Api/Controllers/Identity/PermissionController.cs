@@ -70,7 +70,8 @@ namespace RoadmapPlatform.Api.Controllers.Identity
         {
             var permission = await _permissionService.CreatePermissionAsync(request);
 
-            return CreatedAtAction(nameof(GetPermissionById),
+            return CreatedAtAction(
+                nameof(GetPermissionById),
                 new
                 {
                     id = permission.PermissionId

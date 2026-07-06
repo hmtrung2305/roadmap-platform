@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.Interfaces.Streaks;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.Users
 {
@@ -16,6 +16,7 @@ namespace RoadmapPlatform.Api.Controllers.Users
         {
             _streakService = streakService;
         }
+
         [HttpGet]
         [RequirePermission(PermissionConstant.STREAK_VIEW_SELF)]
         public async Task<IActionResult> GetStreak()

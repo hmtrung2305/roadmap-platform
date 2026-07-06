@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.Constants;
@@ -11,8 +11,8 @@ namespace RoadmapPlatform.Api.Controllers.System
     [Route("api/[controller]")]
     public class HomeController : ControllerBase
     {
-
         private readonly ApplicationDbContext _context;
+
         public HomeController(ApplicationDbContext context)
         {
             _context = context;

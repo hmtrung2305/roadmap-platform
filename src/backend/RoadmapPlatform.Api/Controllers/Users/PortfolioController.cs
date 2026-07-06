@@ -24,6 +24,5 @@ namespace RoadmapPlatform.Api.Controllers.Users
 
             return Ok(portfolio);
         }
-
     }
 }

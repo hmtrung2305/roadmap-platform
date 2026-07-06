@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.SkillGapAnalysis.CategoryConfig;
 using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
@@ -18,7 +18,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
         {
             _skillGapCategoryConfigService = skillGapCategoryConfigService;
         }
-
 
         [Authorize]
         [RequirePermission(PermissionConstant.SKILL_GAP_CONFIG_VIEW_ANY)]
@@ -38,7 +37,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
         [HttpPut("content/roadmaps/{roadmapId:guid}/categories")]
         public async Task<IActionResult> UpdateCategoryConfiguration(Guid roadmapId, [FromBody] List<UpdateCategoryDisplayOrderDto> request)
         {
-
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             await _skillGapCategoryConfigService

@@ -103,7 +103,6 @@ namespace RoadmapPlatform.Api.Controllers.Auth
             return Ok(response);
         }
 
-
         [HttpPost("local/email/resend-verification")]
         [EnableRateLimiting(RateLimitPolicyNames.AuthStrict)]
         [Authorize]
