@@ -2,11 +2,15 @@ root = true
 
 [*.cs]
 
+dotnet_diagnostic.SA1009.severity = none
 dotnet_diagnostic.SA1010.severity = none
+dotnet_diagnostic.SA1011.severity = none
 
 dotnet_diagnostic.SA1101.severity = none
 
 dotnet_diagnostic.SA1200.severity = none
+
+dotnet_diagnostic.SA1309.severity = none
 
 dotnet_diagnostic.SA1413.severity = none
 

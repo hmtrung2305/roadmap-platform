@@ -18,7 +18,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
             _skillGapAssessmentService = skillGapAssessmentService;
         }
 
-
         [Authorize]
         [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
         [HttpGet("skill-gap/roadmaps/{roadmapId:guid}/assessment")]

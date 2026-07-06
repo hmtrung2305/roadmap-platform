@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.SkillGapAnalysis.Analysis;
 using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
-using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGap
 {
@@ -19,13 +19,11 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
             _skillGapAnalysisService = skillGapAnalysisService;
         }
 
-
         [Authorize]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_CREATE_SELF)]
         [HttpPost("me/skill-gap/analyze")]
         public async Task<IActionResult> Analyze(AnalyzeSkillGapRequestDto request)
         {
-
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var result = await _skillGapAnalysisService
@@ -33,7 +31,5 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
 
             return Ok(result);
         }
-
-
     }
 }

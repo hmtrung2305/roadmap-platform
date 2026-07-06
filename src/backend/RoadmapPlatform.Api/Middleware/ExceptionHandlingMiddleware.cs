@@ -32,7 +32,9 @@ namespace RoadmapPlatform.Api.Middleware
 
                 if (response.Status >= StatusCodes.Status500InternalServerError)
                 {
-                    _logger.LogError(ex, "Unhandled exception while processing request {Method} {Path}.",
+                    _logger.LogError(
+                        ex,
+                        "Unhandled exception while processing request {Method} {Path}.",
                         context.Request.Method,
                         context.Request.Path);
                 }

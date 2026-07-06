@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoadmapPlatform.Api.Authorization;
@@ -7,7 +8,6 @@ using RoadmapPlatform.Api.Responses;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.LearningModules;
 using RoadmapPlatform.Application.Interfaces.LearningModules;
-using System.Text.Json;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 

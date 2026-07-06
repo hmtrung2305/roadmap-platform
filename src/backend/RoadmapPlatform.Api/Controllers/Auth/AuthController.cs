@@ -1,10 +1,9 @@
 using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Configuration;
 using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Api.Filters;
 using RoadmapPlatform.Api.Responses;

@@ -11,11 +11,11 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
     public class SkillGapCatalogController : ControllerBase
     {
         private readonly ISkillGapCatalogService _skillGapCatalogService;
-        public SkillGapCatalogController (ISkillGapCatalogService skillGapCatalogService)
+
+        public SkillGapCatalogController(ISkillGapCatalogService skillGapCatalogService)
         {
             _skillGapCatalogService = skillGapCatalogService;
         }
-
 
         [Authorize]
         [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
@@ -29,7 +29,6 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
             return Ok(result);
         }
 
-
         [Authorize]
         [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
         [HttpGet("skill-gap/career-roles/{careerRoleSlug}/roadmaps")]
@@ -41,6 +40,5 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 
             return Ok(result);
         }
-
     }
 }
