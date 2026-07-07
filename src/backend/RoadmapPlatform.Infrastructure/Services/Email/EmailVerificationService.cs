@@ -17,12 +17,27 @@ using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Email
 {
+    /// <summary>
+    /// Implements email verification flows for registration, linked local login,
+    /// and local email change.
+    /// </summary>
+    /// <remarks>
+    /// This service creates OTP codes, stores hashed verification tokens,
+    /// sends verification emails, validates submitted OTP codes, and updates
+    /// email verification state in the database.
+    ///
+    /// OTP values are never stored as plain text. They are hashed using a
+    /// configured secret before being saved.
+    /// </remarks>
     public class EmailVerificationService : IEmailVerificationService
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IEmailSender _emailSender;
         private readonly EmailVerificationSettings _settings;
 
+        /// <summary>
+        /// Creates a new email verification service.
+        /// </summary>
         public EmailVerificationService(
             ApplicationDbContext dbContext,
             IEmailSender emailSender,
@@ -33,6 +48,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             _settings = options.Value;
         }
 
+        /// <summary>
+        /// Sends a verification code for an existing user authentication provider email.
+        /// </summary>
+        /// <remarks>
+        /// This method is used when the user account already exists.
+        /// It validates the target user, enforces resend cooldown, invalidates old
+        /// active tokens, creates a new OTP token, and sends the OTP by email.
+        /// </remarks>
         public async Task SendVerificationCodeAsync(
             Guid userId,
             string provider,
@@ -98,6 +121,15 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Verifies an OTP code for an existing user authentication provider email.
+        /// </summary>
+        /// <remarks>
+        /// This method validates the latest unused token for the specified
+        /// user, provider, email, and purpose.
+        ///
+        /// Invalid attempts increase AttemptCount. A valid OTP marks the token as used.
+        /// </remarks>
         public async Task VerifyVerificationCodeAsync(
             Guid userId,
             string provider,
@@ -144,6 +176,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Sends a verification code for a pending local registration.
+        /// </summary>
+        /// <remarks>
+        /// This method is used before the final User record is created.
+        /// The token is linked to PendingLocalRegistrationId instead of UserId.
+        /// </remarks>
         public async Task SendPendingRegistrationVerificationCodeAsync(
             Guid pendingLocalRegistrationId,
             string email,
@@ -206,6 +245,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Verifies a pending registration email and returns the pending account data.
+        /// </summary>
+        /// <remarks>
+        /// This method does not create the final user.
+        /// It only verifies the OTP and returns the pending registration data
+        /// needed by AuthService to create the real user account.
+        /// </remarks>
         public async Task<PendingRegistrationVerificationResultDto> VerifyRegistrationEmailAsync(
             string email,
             string otp,
@@ -246,6 +293,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             };
         }
 
+        /// <summary>
+        /// Resends the verification code for an active pending registration.
+        /// </summary>
         public async Task ResendRegistrationVerificationAsync(
             string email,
             CancellationToken cancellationToken = default)
@@ -274,6 +324,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Resends the verification code for a linked local login method.
+        /// </summary>
+        /// <remarks>
+        /// This is used when a user has a local auth provider that exists
+        /// but its email has not been verified yet.
+        /// </remarks>
         public async Task ResendLinkedLocalVerificationAsync(
             Guid userId,
             CancellationToken cancellationToken = default)
@@ -307,6 +364,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Verifies the email for a linked local login method.
+        /// </summary>
         public async Task VerifyLinkedLocalEmailAsync(
             Guid userId,
             string otp,
@@ -348,6 +408,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Starts a local email change flow and sends a verification code to the new email.
+        /// </summary>
         public async Task<UpdateLocalEmailResponseDto> RequestLocalEmailChangeAsync(
             Guid userId,
             string newEmail,
@@ -413,7 +476,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 "Verification code sent");
         }
 
-
+        /// <summary>
+        /// Resends the verification code for a pending local email change.
+        /// </summary>
         public async Task ResendLocalEmailChangeVerificationAsync(
             Guid userId,
             CancellationToken cancellationToken = default)
@@ -461,6 +526,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Verifies a pending local email change and applies the new email.
+        /// </summary>
         public async Task VerifyLocalEmailChangeAsync(
             Guid userId,
             string otp,
@@ -514,6 +582,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Creates a standard response for email-change verification flows.
+        /// </summary>
         private static UpdateLocalEmailResponseDto CreateChangeEmailVerificationResponse(
             string email,
             string message)
@@ -528,6 +599,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             };
         }
 
+        /// <summary>
+        /// Generates a numeric OTP with the configured length.
+        /// </summary>
+        /// <remarks>
+        /// The OTP is generated using RandomNumberGenerator for cryptographic randomness.
+        /// </remarks>
         private static string GenerateOtp(int length)
         {
             if (length <= 0)
@@ -541,6 +618,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             return RandomNumberGenerator.GetInt32(min, max).ToString();
         }
 
+        /// <summary>
+        /// Hashes an OTP using HMAC-SHA256 and the configured hash secret.
+        /// </summary>
         private string HashOtp(string otp)
         {
             if (string.IsNullOrWhiteSpace(_settings.HashSecret))
@@ -556,6 +636,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             return Convert.ToHexString(hashBytes);
         }
 
+        /// <summary>
+        /// Ensures that a pending registration is not requesting OTP resend too frequently.
+        /// </summary>
         private async Task EnsurePendingRegistrationResendCooldownHasPassedAsync(
             Guid pendingLocalRegistrationId,
             string email,
@@ -587,6 +670,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             }
         }
 
+        /// <summary>
+        /// Marks all active pending-registration tokens as used before creating a new one.
+        /// </summary>
         private async Task InvalidateExistingPendingRegistrationTokensAsync(
             Guid pendingLocalRegistrationId,
             string email,
@@ -609,6 +695,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Verifies the latest active OTP token for a pending registration.
+        /// </summary>
         private async Task VerifyPendingRegistrationCodeAsync(
             Guid pendingLocalRegistrationId,
             string email,
@@ -656,6 +745,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Gets the latest unused verification token for an existing user flow.
+        /// </summary>
         private async Task<EmailVerificationToken> GetLatestUsableTokenAsync(
             Guid userId,
             string provider,
@@ -681,6 +773,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             return token;
         }
 
+        /// <summary>
+        /// Ensures that an existing user flow is not requesting OTP resend too frequently.
+        /// </summary>
         private async Task EnsureResendCooldownHasPassedAsync(
             Guid userId,
             string provider,
@@ -714,6 +809,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             }
         }
 
+        /// <summary>
+        /// Marks all active verification tokens for an existing user flow as used.
+        /// </summary>
         private async Task InvalidateExistingTokensAsync(
             Guid userId,
             string provider,
@@ -738,6 +836,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Compares two strings using fixed-time comparison.
+        /// </summary>
+        /// <remarks>
+        /// This helps reduce timing attacks when comparing OTP hashes.
+        /// </remarks>
         private static bool FixedTimeEquals(string valueA, string valueB)
         {
             var bytesA = Encoding.UTF8.GetBytes(valueA);
@@ -746,7 +850,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             return CryptographicOperations.FixedTimeEquals(bytesA, bytesB);
         }
 
-
+        /// <summary>
+        /// Normalizes and validates an email address.
+        /// </summary>
         private static string NormalizeEmailOrThrow(
             string? email,
             string errorMessage = "Email was not provided")
@@ -766,12 +872,18 @@ namespace RoadmapPlatform.Infrastructure.Services.Email
             return normalizedEmail;
         }
 
+        /// <summary>
+        /// Checks whether an email address has a valid format.
+        /// </summary>
         private static bool IsValidEmailFormat(string email)
         {
             return new EmailAddressAttribute().IsValid(email) &&
                    Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
 
+        /// <summary>
+        /// Normalizes a required string value.
+        /// </summary>
         private static string NormalizeOrThrow(string? value, string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(value))
