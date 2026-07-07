@@ -1,15 +1,23 @@
 import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { startGitHubLogin, startGoogleLogin } from "../api/authApi";
-import { CAPTCHA_ENABLED } from "../api/apiConfig";
-import { useAuthStore } from "../stores/useAuthStore";
-import AuthLogo from "../features/auth/components/AuthLogo";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-import MotionWrapper from "../features/auth/components/MotionWrapper";
-import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+
+import {
+  startGitHubLogin,
+  startGoogleLogin,
+} from "../api/authApi";
+import { CAPTCHA_ENABLED } from "../api/apiConfig";
+
+import { useAuthStore } from "../stores/useAuthStore";
+
+import AuthLogo from "../features/auth/components/AuthLogo";
 import AuthRoadmapPanel from "../features/auth/components/AuthRoadmapPanel";
+import MotionWrapper from "../features/auth/components/MotionWrapper";
 import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
+
+import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
+
 import {
   getErrorMessage,
   goToVerificationPage,
@@ -24,14 +32,15 @@ const PASSWORD_REQUIREMENT_MESSAGE =
 const PASSWORD_REQUIREMENT_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 
-function isValidPasswordFormat(password) {
-  return PASSWORD_REQUIREMENT_PATTERN.test(password);
-}
-
 const USERNAME_REQUIREMENT_MESSAGE =
   "Username must be 3-20 characters and can only contain letters, numbers, underscores, or dots.";
 
-const USERNAME_REQUIREMENT_PATTERN = /^[a-zA-Z0-9._]{3,20}$/;
+const USERNAME_REQUIREMENT_PATTERN =
+  /^[a-zA-Z0-9._]{3,20}$/;
+
+function isValidPasswordFormat(password) {
+  return PASSWORD_REQUIREMENT_PATTERN.test(password);
+}
 
 function isValidUsernameFormat(username) {
   return USERNAME_REQUIREMENT_PATTERN.test(username);
@@ -43,7 +52,9 @@ export default function RegisterPage() {
   const register = useAuthStore((state) => state.register);
   const authLoading = useAuthStore((state) => state.authLoading);
   const authError = useAuthStore((state) => state.authError);
-  const clearAuthError = useAuthStore((state) => state.clearAuthError);
+  const clearAuthError = useAuthStore(
+    (state) => state.clearAuthError,
+  );
 
   const [form, setForm] = useState({
     username: "",
@@ -56,11 +67,17 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
-  const [oauthLoadingProvider, setOauthLoadingProvider] = useState("");
 
-  const displayError = error || authError;
+  const [
+    oauthLoadingProvider,
+    setOauthLoadingProvider,
+  ] = useState("");
+
+  const displayedError = error || authError;
+  const oauthIsLoading = Boolean(oauthLoadingProvider);
 
   const handleCaptchaVerify = useCallback((token) => {
     setCaptchaToken(token);
@@ -68,7 +85,12 @@ export default function RegisterPage() {
   }, []);
 
   const handleChange = (event) => {
-    const { name, value, type, checked } = event.target;
+    const {
+      name,
+      value,
+      type,
+      checked,
+    } = event.target;
 
     if (error) {
       setError("");
@@ -78,26 +100,29 @@ export default function RegisterPage() {
       clearAuthError();
     }
 
-    setForm((prev) => ({
-      ...prev,
+    setForm((previousForm) => ({
+      ...previousForm,
       [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const validateForm = () => {
-    if (!form.username.trim()) {
+    const username = form.username.trim();
+    const email = form.email.trim();
+
+    if (!username) {
       return "Please enter a username.";
     }
 
-    if (!isValidUsernameFormat(form.username.trim())) {
+    if (!isValidUsernameFormat(username)) {
       return USERNAME_REQUIREMENT_MESSAGE;
     }
 
-    if (!form.email.trim()) {
+    if (!email) {
       return "Please enter an email address.";
     }
 
-    if (!isValidEmailFormat(form.email)) {
+    if (!isValidEmailFormat(email)) {
       return "Please enter a valid email address.";
     }
 
@@ -156,140 +181,205 @@ export default function RegisterPage() {
           form.email.trim(),
           VERIFICATION_PURPOSES.REGISTER,
         );
+
         return;
       }
 
-      navigate(`/verify-email?email=${encodeURIComponent(form.email.trim())}&purpose=register`);
-    } catch (error) {
-      console.error("Register failed:", error);
+      navigate(
+        `/verify-email?email=${encodeURIComponent(
+          form.email.trim(),
+        )}&purpose=register`,
+      );
+    } catch (registerError) {
+      console.error("Register failed:", registerError);
 
-      if (isEmailVerificationRequired(error)) {
+      if (isEmailVerificationRequired(registerError)) {
         goToVerificationPage(
           navigate,
-          error,
+          registerError,
           form.email.trim(),
           VERIFICATION_PURPOSES.REGISTER,
         );
+
         return;
       }
 
-      setError(getErrorMessage(error, "Registration failed. Please try again."));
+      setError(
+        getErrorMessage(
+          registerError,
+          "Registration failed. Please try again.",
+        ),
+      );
     } finally {
       setCaptchaToken("");
-      setCaptchaResetKey((prev) => prev + 1);
+
+      setCaptchaResetKey(
+        (previousKey) => previousKey + 1,
+      );
     }
   };
 
   const handleGoogleLogin = async () => {
-    if (oauthLoadingProvider) return;
+    if (oauthLoadingProvider) {
+      return;
+    }
 
     try {
       setError("");
       setOauthLoadingProvider("google");
+
       await startGoogleLogin();
-    } catch (error) {
-      setError(getFriendlyApiErrorMessage(error, "Unable to start Google sign up."));
+    } catch (googleError) {
+      setError(
+        getFriendlyApiErrorMessage(
+          googleError,
+          "Unable to start Google sign up.",
+        ),
+      );
     } finally {
       setOauthLoadingProvider("");
     }
   };
 
   const handleGithubLogin = async () => {
-    if (oauthLoadingProvider) return;
+    if (oauthLoadingProvider) {
+      return;
+    }
 
     try {
       setError("");
       setOauthLoadingProvider("github");
+
       await startGitHubLogin();
-    } catch (error) {
-      setError(getFriendlyApiErrorMessage(error, "Unable to start GitHub sign up."));
+    } catch (githubError) {
+      setError(
+        getFriendlyApiErrorMessage(
+          githubError,
+          "Unable to start GitHub sign up.",
+        ),
+      );
     } finally {
       setOauthLoadingProvider("");
     }
   };
 
   return (
-    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
-      <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
+    <div className="min-h-dvh w-full overflow-hidden bg-[#F8F5EF] text-[#243429]">
+      <MotionWrapper
+        className="
+          grid min-h-dvh w-full grid-cols-1
+          lg:grid-cols-[1.1fr_0.9fr]
+          xl:grid-cols-[1.14fr_0.86fr]
+          2xl:grid-cols-[1.17fr_0.83fr]
+        "
+      >
         <AuthRoadmapPanel />
 
-        <section className="flex min-h-dvh items-center justify-center bg-[#F7F1E8] px-6 py-5">
+        <section className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#FFFDF8_0%,#F8F5EF_48%,#EEF5F0_100%)] px-5 py-6 sm:px-8 lg:px-8 xl:px-10">
+          <div className="pointer-events-none absolute -right-32 top-20 h-96 w-96 rounded-full bg-[#DDEBE2]/60 blur-3xl" />
+
+          <div className="pointer-events-none absolute -left-24 bottom-10 h-80 w-80 rounded-full bg-[#EFE7D8]/70 blur-3xl" />
+
           <div
-            className={`w-full max-w-[420px] rounded-lg border border-[#B9D8CC] bg-white/90 px-6 py-6 shadow-[0_18px_44px_rgba(31,111,95,0.08)] backdrop-blur transition duration-200 ${
-              authLoading ? "scale-[0.99] opacity-70" : ""
-            }`}
+            className={`relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-[2.25rem] border border-[#D8E6DD] bg-white/[0.86] px-8 py-9 shadow-[0_30px_100px_rgba(80,102,88,0.17)] backdrop-blur-xl transition duration-200 sm:px-10 sm:py-10 lg:px-9 xl:px-11 ${authLoading
+                ? "scale-[0.99] opacity-70"
+                : ""
+              }`}
           >
-            <div className="mb-7 lg:hidden">
+            <div className="mb-8 lg:hidden">
               <AuthLogo />
             </div>
 
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#1F6F5F]">
+            <div className="text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#5C7C68]">
                 Start learning
               </p>
 
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
+              <h1 className="mt-4 text-[31px] font-black tracking-[-0.04em] text-[#243429] sm:text-[35px]">
                 Create your account
               </h1>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Start building your personalized career roadmap today.
+              <p className="mx-auto mt-3 max-w-[370px] text-[15px] leading-6 text-[#66736A]">
+                Start building your personalized career roadmap
+                today.
               </p>
             </div>
 
-            {displayError && (
-              <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {displayError}
+            {displayedError && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+              >
+                {displayedError}
               </div>
             )}
 
-            <form onSubmit={handleRegister} className="mt-5 space-y-3.5">
+            <form
+              onSubmit={handleRegister}
+              className="mt-7 space-y-5"
+            >
               <div className="relative">
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="username"
+                  className="mb-2 block text-sm font-bold text-[#2E4034]"
+                >
                   Username
                 </label>
 
                 <input
+                  id="username"
                   name="username"
+                  type="text"
                   value={form.username}
                   onChange={handleChange}
                   onFocus={() => setUsernameFocused(true)}
                   onBlur={() => setUsernameFocused(false)}
                   placeholder="john_doe"
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  autoComplete="username"
+                  className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
                   required
                 />
 
                 {usernameFocused && (
-                  <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
+                  <div className="pointer-events-none absolute left-0 top-[calc(100%+0.5rem)] z-30 w-full rounded-2xl border border-[#D8E6DD] bg-white px-4 py-3 text-xs leading-5 text-[#66736A] shadow-[0_16px_40px_rgba(80,102,88,0.14)]">
                     {USERNAME_REQUIREMENT_MESSAGE}
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="email"
+                  className="mb-2 block text-sm font-bold text-[#2E4034]"
+                >
                   Email address
                 </label>
 
                 <input
+                  id="email"
                   name="email"
                   type="email"
                   value={form.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  autoComplete="email"
+                  className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div className="relative">
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-sm font-bold text-[#2E4034]"
+                  >
                     Password
                   </label>
 
                   <input
+                    id="password"
                     name="password"
                     type="password"
                     value={form.password}
@@ -297,55 +387,61 @@ export default function RegisterPage() {
                     onFocus={() => setPasswordFocused(true)}
                     onBlur={() => setPasswordFocused(false)}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    autoComplete="new-password"
+                    className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
                     required
                   />
 
                   {passwordFocused && (
-                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-20 w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600 shadow-lg shadow-slate-200/70">
+                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.5rem)] z-30 w-[min(320px,calc(100vw-4rem))] rounded-2xl border border-[#D8E6DD] bg-white px-4 py-3 text-xs leading-5 text-[#66736A] shadow-[0_16px_40px_rgba(80,102,88,0.14)]">
                       {PASSWORD_REQUIREMENT_MESSAGE}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="mb-2 block text-sm font-bold text-[#2E4034]"
+                  >
                     Confirm password
                   </label>
 
                   <input
+                    id="confirmPassword"
                     name="confirmPassword"
                     type="password"
                     value={form.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    autoComplete="new-password"
+                    className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
                     required
                   />
                 </div>
               </div>
 
-              <label className="flex items-start gap-3 text-xs leading-5 text-slate-500">
+              <label className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[#66736A]">
                 <input
                   name="agreeTerms"
                   type="checkbox"
                   checked={form.agreeTerms}
                   onChange={handleChange}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-[#1F6F5F] focus:ring-blue-500"
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-[#CBDDD1] accent-[#5C7C68] focus:ring-[#DDEBE2]"
                 />
 
                 <span>
                   I agree to the{" "}
                   <button
                     type="button"
-                    className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
+                    className="font-bold text-[#5C7C68] transition hover:text-[#435E4C]"
                   >
                     Terms of Service
                   </button>{" "}
                   and{" "}
                   <button
                     type="button"
-                    className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
+                    className="font-bold text-[#5C7C68] transition hover:text-[#435E4C]"
                   >
                     Privacy Policy
                   </button>
@@ -353,57 +449,76 @@ export default function RegisterPage() {
                 </span>
               </label>
 
-              <TurnstileCaptcha
-                action="register"
-                resetKey={captchaResetKey}
-                onVerify={handleCaptchaVerify}
-                className="flex justify-center"
-              />
+              {CAPTCHA_ENABLED && (
+                <TurnstileCaptcha
+                  action="register"
+                  resetKey={captchaResetKey}
+                  onVerify={handleCaptchaVerify}
+                  className="flex justify-center"
+                />
+              )}
 
               <button
                 type="submit"
-                disabled={authLoading || (CAPTCHA_ENABLED && !captchaToken)}
-                className="h-11 w-full rounded-lg bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={
+                  authLoading ||
+                  (CAPTCHA_ENABLED && !captchaToken)
+                }
+                className="h-[52px] w-full rounded-2xl bg-[#5C7C68] text-sm font-black text-white shadow-[0_18px_36px_rgba(92,124,104,0.22)] transition hover:-translate-y-0.5 hover:bg-[#435E4C] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                {authLoading ? "Creating account..." : "Create account"}
+                {authLoading
+                  ? "Creating account..."
+                  : "Create account"}
               </button>
             </form>
 
-            <div className="my-5 flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-bold tracking-widest text-slate-400">
-                OR CONTINUE WITH
+            <div className="my-7 flex items-center gap-4">
+              <div className="h-px flex-1 bg-[#D8E6DD]" />
+
+              <span className="whitespace-nowrap text-xs font-medium uppercase tracking-[0.05em] text-[#8B9590]">
+                Or continue with
               </span>
-              <div className="h-px flex-1 bg-slate-200" />
+
+              <div className="h-px flex-1 bg-[#D8E6DD]" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                disabled={authLoading || Boolean(oauthLoadingProvider)}
-                className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-[#dadce0] bg-white text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-[#f8fafd] hover:shadow-md"
+                disabled={authLoading || oauthIsLoading}
+                className="flex h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#D8E6DD] bg-[#FFFDF8] text-sm font-bold text-[#2E4034] shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 <FcGoogle className="text-lg" />
-                {oauthLoadingProvider === "google" ? "Starting..." : "Google"}
+
+                <span>
+                  {oauthLoadingProvider === "google"
+                    ? "Starting..."
+                    : "Google"}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={handleGithubLogin}
-                disabled={authLoading || Boolean(oauthLoadingProvider)}
-                className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-slate-900 bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-black"
+                disabled={authLoading || oauthIsLoading}
+                className="flex h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#243429] bg-[#243429] text-sm font-bold text-white shadow-[0_14px_30px_rgba(36,52,41,0.18)] transition hover:-translate-y-0.5 hover:bg-[#17211B] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 <FaGithub className="text-lg text-white" />
-                {oauthLoadingProvider === "github" ? "Starting..." : "GitHub"}
+
+                <span>
+                  {oauthLoadingProvider === "github"
+                    ? "Starting..."
+                    : "GitHub"}
+                </span>
               </button>
             </div>
 
-            <p className="mt-5 text-center text-sm text-slate-500">
+            <p className="mt-7 text-center text-sm text-[#66736A]">
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
+                className="font-black text-[#5C7C68] transition hover:text-[#435E4C]"
               >
                 Sign in
               </Link>

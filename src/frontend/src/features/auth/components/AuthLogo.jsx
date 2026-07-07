@@ -1,32 +1,73 @@
-import { CgListTree } from "react-icons/cg";
+export default function AuthLogo({
+  compact = false,
+  showTagline = true,
+}) {
+  const logoSize = compact ? "h-10 w-10" : "h-11 w-11";
+  const titleSize = compact
+    ? "text-[clamp(18px,1.3vw,21px)]"
+    : "text-[22px]";
 
-export default function AuthLogo({ compact = false, showTagline = true }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="inline-flex min-w-0 items-center gap-3">
+      {/* Logo icon */}
       <div
-        className={`flex items-center justify-center rounded-lg bg-[#2FA084] text-white shadow-sm ring-1 ring-[#1F6F5F]/20 ${
-          compact ? "h-8 w-8" : "h-9 w-9"
-        }`}
+        className={`flex shrink-0 items-center justify-center rounded-[13px] bg-gradient-to-br from-[#789F8B] to-[#456D5B] shadow-[0_8px_20px_rgba(55,92,75,0.22)] ${logoSize}`}
       >
-        <CgListTree className={compact ? "text-base" : "text-lg"} />
+        <svg
+          width={compact ? 19 : 21}
+          height={compact ? 19 : 21}
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <rect
+            x="3"
+            y="3"
+            width="7.5"
+            height="7.5"
+            rx="2"
+            fill="#FFFFFF"
+            opacity="0.76"
+          />
+
+          <rect
+            x="13.5"
+            y="13.5"
+            width="7.5"
+            height="7.5"
+            rx="2"
+            fill="#FFFFFF"
+          />
+
+          <path
+            d="M10.5 6.75H15.3V10.3"
+            stroke="#FFFFFF"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          <path
+            d="M17.25 13.5V10.3H13"
+            stroke="#FFFFFF"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
 
-      <div className="leading-none">
-        <h1
-          className={`font-extrabold text-[#18332D] ${
-            compact ? "text-lg" : "text-xl"
-          }`}
+      {/* Logo text */}
+      <div className="flex min-w-0 flex-col items-start justify-center text-left">
+        <p
+          className={`m-0 w-full text-left font-black leading-none tracking-[-0.04em] text-[#142D23] ${titleSize}`}
         >
           TechMap
-        </h1>
+        </p>
 
         {showTagline && (
-          <p
-            className={`mt-1 font-semibold tracking-[0.13em] text-slate-500 ${
-              compact ? "text-[10px]" : "text-[11px]"
-            }`}
-          >
-            ENGINEER YOUR FUTURE
+          <p className="m-0 mt-[7px] w-full whitespace-nowrap text-left text-[clamp(7px,0.52vw,9px)] font-semibold uppercase leading-none tracking-[0.22em] text-[#397458]">
+            Engineer your future
           </p>
         )}
       </div>

@@ -1,18 +1,26 @@
 import { useCallback, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { startGitHubLogin, startGoogleLogin } from "../api/authApi";
-import { CAPTCHA_ENABLED } from "../api/apiConfig";
-import AuthLogo from "../features/auth/components/AuthLogo";
-import AuthRoadmapPanel from "../features/auth/components/AuthRoadmapPanel";
-import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
+import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-import { useAuthStore } from "../stores/useAuthStore";
+
+import {
+  startGitHubLogin,
+  startGoogleLogin,
+} from "../api/authApi";
+import { CAPTCHA_ENABLED } from "../api/apiConfig";
+
+import AuthLogo from "../features/auth/components/AuthLogo";
+import AuthRoadmapPanel from "../features/auth/components/AuthRoadmapPanel";
 import MotionWrapper from "../features/auth/components/MotionWrapper";
+import TurnstileCaptcha from "../components/common/TurnstileCaptcha";
+
+import { useAuthStore } from "../stores/useAuthStore";
 import { getFriendlyApiErrorMessage } from "../utils/apiErrorUtils";
 import { resolvePostLoginRedirect } from "../utils/navigationUtils";
-
-
 
 import {
   goToVerificationPage,
@@ -31,6 +39,7 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
 
   const [searchParams] = useSearchParams();
+
   const oauthError = searchParams.get("oauthError");
   const verified = searchParams.get("verified");
 
@@ -52,27 +61,18 @@ export default function LoginPage() {
     setError("");
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-    if (authError) {
-      clearAuthError();
-    }
+    if (authError) clearAuthError();
+    if (error) setError("");
+    if (captchaError) setCaptchaError("");
 
-    if (error) {
-      setError("");
-    }
-
-    if (captchaError) {
-      setCaptchaError("");
-    }
-
-    setForm((prev) => ({
-      ...prev,
+    setForm((previousForm) => ({
+      ...previousForm,
       [name]: value,
     }));
   };
-
 
   const validateForm = () => {
     const emailOrUsername = form.emailOrUsername.trim();
@@ -81,7 +81,10 @@ export default function LoginPage() {
       return "Please enter an email address or username.";
     }
 
-    if (emailOrUsername.includes("@") && !isValidEmailFormat(emailOrUsername)) {
+    if (
+      emailOrUsername.includes("@") &&
+      !isValidEmailFormat(emailOrUsername)
+    ) {
       return "Please enter a valid email address.";
     }
 
@@ -96,8 +99,8 @@ export default function LoginPage() {
     return "";
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event) => {
+    event.preventDefault();
 
     const validationError = validateForm();
 
@@ -113,6 +116,7 @@ export default function LoginPage() {
 
     try {
       setError("");
+      setCaptchaError("");
       clearAuthError();
 
       const currentUser = await login({
@@ -121,26 +125,37 @@ export default function LoginPage() {
         captchaToken,
       });
 
-      const redirectTo = resolvePostLoginRedirect(currentUser, location.state?.from);
+      const redirectTo = resolvePostLoginRedirect(
+        currentUser,
+        location.state?.from,
+      );
 
       setTimeout(() => {
-        navigate(redirectTo, { replace: true });
+        navigate(redirectTo, {
+          replace: true,
+        });
       }, 250);
-    } catch (error) {
-      console.log("Login failed:", error.response?.data || error);
+    } catch (loginError) {
+      console.log(
+        "Login failed:",
+        loginError.response?.data || loginError,
+      );
 
-      if (isEmailVerificationRequired(error)) {
+      if (isEmailVerificationRequired(loginError)) {
         clearAuthError();
+
         goToVerificationPage(
           navigate,
-          error,
-          form.emailOrUsername.includes("@") ? form.emailOrUsername.trim() : "",
+          loginError,
+          form.emailOrUsername.includes("@")
+            ? form.emailOrUsername.trim()
+            : "",
           VERIFICATION_PURPOSES.REGISTER,
         );
       }
     } finally {
       setCaptchaToken("");
-      setCaptchaResetKey((prev) => prev + 1);
+      setCaptchaResetKey((previousKey) => previousKey + 1);
     }
   };
 
@@ -156,9 +171,15 @@ export default function LoginPage() {
     try {
       setError("");
       setOauthLoadingProvider("google");
+
       await startGoogleLogin();
-    } catch (error) {
-      setError(getFriendlyApiErrorMessage(error, "Unable to start Google sign in."));
+    } catch (googleError) {
+      setError(
+        getFriendlyApiErrorMessage(
+          googleError,
+          "Unable to start Google sign in.",
+        ),
+      );
     } finally {
       setOauthLoadingProvider("");
     }
@@ -170,22 +191,41 @@ export default function LoginPage() {
     try {
       setError("");
       setOauthLoadingProvider("github");
+
       await startGitHubLogin();
-    } catch (error) {
-      setError(getFriendlyApiErrorMessage(error, "Unable to start GitHub sign in."));
+    } catch (githubError) {
+      setError(
+        getFriendlyApiErrorMessage(
+          githubError,
+          "Unable to start GitHub sign in.",
+        ),
+      );
     } finally {
       setOauthLoadingProvider("");
     }
   };
 
+  const displayedError = error || authError || oauthError || captchaError;
+  const oauthIsLoading = Boolean(oauthLoadingProvider);
+
   return (
-    <div className="min-h-dvh overflow-hidden bg-[#F7F1E8] text-slate-900">
-      <MotionWrapper className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
+    <div className="min-h-dvh overflow-hidden bg-[#F8F5EF] text-[#243429]">
+      <MotionWrapper
+        className="
+          grid min-h-dvh grid-cols-1
+          lg:grid-cols-[1.1fr_0.9fr]
+          xl:grid-cols-[1.14fr_0.86fr]
+          2xl:grid-cols-[1.17fr_0.83fr]
+        "
+      >
         <AuthRoadmapPanel />
 
-        <section className="flex min-h-dvh items-center justify-center bg-[#F7F1E8] px-6 py-6">
+        <section className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#FFFDF8_0%,#F8F5EF_48%,#EEF5F0_100%)] px-5 py-7 sm:px-8 lg:px-8 xl:px-10">
+          <div className="pointer-events-none absolute -right-32 top-20 h-96 w-96 rounded-full bg-[#DDEBE2]/60 blur-3xl" />
+          <div className="pointer-events-none absolute -left-24 bottom-10 h-80 w-80 rounded-full bg-[#EFE7D8]/70 blur-3xl" />
+
           <div
-            className={`w-full max-w-[390px] rounded-lg border border-[#B9D8CC] bg-white/90 px-6 py-7 shadow-[0_18px_44px_rgba(31,111,95,0.08)] backdrop-blur transition duration-200 ${
+            className={`relative z-10 w-full max-w-[520px] rounded-[2.25rem] border border-[#D8E6DD] bg-white/[0.85] px-8 py-9 shadow-[0_30px_100px_rgba(80,102,88,0.17)] backdrop-blur-xl transition duration-200 sm:px-10 sm:py-10 lg:px-9 xl:px-11 ${
               authLoading ? "scale-[0.99] opacity-70" : ""
             }`}
           >
@@ -193,58 +233,75 @@ export default function LoginPage() {
               <AuthLogo />
             </div>
 
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#1F6F5F]">
+            <div className="text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#5C7C68]">
                 Welcome back
               </p>
 
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
+              <h1 className="mt-4 text-[31px] font-black tracking-[-0.04em] text-[#243429] sm:text-[35px]">
                 Sign in to TechMap
               </h1>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mx-auto mt-3 max-w-[360px] text-[15px] leading-6 text-[#66736A]">
                 Continue your personalized learning roadmap.
               </p>
             </div>
 
-            {(error || authError || oauthError || captchaError) && (
-              <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error || authError || oauthError || captchaError}
+            {displayedError && (
+              <div
+                role="alert"
+                className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+              >
+                {displayedError}
               </div>
             )}
 
             {verified === "1" && (
-              <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <div
+                role="status"
+                className="mt-6 rounded-2xl border border-[#B8DEC8] bg-[#EEF8F2] px-4 py-3 text-sm font-medium text-[#3D7A50]"
+              >
                 Your email has been verified. You can now sign in.
               </div>
             )}
 
-            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+            <form onSubmit={handleLogin} className="mt-7 space-y-5">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="emailOrUsername"
+                  className="mb-2 block text-sm font-bold text-[#2E4034]"
+                >
                   Email or username
                 </label>
 
                 <input
+                  id="emailOrUsername"
                   name="emailOrUsername"
                   type="text"
                   value={form.emailOrUsername}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                  autoComplete="username"
+                  className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
                   required
                 />
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-semibold text-slate-700">
+                <div className="mb-2 flex items-center justify-between gap-4">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-bold text-[#2E4034]"
+                  >
                     Password
                   </label>
 
                   <button
                     type="button"
-                    className="!text-[14px] font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F]"
+                    disabled
+                    aria-disabled="true"
+                    title="Forgot password is not available yet"
+                    className="cursor-not-allowed text-[13px] font-bold text-[#5C7C68] opacity-70"
                   >
                     Forgot password?
                   </button>
@@ -252,78 +309,99 @@ export default function LoginPage() {
 
                 <div className="relative">
                   <input
+                    id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={handleChange}
-                                placeholder="••••••••"
-                    className="h-10 w-full rounded-lg border border-slate-300 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-[#2FA084] focus:ring-4 focus:ring-[#6FCF97]/20"
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 pr-16 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
                     required
                   />
 
                   <button
                     type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 transition hover:text-slate-600"
+                    onClick={() => {
+                      setShowPassword((previousValue) => !previousValue);
+                    }}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black uppercase tracking-[0.08em] text-[#7C8D82] transition hover:text-[#435E4C]"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
                 </div>
               </div>
 
-              <TurnstileCaptcha
-                action="login"
-                resetKey={captchaResetKey}
-                onVerify={handleCaptchaVerify}
-                className="flex justify-center"
-              />
+              {CAPTCHA_ENABLED && (
+                <TurnstileCaptcha
+                  action="login"
+                  resetKey={captchaResetKey}
+                  onVerify={handleCaptchaVerify}
+                  className="flex justify-center"
+                />
+              )}
 
               <button
                 type="submit"
                 disabled={authLoading || (CAPTCHA_ENABLED && !captchaToken)}
-                className="h-11 w-full rounded-lg bg-[#2FA084] text-sm font-semibold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-[52px] w-full rounded-2xl bg-[#5C7C68] text-sm font-black text-white shadow-[0_18px_36px_rgba(92,124,104,0.22)] transition hover:-translate-y-0.5 hover:bg-[#435E4C] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 {authLoading ? "Signing in..." : "Sign in"}
               </button>
             </form>
 
-            <div className="my-6 flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-bold tracking-widest text-slate-400">
-                OR CONTINUE WITH
+            <div className="my-7 flex items-center gap-4">
+              <div className="h-px flex-1 bg-[#E5ECE7]" />
+
+              <span className="whitespace-nowrap text-xs font-medium uppercase tracking-[0.05em] text-[#8B9590]">
+                Or continue with
               </span>
-              <div className="h-px flex-1 bg-slate-200" />
+
+              <div className="h-px flex-1 bg-[#E5ECE7]" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                disabled={authLoading || Boolean(oauthLoadingProvider)}
-                className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-[#dadce0] bg-white text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-[#f8fafd] hover:shadow-md"
+                disabled={authLoading || oauthIsLoading}
+                className="flex h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#D8E6DD] bg-[#FFFDF8] text-sm font-bold text-[#2E4034] shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 <FcGoogle className="text-lg" />
-                {oauthLoadingProvider === "google" ? "Starting..." : "Google"}
+
+                <span>
+                  {oauthLoadingProvider === "google"
+                    ? "Starting..."
+                    : "Google"}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={handleGithubLogin}
-                disabled={authLoading || Boolean(oauthLoadingProvider)}
-                className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-slate-900 bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-black"
+                disabled={authLoading || oauthIsLoading}
+                className="flex h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#243429] bg-[#243429] text-sm font-bold text-white shadow-[0_14px_30px_rgba(36,52,41,0.18)] transition hover:-translate-y-0.5 hover:bg-[#17211B] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 <FaGithub className="text-lg text-white" />
-                {oauthLoadingProvider === "github" ? "Starting..." : "GitHub"}
+
+                <span>
+                  {oauthLoadingProvider === "github"
+                    ? "Starting..."
+                    : "GitHub"}
+                </span>
               </button>
             </div>
 
-            <p className="mt-6 text-center text-sm text-slate-500">
-              Don't have an account?{" "}
+            <p className="mt-7 text-center text-sm text-[#66736A]">
+              Don&apos;t have an account?{" "}
               <button
                 type="button"
                 onClick={handleGoRegister}
                 disabled={authLoading}
-                className="font-semibold text-[#1F6F5F] transition hover:text-[#1F6F5F] disabled:opacity-60"
+                className="font-black text-[#5C7C68] transition hover:text-[#435E4C] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {authLoading ? "Opening..." : "Sign up"}
               </button>
