@@ -50,7 +50,9 @@ export default function RegisterPage() {
   const navigate = useNavigate();
 
   const register = useAuthStore((state) => state.register);
-  const authLoading = useAuthStore((state) => state.authLoading);
+  const authLoading = useAuthStore(
+    (state) => state.authLoading,
+  );
   const authError = useAuthStore((state) => state.authError);
   const clearAuthError = useAuthStore(
     (state) => state.clearAuthError,
@@ -65,11 +67,14 @@ export default function RegisterPage() {
   });
 
   const [error, setError] = useState("");
-  const [usernameFocused, setUsernameFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [usernameFocused, setUsernameFocused] =
+    useState(false);
+  const [passwordFocused, setPasswordFocused] =
+    useState(false);
 
   const [captchaToken, setCaptchaToken] = useState("");
-  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [captchaResetKey, setCaptchaResetKey] =
+    useState(0);
 
   const [
     oauthLoadingProvider,
@@ -275,31 +280,92 @@ export default function RegisterPage() {
       >
         <AuthRoadmapPanel />
 
-        <section className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#FFFDF8_0%,#F8F5EF_48%,#EEF5F0_100%)] px-5 py-6 sm:px-8 lg:px-8 xl:px-10">
-          <div className="pointer-events-none absolute -right-32 top-20 h-96 w-96 rounded-full bg-[#DDEBE2]/60 blur-3xl" />
-
-          <div className="pointer-events-none absolute -left-24 bottom-10 h-80 w-80 rounded-full bg-[#EFE7D8]/70 blur-3xl" />
+        <section
+          className="
+            relative flex min-h-dvh w-full
+            items-center justify-center
+            overflow-hidden
+            bg-[linear-gradient(145deg,#FFFDF8_0%,#F8F5EF_48%,#EEF5F0_100%)]
+            px-3 py-3
+            sm:px-5 sm:py-4
+            lg:px-5
+            xl:px-6
+          "
+        >
+          <div
+            className="
+              pointer-events-none absolute
+              -right-20 top-14
+              h-64 w-64
+              rounded-full
+              bg-[#DDEBE2]/60
+              blur-3xl
+            "
+          />
 
           <div
-            className={`relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-[2.25rem] border border-[#D8E6DD] bg-white/[0.86] px-8 py-9 shadow-[0_30px_100px_rgba(80,102,88,0.17)] backdrop-blur-xl transition duration-200 sm:px-10 sm:py-10 lg:px-9 xl:px-11 ${authLoading
-                ? "scale-[0.99] opacity-70"
-                : ""
-              }`}
+            className="
+              pointer-events-none absolute
+              -left-16 bottom-6
+              h-52 w-52
+              rounded-full
+              bg-[#EFE7D8]/70
+              blur-3xl
+            "
+          />
+
+          <div
+            className={`
+              relative z-10
+              h-[640px]
+              max-h-[calc(100dvh-1rem)]
+              w-full max-w-[410px]
+              overflow-y-auto
+              rounded-[1.4rem]
+              border border-[#D8E6DD]
+              bg-white/[0.86]
+              px-5 py-8
+              shadow-[0_18px_55px_rgba(80,102,88,0.14)]
+              backdrop-blur-xl
+              transition duration-200
+              sm:px-8 sm:py-11
+              ${authLoading ? "scale-[0.99] opacity-70" : ""}
+            `}
           >
-            <div className="mb-8 lg:hidden">
+            <div className="mb-4 lg:hidden">
               <AuthLogo />
             </div>
 
             <div className="text-center">
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#5C7C68]">
+              <p
+                className="
+                  text-[10px] font-black
+                  uppercase tracking-[0.2em]
+                  text-[#5C7C68]
+                "
+              >
                 Start learning
               </p>
 
-              <h1 className="mt-4 text-[31px] font-black tracking-[-0.04em] text-[#243429] sm:text-[35px]">
+              <h1
+                className="
+                  mt-2
+                  text-[23px] font-black
+                  tracking-[-0.04em]
+                  text-[#243429]
+                  sm:text-[28px]
+                "
+              >
                 Create your account
               </h1>
 
-              <p className="mx-auto mt-3 max-w-[370px] text-[15px] leading-6 text-[#66736A]">
+              <p
+                className="
+                  mx-auto mt-1.5
+                     text-[12px] leading-[1.55]
+                  text-[#66736A]
+                "
+              >
                 Start building your personalized career roadmap
                 today.
               </p>
@@ -309,7 +375,15 @@ export default function RegisterPage() {
               <div
                 role="alert"
                 aria-live="polite"
-                className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+                className="
+                  mt-3.5
+                  rounded-lg
+                  border border-red-200
+                  bg-red-50
+                  px-3 py-2
+                  text-[11px] font-medium
+                  text-red-600
+                "
               >
                 {displayedError}
               </div>
@@ -317,16 +391,19 @@ export default function RegisterPage() {
 
             <form
               onSubmit={handleRegister}
-              className="mt-7 space-y-5"
+              className="mt-4 space-y-3"
             >
               <div className="relative">
                 <label
                   htmlFor="username"
-                  className="mb-2 block text-sm font-bold text-[#2E4034]"
+                  className="
+                    mb-1 block
+                    text-[14px] font-bold
+                    text-[#2E4034]
+                  "
                 >
                   Username
                 </label>
-
                 <input
                   id="username"
                   name="username"
@@ -337,12 +414,41 @@ export default function RegisterPage() {
                   onBlur={() => setUsernameFocused(false)}
                   placeholder="john_doe"
                   autoComplete="username"
-                  className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
+                  className="
+                    h-[48px] w-full
+                    rounded-[10px]
+                    border border-[#CBDDD1]
+                    bg-[#FFFDF8]
+                    px-3
+                    text-[8px] font-medium
+                    text-[#243429]
+                    outline-none
+                    transition
+                    placeholder:text-[14px]
+                    placeholder:text-[#A7B3AB]
+                    focus:border-[#5C7C68]
+                    focus:bg-white
+                    focus:ring-3
+                    focus:ring-[#DDEBE2]
+                  "
                   required
                 />
 
                 {usernameFocused && (
-                  <div className="pointer-events-none absolute left-0 top-[calc(100%+0.5rem)] z-30 w-full rounded-2xl border border-[#D8E6DD] bg-white px-4 py-3 text-xs leading-5 text-[#66736A] shadow-[0_16px_40px_rgba(80,102,88,0.14)]">
+                  <div
+                    className="
+                      pointer-events-none absolute
+                      left-0 top-[calc(100%+0.3rem)]
+                      z-30 w-full
+                      rounded-lg
+                      border border-[#D8E6DD]
+                      bg-white
+                      px-3 py-2
+                      text-[9px] leading-4
+                      text-[#66736A]
+                      shadow-[0_10px_25px_rgba(80,102,88,0.12)]
+                    "
+                  >
                     {USERNAME_REQUIREMENT_MESSAGE}
                   </div>
                 )}
@@ -351,7 +457,11 @@ export default function RegisterPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="mb-2 block text-sm font-bold text-[#2E4034]"
+                  className="
+                    mb-1 block
+                    text-[14px] font-bold
+                    text-[#2E4034]
+                  "
                 >
                   Email address
                 </label>
@@ -364,16 +474,36 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   placeholder="name@example.com"
                   autoComplete="email"
-                  className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
+                  className="
+                    h-[40px] w-full
+                    rounded-[10px]
+                    border border-[#CBDDD1]
+                    bg-[#FFFDF8]
+                    px-3
+                    text-[12px] font-medium
+                    text-[#243429]
+                    outline-none
+                    transition
+                    placeholder:text-[14px]
+                    placeholder:text-[#A7B3AB]
+                    focus:border-[#5C7C68]
+                    focus:bg-white
+                    focus:ring-3
+                    focus:ring-[#DDEBE2]
+                  "
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="relative">
                   <label
                     htmlFor="password"
-                    className="mb-2 block text-sm font-bold text-[#2E4034]"
+                    className="
+                      mb-1 block
+                      text-[13px] font-bold
+                      text-[#2E4034]
+                    "
                   >
                     Password
                   </label>
@@ -388,12 +518,41 @@ export default function RegisterPage() {
                     onBlur={() => setPasswordFocused(false)}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
+                    className="
+                      h-[40px] w-full
+                      rounded-[10px]
+                      border border-[#CBDDD1]
+                      bg-[#FFFDF8]
+                      px-3
+                      text-[12px] font-medium
+                      text-[#243429]
+                      outline-none
+                      transition
+                      placeholder:text-[#A7B3AB]
+                      focus:border-[#5C7C68]
+                      focus:bg-white
+                      focus:ring-3
+                      focus:ring-[#DDEBE2]
+                    "
                     required
                   />
 
                   {passwordFocused && (
-                    <div className="pointer-events-none absolute left-0 top-[calc(100%+0.5rem)] z-30 w-[min(320px,calc(100vw-4rem))] rounded-2xl border border-[#D8E6DD] bg-white px-4 py-3 text-xs leading-5 text-[#66736A] shadow-[0_16px_40px_rgba(80,102,88,0.14)]">
+                    <div
+                      className="
+                        pointer-events-none absolute
+                        left-0 top-[calc(100%+0.3rem)]
+                        z-30
+                        w-[min(270px,calc(100vw-2.5rem))]
+                        rounded-lg
+                        border border-[#D8E6DD]
+                        bg-white
+                        px-3 py-2
+                        text-[9px] leading-4
+                        text-[#66736A]
+                        shadow-[0_10px_25px_rgba(80,102,88,0.12)]
+                      "
+                    >
                       {PASSWORD_REQUIREMENT_MESSAGE}
                     </div>
                   )}
@@ -402,7 +561,11 @@ export default function RegisterPage() {
                 <div>
                   <label
                     htmlFor="confirmPassword"
-                    className="mb-2 block text-sm font-bold text-[#2E4034]"
+                    className="
+                      mb-1 block
+                      text-[13px] font-bold
+                      text-[#2E4034]
+                    "
                   >
                     Confirm password
                   </label>
@@ -415,33 +578,73 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="h-[52px] w-full rounded-2xl border border-[#CBDDD1] bg-[#FFFDF8] px-4 text-sm font-medium text-[#243429] outline-none transition placeholder:text-[#A7B3AB] focus:border-[#5C7C68] focus:bg-white focus:ring-4 focus:ring-[#DDEBE2]"
+                    className="
+                      h-[40px] w-full
+                      rounded-[10px]
+                      border border-[#CBDDD1]
+                      bg-[#FFFDF8]
+                      px-3
+                      text-[12px] font-medium
+                      text-[#243429]
+                      outline-none
+                      transition
+                      placeholder:text-[#A7B3AB]
+                      focus:border-[#5C7C68]
+                      focus:bg-white
+                      focus:ring-3
+                      focus:ring-[#DDEBE2]
+                    "
                     required
                   />
                 </div>
               </div>
 
-              <label className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[#66736A]">
+              <label
+                className="
+                  flex cursor-pointer
+                  items-start gap-2
+                  text-[11.5px] leading-[1.55]
+                  text-[#66736A]
+                "
+              >
                 <input
                   name="agreeTerms"
                   type="checkbox"
                   checked={form.agreeTerms}
                   onChange={handleChange}
-                  className="mt-1 h-4 w-4 shrink-0 rounded border-[#CBDDD1] accent-[#5C7C68] focus:ring-[#DDEBE2]"
+                  className="
+                    mt-0.5 h-3.5 w-3.5
+                    shrink-0 rounded
+                    border-[#CBDDD1]
+                    accent-[#5C7C68]
+                    focus:ring-[#DDEBE2]
+                  "
                 />
 
-                <span>
+                <span className="text-[11px] font-normal leading-4 text-[#66736A]">
                   I agree to the{" "}
                   <button
                     type="button"
-                    className="font-bold text-[#5C7C68] transition hover:text-[#435E4C]"
+                    className="
+                      font-normal
+                      text-[#5C7C68]
+                      underline-offset-2
+                      transition
+                      hover:text-[#17251c]
+                    "
                   >
                     Terms of Service
                   </button>{" "}
                   and{" "}
                   <button
                     type="button"
-                    className="font-bold text-[#5C7C68] transition hover:text-[#435E4C]"
+                    className="
+                      font-normal
+                      text-[#5C7C68]
+                      underline-offset-2
+                      transition
+                      hover:text-[##17251c]
+                    "
                   >
                     Privacy Policy
                   </button>
@@ -457,41 +660,78 @@ export default function RegisterPage() {
                   className="flex justify-center"
                 />
               )}
-
               <button
                 type="submit"
                 disabled={
                   authLoading ||
                   (CAPTCHA_ENABLED && !captchaToken)
                 }
-                className="h-[52px] w-full rounded-2xl bg-[#5C7C68] text-sm font-black text-white shadow-[0_18px_36px_rgba(92,124,104,0.22)] transition hover:-translate-y-0.5 hover:bg-[#435E4C] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                className="
+                  flex h-[40px] w-full
+                  items-center justify-center
+                  rounded-[10px]
+                  bg-[#5C7C68]
+                  text-white
+                  shadow-[0_12px_22px_rgba(92,124,104,0.18)]
+                  transition
+                  hover:-translate-y-0.5
+                  hover:bg-[#435E4C]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                  disabled:hover:translate-y-0
+                "
               >
-                {authLoading
-                  ? "Creating account..."
-                  : "Create account"}
+                <span className="text-[14px] font-bold leading-none">
+                  {authLoading
+                    ? "Creating account..."
+                    : "Create account"}
+                </span>
               </button>
             </form>
 
-            <div className="my-7 flex items-center gap-4">
+            <div className="my-4 flex items-center gap-2.5">
               <div className="h-px flex-1 bg-[#D8E6DD]" />
 
-              <span className="whitespace-nowrap text-xs font-medium uppercase tracking-[0.05em] text-[#8B9590]">
+              <span
+                className="
+                  whitespace-nowrap
+                  text-[9px] font-medium
+                  uppercase tracking-[0.04em]
+                  text-[#8B9590]
+                "
+              >
                 Or continue with
               </span>
 
               <div className="h-px flex-1 bg-[#D8E6DD]" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={authLoading || oauthIsLoading}
-                className="flex h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#D8E6DD] bg-[#FFFDF8] text-sm font-bold text-[#2E4034] shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                className="
+                flex h-[40px]
+                items-center justify-center
+                gap-2
+                rounded-[10px]
+                border border-[#D8E6DD]
+                bg-[#FFFDF8]
+                text-[#2E4034]
+                shadow-sm
+                transition
+                hover:-translate-y-0.5
+                hover:bg-white
+                hover:shadow-md
+                disabled:cursor-not-allowed
+                disabled:opacity-60
+                disabled:hover:translate-y-0
+              "
               >
-                <FcGoogle className="text-lg" />
+                <FcGoogle className="text-[15px]" />
 
-                <span>
+                <span className="text-[13.5px] font-bold leading-none">
                   {oauthLoadingProvider === "google"
                     ? "Starting..."
                     : "Google"}
@@ -502,11 +742,26 @@ export default function RegisterPage() {
                 type="button"
                 onClick={handleGithubLogin}
                 disabled={authLoading || oauthIsLoading}
-                className="flex h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#243429] bg-[#243429] text-sm font-bold text-white shadow-[0_14px_30px_rgba(36,52,41,0.18)] transition hover:-translate-y-0.5 hover:bg-[#17211B] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                className="
+                  flex h-[40px]
+                  items-center justify-center
+                  gap-2
+                  rounded-[10px]
+                  border border-[#243429]
+                  bg-[#243429]
+                  text-white
+                  shadow-[0_10px_20px_rgba(36,52,41,0.14)]
+                  transition
+                  hover:-translate-y-0.5
+                  hover:bg-[#17211B]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                  disabled:hover:translate-y-0
+                "
               >
-                <FaGithub className="text-lg text-white" />
+                <FaGithub className="text-[15px] text-white" />
 
-                <span>
+                <span className="text-[13.5px] font-normal leading-none">
                   {oauthLoadingProvider === "github"
                     ? "Starting..."
                     : "GitHub"}
@@ -514,11 +769,23 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            <p className="mt-7 text-center text-sm text-[#66736A]">
+            <p
+              className="
+                mt-4
+                text-center
+                text-[12px]
+                text-[#66736A]
+              "
+            >
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-black text-[#5C7C68] transition hover:text-[#435E4C]"
+                className="
+                  font-black
+                  text-[#5C7C68]
+                  transition
+                  hover:text-[#435E4C]
+                "
               >
                 Sign in
               </Link>

@@ -52,11 +52,11 @@ function AuthLogo() {
       </div>
 
       <div className="leading-none">
-        <p className="text-[25px] font-black tracking-[-0.04em] text-[#19372B]">
+        <p className="text-[21px] font-black tracking-[-0.04em] text-[#19372B]">
           TechMap
         </p>
 
-        <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#527661]">
+        <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.18em] text-[#527661]">
           ENGINEER YOUR FUTURE
         </p>
       </div>
@@ -212,20 +212,20 @@ export default function AuthRoadmapPanel() {
         <div className="mt-0.5 flex h-10 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border border-[#C7D6CC] bg-white/80 px-4 shadow-[0_6px_20px_rgba(62,95,77,0.08)] backdrop-blur-md">
           <div className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-[#688B75] ring-2 ring-[#688B75]/25" />
 
-          <span className="text-[11px] font-semibold uppercase tracking-[0.11em] text-[#456A55] xl:text-[12px]">
+          <span className="text-[7px] font-semibold uppercase tracking-[0.1em] text-[#456A55] xl:text-[10px]">
             LEARNING ROADMAP PLATFORM
           </span>
         </div>
       </header>
 
-      {/* Introduction - đã đẩy lên trên */}
+      {/* Introduction */}
       <section className="absolute left-[clamp(28px,3.5vw,52px)] top-[clamp(105px,11.5vh,125px)] z-40 max-w-[650px]">
-        <h2 className="max-w-[610px] text-[clamp(43px,3.8vw,55px)] font-bold leading-[1.04] tracking-[-0.045em] text-[#1C3A2E]">
-          Learn with a calm,
-          clear <span className="text-[#688D75]">roadmap.</span>
+        <h2 className="max-w-[610px] text-[clamp(34px,3.2vw,42px)] font-bold leading-[1.06] tracking-[-0.04em] text-[#1C3A2E]">
+          Learn with a calm, clear{" "}
+          <span className="text-[#688D75]">roadmap.</span>
         </h2>
 
-        <p className="mt-4 max-w-[550px] text-[16px] leading-[1.65] text-[#5C6E64] xl:text-[17px]">
+        <p className="mt-3.5 max-w-[530px] text-[12px] leading-[1.6] text-[#5C6E64] xl:text-[13.5px]">
           TechMap connects topics, learning steps, and practical projects into
           one clear path, helping you focus on the next meaningful goal.
         </p>
@@ -505,7 +505,7 @@ function DecorativeElements() {
           </svg>
         </div>
 
-        <span className="text-[11px] font-semibold text-[#587060]">
+        <span className="text-[9px] font-semibold text-[#587060]">
           Build by doing
         </span>
       </div>
@@ -561,11 +561,11 @@ function DecorativeElements() {
         </span>
 
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#84978C]">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-[#84978C]">
             Focus mode
           </p>
 
-          <p className="mt-1 text-[12px] font-semibold text-[#405C4C]">
+          <p className="mt-0.5 text-[10px] font-semibold text-[#405C4C]">
             One step at a time
           </p>
         </div>
@@ -575,16 +575,16 @@ function DecorativeElements() {
       <div className="float-slow absolute bottom-[11%] left-[6%] w-[170px] rounded-2xl border border-[#D6E0D9] bg-[#FCFBF7]/75 p-3.5 shadow-[0_8px_24px_rgba(64,90,75,0.07)] backdrop-blur-md">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#84978C]">
+            <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-[#84978C]">
               Progress
             </p>
 
-            <p className="mt-1 text-[12px] font-semibold text-[#496151]">
+            <p className="mt-0.5 text-[10px] font-semibold text-[#496151]">
               Keep moving forward
             </p>
           </div>
 
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8EFEA] text-[10px] font-bold text-[#567560]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8EFEA] text-[9px] font-bold text-[#567560]">
             72%
           </div>
         </div>
@@ -624,7 +624,7 @@ function DecorativeElements() {
           </svg>
         </span>
 
-        <span className="text-[11px] font-semibold text-[#745B35]">
+        <span className="text-[9px] font-semibold text-[#745B35]">
           Reach your goal
         </span>
       </div>
@@ -1110,7 +1110,7 @@ function RoadmapNode({ node, index }) {
         x={centerX}
         y={titleY}
         textAnchor="middle"
-        fontSize={isMilestone ? "16.5" : "16"}
+        fontSize={isMilestone ? "14.5" : "14"}
         fontWeight="700"
         fill={style.title}
         fontFamily={UI_FONT}
@@ -1122,7 +1122,7 @@ function RoadmapNode({ node, index }) {
         x={centerX}
         y={subtitleY}
         textAnchor="middle"
-        fontSize={isMilestone ? "10.4" : "10"}
+        fontSize={isMilestone ? "9.2" : "9"}
         fontWeight="500"
         fill={style.subtitle}
         fontFamily={UI_FONT}
