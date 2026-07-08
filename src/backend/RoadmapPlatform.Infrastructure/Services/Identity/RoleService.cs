@@ -8,23 +8,33 @@ using RoadmapPlatform.Application.Interfaces.Identity;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Security;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RoadmapPlatform.Infrastructure.Services.Identity
 {
+    /// <summary>
+    /// Provides role management operations and role-permission assignment logic.
+    /// </summary>
     public class RoleService : IRoleService
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IPermissionCache _permissionCache;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RoleService"/> class.
+        /// </summary>
+        /// <param name="dbContext">The application database context.</param>
+        /// <param name="permissionCache">The permission cache used by authorization handlers.</param>
         public RoleService(ApplicationDbContext dbContext, IPermissionCache permissionCache)
         {
             _dbContext = dbContext;
             _permissionCache = permissionCache;
         }
 
+        /// <summary>
+        /// Creates a new role with a normalized role name.
+        /// </summary>
+        /// <param name="roleRequest">The role creation request.</param>
+        /// <returns>The created role.</returns>
         public async Task<RoleResponseDto> CreateRoleAsync(CreateRoleRequestDto roleRequest)
         {
             var roleName = NormalizeRoleName(roleRequest.RoleName);
@@ -49,6 +59,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             };
         }
 
+        /// <summary>
+        /// Deletes a role by identifier.
+        /// </summary>
+        /// <param name="roleId">The role identifier.</param>
         public async Task DeleteRoleAsync(Guid roleId)
         {
             var role = await _dbContext.Roles.FindAsync(roleId);
@@ -62,6 +76,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             _permissionCache.Invalidate();
         }
 
+        /// <summary>
+        /// Gets a role with its assigned permissions by identifier.
+        /// </summary>
+        /// <param name="roleId">The role identifier.</param>
+        /// <returns>The role detail.</returns>
         public async Task<RoleDetailResponseDto> GetRoleByIdAsync(Guid roleId)
         {
             var role = await GetRoleWithPermissionsAsync(roleId);
@@ -70,6 +89,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             return MapRoleDetail(role);
         }
 
+        /// <summary>
+        /// Gets all roles.
+        /// </summary>
+        /// <returns>The role list.</returns>
         public async Task<List<RoleResponseDto>> GetRolesAsync()
         {
             var roles = await _dbContext.Roles
@@ -86,6 +109,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             return roleResponse;
         }
 
+        /// <summary>
+        /// Updates a role name.
+        /// </summary>
+        /// <param name="roleId">The role identifier.</param>
+        /// <param name="roleRequest">The role update request.</param>
+        /// <returns>The updated role.</returns>
         public async Task<RoleResponseDto> UpdateRoleAsync(Guid roleId, UpdateRoleRequestDto roleRequest)
         {
             var roleName = NormalizeRoleName(roleRequest.RoleName);
@@ -115,6 +144,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             };
         }
 
+        /// <summary>
+        /// Replaces all permissions assigned to a role.
+        /// </summary>
+        /// <param name="roleId">The role identifier.</param>
+        /// <param name="permissionRoleRequest">The permission assignment request.</param>
+        /// <returns>The updated role detail.</returns>
         public async Task<RoleDetailResponseDto> AssignRolePermissionsAsync(Guid roleId, AssignPermissionRoleRequestDto permissionRoleRequest)
         {
             var role = await GetRoleWithPermissionsAsync(roleId);
@@ -180,6 +215,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             return await GetRoleByIdAsync(roleId);
         }
 
+        /// <summary>
+        /// Grants a permission to a role when it is not already assigned.
+        /// </summary>
+        /// <param name="roleId">The role identifier.</param>
+        /// <param name="permissionId">The permission identifier.</param>
+        /// <returns>The updated role detail.</returns>
         public async Task<RoleDetailResponseDto> GrantRolePermissionAsync(Guid roleId, Guid permissionId)
         {
             var role = await GetRoleWithPermissionsAsync(roleId);
@@ -205,6 +246,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             return await GetRoleByIdAsync(roleId);
         }
 
+        /// <summary>
+        /// Revokes a permission from a role when it is currently assigned.
+        /// </summary>
+        /// <param name="roleId">The role identifier.</param>
+        /// <param name="permissionId">The permission identifier.</param>
+        /// <returns>The updated role detail.</returns>
         public async Task<RoleDetailResponseDto> RevokeRolePermissionAsync(Guid roleId, Guid permissionId)
         {
             var role = await GetRoleWithPermissionsAsync(roleId);

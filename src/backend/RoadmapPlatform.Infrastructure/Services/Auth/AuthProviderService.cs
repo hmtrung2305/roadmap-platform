@@ -12,12 +12,31 @@ using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth
 {
+    /// <summary>
+    /// Implements account-level authentication provider management.
+    /// </summary>
+    /// <remarks>
+    /// This service manages login methods for existing users, such as:
+    /// - Checking linked login provider status.
+    /// - Linking local email/password login.
+    /// - Changing local password.
+    /// - Linking Google login.
+    /// - Linking GitHub login.
+    /// - Unlinking login providers.
+    ///
+    /// This service is different from AuthService.
+    /// AuthService handles registration and login.
+    /// AuthProviderService handles login methods after an account already exists.
+    /// </remarks>
     public class AuthProviderService : IAuthProviderService
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IPasswordHasher<User> _passwordHasher;
         private readonly IEmailVerificationService _emailVerificationService;
 
+        /// <summary>
+        /// Creates a new authentication provider service.
+        /// </summary>
         public AuthProviderService(
             ApplicationDbContext dbContext,
             IPasswordHasher<User> passwordHasher,
@@ -28,6 +47,18 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             _emailVerificationService = emailVerificationService;
         }
 
+        /// <summary>
+        /// Gets the current linking status of all supported login providers for a user.
+        /// </summary>
+        /// <param name="userId">
+        /// The user ID whose login provider status should be loaded.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// A token used to cancel the operation.
+        /// </param>
+        /// <returns>
+        /// A list containing local, Google, and GitHub login method statuses.
+        /// </returns>
         public async Task<List<LoginMethodStatusDto>> GetAuthProviderStatusAsync(
             Guid userId,
             CancellationToken cancellationToken = default)
@@ -40,6 +71,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 throw new NotFoundException("User was not found");
             }
 
+            // Load only the fields needed to calculate provider status.
             var linkedProviders = await _dbContext.UserAuthProviders
                 .Where(x => x.UserId == userId)
                 .Select(x => new
@@ -49,10 +81,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 })
                 .ToListAsync(cancellationToken);
 
+            // A local login method is usable only after its email is verified.
             var hasVerifiedLocal = linkedProviders.Any(x =>
                 x.Provider == AuthProviders.Local &&
                 x.EmailVerifiedAt != null);
 
+            // A pending local login exists when local login was linked but not verified yet.
             var hasPendingLocal = linkedProviders.Any(x =>
                 x.Provider == AuthProviders.Local &&
                 x.EmailVerifiedAt == null);
@@ -60,6 +94,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             var hasGoogle = linkedProviders.Any(x => x.Provider == AuthProviders.Google);
             var hasGitHub = linkedProviders.Any(x => x.Provider == AuthProviders.GitHub);
 
+            // Count only usable login methods.
             var usableProviderCount = 0;
             usableProviderCount += hasVerifiedLocal ? 1 : 0;
             usableProviderCount += hasGoogle ? 1 : 0;
@@ -92,6 +127,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             };
         }
 
+        /// <summary>
+        /// Links local email/password login to an existing user account.
+        /// </summary>
+        /// <remarks>
+        /// This method creates a local auth provider with an unverified email.
+        /// The user must verify the email before the local login method becomes usable.
+        /// </remarks>
         public async Task<LinkLocalLoginResponseDto> LinkLocalLoginAsync(
             Guid userId,
             LinkLocalLoginRequestDto request,
@@ -125,6 +167,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             if (existingLocalProvider != null)
             {
+                // If local login already exists but is not verified, keep the same flow pending.
                 if (existingLocalProvider.EmailVerifiedAt == null)
                 {
                     return CreatePendingLocalLinkResponse(
@@ -134,6 +177,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 throw new ConflictException("This account already has a local login method");
             }
 
+            // Prevent the same local email from being used by another local account.
             var emailAlreadyRegistered = await _dbContext.UserAuthProviders
                 .AnyAsync(
                     x => x.Provider == AuthProviders.Local &&
@@ -164,6 +208,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
+            // Send verification code after the local provider is created.
             await _emailVerificationService.SendVerificationCodeAsync(
                 userId,
                 AuthProviders.Local,
@@ -174,6 +219,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             return CreatePendingLocalLinkResponse(email);
         }
 
+        /// <summary>
+        /// Creates a response for a local login method that still requires email verification.
+        /// </summary>
         private static LinkLocalLoginResponseDto CreatePendingLocalLinkResponse(string? email)
         {
             return new LinkLocalLoginResponseDto
@@ -186,6 +234,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             };
         }
 
+        /// <summary>
+        /// Changes the password of the current user's local login method.
+        /// </summary>
+        /// <remarks>
+        /// The local email must already be verified before password changes are allowed.
+        /// </remarks>
         public async Task ChangePasswordAsync(
             Guid userId,
             ChangePasswordRequestDto request,
@@ -230,6 +284,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 throw new InvalidOperationException("Local email must be verified before changing password");
             }
 
+            // Verify the current password before replacing the stored password hash.
             var verificationResult = _passwordHasher.VerifyHashedPassword(
                 localProvider.User,
                 localProvider.PasswordHash,
@@ -247,6 +302,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Links a GitHub OAuth account to an existing user account.
+        /// </summary>
         public async Task LinkGitHubAsync(
             Guid userId,
             ClaimsPrincipal githubUser,
@@ -278,6 +336,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Links a Google OAuth account to an existing user account.
+        /// </summary>
         public async Task LinkGoogleAsync(
             Guid userId,
             ClaimsPrincipal googleUser,
@@ -308,6 +369,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                 cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Unlinks an authentication provider from a user account.
+        /// </summary>
+        /// <remarks>
+        /// This method prevents users from removing their only login method.
+        /// </remarks>
         public async Task UnlinkProviderAsync(
             Guid userId,
             string provider,
@@ -360,6 +427,17 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Links or updates an external OAuth provider for an existing user account.
+        /// </summary>
+        /// <remarks>
+        /// This shared helper is used by both Google and GitHub linking flows.
+        ///
+        /// It protects against:
+        /// - Linking a provider to a missing user.
+        /// - Replacing an already linked provider with a different external account.
+        /// - Linking the same external provider account to multiple users.
+        /// </remarks>
         private async Task LinkExternalProviderAsync(
             Guid userId,
             string provider,
@@ -395,6 +473,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
                     throw new ConflictException($"This account already has a different {provider} account linked. Disconnect it before linking another one.");
                 }
 
+                // Same provider account is already linked, so refresh provider metadata when available.
                 if (!string.IsNullOrWhiteSpace(normalizedEmail))
                 {
                     currentUserProvider.Email = normalizedEmail;
@@ -451,6 +530,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Normalizes and validates an email address.
+        /// </summary>
         private static string NormalizeEmailOrThrow(string? email)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -468,12 +550,18 @@ namespace RoadmapPlatform.Infrastructure.Services.Auth
             return normalizedEmail;
         }
 
+        /// <summary>
+        /// Checks whether an email address has a valid format.
+        /// </summary>
         private static bool IsValidEmailFormat(string email)
         {
             return new EmailAddressAttribute().IsValid(email) &&
                    Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
 
+        /// <summary>
+        /// Trims an optional string value and converts empty values to null.
+        /// </summary>
         private static string? NormalizeNullable(string? value)
         {
             return string.IsNullOrWhiteSpace(value)

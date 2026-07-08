@@ -9,11 +9,15 @@ dotnet_diagnostic.SA1011.severity = none
 dotnet_diagnostic.SA1101.severity = none
 
 dotnet_diagnostic.SA1200.severity = none
+dotnet_diagnostic.SA1204.severity = none
+dotnet_diagnostic.SA1206.severity = none
 
 dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA1310.severity = none
 
 dotnet_diagnostic.SA1413.severity = none
 
 dotnet_diagnostic.SA1515.severity = none
 
 dotnet_diagnostic.SA1633.severity = none # File header
+dotnet_diagnostic.SA1642.severity = none

@@ -14,6 +14,15 @@ using System.Text.RegularExpressions;
 
 namespace RoadmapPlatform.Infrastructure.Services.Auth;
 
+/// <summary>
+/// Implements authentication use cases for local registration, local login,
+/// email verification, and external OAuth login.
+/// </summary>
+/// <remarks>
+/// This service contains the main authentication business logic.
+/// It works with the database, password hasher, JWT token service,
+/// OAuth login service, and email verification service.
+/// </remarks>
 public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _dbContext;
@@ -22,6 +31,9 @@ public class AuthService : IAuthService
     private readonly IOAuthLoginService _oauthLoginService;
     private readonly IEmailVerificationService _emailVerificationService;
 
+    /// <summary>
+    /// Creates a new authentication service instance.
+    /// </summary>
     public AuthService(
         ApplicationDbContext dbContext,
         IPasswordHasher<User> passwordHasher,
@@ -36,6 +48,23 @@ public class AuthService : IAuthService
         _emailVerificationService = emailVerificationService;
     }
 
+    /// <summary>
+    /// Starts local account registration and sends an email verification code.
+    /// </summary>
+    /// <param name="request">
+    /// The registration request containing username, email, password, and optional captcha token.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token used to cancel the operation.
+    /// </param>
+    /// <returns>
+    /// A registration response telling the client that email verification is required.
+    /// </returns>
+    /// <remarks>
+    /// This method does not create the final user immediately.
+    /// It creates or updates a pending local registration first.
+    /// The real user account is created after email verification succeeds.
+    /// </remarks>
     public async Task<RegistrationResponseDto> RegisterAsync(
         RegisterRequestDto request,
         CancellationToken cancellationToken = default)
@@ -45,6 +74,7 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Request body was not provided");
         }
 
+        // Normalize user input before checking uniqueness.
         var username = NormalizeUsernameOrThrow(request.Username);
         var normalizedUsername = username.ToLowerInvariant();
         var email = NormalizeEmailOrThrow(request.Email);
@@ -54,18 +84,21 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Password was not provided");
         }
 
+        // Check whether this email already has an unused pending registration.
         var existingPendingRegistration = await _dbContext.PendingLocalRegistrations
             .FirstOrDefaultAsync(
                 x => x.Email == email &&
                      x.UsedAt == null,
                 cancellationToken);
 
+        // If a valid pending registration already exists, ask the user to verify it.
         if (existingPendingRegistration != null &&
             existingPendingRegistration.ExpiresAt > DateTime.UtcNow)
         {
             return CreatePendingRegistrationResponse(email);
         }
 
+        // Check whether the email is already linked to an existing local auth provider.
         var existingLocalProvider = await _dbContext.UserAuthProviders
             .Include(x => x.User)
             .FirstOrDefaultAsync(
@@ -75,6 +108,7 @@ public class AuthService : IAuthService
 
         if (existingLocalProvider != null)
         {
+            // If the account exists but is still not verified, continue the verification flow.
             if (existingLocalProvider.EmailVerifiedAt == null ||
                 existingLocalProvider.User?.Status == UserStatuses.PendingVerification)
             {
@@ -84,6 +118,7 @@ public class AuthService : IAuthService
             throw new ConflictException("Email is already registered");
         }
 
+        // Check username uniqueness.
         var usernameExists = await _dbContext.Users
             .AnyAsync(x => x.UsernameNormalized == normalizedUsername, cancellationToken);
 
@@ -96,6 +131,7 @@ public class AuthService : IAuthService
 
         if (existingPendingRegistration != null)
         {
+            // Reuse the existing expired pending registration and refresh its data.
             existingPendingRegistration.Username = username;
             existingPendingRegistration.UsernameNormalized = normalizedUsername;
             existingPendingRegistration.PasswordHash = _passwordHasher.HashPassword(
@@ -106,6 +142,7 @@ public class AuthService : IAuthService
         }
         else
         {
+            // Create a new pending registration record.
             var pendingRegistration = new PendingLocalRegistration
             {
                 PendingLocalRegistrationId = Guid.NewGuid(),
@@ -126,6 +163,7 @@ public class AuthService : IAuthService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        // Send the email verification code for this pending registration.
         await _emailVerificationService.SendPendingRegistrationVerificationCodeAsync(
             existingPendingRegistration.PendingLocalRegistrationId,
             email,
@@ -141,6 +179,18 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Authenticates a local user using email/username and password.
+    /// </summary>
+    /// <param name="request">
+    /// The login request containing email or username and password.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token used to cancel the operation.
+    /// </param>
+    /// <returns>
+    /// A login response containing an access token and user data.
+    /// </returns>
     public async Task<LoginResponseDto> LoginAsync(
         LoginRequestDto request,
         CancellationToken cancellationToken = default)
@@ -166,6 +216,7 @@ public class AuthService : IAuthService
 
         if (emailOrUsername.Contains('@'))
         {
+            // Login by email.
             var email = NormalizeEmailOrThrow(emailOrUsername);
 
             localProvider = await _dbContext.UserAuthProviders
@@ -179,6 +230,7 @@ public class AuthService : IAuthService
         }
         else
         {
+            // Login by username.
             var usernameNormalized = NormalizeUsernameOrThrow(emailOrUsername).ToLowerInvariant();
 
             localProvider = await _dbContext.UserAuthProviders
@@ -199,6 +251,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedException("Invalid email or password");
         }
 
+        // Verify the submitted password against the stored password hash.
         var verificationResult = _passwordHasher.VerifyHashedPassword(
             localProvider.User,
             localProvider.PasswordHash,
@@ -209,6 +262,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedException("Invalid email or password");
         }
 
+        // Local users must verify their email before logging in.
         if (localProvider.EmailVerifiedAt == null)
         {
             throw new EmailNotVerifiedException(localProvider.Email ?? localProvider.ProviderUserId);
@@ -216,6 +270,7 @@ public class AuthService : IAuthService
 
         ValidateAccountStatus(localProvider.User.Status);
 
+        // Make sure old accounts without roles still get the default Learner role.
         await EnsureDefaultLearnerRoleIfNoRolesAsync(localProvider.User, cancellationToken);
 
         var authenticatedUser = new AuthenticatedUserDto
@@ -233,6 +288,25 @@ public class AuthService : IAuthService
         return CreateLoginResponse(authenticatedUser);
     }
 
+    /// <summary>
+    /// Verifies a pending registration email and creates the final local user account.
+    /// </summary>
+    /// <param name="request">
+    /// The verification request containing email and OTP.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token used to cancel the operation.
+    /// </param>
+    /// <returns>
+    /// A login response for the newly verified user.
+    /// </returns>
+    /// <remarks>
+    /// This method converts a pending registration into:
+    /// - User.
+    /// - UserProfile.
+    /// - UserAuthProvider.
+    /// - Default Learner UserRole.
+    /// </remarks>
     public async Task<LoginResponseDto> VerifyRegistrationEmailAsync(
         VerifyRegistrationEmailRequestDto request,
         CancellationToken cancellationToken = default)
@@ -249,9 +323,11 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("OTP was not provided");
         }
 
+        // Verify the OTP and get the pending registration data.
         var verificationResult = await _emailVerificationService
             .VerifyRegistrationEmailAsync(email, request.Otp, cancellationToken);
 
+        // Re-check username uniqueness before creating the final user.
         var usernameExists = await _dbContext.Users
             .AnyAsync(
                 x => x.UsernameNormalized == verificationResult.UsernameNormalized,
@@ -262,6 +338,7 @@ public class AuthService : IAuthService
             throw new ConflictException("Username is already taken. Please restart registration with another username.");
         }
 
+        // Re-check email uniqueness before creating the local auth provider.
         var emailExists = await _dbContext.UserAuthProviders
             .AnyAsync(
                 x => x.Provider == AuthProviders.Local &&
@@ -322,6 +399,7 @@ public class AuthService : IAuthService
         _dbContext.UserRoles.Add(learnerUserRole);
         user.UserRoles.Add(learnerUserRole);
 
+        // Mark the pending registration as used after successful verification.
         var pendingRegistration = await _dbContext.PendingLocalRegistrations
             .FirstOrDefaultAsync(
                 x => x.PendingLocalRegistrationId == verificationResult.PendingLocalRegistrationId,
@@ -350,6 +428,9 @@ public class AuthService : IAuthService
         return CreateLoginResponse(authenticatedUser);
     }
 
+    /// <summary>
+    /// Resends the registration verification code for a pending local registration.
+    /// </summary>
     public async Task ResendRegistrationVerificationAsync(
         ResendRegistrationVerificationRequestDto request,
         CancellationToken cancellationToken = default)
@@ -361,11 +442,27 @@ public class AuthService : IAuthService
 
         var email = NormalizeEmailOrThrow(request.Email);
 
+        // Delegate verification resend logic to the email verification service.
         await _emailVerificationService.ResendRegistrationVerificationAsync(
             email,
             cancellationToken);
     }
 
+    /// <summary>
+    /// Logs in or creates a user from a GitHub OAuth identity.
+    /// </summary>
+    /// <param name="githubUser">
+    /// The GitHub claims principal returned by the OAuth middleware.
+    /// </param>
+    /// <param name="githubAccessToken">
+    /// The GitHub OAuth access token, when available.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token used to cancel the operation.
+    /// </param>
+    /// <returns>
+    /// A login response containing an access token and user data.
+    /// </returns>
     public async Task<LoginResponseDto> LoginWithGitHubAsync(
         ClaimsPrincipal githubUser,
         string? githubAccessToken,
@@ -394,6 +491,7 @@ public class AuthService : IAuthService
             AccessToken = githubAccessToken
         };
 
+        // Delegate OAuth account linking/creation to the OAuth login service.
         var user = await _oauthLoginService.LoginOrCreateUserAsync(externalLogin);
 
         ValidateAccountStatus(user.Status);
@@ -401,6 +499,18 @@ public class AuthService : IAuthService
         return CreateLoginResponse(user);
     }
 
+    /// <summary>
+    /// Logs in or creates a user from a Google OAuth identity.
+    /// </summary>
+    /// <param name="googleUser">
+    /// The Google claims principal returned by the OAuth middleware.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token used to cancel the operation.
+    /// </param>
+    /// <returns>
+    /// A login response containing an access token and user data.
+    /// </returns>
     public async Task<LoginResponseDto> LoginWithGoogleAsync(
         ClaimsPrincipal googleUser,
         CancellationToken cancellationToken = default)
@@ -427,6 +537,7 @@ public class AuthService : IAuthService
             Email = googleEmail
         };
 
+        // Delegate OAuth account linking/creation to the OAuth login service.
         var user = await _oauthLoginService.LoginOrCreateUserAsync(externalLogin);
 
         ValidateAccountStatus(user.Status);
@@ -434,6 +545,14 @@ public class AuthService : IAuthService
         return CreateLoginResponse(user);
     }
 
+    /// <summary>
+    /// Creates a temporary user object used only for password hashing.
+    /// </summary>
+    /// <remarks>
+    /// ASP.NET Core PasswordHasher requires a user instance.
+    /// During pending registration, the final user does not exist yet,
+    /// so this method creates a temporary user object for hashing only.
+    /// </remarks>
     private static User CreatePasswordHashUser(
         string username,
         string usernameNormalized)
@@ -449,6 +568,9 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Creates a response for an email that already has a pending registration.
+    /// </summary>
     private static RegistrationResponseDto CreatePendingRegistrationResponse(string email)
     {
         return new RegistrationResponseDto
@@ -461,6 +583,14 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Ensures that a user has the default Learner role when no roles are assigned.
+    /// </summary>
+    /// <remarks>
+    /// This is mainly a safety repair for old or incomplete accounts.
+    /// New verified local accounts are already assigned the Learner role
+    /// during registration verification.
+    /// </remarks>
     private async Task EnsureDefaultLearnerRoleIfNoRolesAsync(
         User user,
         CancellationToken cancellationToken = default)
@@ -486,6 +616,12 @@ public class AuthService : IAuthService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Gets the default Learner role from the database.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Learner role is missing from the database.
+    /// </exception>
     private async Task<Role> GetRequiredLearnerRoleAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Roles
@@ -494,6 +630,13 @@ public class AuthService : IAuthService
                 "Default learner role was not found. Run the RBAC role-permission seed before creating or logging in learner accounts.");
     }
 
+    /// <summary>
+    /// Creates a login response for an authenticated user.
+    /// </summary>
+    /// <remarks>
+    /// This method generates the application JWT access token and maps user data
+    /// into the public login response DTO.
+    /// </remarks>
     private LoginResponseDto CreateLoginResponse(AuthenticatedUserDto user)
     {
         if (string.IsNullOrWhiteSpace(user.Username))
@@ -520,6 +663,15 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Validates whether the account status allows login.
+    /// </summary>
+    /// <exception cref="UnauthorizedException">
+    /// Thrown when the account has been deleted.
+    /// </exception>
+    /// <exception cref="ForbiddenException">
+    /// Thrown when the account has been suspended.
+    /// </exception>
     private static void ValidateAccountStatus(string? status)
     {
         if (status == UserStatuses.Deleted)
@@ -533,6 +685,18 @@ public class AuthService : IAuthService
         }
     }
 
+    /// <summary>
+    /// Normalizes and validates an email address.
+    /// </summary>
+    /// <param name="email">
+    /// The raw email input.
+    /// </param>
+    /// <returns>
+    /// The normalized lowercase email.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the email is missing or invalid.
+    /// </exception>
     private static string NormalizeEmailOrThrow(string? email)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -550,12 +714,27 @@ public class AuthService : IAuthService
         return normalizedEmail;
     }
 
+    /// <summary>
+    /// Checks whether an email address has a valid format.
+    /// </summary>
     private static bool IsValidEmailFormat(string email)
     {
         return new EmailAddressAttribute().IsValid(email) &&
                Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
     }
 
+    /// <summary>
+    /// Normalizes and validates a username.
+    /// </summary>
+    /// <param name="username">
+    /// The raw username input.
+    /// </param>
+    /// <returns>
+    /// The trimmed username.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the username is missing.
+    /// </exception>
     private static string NormalizeUsernameOrThrow(string? username)
     {
         if (string.IsNullOrWhiteSpace(username))

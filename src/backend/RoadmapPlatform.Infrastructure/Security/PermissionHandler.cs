@@ -3,15 +3,32 @@ using System.Security.Claims;
 
 namespace RoadmapPlatform.Infrastructure.Security;
 
+/// <summary>
+/// Handles authorization requirements that require a single permission.
+/// </summary>
+/// <remarks>
+/// The handler reads role claims from the current user, resolves the permissions
+/// assigned to those roles from the permission cache, and succeeds the requirement
+/// when at least one role contains the required permission.
+/// </remarks>
 public sealed class PermissionHandler : AuthorizationHandler<PermissionRequirement>
 {
     private readonly IPermissionCache _permissionCache;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PermissionHandler"/> class.
+    /// </summary>
+    /// <param name="permissionCache">The permission cache used to resolve role permissions.</param>
     public PermissionHandler(IPermissionCache permissionCache)
     {
         _permissionCache = permissionCache;
     }
 
+    /// <summary>
+    /// Evaluates whether the current authenticated user satisfies the required permission.
+    /// </summary>
+    /// <param name="context">The current authorization context.</param>
+    /// <param name="requirement">The permission requirement to evaluate.</param>
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
