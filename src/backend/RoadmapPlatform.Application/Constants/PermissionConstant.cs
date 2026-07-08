@@ -1,5 +1,16 @@
 namespace RoadmapPlatform.Application.Constants;
 
+/// <summary>
+/// Defines all permission codes used by the authorization system.
+/// </summary>
+/// <remarks>
+/// Permission names follow the pattern: resource.action.scope.
+/// Examples:
+/// - account.view.self
+/// - user.update.any
+/// - roadmap.view.published
+/// .
+/// </remarks>
 public static class PermissionConstant
 {
     // =====================================================
@@ -95,9 +106,6 @@ public static class PermissionConstant
 
     public const string SKILL_GAP_CONFIG_UPDATE_ANY = "skill_gap_config.update.any";
 
-
-
-
     // =====================================================
     // COUNSELOR LEARNING MODULE OWNERSHIP PERMISSIONS
     // =====================================================
@@ -185,6 +193,9 @@ public static class PermissionConstant
     // =====================================================
     public const string AI_MENTOR_CHAT_USE_SELF = "ai_mentor_chat.use.self";
 
+    /// <summary>
+    /// Contains every supported permission code in the system.
+    /// </summary>
     public static readonly IReadOnlySet<string> All = new HashSet<string>
     {
         ACCOUNT_VIEW_SELF,

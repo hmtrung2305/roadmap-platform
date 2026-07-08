@@ -9,17 +9,30 @@ using RoadmapPlatform.Infrastructure.Security;
 
 namespace RoadmapPlatform.Infrastructure.Services.Identity
 {
+    /// <summary>
+    /// Provides permission catalog management operations.
+    /// </summary>
     public class PermissionService : IPermissionService
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IPermissionCache _permissionCache;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PermissionService"/> class.
+        /// </summary>
+        /// <param name="dbContext">The application database context.</param>
+        /// <param name="permissionCache">The permission cache used by authorization handlers.</param>
         public PermissionService(ApplicationDbContext dbContext, IPermissionCache permissionCache)
         {
             _dbContext = dbContext;
             _permissionCache = permissionCache;
         }
 
+        /// <summary>
+        /// Creates a new custom permission.
+        /// </summary>
+        /// <param name="createPermissionRequest">The permission creation request.</param>
+        /// <returns>The created permission.</returns>
         public async Task<PermissionResponseDto> CreatePermissionAsync(CreatePermissionRequestDto createPermissionRequest)
         {
             var permissionName = NormalizePermissionName(createPermissionRequest.PermissionName);
@@ -45,6 +58,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             };
         }
 
+        /// <summary>
+        /// Deletes a custom permission when it is safe to remove.
+        /// </summary>
+        /// <param name="permissionId">The permission identifier.</param>
         public async Task DeletePermissionAsync(Guid permissionId)
         {
             var permission = await _dbContext.Permissions
@@ -66,38 +83,47 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             _permissionCache.Invalidate();
         }
 
+        /// <summary>
+        /// Gets a permission by identifier.
+        /// </summary>
+        /// <param name="permissionId">The permission identifier.</param>
+        /// <returns>The permission details.</returns>
         public async Task<PermissionResponseDto> GetPermissionByIdAsync(Guid permissionId)
         {
             var permission = await _dbContext.Permissions.FindAsync(permissionId);
-            if (permission == null) throw new NotFoundException("Not Found Permissions");
+            if (permission == null) throw new NotFoundException("Permission not found");
 
-            var permissionResponseDto = new PermissionResponseDto
+            return new PermissionResponseDto
             {
                 PermissionId = permission.PermissionId,
                 PermissionName = permission.PermissionName
             };
-            return permissionResponseDto;
-
         }
 
+        /// <summary>
+        /// Gets all permissions ordered by permission name.
+        /// </summary>
+        /// <returns>The permission list.</returns>
         public async Task<List<PermissionResponseDto>> GetPermissionsAsync()
         {
             var permissions = await _dbContext.Permissions
                 .AsNoTracking()
                 .OrderBy(p => p.PermissionName)
                 .ToListAsync();
-            //if (permissions == null) throw new NotFoundException("Not Found Permissions");
 
-            var permissionResponseDto = permissions.Select(p => new PermissionResponseDto
+            return permissions.Select(p => new PermissionResponseDto
             {
                 PermissionId = p.PermissionId,
                 PermissionName = p.PermissionName,
             }).ToList();
-
-            return permissionResponseDto;
-
         }
 
+        /// <summary>
+        /// Updates a custom permission name when it is safe to rename.
+        /// </summary>
+        /// <param name="permissionId">The permission identifier.</param>
+        /// <param name="updatePermissionRequest">The permission update request.</param>
+        /// <returns>The updated permission.</returns>
         public async Task<PermissionResponseDto> UpdatePermissionAsync(Guid permissionId, UpdatePermissionRequestDto updatePermissionRequest)
         {
             var permissionName = NormalizePermissionName(updatePermissionRequest.PermissionName);
@@ -105,9 +131,9 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
                 .Include(p => p.PermissionRoles)
                     .ThenInclude(permissionRole => permissionRole.Role)
                 .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
-            if (permission == null) throw new NotFoundException("Not Found Permissions");
-            EnsurePermissionCanBeRenamedOrDeleted(permission);
 
+            if (permission == null) throw new NotFoundException("Permission not found");
+            EnsurePermissionCanBeRenamedOrDeleted(permission);
 
             var existedPermission = await _dbContext.Permissions.AnyAsync(p =>
                                     p.PermissionName == permissionName &&
@@ -127,6 +153,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             };
         }
 
+        /// <summary>
+        /// Normalizes and validates a permission name.
+        /// </summary>
+        /// <param name="permissionName">The raw permission name.</param>
+        /// <returns>The normalized permission name.</returns>
         private static string NormalizePermissionName(string permissionName)
         {
             if (string.IsNullOrWhiteSpace(permissionName))
@@ -140,6 +171,10 @@ namespace RoadmapPlatform.Infrastructure.Services.Identity
             return normalizedPermissionName;
         }
 
+        /// <summary>
+        /// Ensures that a permission can be renamed or deleted.
+        /// </summary>
+        /// <param name="permission">The permission to validate.</param>
         private static void EnsurePermissionCanBeRenamedOrDeleted(Permission permission)
         {
             if (PermissionConstant.All.Contains(permission.PermissionName))

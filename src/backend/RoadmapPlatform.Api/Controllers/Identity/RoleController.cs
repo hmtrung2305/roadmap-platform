@@ -7,17 +7,27 @@ using RoadmapPlatform.Application.Interfaces.Identity;
 
 namespace RoadmapPlatform.Api.Controllers.Identity
 {
+    /// <summary>
+    /// Provides role management endpoints for identity and authorization administration.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class RoleController : ControllerBase
     {
         private readonly IRoleService _roleService;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RoleController"/> class.
+        /// </summary>
+        /// <param name="roleService">The role service used to manage roles and role permissions.</param>
         public RoleController(IRoleService roleService)
         {
             _roleService = roleService;
         }
 
+        /// <summary>
+        /// Gets all roles.
+        /// </summary>
         [RequirePermission(PermissionConstant.ROLE_VIEW_ANY)]
         [HttpGet]
         public async Task<IActionResult> GetAllRole()
@@ -31,6 +41,10 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        /// <summary>
+        /// Gets role details by role identifier.
+        /// </summary>
+        /// <param name="id">The role identifier.</param>
         [RequirePermission(PermissionConstant.ROLE_VIEW_ANY)]
         [RequirePermission(PermissionConstant.ROLE_PERMISSION_VIEW_ANY)]
         [HttpGet("{id:Guid}")]
@@ -45,6 +59,10 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        /// <summary>
+        /// Deletes a role by role identifier.
+        /// </summary>
+        /// <param name="id">The role identifier.</param>
         [RequirePermission(PermissionConstant.ROLE_DELETE_ANY)]
         [HttpDelete("{id:Guid}")]
         public async Task<IActionResult> DeleteRoleById(Guid id)
@@ -53,6 +71,10 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             return NoContent();
         }
 
+        /// <summary>
+        /// Creates a new role.
+        /// </summary>
+        /// <param name="roleRequest">The role creation request.</param>
         [RequirePermission(PermissionConstant.ROLE_CREATE_ANY)]
         [HttpPost]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequestDto roleRequest)
@@ -61,6 +83,11 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             return CreatedAtAction(nameof(GetRoleById), new { id = role.RoleId }, role);
         }
 
+        /// <summary>
+        /// Updates role details.
+        /// </summary>
+        /// <param name="id">The role identifier.</param>
+        /// <param name="request">The role update request.</param>
         [RequirePermission(PermissionConstant.ROLE_UPDATE_ANY)]
         [HttpPut("{id:guid}")]
         public async Task<ActionResult<RoleResponseDto>> UpdateRole(Guid id, [FromBody] UpdateRoleRequestDto request)
@@ -75,6 +102,11 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        /// <summary>
+        /// Grants a permission to a role.
+        /// </summary>
+        /// <param name="id">The role identifier.</param>
+        /// <param name="permissionId">The permission identifier.</param>
         [RequirePermission(PermissionConstant.ROLE_PERMISSION_ASSIGN_ANY)]
         [HttpPost("{id:guid}/permissions/{permissionId:guid}")]
         public async Task<ActionResult<RoleDetailResponseDto>> GrantPermission(Guid id, Guid permissionId)
@@ -89,6 +121,11 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        /// <summary>
+        /// Revokes a permission from a role.
+        /// </summary>
+        /// <param name="id">The role identifier.</param>
+        /// <param name="permissionId">The permission identifier.</param>
         [RequirePermission(PermissionConstant.ROLE_PERMISSION_REVOKE_ANY)]
         [HttpDelete("{id:guid}/permissions/{permissionId:guid}")]
         public async Task<ActionResult<RoleDetailResponseDto>> RevokePermission(Guid id, Guid permissionId)
@@ -103,6 +140,11 @@ namespace RoadmapPlatform.Api.Controllers.Identity
             });
         }
 
+        /// <summary>
+        /// Replaces the permission set assigned to a role.
+        /// </summary>
+        /// <param name="id">The role identifier.</param>
+        /// <param name="request">The permission assignment request.</param>
         [RequirePermission(PermissionConstant.ROLE_PERMISSION_ASSIGN_ANY)]
         [RequirePermission(PermissionConstant.ROLE_PERMISSION_REVOKE_ANY)]
         [HttpPut("{id:guid}/permissions")]
