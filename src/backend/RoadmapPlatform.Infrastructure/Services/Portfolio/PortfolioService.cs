@@ -8,20 +8,39 @@ using RoadmapPlatform.Infrastructure.Services.GitHub;
 
 namespace RoadmapPlatform.Infrastructure.Services.Portfolio
 {
+    /// <summary>
+    /// Provides portfolio operations for the authenticated user and public portfolio viewers.
+    /// </summary>
     public class PortfolioService : IPortfolioService
     {
         private readonly ApplicationDbContext _dbContext;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PortfolioService"/> class.
+        /// </summary>
+        /// <param name="dbContext">The application database context.</param>
         public PortfolioService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
+        /// <summary>
+        /// Gets the authenticated user's portfolio.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <returns>The authenticated user's portfolio.</returns>
         public async Task<PortfolioResponseDto> GetMyPortfolioAsync(Guid userId)
         {
             return await BuildPortfolioResponseAsync(userId, false);
         }
 
+        /// <summary>
+        /// Gets a public portfolio by username.
+        /// </summary>
+        /// <param name="username">The username of the portfolio owner.</param>
+        /// <returns>The public portfolio for the requested username.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the username is missing.</exception>
+        /// <exception cref="NotFoundException">Thrown when the user or public portfolio cannot be found.</exception>
         public async Task<PortfolioResponseDto> GetPortfolioByUsernameAsync(string username)
         {
             if (string.IsNullOrWhiteSpace(username))
@@ -42,7 +61,18 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
             return await BuildPortfolioResponseAsync(user.UserId, true);
         }
 
-        public async Task<PortfolioResponseDto> UpdatePortfolioRepositoriesAsync(Guid userId, UpdatePortfolioRepositoriesRequestDto request)
+        /// <summary>
+        /// Updates the authenticated user's selected portfolio repositories.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <param name="request">The selected repository update request.</param>
+        /// <returns>The updated portfolio.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request is invalid or contains repositories not owned by the user.</exception>
+        /// <exception cref="ConflictException">Thrown when more than six repositories are selected.</exception>
+        /// <exception cref="NotFoundException">Thrown when the user does not exist.</exception>
+        public async Task<PortfolioResponseDto> UpdatePortfolioRepositoriesAsync(
+            Guid userId,
+            UpdatePortfolioRepositoriesRequestDto request)
         {
             if (request == null)
             {
@@ -57,7 +87,7 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
             var selectedRepositoryIds = request.RepositoryIds
                 .Distinct().ToHashSet();
 
-            if(selectedRepositoryIds.Count > 6)
+            if (selectedRepositoryIds.Count > 6)
             {
                 throw new ConflictException("You can select up to 6 repositories for your portfolio");
             }
@@ -84,8 +114,8 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
 
             if (invalidRepositories.Any())
             {
-                throw new InvalidOperationException("" +
-                    "One or more repositories seleced do not belong to the current user");
+                throw new InvalidOperationException(
+                    "One or more selected repositories do not belong to the current user");
             }
 
             foreach (var repository in savedRepositories)
@@ -99,14 +129,24 @@ namespace RoadmapPlatform.Infrastructure.Services.Portfolio
             return await BuildPortfolioResponseAsync(userId, false);
         }
 
-        private async Task<PortfolioResponseDto> BuildPortfolioResponseAsync(Guid userId, bool requirePublicProfile)
+        /// <summary>
+        /// Builds a portfolio response for either the authenticated user or a public viewer.
+        /// </summary>
+        /// <param name="userId">The portfolio owner's user identifier.</param>
+        /// <param name="requirePublicProfile">Whether the profile must be public.</param>
+        /// <returns>The portfolio response.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the user does not exist.</exception>
+        /// <exception cref="NotFoundException">Thrown when the profile does not exist or is not public when required.</exception>
+        private async Task<PortfolioResponseDto> BuildPortfolioResponseAsync(
+            Guid userId,
+            bool requirePublicProfile)
         {
             var user = await _dbContext.Users
                 .FirstOrDefaultAsync(x => x.UserId == userId);
 
             if (user == null)
             {
-                throw new InvalidOperationException("User was not found");
+                throw new NotFoundException("Portfolio was not found"); // or User was not found
             }
 
             var profile = await _dbContext.UserProfiles

@@ -9,6 +9,9 @@ using RoadmapPlatform.Application.Interfaces.Users;
 
 namespace RoadmapPlatform.Api.Controllers.Users;
 
+/// <summary>
+/// Provides endpoints for the currently authenticated user's account, profile, and portfolio.
+/// </summary>
 [ApiController]
 [Route("api/me")]
 public class MeController : ControllerBase
@@ -17,6 +20,12 @@ public class MeController : ControllerBase
     private readonly IPortfolioService _portfolioService;
     private readonly IAccountProfileService _accountProfileService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MeController"/> class.
+    /// </summary>
+    /// <param name="userService">The user service used to manage current user data.</param>
+    /// <param name="portfolioService">The portfolio service used to manage the current user's portfolio.</param>
+    /// <param name="accountProfileService">The account profile service used to manage account profile data.</param>
     public MeController(
         IUserService userService,
         IPortfolioService portfolioService,
@@ -27,6 +36,9 @@ public class MeController : ControllerBase
         _accountProfileService = accountProfileService;
     }
 
+    /// <summary>
+    /// Gets the current authenticated user's account information.
+    /// </summary>
     [HttpGet]
     [RequirePermission(PermissionConstant.ACCOUNT_VIEW_SELF)]
     public async Task<IActionResult> GetCurrentUser()
@@ -37,6 +49,10 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Updates the current authenticated user's account information.
+    /// </summary>
+    /// <param name="request">The account update request.</param>
     [HttpPatch]
     [RequirePermission(PermissionConstant.ACCOUNT_UPDATE_SELF)]
     public async Task<IActionResult> UpdateCurrentUser(UpdateCurrentUserRequestDto request)
@@ -47,6 +63,9 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Deletes or deactivates the current authenticated user's account.
+    /// </summary>
     [HttpDelete]
     [RequirePermission(PermissionConstant.ACCOUNT_DELETE_SELF)]
     public async Task<IActionResult> DeleteAccount()
@@ -58,6 +77,9 @@ public class MeController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Gets the current authenticated user's account profile.
+    /// </summary>
     [HttpGet("account-profile")]
     [RequirePermission(PermissionConstant.ACCOUNT_VIEW_SELF)]
     public async Task<IActionResult> GetAccountProfile()
@@ -68,6 +90,10 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Updates the current authenticated user's account profile.
+    /// </summary>
+    /// <param name="request">The account profile update request.</param>
     [HttpPatch("account-profile")]
     [RequirePermission(PermissionConstant.ACCOUNT_UPDATE_SELF)]
     public async Task<IActionResult> UpdateAccountProfile(UpdateAccountProfileRequestDto request)
@@ -78,6 +104,9 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Gets the current authenticated user's public learning profile.
+    /// </summary>
     [HttpGet("profile")]
     [RequirePermission(PermissionConstant.PROFILE_VIEW_SELF)]
     public async Task<IActionResult> GetMyProfile()
@@ -88,6 +117,10 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Updates the current authenticated user's public learning profile.
+    /// </summary>
+    /// <param name="request">The profile update request.</param>
     [HttpPatch("profile")]
     [RequirePermission(PermissionConstant.PROFILE_UPDATE_SELF)]
     public async Task<IActionResult> UpdateMyProfile(UpdateProfileRequestDto request)
@@ -98,6 +131,9 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Gets the current authenticated user's portfolio.
+    /// </summary>
     [HttpGet("portfolio")]
     [RequirePermission(PermissionConstant.PORTFOLIO_VIEW_SELF)]
     public async Task<IActionResult> GetMyPortfolio()
@@ -109,6 +145,10 @@ public class MeController : ControllerBase
         return Ok(portfolioResponse);
     }
 
+    /// <summary>
+    /// Updates the repositories displayed in the current authenticated user's portfolio.
+    /// </summary>
+    /// <param name="request">The portfolio repository update request.</param>
     [HttpPatch("portfolio/repositories")]
     [RequirePermission(PermissionConstant.PORTFOLIO_UPDATE_SELF)]
     public async Task<IActionResult> UpdatePortfolioRepositories(UpdatePortfolioRepositoriesRequestDto request)
@@ -120,6 +160,13 @@ public class MeController : ControllerBase
         return Ok(portfolioResponse);
     }
 
+    /// <summary>
+    /// Gets the current authenticated user's identifier from claims.
+    /// </summary>
+    /// <returns>The current user identifier.</returns>
+    /// <exception cref="UnauthorizedAccessException">
+    /// Thrown when the authenticated principal does not contain a valid user id claim.
+    /// </exception>
     private Guid GetCurrentUserId()
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
