@@ -34,6 +34,8 @@ public sealed class MarketPulseCrawlRunDto
 
     public string Mode { get; set; } = "manual";
 
+    public string TriggerType { get; set; } = "manual";
+
     public DateTime StartedAt { get; set; }
 
     public DateTime? FinishedAt { get; set; }
@@ -43,6 +45,12 @@ public sealed class MarketPulseCrawlRunDto
     public int FetchedCount { get; set; }
 
     public int SavedCount { get; set; }
+
+    public int ImportedCount { get; set; }
+
+    public int UpdatedCount { get; set; }
+
+    public int SkippedCount { get; set; }
 
     public int DuplicateCount { get; set; }
 

@@ -26,19 +26,9 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Invoice> Invoices { get; set; }
 
-    public virtual DbSet<JobMarketDailySnapshot> JobMarketDailySnapshots { get; set; }
-
     public virtual DbSet<JobPortalSource> JobPortalSources { get; set; }
 
     public virtual DbSet<JobPosting> JobPostings { get; set; }
-
-    public virtual DbSet<JobPostingDailySnapshot> JobPostingDailySnapshots { get; set; }
-
-    public virtual DbSet<JobPostingObservation> JobPostingObservations { get; set; }
-
-    public virtual DbSet<JobPostingVersion> JobPostingVersions { get; set; }
-
-    public virtual DbSet<JobSkillMention> JobSkillMentions { get; set; }
 
     public virtual DbSet<LearningResource> LearningResources { get; set; }
 
@@ -49,8 +39,6 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<MarketPulseCrawlRun> MarketPulseCrawlRuns { get; set; }
 
     public virtual DbSet<MarketPulseFailedItem> MarketPulseFailedItems { get; set; }
-
-    public virtual DbSet<MarketPulseInsightSnapshot> MarketPulseInsightSnapshots { get; set; }
 
     public virtual DbSet<MarketPulseSourceHealth> MarketPulseSourceHealths { get; set; }
 
@@ -109,10 +97,6 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<SkillModuleQuizOption> SkillModuleQuizOptions { get; set; }
 
     public virtual DbSet<SkillModuleQuizQuestion> SkillModuleQuizQuestions { get; set; }
-
-    public virtual DbSet<SkillTaxonomy> SkillTaxonomies { get; set; }
-
-    public virtual DbSet<SkillTrendSnapshot> SkillTrendSnapshots { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -365,62 +349,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("fk_invoice_user_id");
         });
 
-        modelBuilder.Entity<JobMarketDailySnapshot>(entity =>
-        {
-            entity.HasKey(e => e.JobMarketDailySnapshotId).HasName("job_market_daily_snapshot_pkey");
-
-            entity.ToTable("job_market_daily_snapshot");
-
-            entity.HasIndex(e => new { e.SnapshotDate, e.SourceName }, "ix_job_market_daily_snapshot_date_source");
-
-            entity.HasIndex(e => new { e.SkillSlug, e.SnapshotDate }, "ix_job_market_daily_snapshot_skill_date");
-
-            entity.Property(e => e.JobMarketDailySnapshotId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("job_market_daily_snapshot_id");
-            entity.Property(e => e.ActiveJobCount).HasColumnName("active_job_count");
-            entity.Property(e => e.Category)
-                .HasMaxLength(100)
-                .HasColumnName("category");
-            entity.Property(e => e.Confidence)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'low'::character varying")
-                .HasColumnName("confidence");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.ExperienceMaxYears)
-                .HasPrecision(5, 2)
-                .HasColumnName("experience_max_years");
-            entity.Property(e => e.ExperienceMinYears)
-                .HasPrecision(5, 2)
-                .HasColumnName("experience_min_years");
-            entity.Property(e => e.GeneratedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("generated_at");
-            entity.Property(e => e.Location)
-                .HasMaxLength(160)
-                .HasColumnName("location");
-            entity.Property(e => e.MentionCount).HasColumnName("mention_count");
-            entity.Property(e => e.NewJobCount).HasColumnName("new_job_count");
-            entity.Property(e => e.ObservedJobCount).HasColumnName("observed_job_count");
-            entity.Property(e => e.SalaryMax).HasColumnName("salary_max");
-            entity.Property(e => e.SalaryMin).HasColumnName("salary_min");
-            entity.Property(e => e.SalarySampleCount).HasColumnName("salary_sample_count");
-            entity.Property(e => e.SampleSize).HasColumnName("sample_size");
-            entity.Property(e => e.SkillName)
-                .HasMaxLength(100)
-                .HasColumnName("skill_name");
-            entity.Property(e => e.SkillSlug)
-                .HasMaxLength(120)
-                .HasColumnName("skill_slug");
-            entity.Property(e => e.SnapshotDate).HasColumnName("snapshot_date");
-            entity.Property(e => e.SourceName)
-                .HasMaxLength(80)
-                .HasDefaultValueSql("'all'::character varying")
-                .HasColumnName("source_name");
-        });
-
         modelBuilder.Entity<JobPortalSource>(entity =>
         {
             entity.HasKey(e => e.JobPortalSourceId).HasName("job_portal_source_pkey");
@@ -547,6 +475,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'[]'::jsonb")
                 .HasColumnType("jsonb")
                 .HasColumnName("specialties");
+            entity.Property(e => e.Skills)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("skills");
             entity.Property(e => e.Title)
                 .HasMaxLength(250)
                 .HasColumnName("title");
@@ -559,192 +491,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.JobPortalSource).WithMany(p => p.JobPostings)
                 .HasForeignKey(d => d.JobPortalSourceId)
                 .HasConstraintName("fk_job_posting_source");
-        });
-
-        modelBuilder.Entity<JobPostingDailySnapshot>(entity =>
-        {
-            entity.HasKey(e => e.JobPostingDailySnapshotId).HasName("job_posting_daily_snapshot_pkey");
-
-            entity.ToTable("job_posting_daily_snapshot");
-
-            entity.HasIndex(e => e.SnapshotDate, "ix_job_posting_daily_snapshot_date");
-
-            entity.HasIndex(e => new { e.JobPostingId, e.SnapshotDate }, "uq_job_posting_daily_snapshot").IsUnique();
-
-            entity.Property(e => e.JobPostingDailySnapshotId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("job_posting_daily_snapshot_id");
-            entity.Property(e => e.ContentHash)
-                .HasMaxLength(64)
-                .HasColumnName("content_hash");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.JobPostingId).HasColumnName("job_posting_id");
-            entity.Property(e => e.ObservationStatus)
-                .HasMaxLength(32)
-                .HasColumnName("observation_status");
-            entity.Property(e => e.ObservedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("observed_at");
-            entity.Property(e => e.SnapshotDate).HasColumnName("snapshot_date");
-            entity.Property(e => e.SourceName)
-                .HasMaxLength(80)
-                .HasColumnName("source_name");
-
-            entity.HasOne(d => d.JobPosting).WithMany(p => p.JobPostingDailySnapshots)
-                .HasForeignKey(d => d.JobPostingId)
-                .HasConstraintName("fk_job_posting_daily_snapshot_posting");
-        });
-
-        modelBuilder.Entity<JobPostingObservation>(entity =>
-        {
-            entity.HasKey(e => e.JobPostingObservationId).HasName("job_posting_observation_pkey");
-
-            entity.ToTable("job_posting_observation");
-
-            entity.HasIndex(e => new { e.SourceName, e.SnapshotDate }, "ix_job_posting_observation_source_date");
-
-            entity.HasIndex(e => new { e.JobPostingId, e.SnapshotDate, e.ObservationStatus }, "uq_job_posting_observation").IsUnique();
-
-            entity.Property(e => e.JobPostingObservationId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("job_posting_observation_id");
-            entity.Property(e => e.ContentHash)
-                .HasMaxLength(64)
-                .HasColumnName("content_hash");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("is_active");
-            entity.Property(e => e.JobPostingId).HasColumnName("job_posting_id");
-            entity.Property(e => e.ObservationStatus)
-                .HasMaxLength(32)
-                .HasColumnName("observation_status");
-            entity.Property(e => e.ObservedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("observed_at");
-            entity.Property(e => e.SnapshotDate).HasColumnName("snapshot_date");
-            entity.Property(e => e.SourceName)
-                .HasMaxLength(80)
-                .HasColumnName("source_name");
-
-            entity.HasOne(d => d.JobPosting).WithMany(p => p.JobPostingObservations)
-                .HasForeignKey(d => d.JobPostingId)
-                .HasConstraintName("job_posting_observation_job_posting_id_fkey");
-        });
-
-        modelBuilder.Entity<JobPostingVersion>(entity =>
-        {
-            entity.HasKey(e => e.JobPostingVersionId).HasName("job_posting_version_pkey");
-
-            entity.ToTable("job_posting_version");
-
-            entity.HasIndex(e => new { e.JobPostingId, e.ObservedAt }, "ix_job_posting_version_posting_observed");
-
-            entity.HasIndex(e => new { e.JobPostingId, e.ContentHash }, "uq_job_posting_version_hash").IsUnique();
-
-            entity.Property(e => e.JobPostingVersionId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("job_posting_version_id");
-            entity.Property(e => e.Benefits)
-                .HasDefaultValueSql("'[]'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("benefits");
-            entity.Property(e => e.Category)
-                .HasMaxLength(100)
-                .HasColumnName("category");
-            entity.Property(e => e.CompanyName)
-                .HasMaxLength(160)
-                .HasColumnName("company_name");
-            entity.Property(e => e.ContentHash)
-                .HasMaxLength(64)
-                .HasColumnName("content_hash");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Experience)
-                .HasMaxLength(100)
-                .HasColumnName("experience");
-            entity.Property(e => e.JobPostingId).HasColumnName("job_posting_id");
-            entity.Property(e => e.Location)
-                .HasMaxLength(160)
-                .HasColumnName("location");
-            entity.Property(e => e.ObservedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("observed_at");
-            entity.Property(e => e.Requirements)
-                .HasDefaultValueSql("'[]'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("requirements");
-            entity.Property(e => e.Salary)
-                .HasMaxLength(100)
-                .HasColumnName("salary");
-            entity.Property(e => e.Skills)
-                .HasDefaultValueSql("'[]'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("skills");
-            entity.Property(e => e.Specialties)
-                .HasDefaultValueSql("'[]'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("specialties");
-            entity.Property(e => e.Title)
-                .HasMaxLength(250)
-                .HasColumnName("title");
-
-            entity.HasOne(d => d.JobPosting).WithMany(p => p.JobPostingVersions)
-                .HasForeignKey(d => d.JobPostingId)
-                .HasConstraintName("job_posting_version_job_posting_id_fkey");
-        });
-
-        modelBuilder.Entity<JobSkillMention>(entity =>
-        {
-            entity.HasKey(e => e.JobSkillMentionId).HasName("job_skill_mention_pkey");
-
-            entity.ToTable("job_skill_mention");
-
-            entity.HasIndex(e => new { e.SkillSlug, e.SnapshotDate }, "ix_job_skill_mention_skill_date");
-
-            entity.HasIndex(e => new { e.SourceName, e.SnapshotDate }, "ix_job_skill_mention_source_date");
-
-            entity.HasIndex(e => new { e.JobPostingId, e.SkillSlug, e.MentionSource }, "uq_job_skill_mention").IsUnique();
-
-            entity.Property(e => e.JobSkillMentionId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("job_skill_mention_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.JobPostingId).HasColumnName("job_posting_id");
-            entity.Property(e => e.MentionSource)
-                .HasMaxLength(40)
-                .HasDefaultValueSql("'normalized'::character varying")
-                .HasColumnName("mention_source");
-            entity.Property(e => e.ObservedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("observed_at");
-            entity.Property(e => e.SkillName)
-                .HasMaxLength(100)
-                .HasColumnName("skill_name");
-            entity.Property(e => e.SkillSlug)
-                .HasMaxLength(120)
-                .HasColumnName("skill_slug");
-            entity.Property(e => e.SkillTaxonomyId).HasColumnName("skill_taxonomy_id");
-            entity.Property(e => e.SnapshotDate).HasColumnName("snapshot_date");
-            entity.Property(e => e.SourceName)
-                .HasMaxLength(80)
-                .HasColumnName("source_name");
-
-            entity.HasOne(d => d.JobPosting).WithMany(p => p.JobSkillMentions)
-                .HasForeignKey(d => d.JobPostingId)
-                .HasConstraintName("job_skill_mention_job_posting_id_fkey");
-
-            entity.HasOne(d => d.SkillTaxonomy).WithMany(p => p.JobSkillMentions)
-                .HasForeignKey(d => d.SkillTaxonomyId)
-                .HasConstraintName("job_skill_mention_skill_taxonomy_id_fkey");
         });
 
         modelBuilder.Entity<LearningResource>(entity =>
@@ -873,11 +619,13 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.FailedCount).HasColumnName("failed_count");
             entity.Property(e => e.FetchedCount).HasColumnName("fetched_count");
             entity.Property(e => e.FinishedAt).HasColumnName("finished_at");
+            entity.Property(e => e.ImportedCount).HasColumnName("imported_count");
             entity.Property(e => e.Mode)
                 .HasMaxLength(40)
                 .HasDefaultValueSql("'scheduled'::character varying")
                 .HasColumnName("mode");
             entity.Property(e => e.SavedCount).HasColumnName("saved_count");
+            entity.Property(e => e.SkippedCount).HasColumnName("skipped_count");
             entity.Property(e => e.SourceName)
                 .HasMaxLength(80)
                 .HasDefaultValueSql("'all'::character varying")
@@ -890,6 +638,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'running'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.StoppedReason).HasColumnName("stopped_reason");
+            entity.Property(e => e.TriggerType)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'manual'::character varying")
+                .HasColumnName("trigger_type");
+            entity.Property(e => e.UpdatedCount).HasColumnName("updated_count");
         });
 
         modelBuilder.Entity<MarketPulseFailedItem>(entity =>
@@ -943,50 +696,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.MarketPulseCrawlRunId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_market_pulse_failed_item_run");
-        });
-
-        modelBuilder.Entity<MarketPulseInsightSnapshot>(entity =>
-        {
-            entity.HasKey(e => e.MarketPulseInsightSnapshotId).HasName("market_pulse_insight_snapshot_pkey");
-
-            entity.ToTable("market_pulse_insight_snapshot");
-
-            entity.HasIndex(e => new { e.InsightType, e.SnapshotDate }, "ix_market_pulse_insight_snapshot_type_date");
-
-            entity.HasIndex(e => new { e.SnapshotDate, e.SourceName, e.InsightKey }, "uq_market_pulse_insight_snapshot").IsUnique();
-
-            entity.Property(e => e.MarketPulseInsightSnapshotId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("market_pulse_insight_snapshot_id");
-            entity.Property(e => e.Confidence)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'low'::character varying")
-                .HasColumnName("confidence");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.GeneratedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("generated_at");
-            entity.Property(e => e.InsightKey)
-                .HasMaxLength(120)
-                .HasColumnName("insight_key");
-            entity.Property(e => e.InsightType)
-                .HasMaxLength(60)
-                .HasColumnName("insight_type");
-            entity.Property(e => e.Payload)
-                .HasDefaultValueSql("'{}'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("payload");
-            entity.Property(e => e.PeriodDays)
-                .HasDefaultValue(1)
-                .HasColumnName("period_days");
-            entity.Property(e => e.SampleSize).HasColumnName("sample_size");
-            entity.Property(e => e.SnapshotDate).HasColumnName("snapshot_date");
-            entity.Property(e => e.SourceName)
-                .HasMaxLength(80)
-                .HasDefaultValueSql("'all'::character varying")
-                .HasColumnName("source_name");
         });
 
         modelBuilder.Entity<MarketPulseSourceHealth>(entity =>
@@ -2185,77 +1894,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.SkillModuleQuiz).WithMany(p => p.SkillModuleQuizQuestions)
                 .HasForeignKey(d => d.SkillModuleQuizId)
                 .HasConstraintName("fk_skill_module_quiz_question_quiz");
-        });
-
-        modelBuilder.Entity<SkillTaxonomy>(entity =>
-        {
-            entity.HasKey(e => e.SkillTaxonomyId).HasName("skill_taxonomy_pkey");
-
-            entity.ToTable("skill_taxonomy");
-
-            entity.HasIndex(e => new { e.IsActive, e.SkillSlug }, "ix_skill_taxonomy_active_slug");
-
-            entity.HasIndex(e => e.SkillSlug, "uq_skill_taxonomy_slug").IsUnique();
-
-            entity.Property(e => e.SkillTaxonomyId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("skill_taxonomy_id");
-            entity.Property(e => e.Aliases)
-                .HasDefaultValueSql("'[]'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("aliases");
-            entity.Property(e => e.Category)
-                .HasMaxLength(100)
-                .HasColumnName("category");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("is_active");
-            entity.Property(e => e.PlatformSkillSlug)
-                .HasMaxLength(120)
-                .HasColumnName("platform_skill_slug");
-            entity.Property(e => e.SkillName)
-                .HasMaxLength(100)
-                .HasColumnName("skill_name");
-            entity.Property(e => e.SkillSlug)
-                .HasMaxLength(120)
-                .HasColumnName("skill_slug");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-        });
-
-        modelBuilder.Entity<SkillTrendSnapshot>(entity =>
-        {
-            entity.HasKey(e => e.SkillTrendSnapshotId).HasName("skill_trend_snapshot_pkey");
-
-            entity.ToTable("skill_trend_snapshot");
-
-            entity.HasIndex(e => e.SnapshotDate, "ix_skill_trend_snapshot_date");
-
-            entity.HasIndex(e => new { e.SkillSlug, e.SnapshotDate, e.SourceName }, "uq_skill_trend_snapshot").IsUnique();
-
-            entity.Property(e => e.SkillTrendSnapshotId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("skill_trend_snapshot_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.MentionCount).HasColumnName("mention_count");
-            entity.Property(e => e.PostingCount).HasColumnName("posting_count");
-            entity.Property(e => e.SkillName)
-                .HasMaxLength(100)
-                .HasColumnName("skill_name");
-            entity.Property(e => e.SkillSlug)
-                .HasMaxLength(120)
-                .HasColumnName("skill_slug");
-            entity.Property(e => e.SnapshotDate).HasColumnName("snapshot_date");
-            entity.Property(e => e.SourceName)
-                .HasMaxLength(80)
-                .HasDefaultValueSql("'all'::character varying")
-                .HasColumnName("source_name");
         });
 
         modelBuilder.Entity<User>(entity =>

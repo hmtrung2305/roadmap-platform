@@ -238,7 +238,7 @@ export default function AdminMarketPulsePage() {
           Market Pulse Admin
         </h1>
         <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">
-          Operate crawl refreshes, monitor data health, review failed items, and tune category classification.
+          Run .NET imports from the Python Jobs API, monitor import health, review import failures, and tune category classification.
         </p>
       </div>
 
@@ -253,9 +253,9 @@ export default function AdminMarketPulsePage() {
         <div className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-lg font-black text-[#18332D]">Crawl status overview</h2>
+              <h2 className="text-lg font-black text-[#18332D]">Import status overview</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Latest runs, source freshness, and failed item queue.
+                Latest .NET import runs, source freshness, and import failure queue.
               </p>
             </div>
             <button
@@ -272,8 +272,8 @@ export default function AdminMarketPulsePage() {
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AdminMetric icon={History} label="Latest status" value={runs[0]?.status || "n/a"} />
             <AdminMetric icon={Database} label="Fetched" value={formatNumber(runs[0]?.fetchedCount)} />
-            <AdminMetric icon={CheckCircle2} label="Saved" value={formatNumber(runs[0]?.savedCount)} />
-            <AdminMetric icon={XCircle} label="Open failed" value={formatNumber(failedItems.filter((item) => item.status === "open").length)} />
+            <AdminMetric icon={CheckCircle2} label="Imported" value={formatNumber(runs[0]?.importedCount ?? runs[0]?.savedCount)} />
+            <AdminMetric icon={XCircle} label="Open import failures" value={formatNumber(failedItems.filter((item) => item.status === "open").length)} />
           </div>
 
           <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
@@ -281,7 +281,7 @@ export default function AdminMarketPulsePage() {
               <SlidersHorizontal size={16} />
               Refresh options
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <RefreshOptionInput
                 label="Jobs API page size"
                 value={refreshOptions.jobsApiPageSize}
@@ -302,13 +302,6 @@ export default function AdminMarketPulsePage() {
                 min={1}
                 max={5000}
                 onChange={(value) => updateRefreshOption("maxPostingsPerSource", value)}
-              />
-              <RefreshOptionInput
-                label="HTML max pages"
-                value={refreshOptions.maxPagesPerSource}
-                min={1}
-                max={100}
-                onChange={(value) => updateRefreshOption("maxPagesPerSource", value)}
               />
             </div>
           </div>
@@ -332,7 +325,7 @@ export default function AdminMarketPulsePage() {
         </div>
 
         <div className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-[#18332D]">Source health</h2>
+          <h2 className="text-lg font-black text-[#18332D]">.NET import health</h2>
           <div className="mt-4 space-y-3">
             {sourceHealth.length === 0 ? (
               <EmptyState message="No source health records yet." />
@@ -357,7 +350,7 @@ export default function AdminMarketPulsePage() {
       </section>
 
       <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm">
-        <SectionHeader icon={History} title="Crawl Run History" />
+        <SectionHeader icon={History} title="Import Run History" />
         <FilterRow
           filters={runFilters}
           onChange={setRunFilters}
@@ -365,18 +358,20 @@ export default function AdminMarketPulsePage() {
           statusOptions={["", "success", "empty", "failed", "partial_success", "blocked"]}
         />
         <DataTable
-          headers={["runId", "source", "status", "mode", "startedAt", "finishedAt", "duration", "fetched", "saved", "duplicated", "failed", "stoppedReason", "errorSummary"]}
+          headers={["runId", "source", "status", "mode", "trigger", "startedAt", "finishedAt", "duration", "fetched", "imported", "updated", "skipped", "failed", "stoppedReason", "errorSummary"]}
           rows={runs.map((run) => [
             shortId(run.runId),
             run.source,
             <StatusBadge key="status" status={run.status} />,
             run.mode,
+            run.triggerType,
             formatDate(run.startedAt),
             formatDate(run.finishedAt),
             formatDuration(run.durationMs),
             formatNumber(run.fetchedCount),
-            formatNumber(run.savedCount),
-            formatNumber(run.duplicateCount),
+            formatNumber(run.importedCount ?? run.savedCount),
+            formatNumber(run.updatedCount),
+            formatNumber(run.skippedCount ?? run.duplicateCount),
             formatNumber(run.failedCount),
             run.stoppedReason || "-",
             run.errorSummary || "-",
@@ -386,7 +381,7 @@ export default function AdminMarketPulsePage() {
 
       <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SectionHeader icon={AlertTriangle} title="Failed Jobs" compact />
+          <SectionHeader icon={AlertTriangle} title=".NET Import Failures" compact />
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -395,7 +390,7 @@ export default function AdminMarketPulsePage() {
               className="inline-flex h-9 items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 text-xs font-extrabold text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RotateCcw size={14} />
-              Retry selected
+              Queue import retry
             </button>
             <button
               type="button"
@@ -416,7 +411,7 @@ export default function AdminMarketPulsePage() {
         />
         <div className="mt-4 overflow-x-auto">
           {failedItems.length === 0 ? (
-            <EmptyState message="No failed items for the current filter." />
+            <EmptyState message="No .NET import failures for the current filter." />
           ) : (
             <table className="min-w-[1100px] w-full border-collapse text-left text-xs">
               <thead>
@@ -467,7 +462,7 @@ export default function AdminMarketPulsePage() {
                     <td className="py-3 pr-3">
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => handleRetry([item.failedItemId])} className="rounded-md bg-blue-50 px-2 py-1 font-extrabold text-blue-700">
-                          Retry
+                          Queue retry
                         </button>
                         <button type="button" onClick={() => handleIgnore([item.failedItemId])} className="rounded-md bg-slate-100 px-2 py-1 font-extrabold text-slate-700">
                           Ignore

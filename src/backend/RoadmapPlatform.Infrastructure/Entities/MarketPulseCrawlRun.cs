@@ -13,6 +13,8 @@ public partial class MarketPulseCrawlRun
 
     public string Mode { get; set; } = null!;
 
+    public string TriggerType { get; set; } = null!;
+
     public DateTime StartedAt { get; set; }
 
     public DateTime? FinishedAt { get; set; }
@@ -22,6 +24,12 @@ public partial class MarketPulseCrawlRun
     public int FetchedCount { get; set; }
 
     public int SavedCount { get; set; }
+
+    public int ImportedCount { get; set; }
+
+    public int UpdatedCount { get; set; }
+
+    public int SkippedCount { get; set; }
 
     public int DuplicateCount { get; set; }
 
