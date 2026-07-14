@@ -99,7 +99,7 @@ public sealed class JobPortalScraper(
         {
             yield return new MarketPulseSourceSettings
             {
-                Name = "Jobs API",
+                Name = "topcv",
                 Kind = JobsApiSourceKind,
                 BaseUrl = ResolveBaseUrl(settings.ActiveJobsApiUrl),
                 SearchUrlTemplate = settings.ActiveJobsApiUrl.Trim(),
@@ -128,7 +128,7 @@ public sealed class JobPortalScraper(
 
         return new MarketPulseSourceSettings
         {
-            Name = string.IsNullOrWhiteSpace(source.Name) ? "Jobs API" : source.Name.Trim(),
+            Name = string.IsNullOrWhiteSpace(source.Name) ? "topcv" : source.Name.Trim(),
             Kind = string.IsNullOrWhiteSpace(source.Kind) ? HtmlSourceKind : source.Kind.Trim(),
             BaseUrl = FirstNonEmpty(source.BaseUrl, ResolveBaseUrl(searchUrlTemplate)) ?? string.Empty,
             SearchUrlTemplate = searchUrlTemplate.Trim(),
@@ -189,7 +189,7 @@ public sealed class JobPortalScraper(
             .Where(x => x.IsActive && !string.IsNullOrWhiteSpace(x.Url))
             .Take(maxPostings)
             .Select(x => new ScrapedJobPosting(
-                source.Name,
+                string.IsNullOrWhiteSpace(x.Source) ? source.Name : x.Source.Trim(),
                 TrimTo(x.Title?.Trim() ?? string.Empty, 250) is { Length: > 0 } title
                     ? title
                     : "Untitled IT job",
