@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
+import { CreatorByline } from "../../features/creatorProfile/components/CreatorProfileDisplay";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -82,7 +83,7 @@ export default function BrowseLearningModulesPage() {
       .filter((module) => difficulty === "all" || module.difficultyLevel === difficulty)
       .filter((module) => {
         if (!term) return true;
-        return `${module.title} ${module.skillName} ${module.description || ""}`
+        return `${module.title} ${module.skillName} ${module.description || ""} ${module.creatorProfile?.displayName || ""}`
           .toLowerCase()
           .includes(term);
       });
@@ -183,6 +184,10 @@ function BrowseModuleRow({ module }) {
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}
         </p>
+        <CreatorByline
+          creatorProfile={module.creatorProfile}
+          className="mt-2"
+        />
       </div>
 
       <div className="text-sm font-bold text-slate-700">

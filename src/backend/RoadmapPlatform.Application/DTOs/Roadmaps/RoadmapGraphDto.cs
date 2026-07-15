@@ -1,7 +1,10 @@
+using RoadmapPlatform.Application.DTOs.Users;
+
 namespace RoadmapPlatform.Application.DTOs.Roadmaps;
 
 public sealed class RoadmapGraphDto
 {
+    public CreatorProfileDto? CreatorProfile { get; set; }
     public Guid RoadmapId { get; set; }
     public Guid RoadmapVersionId { get; set; }
     public string Slug { get; set; } = string.Empty;

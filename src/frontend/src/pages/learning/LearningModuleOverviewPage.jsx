@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Clock, FileText } from "lucide-re
 import { toast } from "react-toastify";
 import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
 import { useStreakStore } from "../../stores/useStreakStore";
+import { CreatorProfileCard } from "../../features/creatorProfile/components/CreatorProfileDisplay";
 import {
   formatHours,
   getEnrollmentStatus,
@@ -206,19 +207,26 @@ export default function LearningModuleOverviewPage() {
             </div>
           </ModuleCard>
 
-          <ModuleCard className="p-5">
-            <h2 className="text-lg font-extrabold text-[#18332D]">What you will learn</h2>
-            <ul className="mt-4 space-y-3">
-              {deriveOutcomes(module).map((item) => (
-                <li key={item} className="flex gap-3 text-sm font-medium leading-6 text-slate-700">
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#6FCF97]/25 text-xs font-bold text-[#1F6F5F]">
-                    <CheckCircle2 size={13} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </ModuleCard>
+          <div className="space-y-5">
+            <CreatorProfileCard
+              creatorProfile={module.creatorProfile}
+              label="Module creator"
+            />
+
+            <ModuleCard className="p-5">
+              <h2 className="text-lg font-extrabold text-[#18332D]">What you will learn</h2>
+              <ul className="mt-4 space-y-3">
+                {deriveOutcomes(module).map((item) => (
+                  <li key={item} className="flex gap-3 text-sm font-medium leading-6 text-slate-700">
+                    <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#6FCF97]/25 text-xs font-bold text-[#1F6F5F]">
+                      <CheckCircle2 size={13} />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </ModuleCard>
+          </div>
         </div>
       </div>
     </ModulePageShell>

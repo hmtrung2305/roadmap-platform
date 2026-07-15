@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Services.Roadmaps;
 
@@ -34,6 +35,8 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
         var roadmap = await dbContext.Set<Roadmap>()
             .AsNoTracking()
             .Include(r => r.CareerRole)
+            .Include(r => r.OwnerUser)
+                .ThenInclude(user => user!.UserProfile)
             .Where(r => r.RoadmapId == version.RoadmapId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -84,6 +87,7 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
 
         return new RoadmapDetailDto
         {
+            CreatorProfile = CreatorProfileMapper.Map(roadmap.OwnerUser),
             RoadmapId = version.RoadmapId,
             RoadmapVersionId = version.RoadmapVersionId,
             Slug = roadmap.Slug,

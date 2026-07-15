@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import SettingsSection from "../../features/settings/components/SettingsSection";
 import SettingsRow from "../../features/settings/components/SettingsRow";
 import AccountIdentitySection from "../../features/settings/components/AccountIdentitySection";
+import CreatorProfileSection from "../../features/settings/components/CreatorProfileSection";
 import ChangePasswordModal from "../../features/settings/components/ChangePasswordModal";
 import AddLocalLoginModal from "../../features/settings/components//AddLocalLoginModal";
 import VerifyLocalEmailModal from "../../features/settings/components/VerifyLocalEmailModal";
@@ -14,6 +15,9 @@ import { getFriendlyApiErrorMessage } from "../../utils/apiErrorUtils";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useAuthProviderStore } from "../../stores/useAuthProviderStore";
 import { useAccountProfileStore } from "../../stores/useAccountProfileStore";
+import { useProfileStore } from "../../stores/useProfileStore";
+import { useRoadmapStore } from "../../stores/useRoadmapStore";
+import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
 
 export default function ContentManagerSettingsPage() {
   const me = useAuthStore((state) => state.user);
@@ -34,6 +38,11 @@ export default function ContentManagerSettingsPage() {
   const updateAccountProfile = useAccountProfileStore(
     (state) => state.updateAccountProfile,
   );
+
+  const creatorProfile = useProfileStore((state) => state.profile);
+  const creatorProfileSaving = useProfileStore((state) => state.saving);
+  const loadCreatorProfile = useProfileStore((state) => state.loadProfile);
+  const updateCreatorProfile = useProfileStore((state) => state.updateProfile);
 
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -57,6 +66,7 @@ export default function ContentManagerSettingsPage() {
         loadCurrentUser({ force }),
         loadProviders({ force }),
         loadAccountProfile({ force }),
+        loadCreatorProfile({ force }),
       ]);
     } catch (error) {
       console.error(
@@ -82,6 +92,7 @@ export default function ContentManagerSettingsPage() {
     try {
       setActionError("");
       await updateAccountProfile(payload);
+      await loadCreatorProfile({ force: true });
       toast.success("Account identity updated successfully.");
     } catch (error) {
       console.error(
@@ -94,6 +105,28 @@ export default function ContentManagerSettingsPage() {
           "Unable to update account identity.",
         ),
       );
+    }
+  };
+
+  const handleCreatorProfileSave = async (payload) => {
+    try {
+      setActionError("");
+      await updateCreatorProfile(payload);
+      useRoadmapStore.getState().resetRoadmaps();
+      useLearningModuleStore.getState().resetLearningModules();
+      toast.success("Creator profile updated successfully.");
+    } catch (error) {
+      console.error(
+        "Failed to update creator profile:",
+        error.response?.data || error,
+      );
+      setActionError(
+        getFriendlyApiErrorMessage(
+          error,
+          "Unable to update creator profile.",
+        ),
+      );
+      throw error;
     }
   };
 
@@ -131,6 +164,12 @@ export default function ContentManagerSettingsPage() {
         accountProfile={accountProfile}
         saving={accountProfileSaving}
         onSave={handleIdentitySave}
+      />
+
+      <CreatorProfileSection
+        profile={creatorProfile}
+        saving={creatorProfileSaving}
+        onSave={handleCreatorProfileSave}
       />
 
       <SettingsSection title="Login details">

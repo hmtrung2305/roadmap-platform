@@ -1,7 +1,10 @@
+using RoadmapPlatform.Application.DTOs.Users;
+
 namespace RoadmapPlatform.Application.DTOs.LearningModules;
 
 public sealed class LearnerLearningModuleOverviewDto
 {
+    public CreatorProfileDto? CreatorProfile { get; set; }
     public Guid SkillModuleId { get; set; }
     public Guid SkillId { get; set; }
     public string SkillName { get; set; } = string.Empty;
