@@ -10,9 +10,9 @@ namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
 public interface IJobPortalScraper
 {
-    Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken);
+    Task<JobPortalScrapeResult> ScrapeAsync(CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(
+    Task<JobPortalScrapeResult> ScrapeAsync(
         MarketPulseRefreshRequestDto? request,
         CancellationToken cancellationToken);
 }
@@ -34,10 +34,10 @@ public sealed class JobPortalScraper(
         "<title[^>]*>(?<title>.*?)</title>|<h1[^>]*>(?<title>.*?)</h1>",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
 
-    public Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(CancellationToken cancellationToken) =>
+    public Task<JobPortalScrapeResult> ScrapeAsync(CancellationToken cancellationToken) =>
         ScrapeAsync(null, cancellationToken);
 
-    public async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeAsync(
+    public async Task<JobPortalScrapeResult> ScrapeAsync(
         MarketPulseRefreshRequestDto? request,
         CancellationToken cancellationToken)
     {
@@ -51,29 +51,82 @@ public sealed class JobPortalScraper(
             logger.LogWarning(
                 "No Market Pulse sources are enabled or configured. Set MarketPulse__Sources__0__SearchUrlTemplate, " +
                 "MarketPulse__ActiveJobsApiUrl, or a JobsApi BaseUrl that points to the Jobs API origin.");
-            return postings;
+            return JobPortalScrapeResult.Failure(
+                JobsApiFetchStatus.InvalidContract,
+                "No Market Pulse Jobs API source is enabled or configured.");
         }
+
+        int? total = 0;
+        var fetchedCount = 0;
+        var isCompleteSync = true;
+        var isSourceFresh = true;
+        DateTimeOffset? generatedAt = null;
+        DateTimeOffset? latestSuccessfulCrawlAt = null;
 
         foreach (var source in enabledSources)
         {
             try
             {
-                var sourcePostings = source.Kind switch
+                if (string.Equals(source.Kind, JobsApiSourceKind, StringComparison.OrdinalIgnoreCase))
                 {
-                    JobsApiSourceKind => await ScrapeJobsApiSourceAsync(source, effectiveSettings, cancellationToken),
-                    HtmlSourceKind => await ScrapeHtmlSourceAsync(source, settings, effectiveSettings, cancellationToken),
-                    _ => await ScrapeHtmlSourceAsync(source, settings, effectiveSettings, cancellationToken)
-                };
+                    var sourceResult = await ScrapeJobsApiSourceAsync(source, effectiveSettings, cancellationToken);
+                    if (sourceResult.Status is not JobsApiFetchStatus.Success and not JobsApiFetchStatus.Empty)
+                    {
+                        return sourceResult;
+                    }
 
+                    postings.AddRange(sourceResult.Postings);
+                    total = total.HasValue && sourceResult.Total.HasValue
+                        ? total.Value + sourceResult.Total.Value
+                        : null;
+                    fetchedCount += sourceResult.FetchedCount;
+                    isCompleteSync &= sourceResult.IsCompleteSync;
+                    isSourceFresh &= sourceResult.IsSourceFresh;
+                    generatedAt = Latest(generatedAt, sourceResult.GeneratedAt);
+                    latestSuccessfulCrawlAt = Latest(
+                        latestSuccessfulCrawlAt,
+                        sourceResult.LatestSuccessfulCrawlAt);
+                    continue;
+                }
+
+                if (settings.JobsApiRequireFreshCrawlMetadata)
+                {
+                    return JobPortalScrapeResult.Failure(
+                        JobsApiFetchStatus.InvalidContract,
+                        $"HTML fallback source {source.Name} cannot provide required Python crawler freshness metadata.");
+                }
+
+                var sourcePostings = await ScrapeHtmlSourceAsync(
+                    source,
+                    settings,
+                    effectiveSettings,
+                    cancellationToken);
                 postings.AddRange(sourcePostings);
+                total = null;
+                fetchedCount += sourcePostings.Count;
+                isCompleteSync = false;
+                isSourceFresh = false;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex, "Failed to scrape market pulse source {SourceName}.", source.Name);
+                return JobPortalScrapeResult.Failure(
+                    JobsApiFetchStatus.HttpError,
+                    $"Market Pulse source {source.Name} failed: {ex.Message}");
             }
         }
 
-        return postings;
+        return new JobPortalScrapeResult
+        {
+            Status = postings.Count == 0 ? JobsApiFetchStatus.Empty : JobsApiFetchStatus.Success,
+            Postings = postings,
+            Total = total,
+            FetchedCount = fetchedCount,
+            GeneratedAt = generatedAt,
+            LatestSuccessfulCrawlAt = latestSuccessfulCrawlAt,
+            IsCompleteSync = isCompleteSync,
+            IsSourceFresh = isSourceFresh
+        };
     }
 
     private IEnumerable<MarketPulseSourceSettings> ResolveEnabledSources(MarketPulseSettings settings)
@@ -171,7 +224,22 @@ public sealed class JobPortalScraper(
     private static string? FirstNonEmpty(params string?[] values) =>
         values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim();
 
-    private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeJobsApiSourceAsync(
+    private static DateTimeOffset? Latest(DateTimeOffset? first, DateTimeOffset? second)
+    {
+        if (!first.HasValue)
+        {
+            return second;
+        }
+
+        if (!second.HasValue)
+        {
+            return first;
+        }
+
+        return first.Value >= second.Value ? first : second;
+    }
+
+    private async Task<JobPortalScrapeResult> ScrapeJobsApiSourceAsync(
         MarketPulseSourceSettings source,
         EffectiveScrapeSettings effectiveSettings,
         CancellationToken cancellationToken)
@@ -185,7 +253,8 @@ public sealed class JobPortalScraper(
                 effectiveSettings.JobsApiMaxPages),
             cancellationToken);
 
-        return result.Jobs
+        var postings = result.Jobs
+            .Select(JobsApiClient.ToJobMarketPosting)
             .Where(x => x.IsActive && !string.IsNullOrWhiteSpace(x.Url))
             .Take(maxPostings)
             .Select(x => new ScrapedJobPosting(
@@ -210,6 +279,19 @@ public sealed class JobPortalScraper(
                 x.Benefits,
                 x.Skills))
             .ToList();
+
+        return new JobPortalScrapeResult
+        {
+            Status = result.Status,
+            Postings = postings,
+            Total = result.Total,
+            FetchedCount = result.FetchedCount,
+            GeneratedAt = result.GeneratedAt,
+            LatestSuccessfulCrawlAt = result.LatestSuccessfulCrawlAt,
+            ErrorMessage = result.ErrorMessage,
+            IsCompleteSync = result.IsCompleteSync,
+            IsSourceFresh = result.IsSourceFresh
+        };
     }
 
     private async Task<IReadOnlyList<ScrapedJobPosting>> ScrapeHtmlSourceAsync(
@@ -542,6 +624,36 @@ public sealed record ScrapedJobPosting(
     IReadOnlyList<string>? Specialties = null,
     IReadOnlyList<string>? Benefits = null,
     IReadOnlyList<string>? Skills = null);
+
+public sealed class JobPortalScrapeResult
+{
+    public JobsApiFetchStatus Status { get; init; }
+
+    public IReadOnlyList<ScrapedJobPosting> Postings { get; init; } = [];
+
+    public int? Total { get; init; }
+
+    public int FetchedCount { get; init; }
+
+    public DateTimeOffset? GeneratedAt { get; init; }
+
+    public DateTimeOffset? LatestSuccessfulCrawlAt { get; init; }
+
+    public string? ErrorMessage { get; init; }
+
+    public bool IsCompleteSync { get; init; }
+
+    public bool IsSourceFresh { get; init; }
+
+    public static JobPortalScrapeResult Failure(JobsApiFetchStatus status, string error) =>
+        new()
+        {
+            Status = status,
+            ErrorMessage = error,
+            IsCompleteSync = false,
+            IsSourceFresh = false
+        };
+}
 
 internal sealed record EffectiveScrapeSettings(
     int MaxPagesPerSource,

@@ -167,6 +167,12 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_crawl_run
     finished_at timestamptz,
     duration_ms int,
     fetched_count int NOT NULL DEFAULT 0,
+    source_total_count int,
+    is_complete_sync boolean NOT NULL DEFAULT false,
+    missing_lifecycle_applied boolean NOT NULL DEFAULT false,
+    lifecycle_skipped_reason text,
+    source_generated_at timestamptz,
+    source_latest_success_at timestamptz,
     saved_count int NOT NULL DEFAULT 0,
     imported_count int NOT NULL DEFAULT 0,
     updated_count int NOT NULL DEFAULT 0,
@@ -186,7 +192,10 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_crawl_run
             skipped_count >= 0 AND
             duplicate_count >= 0 AND
             failed_count >= 0
-        )
+        ),
+
+    CONSTRAINT chk_market_pulse_crawl_run_source_total
+        CHECK (source_total_count IS NULL OR source_total_count >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS public.market_pulse_failed_item
@@ -242,6 +251,8 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_source_health
     status varchar(40) NOT NULL DEFAULT 'unknown',
     last_success_at timestamptz,
     last_failure_at timestamptz,
+    source_generated_at timestamptz,
+    source_latest_success_at timestamptz,
     consecutive_failures int NOT NULL DEFAULT 0,
     last_run_id uuid,
     last_error_summary text,

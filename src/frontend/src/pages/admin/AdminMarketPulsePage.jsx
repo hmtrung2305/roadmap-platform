@@ -130,7 +130,18 @@ export default function AdminMarketPulsePage() {
       setRefreshCooldownUntil(Date.now() + 30_000);
       await loadAdminData();
     } catch (error) {
-      setActionError(error?.message || "Manual refresh failed.");
+      const message = typeof error?.message === "string"
+        ? error.message
+        : "Manual refresh failed.";
+      const detailMessage = typeof error?.details?.message === "string"
+        ? error.details.message
+        : "";
+
+      setActionError(
+        detailMessage && detailMessage !== message
+          ? `${message} ${detailMessage}`
+          : message,
+      );
       setRefreshCooldownUntil(Date.now() + 30_000);
       await Promise.allSettled([loadRuns(), loadFailedItems()]);
     } finally {
@@ -269,12 +280,21 @@ export default function AdminMarketPulsePage() {
             </button>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <AdminMetric icon={History} label="Latest status" value={runs[0]?.status || "n/a"} />
             <AdminMetric icon={Database} label="Fetched" value={formatNumber(runs[0]?.fetchedCount)} />
             <AdminMetric icon={CheckCircle2} label="Imported" value={formatNumber(runs[0]?.importedCount ?? runs[0]?.savedCount)} />
+            <AdminMetric icon={RefreshCw} label="Sync type" value={formatSyncType(runs[0])} />
+            <AdminMetric icon={ShieldCheck} label="Missing lifecycle" value={formatLifecycleOutcome(runs[0])} />
             <AdminMetric icon={XCircle} label="Open import failures" value={formatNumber(failedItems.filter((item) => item.status === "open").length)} />
           </div>
+
+          {runs[0] && !runs[0].isCompleteSync && (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+              Partial sync: fetched {formatNumber(runs[0].fetchedCount)} of {formatOptionalNumber(runs[0].sourceTotalCount)} jobs.
+              {runs[0].lifecycleSkippedReason && ` Missing-job lifecycle was skipped (${formatLifecycleReason(runs[0].lifecycleSkippedReason)}).`}
+            </div>
+          )}
 
           <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center gap-2 text-sm font-black text-slate-800">
@@ -314,6 +334,9 @@ export default function AdminMarketPulsePage() {
                 <MetricLine label="Finished" value={formatDate(refreshResult.finishedAt)} />
                 <MetricLine label="Status" value={refreshResult.status} />
                 <MetricLine label="Fetched" value={formatNumber(refreshResult.totalFetched || refreshResult.postingsScraped)} />
+                <MetricLine label="Source total" value={formatOptionalNumber(refreshResult.sourceTotal)} />
+                <MetricLine label="Sync type" value={formatSyncType(refreshResult)} />
+                <MetricLine label="Missing lifecycle" value={formatLifecycleOutcome(refreshResult)} />
                 <MetricLine label="Saved" value={formatNumber(refreshResult.totalSaved || refreshResult.postingsSaved)} />
                 <MetricLine label="Duplicated" value={formatNumber(refreshResult.totalSkippedDuplicated || refreshResult.postingsDuplicated)} />
                 <MetricLine label="Failed" value={formatNumber(refreshResult.totalFailed || refreshResult.postingsFailed)} />
@@ -339,6 +362,9 @@ export default function AdminMarketPulsePage() {
                   <div className="mt-2 text-xs font-semibold leading-5 text-slate-500">
                     Last success {formatDate(source.lastSuccessAt)} | Failures {formatNumber(source.consecutiveFailures)}
                   </div>
+                  <div className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                    Python crawler latest success {formatDate(source.sourceLatestSuccessAt)}
+                  </div>
                   {source.lastErrorSummary && (
                     <div className="mt-2 text-xs font-semibold text-red-700">{source.lastErrorSummary}</div>
                   )}
@@ -358,7 +384,7 @@ export default function AdminMarketPulsePage() {
           statusOptions={["", "success", "empty", "failed", "partial_success", "blocked"]}
         />
         <DataTable
-          headers={["runId", "source", "status", "mode", "trigger", "startedAt", "finishedAt", "duration", "fetched", "imported", "updated", "skipped", "failed", "stoppedReason", "errorSummary"]}
+          headers={["runId", "source", "status", "mode", "trigger", "startedAt", "finishedAt", "duration", "fetched", "sourceTotal", "syncType", "lifecycle", "lifecycleSkippedReason", "crawlerFreshAt", "imported", "updated", "skipped", "failed", "stoppedReason", "errorSummary"]}
           rows={runs.map((run) => [
             shortId(run.runId),
             run.source,
@@ -369,6 +395,11 @@ export default function AdminMarketPulsePage() {
             formatDate(run.finishedAt),
             formatDuration(run.durationMs),
             formatNumber(run.fetchedCount),
+            formatOptionalNumber(run.sourceTotalCount),
+            formatSyncType(run),
+            formatLifecycleOutcome(run),
+            formatLifecycleReason(run.lifecycleSkippedReason),
+            formatDate(run.sourceLatestSuccessAt),
             formatNumber(run.importedCount ?? run.savedCount),
             formatNumber(run.updatedCount),
             formatNumber(run.skippedCount ?? run.duplicateCount),
@@ -741,6 +772,34 @@ function normalizeRefreshOptions(options) {
 
 function formatNumber(value) {
   return numberFormatter.format(Number(value || 0));
+}
+
+function formatOptionalNumber(value) {
+  return value === null || value === undefined ? "unknown" : formatNumber(value);
+}
+
+function formatSyncType(run) {
+  if (!run) return "n/a";
+  return run.isCompleteSync ? "Full sync" : "Partial sync";
+}
+
+function formatLifecycleOutcome(run) {
+  if (!run) return "n/a";
+  return run.missingLifecycleApplied ? "Applied" : "Skipped";
+}
+
+function formatLifecycleReason(reason) {
+  if (!reason) return "-";
+
+  const labels = {
+    partial_sync: "partial sync protection",
+    source_freshness_invalid: "source freshness invalid",
+    fetch_status_not_eligible: "fetch status not eligible",
+    below_minimum_posting_threshold: "below minimum posting threshold",
+    manual_ingest_without_complete_sync_metadata: "manual ingest has no complete-sync metadata",
+  };
+
+  return labels[reason] || String(reason).replaceAll("_", " ");
 }
 
 function formatDate(value) {

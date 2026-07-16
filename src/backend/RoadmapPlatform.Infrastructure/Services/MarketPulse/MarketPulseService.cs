@@ -28,6 +28,11 @@ public sealed class MarketPulseService(
     private const string LifecycleActive = "active";
     private const string LifecycleStaleUnverified = "stale_unverified";
     private const string LifecycleExpired = "expired";
+    private const string LifecycleSkippedPartialSync = "partial_sync";
+    private const string LifecycleSkippedInvalidFreshness = "source_freshness_invalid";
+    private const string LifecycleSkippedIneligibleFetchStatus = "fetch_status_not_eligible";
+    private const string LifecycleSkippedBelowMinimum = "below_minimum_posting_threshold";
+    private const string LifecycleSkippedManualIngest = "manual_ingest_without_complete_sync_metadata";
     private static readonly SemaphoreSlim RefreshLock = new(1, 1);
 
     public async Task<MarketPulseOverviewDto> GetOverviewAsync(
@@ -341,16 +346,37 @@ public sealed class MarketPulseService(
             throw new InvalidOperationException("A Market Pulse refresh is already running.");
         }
 
-        var startedAt = DateTime.UtcNow;
-        var run = await StartImportRunAsync("manual", startedAt, cancellationToken);
+        MarketPulseCrawlRun? run = null;
 
         try
         {
-            var rawPostings = await scraper.ScrapeAsync(request, cancellationToken);
-            var result = await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
-            var status = rawPostings.Count == 0 ? "empty" : "success";
+            var startedAt = DateTime.UtcNow;
+            run = await StartImportRunAsync("manual", startedAt, cancellationToken);
 
-            await FinishCrawlRunAsync(run, result, status, null, cancellationToken);
+            var fetchResult = await scraper.ScrapeAsync(request, cancellationToken);
+            if (fetchResult.Status is JobsApiFetchStatus.HttpError or
+                JobsApiFetchStatus.Timeout or
+                JobsApiFetchStatus.InvalidContract or
+                JobsApiFetchStatus.StaleSource)
+            {
+                throw new MarketPulseSourceFetchException(fetchResult);
+            }
+
+            var lifecycleDecision = ResolveMissingLifecycleDecision(fetchResult);
+            var result = await PersistScrapedPostingsAsync(
+                fetchResult.Postings,
+                lifecycleDecision,
+                cancellationToken);
+            result.PostingsScraped = fetchResult.FetchedCount;
+            result.SourceTotal = fetchResult.Total;
+            result.SourceGeneratedAt = fetchResult.GeneratedAt;
+            result.LatestSuccessfulCrawlAt = fetchResult.LatestSuccessfulCrawlAt;
+            result.IsCompleteSync = fetchResult.IsCompleteSync;
+            result.IsSourceFresh = fetchResult.IsSourceFresh;
+            result.FetchStatus = fetchResult.Status.ToString();
+            var status = fetchResult.Status == JobsApiFetchStatus.Empty ? "empty" : "success";
+
+            await FinishImportRunAsync(run, result, fetchResult, status, cancellationToken);
 
             result.RunId = run.MarketPulseCrawlRunId;
             result.StartedAt = run.StartedAt;
@@ -362,7 +388,11 @@ public sealed class MarketPulseService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await RecordRefreshFailureAsync(run, ex, cancellationToken);
+            if (run is not null)
+            {
+                await RecordRefreshFailureAsync(run, ex, cancellationToken);
+            }
+
             throw;
         }
         finally
@@ -384,18 +414,22 @@ public sealed class MarketPulseService(
             .Where(x => !string.IsNullOrWhiteSpace(x.Url))
             .ToList();
 
-        return await PersistScrapedPostingsAsync(rawPostings, cancellationToken);
+        return await PersistScrapedPostingsAsync(
+            rawPostings,
+            MissingLifecycleDecision.Skip(LifecycleSkippedManualIngest),
+            cancellationToken);
     }
 
     private async Task<MarketPulseRefreshResultDto> PersistScrapedPostingsAsync(
         IReadOnlyList<ScrapedJobPosting> rawPostings,
+        MissingLifecycleDecision lifecycleDecision,
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
         var snapshotDate = DateOnly.FromDateTime(now);
         var settings = options.Value;
 
-        if (rawPostings.Count == 0)
+        if (rawPostings.Count == 0 && !lifecycleDecision.ShouldApply)
         {
             return new MarketPulseRefreshResultDto
             {
@@ -412,6 +446,8 @@ public sealed class MarketPulseService(
                 ActivePostings = await dbContext.Set<JobPosting>().CountAsync(x => x.IsActive, cancellationToken),
                 StalePostings = await dbContext.Set<JobPosting>().CountAsync(x => x.LifecycleStatus == LifecycleStaleUnverified, cancellationToken),
                 ExpiredPostings = await dbContext.Set<JobPosting>().CountAsync(x => x.LifecycleStatus == LifecycleExpired, cancellationToken),
+                MissingLifecycleApplied = false,
+                LifecycleSkippedReason = lifecycleDecision.SkippedReason,
                 SkillSnapshotsSaved = 0
             };
         }
@@ -422,6 +458,9 @@ public sealed class MarketPulseService(
         var seenPostings = 0;
         var duplicatePostings = 0;
         var expiredPostingsInRun = 0;
+        var missingLifecycleApplied = false;
+        var lifecycleSkippedReason = lifecycleDecision.SkippedReason;
+        var lifecycleSkippedBelowMinimum = false;
         var missingThreshold = Math.Max(1, settings.MissingScansBeforeStale);
         var minimumLifecyclePostings = Math.Max(1, settings.MinimumPostingsForLifecycleCheck);
 
@@ -571,7 +610,7 @@ public sealed class MarketPulseService(
                 }
             }
 
-            if (uniquePostings.Count >= minimumLifecyclePostings)
+            if (lifecycleDecision.ShouldApply && uniquePostings.Count >= minimumLifecyclePostings)
             {
                 expiredPostingsInRun += await MarkMissingPostingsAsync(
                     source.JobPortalSourceId,
@@ -580,7 +619,36 @@ public sealed class MarketPulseService(
                     now,
                     missingThreshold,
                     cancellationToken);
+                missingLifecycleApplied = true;
             }
+            else if (lifecycleDecision.ShouldApply)
+            {
+                lifecycleSkippedBelowMinimum = true;
+            }
+        }
+
+        if (lifecycleDecision.ShouldApply && rawPostings.Count == 0)
+        {
+            var sourceSettings = settings.Sources.FirstOrDefault(x =>
+                string.Equals(x.Name, DefaultSourceName, StringComparison.OrdinalIgnoreCase));
+            var source = await UpsertSourceAsync(
+                DefaultSourceName,
+                sourceSettings,
+                now,
+                cancellationToken);
+            expiredPostingsInRun += await MarkMissingPostingsAsync(
+                source.JobPortalSourceId,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                snapshotDate,
+                now,
+                missingThreshold,
+                cancellationToken);
+            missingLifecycleApplied = true;
+        }
+
+        if (!missingLifecycleApplied && lifecycleSkippedBelowMinimum)
+        {
+            lifecycleSkippedReason = LifecycleSkippedBelowMinimum;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -602,6 +670,8 @@ public sealed class MarketPulseService(
             ActivePostings = await dbContext.Set<JobPosting>().CountAsync(x => x.IsActive, cancellationToken),
             StalePostings = await dbContext.Set<JobPosting>().CountAsync(x => x.LifecycleStatus == LifecycleStaleUnverified, cancellationToken),
             ExpiredPostings = await dbContext.Set<JobPosting>().CountAsync(x => x.LifecycleStatus == LifecycleExpired, cancellationToken),
+            MissingLifecycleApplied = missingLifecycleApplied,
+            LifecycleSkippedReason = missingLifecycleApplied ? null : lifecycleSkippedReason,
             SkillSnapshotsSaved = 0
         };
 
@@ -609,6 +679,26 @@ public sealed class MarketPulseService(
         InvalidateOverviewCache();
 
         return result;
+    }
+
+    private MissingLifecycleDecision ResolveMissingLifecycleDecision(JobPortalScrapeResult fetchResult)
+    {
+        if (fetchResult.Status is not JobsApiFetchStatus.Success and not JobsApiFetchStatus.Empty)
+        {
+            return MissingLifecycleDecision.Skip(LifecycleSkippedIneligibleFetchStatus);
+        }
+
+        if (!fetchResult.IsSourceFresh)
+        {
+            return MissingLifecycleDecision.Skip(LifecycleSkippedInvalidFreshness);
+        }
+
+        if (!fetchResult.IsCompleteSync && options.Value.DisableMissingLifecycleForPartialSync)
+        {
+            return MissingLifecycleDecision.Skip(LifecycleSkippedPartialSync);
+        }
+
+        return MissingLifecycleDecision.Apply();
     }
 
     private async Task<MarketPulseCrawlRun> StartImportRunAsync(
@@ -632,18 +722,18 @@ public sealed class MarketPulseService(
         return run;
     }
 
-    private async Task FinishCrawlRunAsync(
+    private async Task FinishImportRunAsync(
         MarketPulseCrawlRun run,
         MarketPulseRefreshResultDto result,
+        JobPortalScrapeResult fetchResult,
         string status,
-        string? errorSummary,
         CancellationToken cancellationToken)
     {
         var finishedAt = DateTime.UtcNow;
         run.Status = status;
         run.FinishedAt = finishedAt;
         run.DurationMs = Math.Max(0, (int)Math.Round((finishedAt - run.StartedAt).TotalMilliseconds));
-        run.FetchedCount = result.PostingsScraped;
+        run.FetchedCount = fetchResult.FetchedCount;
         run.SavedCount = result.PostingsSaved;
         run.ImportedCount = result.PostingsInserted;
         run.UpdatedCount = result.PostingsUpdated;
@@ -651,9 +741,20 @@ public sealed class MarketPulseService(
         run.DuplicateCount = result.PostingsDuplicated;
         run.FailedCount = result.PostingsFailed;
         run.StoppedReason = status is "success" or "empty" ? null : status;
-        run.ErrorSummary = errorSummary;
+        run.SourceTotalCount = fetchResult.Total;
+        run.IsCompleteSync = fetchResult.IsCompleteSync;
+        run.SourceGeneratedAt = fetchResult.GeneratedAt?.UtcDateTime;
+        run.SourceLatestSuccessAt = fetchResult.LatestSuccessfulCrawlAt?.UtcDateTime;
+        run.MissingLifecycleApplied = result.MissingLifecycleApplied;
+        run.LifecycleSkippedReason = result.LifecycleSkippedReason;
+        run.ErrorSummary = fetchResult.ErrorMessage;
 
-        await UpsertSourceHealthAsync(DefaultSourceName, run, status, errorSummary, cancellationToken);
+        await UpsertSourceHealthAsync(
+            DefaultSourceName,
+            run,
+            status,
+            fetchResult.ErrorMessage,
+            cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -664,13 +765,30 @@ public sealed class MarketPulseService(
     {
         var now = DateTime.UtcNow;
         var errorSummary = TrimTo(exception.Message, 1000);
+        var fetchException = exception as MarketPulseSourceFetchException;
+        var failureStatus = fetchException?.FetchResult.Status == JobsApiFetchStatus.StaleSource
+            ? "stale_source"
+            : "failed";
 
-        run.Status = "failed";
+        run.Status = failureStatus;
         run.FinishedAt = now;
         run.DurationMs = Math.Max(0, (int)Math.Round((now - run.StartedAt).TotalMilliseconds));
         run.FailedCount = Math.Max(1, run.FailedCount);
-        run.StoppedReason = "exception";
+        run.StoppedReason = fetchException?.FetchResult.Status.ToString() ?? "exception";
+        run.MissingLifecycleApplied = false;
+        run.LifecycleSkippedReason = fetchException?.FetchResult.Status == JobsApiFetchStatus.StaleSource
+            ? LifecycleSkippedInvalidFreshness
+            : LifecycleSkippedIneligibleFetchStatus;
         run.ErrorSummary = errorSummary;
+
+        if (fetchException is not null)
+        {
+            run.FetchedCount = fetchException.FetchResult.FetchedCount;
+            run.SourceTotalCount = fetchException.FetchResult.Total;
+            run.IsCompleteSync = fetchException.FetchResult.IsCompleteSync;
+            run.SourceGeneratedAt = fetchException.FetchResult.GeneratedAt?.UtcDateTime;
+            run.SourceLatestSuccessAt = fetchException.FetchResult.LatestSuccessfulCrawlAt?.UtcDateTime;
+        }
 
         dbContext.Set<MarketPulseFailedItem>().Add(new MarketPulseFailedItem
         {
@@ -678,7 +796,7 @@ public sealed class MarketPulseService(
             MarketPulseCrawlRunId = run.MarketPulseCrawlRunId,
             SourceName = DefaultSourceName,
             Stage = "import",
-            ErrorCode = exception.GetType().Name,
+            ErrorCode = fetchException?.FetchResult.Status.ToString() ?? exception.GetType().Name,
             ErrorMessage = errorSummary ?? "Market Pulse refresh failed.",
             ErrorDetail = TrimTo(exception.ToString(), 4000),
             RetryCount = 0,
@@ -687,7 +805,7 @@ public sealed class MarketPulseService(
             UpdatedAt = now
         });
 
-        await UpsertSourceHealthAsync(DefaultSourceName, run, "failed", errorSummary, cancellationToken);
+        await UpsertSourceHealthAsync(DefaultSourceName, run, failureStatus, errorSummary, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -717,6 +835,15 @@ public sealed class MarketPulseService(
         health.LastRunId = run.MarketPulseCrawlRunId;
         health.LastErrorSummary = errorSummary;
         health.UpdatedAt = now;
+        if (run.SourceGeneratedAt.HasValue)
+        {
+            health.SourceGeneratedAt = run.SourceGeneratedAt;
+        }
+
+        if (run.SourceLatestSuccessAt.HasValue)
+        {
+            health.SourceLatestSuccessAt = run.SourceLatestSuccessAt;
+        }
 
         if (status is "success" or "empty")
         {
@@ -930,6 +1057,13 @@ public sealed class MarketPulseService(
         return builder.Uri.ToString();
     }
 
+    private sealed record MissingLifecycleDecision(bool ShouldApply, string? SkippedReason)
+    {
+        public static MissingLifecycleDecision Apply() => new(true, null);
+
+        public static MissingLifecycleDecision Skip(string reason) => new(false, reason);
+    }
+
     private static string BuildContentHash(ScrapedJobPosting posting, DateTime? expiresAt)
     {
         var normalized = string.Join('\n',
@@ -1040,3 +1174,9 @@ public sealed class MarketPulseService(
 }
 
 internal sealed record SalaryRange(decimal? MinMonthlyVnd, decimal? MaxMonthlyVnd);
+
+internal sealed class MarketPulseSourceFetchException(JobPortalScrapeResult fetchResult)
+    : Exception(fetchResult.ErrorMessage ?? $"Jobs API fetch failed with status {fetchResult.Status}.")
+{
+    public JobPortalScrapeResult FetchResult { get; } = fetchResult;
+}

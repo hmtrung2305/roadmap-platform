@@ -15,6 +15,10 @@ public partial class MarketPulseSourceHealth
 
     public DateTime? LastFailureAt { get; set; }
 
+    public DateTime? SourceGeneratedAt { get; set; }
+
+    public DateTime? SourceLatestSuccessAt { get; set; }
+
     public int ConsecutiveFailures { get; set; }
 
     public Guid? LastRunId { get; set; }

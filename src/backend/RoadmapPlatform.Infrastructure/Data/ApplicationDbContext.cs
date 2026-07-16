@@ -620,6 +620,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.FetchedCount).HasColumnName("fetched_count");
             entity.Property(e => e.FinishedAt).HasColumnName("finished_at");
             entity.Property(e => e.ImportedCount).HasColumnName("imported_count");
+            entity.Property(e => e.IsCompleteSync).HasColumnName("is_complete_sync");
+            entity.Property(e => e.LifecycleSkippedReason).HasColumnName("lifecycle_skipped_reason");
+            entity.Property(e => e.MissingLifecycleApplied).HasColumnName("missing_lifecycle_applied");
             entity.Property(e => e.Mode)
                 .HasMaxLength(40)
                 .HasDefaultValueSql("'scheduled'::character varying")
@@ -630,6 +633,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(80)
                 .HasDefaultValueSql("'all'::character varying")
                 .HasColumnName("source_name");
+            entity.Property(e => e.SourceGeneratedAt).HasColumnName("source_generated_at");
+            entity.Property(e => e.SourceLatestSuccessAt).HasColumnName("source_latest_success_at");
+            entity.Property(e => e.SourceTotalCount).HasColumnName("source_total_count");
             entity.Property(e => e.StartedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("started_at");
@@ -714,6 +720,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.LastFailureAt).HasColumnName("last_failure_at");
             entity.Property(e => e.LastRunId).HasColumnName("last_run_id");
             entity.Property(e => e.LastSuccessAt).HasColumnName("last_success_at");
+            entity.Property(e => e.SourceGeneratedAt).HasColumnName("source_generated_at");
+            entity.Property(e => e.SourceLatestSuccessAt).HasColumnName("source_latest_success_at");
             entity.Property(e => e.SourceName)
                 .HasMaxLength(80)
                 .HasColumnName("source_name");

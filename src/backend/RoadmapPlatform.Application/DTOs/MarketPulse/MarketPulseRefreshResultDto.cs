@@ -12,6 +12,22 @@ public sealed class MarketPulseRefreshResultDto
 
     public string Mode { get; set; } = "scheduled";
 
+    public string FetchStatus { get; set; } = "Success";
+
+    public int? SourceTotal { get; set; }
+
+    public DateTimeOffset? SourceGeneratedAt { get; set; }
+
+    public DateTimeOffset? LatestSuccessfulCrawlAt { get; set; }
+
+    public bool IsCompleteSync { get; set; }
+
+    public bool IsSourceFresh { get; set; }
+
+    public bool MissingLifecycleApplied { get; set; }
+
+    public string? LifecycleSkippedReason { get; set; }
+
     public DateTime SnapshotDate { get; set; }
 
     public int SourcesScraped { get; set; }
