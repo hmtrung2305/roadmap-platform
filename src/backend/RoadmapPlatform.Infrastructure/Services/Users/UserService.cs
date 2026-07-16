@@ -8,15 +8,28 @@ using RoadmapPlatform.Infrastructure.Entities;
 
 namespace RoadmapPlatform.Infrastructure.Services.Users
 {
+    /// <summary>
+    /// Provides current-user account and profile operations.
+    /// </summary>
     public class UserService : IUserService
     {
         private readonly ApplicationDbContext _dbContext;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserService"/> class.
+        /// </summary>
+        /// <param name="dbContext">The application database context.</param>
         public UserService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
+        /// <summary>
+        /// Gets the authenticated user's account information, roles, and effective permissions.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <returns>The current user's account, role, and permission information.</returns>
+        /// <exception cref="NotFoundException">Thrown when the user does not exist.</exception>
         public async Task<CurrentUserResponseDto> GetCurrentUserAsync(Guid userId)
         {
             var user = await _dbContext.Users
@@ -68,6 +81,15 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             };
         }
 
+        /// <summary>
+        /// Updates the authenticated user's account-level information.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <param name="request">The account update request.</param>
+        /// <returns>The updated user account information.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request or username is invalid.</exception>
+        /// <exception cref="NotFoundException">Thrown when the user does not exist.</exception>
+        /// <exception cref="ConflictException">Thrown when the username already exists.</exception>
         public async Task<UserResponseDto> UpdateCurrentUserAsync(Guid userId, UpdateCurrentUserRequestDto request)
         {
             if (request == null)
@@ -120,6 +142,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             return await MapToUserResponseAsync(user.UserId, user.Username, user.Status);
         }
 
+        /// <summary>
+        /// Gets the authenticated user's profile.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <returns>The authenticated user's profile information.</returns>
+        /// <exception cref="NotFoundException">Thrown when the user or profile does not exist.</exception>
         public async Task<ProfileResponseDto> GetMyProfileAsync(Guid userId)
         {
             var userExists = await _dbContext.Users
@@ -143,6 +171,14 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             return MapToProfileResponse(profile);
         }
 
+        /// <summary>
+        /// Updates the authenticated user's profile fields.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <param name="request">The profile update request.</param>
+        /// <returns>The updated profile information.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request body is missing.</exception>
+        /// <exception cref="NotFoundException">Thrown when the profile does not exist.</exception>
         public async Task<ProfileResponseDto> UpdateMyProfileAsync(
             Guid userId,
             UpdateProfileRequestDto request)
@@ -232,6 +268,12 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             return MapToProfileResponse(profile);
         }
 
+        /// <summary>
+        /// Soft-deletes the authenticated user's account.
+        /// </summary>
+        /// <param name="userId">The authenticated user's identifier.</param>
+        /// <exception cref="NotFoundException">Thrown when the user does not exist.</exception>
+        /// <exception cref="ConflictException">Thrown when the account is already deleted.</exception>
         public async Task DeleteAccountAsync(Guid userId)
         {
             var user = await _dbContext.Users
@@ -254,6 +296,13 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             await _dbContext.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Maps a user account to a user response DTO and resolves the preferred email address.
+        /// </summary>
+        /// <param name="userId">The user's identifier.</param>
+        /// <param name="username">The user's username.</param>
+        /// <param name="status">The user's account status.</param>
+        /// <returns>The mapped user response DTO.</returns>
         private async Task<UserResponseDto> MapToUserResponseAsync(Guid userId, string username, string status)
         {
             var email = await _dbContext.UserAuthProviders
@@ -273,6 +322,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             };
         }
 
+        /// <summary>
+        /// Maps a user profile entity to a profile response DTO.
+        /// </summary>
+        /// <param name="profile">The user profile entity.</param>
+        /// <returns>The mapped profile response DTO.</returns>
         private static ProfileResponseDto MapToProfileResponse(UserProfile profile)
         {
             return new ProfileResponseDto
@@ -293,6 +347,11 @@ namespace RoadmapPlatform.Infrastructure.Services.Users
             };
         }
 
+        /// <summary>
+        /// Trims a string value and converts blank values to null.
+        /// </summary>
+        /// <param name="value">The input string value.</param>
+        /// <returns>The trimmed value, or null when the value is blank.</returns>
         private static string? TrimOrNull(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))

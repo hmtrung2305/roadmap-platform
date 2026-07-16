@@ -7,17 +7,28 @@ using RoadmapPlatform.Application.Interfaces.Users;
 
 namespace RoadmapPlatform.Api.Controllers.Users;
 
+/// <summary>
+/// Provides administrative endpoints for managing users and user-role assignments.
+/// </summary>
 [ApiController]
 [Route("api/admin/users")]
 public sealed class AdminUsersController : ControllerBase
 {
     private readonly IAdminUserService _adminUserService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AdminUsersController"/> class.
+    /// </summary>
+    /// <param name="adminUserService">The service used to manage users and their roles.</param>
     public AdminUsersController(IAdminUserService adminUserService)
     {
         _adminUserService = adminUserService;
     }
 
+    /// <summary>
+    /// Gets users for administration, optionally filtered by a search keyword.
+    /// </summary>
+    /// <param name="search">An optional search keyword used to filter users.</param>
     [HttpGet]
     [RequirePermission(PermissionConstant.USER_VIEW_ANY)]
     [RequirePermission(PermissionConstant.USER_ROLE_VIEW_ANY)]
@@ -33,6 +44,10 @@ public sealed class AdminUsersController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Gets an administrative user detail by user identifier.
+    /// </summary>
+    /// <param name="userId">The user identifier.</param>
     [HttpGet("{userId:guid}")]
     [RequirePermission(PermissionConstant.USER_VIEW_ANY)]
     [RequirePermission(PermissionConstant.USER_ROLE_VIEW_ANY)]
@@ -48,6 +63,11 @@ public sealed class AdminUsersController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Assigns a role to a user.
+    /// </summary>
+    /// <param name="userId">The target user identifier.</param>
+    /// <param name="roleId">The role identifier to assign.</param>
     [HttpPost("{userId:guid}/roles/{roleId:guid}")]
     [RequirePermission(PermissionConstant.USER_ROLE_ASSIGN_ANY)]
     public async Task<ActionResult<AdminUserResponseDto>> AssignRole(Guid userId, Guid roleId)
@@ -62,6 +82,11 @@ public sealed class AdminUsersController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Revokes a role from a user.
+    /// </summary>
+    /// <param name="userId">The target user identifier.</param>
+    /// <param name="roleId">The role identifier to revoke.</param>
     [HttpDelete("{userId:guid}/roles/{roleId:guid}")]
     [RequirePermission(PermissionConstant.USER_ROLE_REVOKE_ANY)]
     public async Task<ActionResult<AdminUserResponseDto>> RevokeRole(Guid userId, Guid roleId)
