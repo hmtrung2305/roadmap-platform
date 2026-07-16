@@ -18,6 +18,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { aiMentorApi } from "../../../api/aiMentorApi";
+import { getSavedGitHubRepositoriesApi } from "../../../api/githubRepositoryApi";
 import { useAiCreditStore } from "../../../stores/useAiCreditStore";
 import { useAuthProviderStore } from "../../../stores/useAuthProviderStore";
 import { useAuthStore } from "../../../stores/useAuthStore";
@@ -34,7 +35,7 @@ const introMessage = {
   id: "mentor-intro",
   role: "assistant",
   content:
-    "Hi! I can help you choose a career role, plan your roadmap order, and turn learning progress into portfolio evidence.",
+    "Hi! I can help you compare published roadmaps, understand recent missing skills, and use completed Repo Insights for more personalized guidance.",
 };
 
 function createLocalSession() {
@@ -115,6 +116,16 @@ function getProviderName(provider) {
   return String(provider?.provider || provider?.providerName || provider?.name || "").trim().toLowerCase();
 }
 
+function getRepositoryInsightStatus(repository) {
+  return String(
+    repository?.insight?.analysisStatus ||
+      repository?.insight?.status ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+}
+
 function hasRoleProfileSignal(profile) {
   return Boolean(
     profile?.careerGoal ||
@@ -178,6 +189,12 @@ export default function CareerMentorWidget() {
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [loadingMessageSessionId, setLoadingMessageSessionId] = useState(null);
   const [activeStatus, setActiveStatus] = useState(null);
+  const [repositoryInsightStatus, setRepositoryInsightStatus] = useState({
+    total: 0,
+    completed: 0,
+    loading: false,
+    error: "",
+  });
   const [isRecentCollapsed, setIsRecentCollapsed] = useState(false);
   const messagesEndRef = useRef(null);
   const statusAreaRef = useRef(null);
@@ -199,6 +216,77 @@ export default function CareerMentorWidget() {
     [profile, providers],
   );
 
+  const githubPersonalization = useMemo(() => {
+    if (!connectionState.githubConnected) {
+      return {
+        label: "Sync GitHub",
+        ready: false,
+        reason:
+          "Sync GitHub, then generate Repo Insights so the mentor can use verified project technologies and demonstrated skills.",
+        actionLabel: "Sync GitHub",
+      };
+    }
+
+    if (repositoryInsightStatus.loading) {
+      return {
+        label: "Checking Repo Insights",
+        ready: false,
+        reason: "Checking which synced repositories have completed Repo Insights.",
+        actionLabel: "Manage Repo Insights",
+      };
+    }
+
+    if (repositoryInsightStatus.error) {
+      return {
+        label: "Repo Insights unavailable",
+        ready: false,
+        reason:
+          "GitHub is connected, but the Repo Insight status could not be loaded. Open portfolio settings to review your repositories.",
+        actionLabel: "Manage Repo Insights",
+      };
+    }
+
+    const { total, completed } = repositoryInsightStatus;
+
+    if (total === 0) {
+      return {
+        label: "No repositories synced",
+        ready: false,
+        reason:
+          "GitHub is connected, but no public repositories are synced yet. Sync repositories before generating Repo Insights.",
+        actionLabel: "Manage repositories",
+      };
+    }
+
+    if (completed === 0) {
+      return {
+        label: `0/${total} Repo Insights`,
+        ready: false,
+        reason:
+          "No completed Repo Insight is available yet. Generate one so the mentor can personalize advice from verified project evidence instead of repository names.",
+        actionLabel: "Generate Repo Insights",
+      };
+    }
+
+    if (completed < total) {
+      return {
+        label: `${completed}/${total} Repo Insights`,
+        ready: false,
+        reason:
+          `${completed} of ${total} synced repositories have completed insights. The mentor can use those projects now; analyzing more repositories can broaden personalization.`,
+        actionLabel: "Manage Repo Insights",
+      };
+    }
+
+    return {
+      label: "Repo Insights ready",
+      ready: true,
+      reason:
+        `All ${total} synced repositories have completed insights, so project-based personalization is available.`,
+      actionLabel: "View Repo Insights",
+    };
+  }, [connectionState.githubConnected, repositoryInsightStatus]);
+
   useEffect(() => {
     if (!isOpen || !user) return;
 
@@ -206,6 +294,67 @@ export default function CareerMentorWidget() {
     loadProfile().catch(() => {});
     loadCreditStatus().catch(() => {});
   }, [isOpen, loadCreditStatus, loadProfile, loadProviders, user]);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    let isCancelled = false;
+
+    async function loadRepositoryInsightStatus() {
+      if (!connectionState.githubConnected) {
+        if (!isCancelled) {
+          setRepositoryInsightStatus({
+            total: 0,
+            completed: 0,
+            loading: false,
+            error: "",
+          });
+        }
+        return;
+      }
+
+      try {
+        setRepositoryInsightStatus((current) => ({
+          ...current,
+          loading: true,
+          error: "",
+        }));
+
+        const repositories = await getSavedGitHubRepositoriesApi();
+        if (isCancelled) return;
+
+        const repositoryList = Array.isArray(repositories) ? repositories : [];
+        const completed = repositoryList.filter(
+          (repository) => getRepositoryInsightStatus(repository) === "completed",
+        ).length;
+
+        setRepositoryInsightStatus({
+          total: repositoryList.length,
+          completed,
+          loading: false,
+          error: "",
+        });
+      } catch (error) {
+        if (isCancelled) return;
+
+        setRepositoryInsightStatus({
+          total: 0,
+          completed: 0,
+          loading: false,
+          error: getFriendlyApiErrorMessage(
+            error,
+            "Unable to load Repo Insight status.",
+          ),
+        });
+      }
+    }
+
+    loadRepositoryInsightStatus();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [connectionState.githubConnected, isOpen, user]);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -921,7 +1070,7 @@ export default function CareerMentorWidget() {
                       {activeSession?.title || "Career mentor"}
                     </h2>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Ask about roles, projects, synced GitHub, or career growth.
+                      Ask about roadmap fit, recent missing skills, or project evidence.
                     </p>
                   </div>
 
@@ -933,10 +1082,10 @@ export default function CareerMentorWidget() {
 
                     <MentorStatusPill
                       icon={FaGithub}
-                      label={connectionState.githubConnected ? "GitHub synced" : "Sync GitHub"}
-                      connected={connectionState.githubConnected}
-                      reason="Sync GitHub so the mentor can personalize advice with your public projects, tech stack, README quality, and portfolio evidence."
-                      actionLabel="Sync GitHub"
+                      label={githubPersonalization.label}
+                      connected={githubPersonalization.ready}
+                      reason={githubPersonalization.reason}
+                      actionLabel={githubPersonalization.actionLabel}
                       isOpen={activeStatus === "github"}
                       onToggle={() =>
                         setActiveStatus((current) => (current === "github" ? null : "github"))
@@ -1010,7 +1159,7 @@ export default function CareerMentorWidget() {
                     placeholder={
                       creditStatus?.remainingCreditsToday <= 0
                         ? "Daily AI credits used up"
-                        : "Ask anything about roles, projects, synced GitHub, or career growth..."
+                        : "Ask about roadmap fit, missing skills, or your project evidence..."
                     }
                     className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm font-semibold text-[#18332D] outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     onKeyDown={(event) => {
@@ -1114,7 +1263,7 @@ function MentorStatusPill({
         />
       </button>
 
-      {!connected && isOpen && (
+      {isOpen && (
         <div className="absolute right-0 top-[calc(100%+10px)] z-[70] w-72 rounded-xl border border-[#B9D8CC] bg-white p-4 text-left shadow-xl shadow-emerald-950/15">
           <p className="!text-[13px] font-black text-[#18332D]">{label}</p>
           <p className="mt-1 !text-[12px] font-semibold leading-5 text-slate-500">{reason}</p>
