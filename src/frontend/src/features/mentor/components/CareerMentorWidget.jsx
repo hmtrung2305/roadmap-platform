@@ -1320,11 +1320,11 @@ function MentorSources({ sources = [] }) {
   return (
     <div className="mt-3 border-t border-[#B9D8CC]/70 pt-2">
       <p className="mb-1.5 !text-[10px] font-black uppercase tracking-[0.12em] text-[#1F6F5F]">
-        Based on context
+        Available context
       </p>
 
       <div className="flex flex-wrap gap-1.5">
-        {sources.slice(0, 4).map((source, index) => (
+        {sources.map((source, index) => (
           <span
             key={`${source.type || "source"}-${source.title || index}-${index}`}
             className="rounded-md border border-[#B9D8CC] bg-white/70 px-2 py-1 !text-[11px] font-bold text-slate-600"
