@@ -6,6 +6,7 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 using RoadmapPlatform.Application.Interfaces.Storage;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Users;
 using System.Text;
 using System.Text.Json;
 
@@ -32,6 +33,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         var modules = await _context.SkillModules
             .AsNoTracking()
             .Include(module => module.Skill)
+            .Include(module => module.CreatedByUser)
+                .ThenInclude(user => user!.UserProfile)
             .Include(module => module.SkillModuleLessons)
             .Include(module => module.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
@@ -52,6 +55,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         var modules = await _context.SkillModules
             .AsNoTracking()
             .Include(module => module.Skill)
+            .Include(module => module.CreatedByUser)
+                .ThenInclude(user => user!.UserProfile)
             .Include(module => module.SkillModuleLessons)
             .Include(module => module.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
@@ -85,6 +90,8 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
         var module = await _context.SkillModules
             .AsNoTracking()
             .Include(item => item.Skill)
+            .Include(item => item.CreatedByUser)
+                .ThenInclude(user => user!.UserProfile)
             .Include(item => item.SkillModuleLessons)
             .Include(item => item.SkillModuleQuiz)
                 .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
@@ -939,6 +946,7 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
     {
         return new LearnerLearningModuleSummaryDto
         {
+            CreatorProfile = CreatorProfileMapper.Map(module.CreatedByUser),
             SkillModuleId = module.SkillModuleId,
             SkillId = module.SkillId,
             SkillName = module.Skill.Name,
@@ -960,6 +968,7 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
     {
         return new LearnerLearningModuleOverviewDto
         {
+            CreatorProfile = CreatorProfileMapper.Map(module.CreatedByUser),
             SkillModuleId = module.SkillModuleId,
             SkillId = module.SkillId,
             SkillName = module.Skill.Name,

@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'ai-engineer'), inserted_roadmap AS (
     INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
-SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager' LIMIT 1), 'AI Engineer Roadmap', 'ai-engineer-roadmap', 'A structured learning path for becoming an AI engineer, covering practical AI product development, Python foundations, machine learning, deep learning, large language models, prompt engineering, retrieval-augmented generation, agents, evaluation, safety, LLMOps, deployment, observability, and portfolio-ready AI systems.', 'public'
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager4' LIMIT 1), 'AI Engineer Roadmap', 'ai-engineer-roadmap', 'A structured learning path for becoming an AI engineer, covering practical AI product development, Python foundations, machine learning, deep learning, large language models, prompt engineering, retrieval-augmented generation, agents, evaluation, safety, LLMOps, deployment, observability, and portfolio-ready AI systems.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

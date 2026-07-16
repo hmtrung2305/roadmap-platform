@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { useLearningModuleStore } from "../../stores/useLearningModuleStore";
+import { CreatorByline } from "../../features/creatorProfile/components/CreatorProfileDisplay";
 import {
   getEnrollmentStatus,
   getProgress,
@@ -159,6 +160,10 @@ function LearningModuleListRow({ module }) {
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-700">
           {module.description || "No description provided."}
         </p>
+        <CreatorByline
+          creatorProfile={module.creatorProfile}
+          className="mt-2"
+        />
       </div>
 
       <div>

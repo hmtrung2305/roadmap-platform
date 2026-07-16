@@ -42,6 +42,7 @@ import RoadmapFlowNode from "../features/roadmaps/components/RoadmapFlowNode";
 import RoadmapFullScreen from "../features/roadmaps/components/RoadmapFullScreen";
 import RoadmapDetailDrawer from "../features/roadmaps/components/RoadmapDetailDrawer";
 import RoadmapStudyGuide from "../features/roadmaps/components/RoadmapStudyGuide";
+import { CreatorByline } from "../features/creatorProfile/components/CreatorProfileDisplay";
 const nodeTypes = {
   roadmapNode: RoadmapFlowNode,
 };
@@ -761,6 +762,12 @@ export default function RoadmapViewerPage() {
                 <h1 className="truncate text-lg font-black tracking-tight text-[#18332D] sm:text-xl">
                   {getViewerHeading(roadmap)}
                 </h1>
+                <CreatorByline
+                  creatorProfile={roadmap.creatorProfile}
+                  label="Owned by"
+                  showHeadline
+                  className="mt-0.5 max-w-[420px]"
+                />
               </div>
 
               <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">

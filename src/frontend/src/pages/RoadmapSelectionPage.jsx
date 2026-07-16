@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import CareerMentorWidget from "../features/mentor/components/CareerMentorWidget";
+import { CreatorProfileModal } from "../features/creatorProfile/components/CreatorProfileDisplay";
 import RoadmapCard from "../features/roadmaps/components/RoadmapCard";
 import { getRoadmapVersionId, useRoadmapStore } from "../stores/useRoadmapStore";
 
@@ -8,6 +9,7 @@ export default function RoadmapSelectionPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || searchParams.get("role") || "";
+  const [selectedCreatorProfile, setSelectedCreatorProfile] = useState(null);
 
   const baseRoadmaps = useRoadmapStore((state) => state.roadmaps);
   const enrollmentByVersionId = useRoadmapStore((state) => state.enrollmentByVersionId);
@@ -49,6 +51,8 @@ export default function RoadmapSelectionPage() {
         roadmap.slug,
         roadmap.careerRole?.name,
         roadmap.careerRole?.category,
+        roadmap.creatorProfile?.displayName,
+        roadmap.creatorProfile?.headline,
       ]
         .filter(Boolean)
         .join(" ")
@@ -194,11 +198,17 @@ export default function RoadmapSelectionPage() {
                 roadmap={roadmap}
                 index={index}
                 onOpen={() => navigate(`/roadmaps/${encodeURIComponent(roadmap.slug)}`)}
+                onViewCreator={setSelectedCreatorProfile}
               />
             ))}
           </section>
         )}
       </main>
+
+      <CreatorProfileModal
+        creatorProfile={selectedCreatorProfile}
+        onClose={() => setSelectedCreatorProfile(null)}
+      />
 
       <CareerMentorWidget />
     </PageShell>

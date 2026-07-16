@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Application.DTOs.Roadmaps;
+using RoadmapPlatform.Application.DTOs.Users;
 using RoadmapPlatform.Application.Interfaces.Roadmaps;
 using RoadmapPlatform.Infrastructure.Data;
 using RoadmapPlatform.Infrastructure.Entities;
+using RoadmapPlatform.Infrastructure.Services.Users;
 
 namespace RoadmapPlatform.Infrastructure.Services.Roadmaps;
 
@@ -69,8 +71,15 @@ public sealed class RoadmapQueryService(
                 nodesLookup.GetValueOrDefault(id) ?? [],
                 edgesLookup.GetValueOrDefault(id) ?? []));
 
+        var creatorProfiles = await LoadCreatorProfilesAsync(
+            rows.Select(row => row.Roadmap.OwnerUserId),
+            cancellationToken);
+
         return rows.Select(x => new RoadmapSummaryDto
         {
+            CreatorProfile = x.Roadmap.OwnerUserId.HasValue
+                ? creatorProfiles.GetValueOrDefault(x.Roadmap.OwnerUserId.Value)
+                : null,
             RoadmapId = x.Roadmap.RoadmapId,
             RoadmapVersionId = x.PublishedVersion.RoadmapVersionId,
             Slug = x.Roadmap.Slug,
@@ -232,6 +241,39 @@ public sealed class RoadmapQueryService(
         return roadmapVersionId;
     }
 
+    private async Task<Dictionary<Guid, CreatorProfileDto>> LoadCreatorProfilesAsync(
+        IEnumerable<Guid?> ownerUserIds,
+        CancellationToken cancellationToken)
+    {
+        var userIds = ownerUserIds
+            .Where(userId => userId.HasValue)
+            .Select(userId => userId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (userIds.Count == 0)
+        {
+            return [];
+        }
+
+        var users = await dbContext.Set<User>()
+            .AsNoTracking()
+            .Include(user => user.UserProfile)
+            .Where(user => userIds.Contains(user.UserId))
+            .ToListAsync(cancellationToken);
+
+        return users
+            .Select(user => new
+            {
+                user.UserId,
+                Profile = CreatorProfileMapper.Map(user)
+            })
+            .Where(item => item.Profile != null)
+            .ToDictionary(
+                item => item.UserId,
+                item => item.Profile!);
+    }
+
     private async Task<RoadmapGraphDto> BuildGraphAsync(
         Guid roadmapVersionId,
         Guid? userId,
@@ -286,6 +328,8 @@ public sealed class RoadmapQueryService(
         var roadmap = await dbContext.Set<Roadmap>()
             .AsNoTracking()
             .Include(r => r.CareerRole)
+            .Include(r => r.OwnerUser)
+                .ThenInclude(user => user!.UserProfile)
             .Where(r => r.RoadmapId == version.RoadmapId)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -326,6 +370,7 @@ public sealed class RoadmapQueryService(
 
         return new RoadmapGraphDto
         {
+            CreatorProfile = CreatorProfileMapper.Map(roadmap.OwnerUser),
             RoadmapId = version.RoadmapId,
             RoadmapVersionId = version.RoadmapVersionId,
             Slug = roadmap.Slug,

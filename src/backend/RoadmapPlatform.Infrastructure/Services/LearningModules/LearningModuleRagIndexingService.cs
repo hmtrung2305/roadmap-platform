@@ -22,6 +22,8 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
     private readonly LearningModuleRagSettings _ragSettings;
     private readonly AiSettings _aiSettings;
     private readonly Client _client;
+    private const double PreferredLessonBoost = 0.05d;
+    private const int MaxChunksPerLesson = 2;
 
     public LearningModuleRagIndexingService(
         ApplicationDbContext context,
@@ -179,17 +181,111 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
     }
 
     private async Task<IReadOnlyList<LearningModuleRagSourceDto>> SearchRelevantChunksWithPgvectorAsync(
-        Guid skillModuleId,
-        Guid? preferredLessonId,
-        float[] queryEmbedding,
-        int maxResults,
-        CancellationToken cancellationToken)
+    Guid skillModuleId,
+    Guid? preferredLessonId,
+    float[] queryEmbedding,
+    int maxResults,
+    CancellationToken cancellationToken)
     {
+        const string sql = """
+        WITH eligible_chunks AS (
+            SELECT
+                c.skill_module_chunk_id,
+                c.skill_module_lesson_id,
+                l.title AS lesson_title,
+                c.heading,
+                c.content,
+                (1 - (c.embedding <=> @query_embedding))::double precision AS similarity_score,
+                (c.embedding <=> @query_embedding)::double precision AS distance
+            FROM public.skill_module_chunk AS c
+            INNER JOIN public.skill_module_lesson AS l
+                ON l.skill_module_lesson_id = c.skill_module_lesson_id
+            WHERE c.skill_module_id = @skill_module_id
+              AND c.embedding IS NOT NULL
+              AND l.indexing_status = @indexed_status
+        ),
+        global_candidates AS (
+            SELECT *
+            FROM eligible_chunks
+            ORDER BY distance
+            LIMIT @candidate_limit
+        ),
+        preferred_lesson_candidates AS (
+            SELECT *
+            FROM eligible_chunks
+            WHERE CAST(@preferred_lesson_id AS uuid) IS NOT NULL
+              AND skill_module_lesson_id = CAST(@preferred_lesson_id AS uuid)
+            ORDER BY distance
+            LIMIT @preferred_candidate_limit
+        ),
+        candidate_chunks AS (
+            SELECT DISTINCT ON (skill_module_chunk_id)
+                skill_module_chunk_id,
+                skill_module_lesson_id,
+                lesson_title,
+                heading,
+                content,
+                similarity_score,
+                distance
+            FROM (
+                SELECT * FROM global_candidates
+                UNION ALL
+                SELECT * FROM preferred_lesson_candidates
+            ) AS combined_candidates
+            ORDER BY skill_module_chunk_id, distance
+        ),
+        scored_chunks AS (
+            SELECT
+                *,
+                similarity_score +
+                    CASE
+                        WHEN skill_module_lesson_id =
+                             CAST(@preferred_lesson_id AS uuid)
+                            THEN @preferred_lesson_boost
+                        ELSE 0
+                    END AS adjusted_score
+            FROM candidate_chunks
+            WHERE similarity_score >= @similarity_threshold
+        ),
+        ranked_chunks AS (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY skill_module_lesson_id
+                    ORDER BY adjusted_score DESC, distance
+                ) AS lesson_rank
+            FROM scored_chunks
+        ),
+        diversified_chunks AS (
+            SELECT
+                *,
+                CASE
+                    WHEN lesson_rank <= @max_chunks_per_lesson THEN 0
+                    ELSE 1
+                END AS diversity_group
+            FROM ranked_chunks
+        )
+        SELECT
+            skill_module_chunk_id,
+            skill_module_lesson_id,
+            lesson_title,
+            heading,
+            content,
+            similarity_score
+        FROM diversified_chunks
+        ORDER BY
+            diversity_group,
+            adjusted_score DESC,
+            distance
+        LIMIT @max_results;
+        """;
+
         var candidateLimit = Math.Clamp(maxResults * 4, maxResults, 50);
         var results = new List<LearningModuleRagSourceDto>(maxResults);
 
         var connection = _context.Database.GetDbConnection();
-        var shouldCloseConnection = connection.State != System.Data.ConnectionState.Open;
+        var shouldCloseConnection =
+            connection.State != System.Data.ConnectionState.Open;
 
         if (shouldCloseConnection)
         {
@@ -199,81 +295,89 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
         try
         {
             await using var command = connection.CreateCommand();
-            
-            command.CommandText = """
-                WITH nearest_chunks AS (
-                    SELECT
-                        c.skill_module_chunk_id,
-                        c.skill_module_lesson_id,
-                        l.title AS lesson_title,
-                        c.heading,
-                        c.content,
-                        (1 - (c.embedding <=> @query_embedding))::double precision AS similarity_score,
-                        CASE
-                            WHEN CAST(@preferred_lesson_id AS uuid) IS NOT NULL
-                                 AND c.skill_module_lesson_id = CAST(@preferred_lesson_id AS uuid)
-                                THEN 1
-                            ELSE 0
-                        END AS lesson_priority,
-                        (c.embedding <=> @query_embedding)::double precision AS distance
-                    FROM public.skill_module_chunk c
-                    INNER JOIN public.skill_module_lesson l
-                        ON l.skill_module_lesson_id = c.skill_module_lesson_id
-                    WHERE c.skill_module_id = @skill_module_id
-                      AND c.embedding IS NOT NULL
-                      AND l.indexing_status = @indexed_status
-                    ORDER BY c.embedding <=> @query_embedding
-                    LIMIT @candidate_limit
-                )
-                SELECT
-                    skill_module_chunk_id,
-                    skill_module_lesson_id,
-                    lesson_title,
-                    heading,
-                    content,
-                    similarity_score
-                FROM nearest_chunks
-                WHERE similarity_score >= @similarity_threshold
-                ORDER BY lesson_priority DESC, distance ASC
-                LIMIT @max_results;
-                """;
+            command.CommandText = sql;
 
-            command.Parameters.Add(new NpgsqlParameter("skill_module_id", NpgsqlDbType.Uuid)
-            {
-                Value = skillModuleId
-            });
-            command.Parameters.Add(new NpgsqlParameter("preferred_lesson_id", NpgsqlDbType.Uuid)
-            {
-                Value = preferredLessonId.HasValue
-                    ? preferredLessonId.Value
-                    : DBNull.Value
-            });
-            command.Parameters.Add(new NpgsqlParameter("query_embedding", new Vector(queryEmbedding)));
-            command.Parameters.Add(new NpgsqlParameter("indexed_status", NpgsqlDbType.Text)
-            {
-                Value = LearningModuleLessonIndexingStatusValues.Indexed
-            });
-            command.Parameters.Add(new NpgsqlParameter("candidate_limit", NpgsqlDbType.Integer)
-            {
-                Value = candidateLimit
-            });
-            command.Parameters.Add(new NpgsqlParameter("similarity_threshold", NpgsqlDbType.Double)
-            {
-                Value = (double)_ragSettings.SimilarityThreshold
-            });
-            command.Parameters.Add(new NpgsqlParameter("max_results", NpgsqlDbType.Integer)
-            {
-                Value = maxResults
-            });
+            command.Parameters.Add(
+                new NpgsqlParameter("skill_module_id", NpgsqlDbType.Uuid)
+                {
+                    Value = skillModuleId
+                });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            command.Parameters.Add(
+                new NpgsqlParameter("preferred_lesson_id", NpgsqlDbType.Uuid)
+                {
+                    Value = preferredLessonId.HasValue
+                        ? preferredLessonId.Value
+                        : DBNull.Value
+                });
 
-            var chunkIdOrdinal = reader.GetOrdinal("skill_module_chunk_id");
-            var lessonIdOrdinal = reader.GetOrdinal("skill_module_lesson_id");
-            var lessonTitleOrdinal = reader.GetOrdinal("lesson_title");
-            var headingOrdinal = reader.GetOrdinal("heading");
-            var contentOrdinal = reader.GetOrdinal("content");
-            var similarityScoreOrdinal = reader.GetOrdinal("similarity_score");
+            command.Parameters.Add(
+                new NpgsqlParameter(
+                    "query_embedding",
+                    new Vector(queryEmbedding)));
+
+            command.Parameters.Add(
+                new NpgsqlParameter("indexed_status", NpgsqlDbType.Text)
+                {
+                    Value = LearningModuleLessonIndexingStatusValues.Indexed
+                });
+
+            command.Parameters.Add(
+                new NpgsqlParameter("candidate_limit", NpgsqlDbType.Integer)
+                {
+                    Value = candidateLimit
+                });
+
+            command.Parameters.Add(
+                new NpgsqlParameter("preferred_candidate_limit", NpgsqlDbType.Integer)
+                {
+                    Value = maxResults
+                });
+
+            command.Parameters.Add(
+                new NpgsqlParameter("preferred_lesson_boost", NpgsqlDbType.Double)
+                {
+                    Value = PreferredLessonBoost
+                });
+
+            command.Parameters.Add(
+                new NpgsqlParameter("max_chunks_per_lesson", NpgsqlDbType.Integer)
+                {
+                    Value = MaxChunksPerLesson
+                });
+
+            command.Parameters.Add(
+                new NpgsqlParameter("similarity_threshold", NpgsqlDbType.Double)
+                {
+                    Value = (double)_ragSettings.SimilarityThreshold
+                });
+
+            command.Parameters.Add(
+                new NpgsqlParameter("max_results", NpgsqlDbType.Integer)
+                {
+                    Value = maxResults
+                });
+
+            await using var reader =
+                await command.ExecuteReaderAsync(cancellationToken);
+
+            var chunkIdOrdinal =
+                reader.GetOrdinal("skill_module_chunk_id");
+
+            var lessonIdOrdinal =
+                reader.GetOrdinal("skill_module_lesson_id");
+
+            var lessonTitleOrdinal =
+                reader.GetOrdinal("lesson_title");
+
+            var headingOrdinal =
+                reader.GetOrdinal("heading");
+
+            var contentOrdinal =
+                reader.GetOrdinal("content");
+
+            var similarityOrdinal =
+                reader.GetOrdinal("similarity_score");
 
             while (await reader.ReadAsync(cancellationToken))
             {
@@ -281,14 +385,23 @@ public sealed class LearningModuleRagIndexingService : ILearningModuleRagIndexin
 
                 results.Add(new LearningModuleRagSourceDto
                 {
-                    SkillModuleChunkId = reader.GetGuid(chunkIdOrdinal),
-                    SkillModuleLessonId = reader.GetGuid(lessonIdOrdinal),
-                    LessonTitle = reader.GetString(lessonTitleOrdinal),
+                    SkillModuleChunkId =
+                        reader.GetGuid(chunkIdOrdinal),
+
+                    SkillModuleLessonId =
+                        reader.GetGuid(lessonIdOrdinal),
+
+                    LessonTitle =
+                        reader.GetString(lessonTitleOrdinal),
+
                     Heading = reader.IsDBNull(headingOrdinal)
                         ? null
                         : reader.GetString(headingOrdinal),
+
                     ContentPreview = CreatePreview(content),
-                    SimilarityScore = reader.GetDouble(similarityScoreOrdinal)
+
+                    SimilarityScore =
+                        reader.GetDouble(similarityOrdinal)
                 });
             }
         }
