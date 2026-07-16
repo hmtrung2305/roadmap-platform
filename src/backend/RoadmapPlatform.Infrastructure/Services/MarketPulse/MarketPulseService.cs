@@ -154,10 +154,21 @@ public sealed class MarketPulseService(
             Category = posting.Category,
             Location = posting.Location,
             Salary = posting.Salary,
+            SalaryRaw = posting.SalaryRaw,
+            SalaryMin = posting.SalaryMin,
+            SalaryMax = posting.SalaryMax,
+            SalaryCurrency = posting.SalaryCurrency,
+            SalaryIsNegotiable = posting.SalaryIsNegotiable,
             Experience = posting.Experience,
+            ExperienceRaw = posting.ExperienceRaw,
+            ExperienceMinYears = posting.ExperienceMinYears,
+            ExperienceMaxYears = posting.ExperienceMaxYears,
             PostedOn = posting.PublishedAt.HasValue ? DateOnly.FromDateTime(posting.PublishedAt.Value) : null,
             PostedOnText = posting.PostDateText,
+            PostDateConfidence = posting.PostDateConfidence,
             UpdatedAt = posting.SourceUpdatedAt ?? posting.UpdatedAt,
+            DetailStatus = posting.DetailStatus,
+            DetailLastSuccessAt = posting.DetailLastSuccessAt,
             Url = posting.Url,
             IsActive = posting.IsActive,
             Requirements = DeserializeStringList(posting.Requirements),
@@ -236,6 +247,7 @@ public sealed class MarketPulseService(
     {
         if (!string.IsNullOrWhiteSpace(query.Experience) &&
             !ContainsNormalized(posting.Experience, query.Experience) &&
+            !ContainsNormalized(posting.ExperienceRaw, query.Experience) &&
             !ContainsNormalized(posting.Title, query.Experience))
         {
             return false;
@@ -243,7 +255,7 @@ public sealed class MarketPulseService(
 
         if (query.SalaryMinMonthlyVnd.HasValue || query.SalaryMaxMonthlyVnd.HasValue)
         {
-            var salaryRange = TryParseMonthlySalary(posting.Salary);
+            var salaryRange = ResolveMonthlySalary(posting);
             if (salaryRange is null)
             {
                 return false;
@@ -521,11 +533,22 @@ public sealed class MarketPulseService(
                     posting.Category = TrimTo(rawPosting.Category, 100);
                     posting.Location = TrimTo(rawPosting.Location, 160);
                     posting.Salary = TrimTo(rawPosting.Salary, 100);
+                    posting.SalaryRaw = TrimTo(rawPosting.SalaryRaw, 160);
+                    posting.SalaryMin = rawPosting.SalaryMin;
+                    posting.SalaryMax = rawPosting.SalaryMax;
+                    posting.SalaryCurrency = TrimTo(rawPosting.SalaryCurrency?.ToUpperInvariant(), 16);
+                    posting.SalaryIsNegotiable = rawPosting.SalaryIsNegotiable;
                     posting.Experience = TrimTo(rawPosting.Experience, 100);
+                    posting.ExperienceRaw = TrimTo(rawPosting.ExperienceRaw, 160);
+                    posting.ExperienceMinYears = rawPosting.ExperienceMinYears;
+                    posting.ExperienceMaxYears = rawPosting.ExperienceMaxYears;
                     posting.Description = rawPosting.Description;
                     posting.PublishedAt = publishedAt;
                     posting.PostDateText = TrimTo(rawPosting.PostDateText, 80);
+                    posting.PostDateConfidence = TrimTo(rawPosting.PostDateConfidence, 20);
                     posting.SourceUpdatedAt = NormalizeUtc(rawPosting.SourceUpdatedAt);
+                    posting.DetailStatus = TrimTo(rawPosting.DetailStatus, 32);
+                    posting.DetailLastSuccessAt = NormalizeUtc(rawPosting.DetailLastSuccessAt);
                     posting.ExpiresAt = expiresAt;
                     posting.Requirements = SerializeStringList(rawPosting.Requirements);
                     posting.Specialties = SerializeStringList(rawPosting.Specialties);
@@ -574,12 +597,23 @@ public sealed class MarketPulseService(
                     Category = TrimTo(rawPosting.Category, 100),
                     Location = TrimTo(rawPosting.Location, 160),
                     Salary = TrimTo(rawPosting.Salary, 100),
+                    SalaryRaw = TrimTo(rawPosting.SalaryRaw, 160),
+                    SalaryMin = rawPosting.SalaryMin,
+                    SalaryMax = rawPosting.SalaryMax,
+                    SalaryCurrency = TrimTo(rawPosting.SalaryCurrency?.ToUpperInvariant(), 16),
+                    SalaryIsNegotiable = rawPosting.SalaryIsNegotiable,
                     Experience = TrimTo(rawPosting.Experience, 100),
+                    ExperienceRaw = TrimTo(rawPosting.ExperienceRaw, 160),
+                    ExperienceMinYears = rawPosting.ExperienceMinYears,
+                    ExperienceMaxYears = rawPosting.ExperienceMaxYears,
                     Url = rawPosting.Url,
                     Description = rawPosting.Description,
                     PublishedAt = publishedAt,
                     PostDateText = TrimTo(rawPosting.PostDateText, 80),
+                    PostDateConfidence = TrimTo(rawPosting.PostDateConfidence, 20),
                     SourceUpdatedAt = NormalizeUtc(rawPosting.SourceUpdatedAt),
+                    DetailStatus = TrimTo(rawPosting.DetailStatus, 32),
+                    DetailLastSuccessAt = NormalizeUtc(rawPosting.DetailLastSuccessAt),
                     ExpiresAt = expiresAt,
                     Requirements = SerializeStringList(rawPosting.Requirements),
                     Specialties = SerializeStringList(rawPosting.Specialties),
@@ -995,6 +1029,28 @@ public sealed class MarketPulseService(
             : new SalaryRange(normalized.First(), normalized.Last());
     }
 
+    private static SalaryRange? ResolveMonthlySalary(JobMarketPosting posting)
+    {
+        if (posting.SalaryMin.HasValue || posting.SalaryMax.HasValue)
+        {
+            var multiplier = posting.SalaryCurrency?.Trim().ToUpperInvariant() switch
+            {
+                "VND" => 1m,
+                "USD" => 25_000m,
+                _ => 0m
+            };
+
+            if (multiplier > 0)
+            {
+                return new SalaryRange(
+                    posting.SalaryMin * multiplier,
+                    posting.SalaryMax * multiplier);
+            }
+        }
+
+        return TryParseMonthlySalary(posting.Salary ?? posting.SalaryRaw);
+    }
+
     private static string RemoveVietnameseDiacritics(string value)
     {
         var normalized = value.Normalize(NormalizationForm.FormD);
@@ -1073,10 +1129,21 @@ public sealed class MarketPulseService(
             NormalizeForHash(posting.Category),
             NormalizeForHash(posting.Location),
             NormalizeForHash(posting.Salary),
+            NormalizeForHash(posting.SalaryRaw),
+            NormalizeForHash(posting.SalaryMin?.ToString(CultureInfo.InvariantCulture)),
+            NormalizeForHash(posting.SalaryMax?.ToString(CultureInfo.InvariantCulture)),
+            NormalizeForHash(posting.SalaryCurrency),
+            NormalizeForHash(posting.SalaryIsNegotiable?.ToString()),
             NormalizeForHash(posting.Experience),
+            NormalizeForHash(posting.ExperienceRaw),
+            NormalizeForHash(posting.ExperienceMinYears?.ToString(CultureInfo.InvariantCulture)),
+            NormalizeForHash(posting.ExperienceMaxYears?.ToString(CultureInfo.InvariantCulture)),
             NormalizeForHash(posting.Description),
             NormalizeForHash(posting.PostDateText),
+            NormalizeForHash(posting.PostDateConfidence),
             NormalizeForHash(posting.SourceUpdatedAt?.ToString("O")),
+            NormalizeForHash(posting.DetailStatus),
+            NormalizeForHash(posting.DetailLastSuccessAt?.ToString("O")),
             SerializeStringList(posting.Requirements),
             SerializeStringList(posting.Specialties),
             SerializeStringList(posting.Benefits),

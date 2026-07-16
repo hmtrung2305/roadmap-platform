@@ -109,12 +109,23 @@ CREATE TABLE IF NOT EXISTS public.job_posting
     category varchar(100),
     location varchar(160),
     salary varchar(100),
+    salary_raw varchar(160),
+    salary_min bigint,
+    salary_max bigint,
+    salary_currency varchar(16),
+    salary_is_negotiable boolean,
     experience varchar(100),
+    experience_raw varchar(160),
+    experience_min_years int,
+    experience_max_years int,
     url text NOT NULL,
     description text NOT NULL,
     published_at timestamptz,
     post_date_text varchar(80),
+    post_date_confidence varchar(20),
     source_updated_at timestamptz,
+    detail_status varchar(32),
+    detail_last_success_at timestamptz,
     expires_at timestamptz,
     requirements jsonb NOT NULL DEFAULT '[]'::jsonb,
     specialties jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -153,7 +164,25 @@ CREATE TABLE IF NOT EXISTS public.job_posting
         CHECK (jsonb_typeof(benefits) = 'array'),
 
     CONSTRAINT chk_job_posting_skills_json_array
-        CHECK (jsonb_typeof(skills) = 'array')
+        CHECK (jsonb_typeof(skills) = 'array'),
+
+    CONSTRAINT chk_job_posting_salary_range
+        CHECK (
+            (salary_min IS NULL OR salary_min >= 0) AND
+            (salary_max IS NULL OR salary_max >= 0) AND
+            (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)
+        ),
+
+    CONSTRAINT chk_job_posting_experience_range
+        CHECK (
+            (experience_min_years IS NULL OR experience_min_years >= 0) AND
+            (experience_max_years IS NULL OR experience_max_years >= 0) AND
+            (
+                experience_min_years IS NULL OR
+                experience_max_years IS NULL OR
+                experience_min_years <= experience_max_years
+            )
+        )
 );
 
 CREATE TABLE IF NOT EXISTS public.market_pulse_crawl_run
@@ -282,6 +311,12 @@ CREATE INDEX IF NOT EXISTS ix_job_posting_category
 
 CREATE INDEX IF NOT EXISTS ix_job_posting_published_at
     ON public.job_posting(published_at);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_salary_range
+    ON public.job_posting(salary_min, salary_max);
+
+CREATE INDEX IF NOT EXISTS ix_job_posting_experience_range
+    ON public.job_posting(experience_min_years, experience_max_years);
 
 CREATE INDEX IF NOT EXISTS ix_market_pulse_crawl_run_started_status
     ON public.market_pulse_crawl_run(started_at DESC, status);

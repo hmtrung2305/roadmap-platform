@@ -18,13 +18,35 @@ public sealed class JobMarketPosting
 
     public string? Salary { get; init; }
 
+    public string? SalaryRaw { get; init; }
+
+    public long? SalaryMin { get; init; }
+
+    public long? SalaryMax { get; init; }
+
+    public string? SalaryCurrency { get; init; }
+
+    public bool? SalaryIsNegotiable { get; init; }
+
     public string? Experience { get; init; }
+
+    public string? ExperienceRaw { get; init; }
+
+    public int? ExperienceMinYears { get; init; }
+
+    public int? ExperienceMaxYears { get; init; }
 
     public DateOnly? PostedOn { get; init; }
 
     public string? PostedOnText { get; init; }
 
+    public string? PostDateConfidence { get; init; }
+
     public DateTime? UpdatedAt { get; init; }
+
+    public string? DetailStatus { get; init; }
+
+    public DateTime? DetailLastSuccessAt { get; init; }
 
     public string? Url { get; init; }
 

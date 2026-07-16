@@ -427,10 +427,21 @@ public sealed class JobsApiClient(
             Category = Clean(category),
             Location = Clean(location),
             Salary = Clean(job.Salary),
+            SalaryRaw = Clean(job.SalaryRaw),
+            SalaryMin = job.SalaryMin,
+            SalaryMax = job.SalaryMax,
+            SalaryCurrency = Clean(job.SalaryCurrency),
+            SalaryIsNegotiable = job.SalaryIsNegotiable,
             Experience = Clean(job.Experience),
+            ExperienceRaw = Clean(job.ExperienceRaw),
+            ExperienceMinYears = job.ExperienceMinYears,
+            ExperienceMaxYears = job.ExperienceMaxYears,
             PostedOn = ParseDateOnly(job.PostDate),
             PostedOnText = Clean(job.PostDateText),
+            PostDateConfidence = Clean(job.PostDateConfidence),
             UpdatedAt = updatedAt,
+            DetailStatus = Clean(job.DetailStatus),
+            DetailLastSuccessAt = ParseDateTime(job.DetailLastSuccessAt),
             Url = Clean(job.Url),
             IsActive = job.IsActive != false,
             Requirements = CleanList(job.Requirements),
@@ -772,14 +783,41 @@ public sealed class JobsApiJobDto
     [JsonPropertyName("salary")]
     public string? Salary { get; set; }
 
+    [JsonPropertyName("salary_raw")]
+    public string? SalaryRaw { get; set; }
+
+    [JsonPropertyName("salary_min")]
+    public long? SalaryMin { get; set; }
+
+    [JsonPropertyName("salary_max")]
+    public long? SalaryMax { get; set; }
+
+    [JsonPropertyName("salary_currency")]
+    public string? SalaryCurrency { get; set; }
+
+    [JsonPropertyName("salary_is_negotiable")]
+    public bool? SalaryIsNegotiable { get; set; }
+
     [JsonPropertyName("experience")]
     public string? Experience { get; set; }
+
+    [JsonPropertyName("experience_raw")]
+    public string? ExperienceRaw { get; set; }
+
+    [JsonPropertyName("experience_min_years")]
+    public int? ExperienceMinYears { get; set; }
+
+    [JsonPropertyName("experience_max_years")]
+    public int? ExperienceMaxYears { get; set; }
 
     [JsonPropertyName("post_date")]
     public string? PostDate { get; set; }
 
     [JsonPropertyName("post_date_text")]
     public string? PostDateText { get; set; }
+
+    [JsonPropertyName("post_date_confidence")]
+    public string? PostDateConfidence { get; set; }
 
     [JsonPropertyName("category")]
     public string? Category { get; set; }
@@ -825,4 +863,10 @@ public sealed class JobsApiJobDto
 
     [JsonPropertyName("last_seen_at")]
     public string? LastSeenAt { get; set; }
+
+    [JsonPropertyName("detail_status")]
+    public string? DetailStatus { get; set; }
+
+    [JsonPropertyName("detail_last_success_at")]
+    public string? DetailLastSuccessAt { get; set; }
 }

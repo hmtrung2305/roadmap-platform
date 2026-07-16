@@ -277,7 +277,18 @@ public sealed class JobPortalScraper(
                 x.Requirements,
                 x.Specialties,
                 x.Benefits,
-                x.Skills))
+                x.Skills,
+                SalaryRaw: x.SalaryRaw,
+                SalaryMin: x.SalaryMin,
+                SalaryMax: x.SalaryMax,
+                SalaryCurrency: x.SalaryCurrency,
+                SalaryIsNegotiable: x.SalaryIsNegotiable,
+                ExperienceRaw: x.ExperienceRaw,
+                ExperienceMinYears: x.ExperienceMinYears,
+                ExperienceMaxYears: x.ExperienceMaxYears,
+                PostDateConfidence: x.PostDateConfidence,
+                DetailStatus: x.DetailStatus,
+                DetailLastSuccessAt: x.DetailLastSuccessAt))
             .ToList();
 
         return new JobPortalScrapeResult
@@ -623,7 +634,18 @@ public sealed record ScrapedJobPosting(
     IReadOnlyList<string>? Requirements = null,
     IReadOnlyList<string>? Specialties = null,
     IReadOnlyList<string>? Benefits = null,
-    IReadOnlyList<string>? Skills = null);
+    IReadOnlyList<string>? Skills = null,
+    string? SalaryRaw = null,
+    long? SalaryMin = null,
+    long? SalaryMax = null,
+    string? SalaryCurrency = null,
+    bool? SalaryIsNegotiable = null,
+    string? ExperienceRaw = null,
+    int? ExperienceMinYears = null,
+    int? ExperienceMaxYears = null,
+    string? PostDateConfidence = null,
+    string? DetailStatus = null,
+    DateTime? DetailLastSuccessAt = null);
 
 public sealed class JobPortalScrapeResult
 {

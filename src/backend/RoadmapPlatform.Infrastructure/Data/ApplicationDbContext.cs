@@ -391,6 +391,12 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.PublishedAt, "ix_job_posting_published_at");
 
+            entity.HasIndex(e => new { e.SalaryMin, e.SalaryMax }, "ix_job_posting_salary_range");
+
+            entity.HasIndex(
+                e => new { e.ExperienceMinYears, e.ExperienceMaxYears },
+                "ix_job_posting_experience_range");
+
             entity.HasIndex(e => e.ScrapedAt, "ix_job_posting_scraped_at");
 
             entity.HasIndex(e => e.SourceJobId, "ix_job_posting_source_job_id");
@@ -424,6 +430,11 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Experience)
                 .HasMaxLength(100)
                 .HasColumnName("experience");
+            entity.Property(e => e.ExperienceMaxYears).HasColumnName("experience_max_years");
+            entity.Property(e => e.ExperienceMinYears).HasColumnName("experience_min_years");
+            entity.Property(e => e.ExperienceRaw)
+                .HasMaxLength(160)
+                .HasColumnName("experience_raw");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.ExternalId)
                 .HasMaxLength(120)
@@ -453,6 +464,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.PostDateText)
                 .HasMaxLength(80)
                 .HasColumnName("post_date_text");
+            entity.Property(e => e.PostDateConfidence)
+                .HasMaxLength(20)
+                .HasColumnName("post_date_confidence");
             entity.Property(e => e.PublishedAt).HasColumnName("published_at");
             entity.Property(e => e.Requirements)
                 .HasDefaultValueSql("'[]'::jsonb")
@@ -461,6 +475,15 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Salary)
                 .HasMaxLength(100)
                 .HasColumnName("salary");
+            entity.Property(e => e.SalaryCurrency)
+                .HasMaxLength(16)
+                .HasColumnName("salary_currency");
+            entity.Property(e => e.SalaryIsNegotiable).HasColumnName("salary_is_negotiable");
+            entity.Property(e => e.SalaryMax).HasColumnName("salary_max");
+            entity.Property(e => e.SalaryMin).HasColumnName("salary_min");
+            entity.Property(e => e.SalaryRaw)
+                .HasMaxLength(160)
+                .HasColumnName("salary_raw");
             entity.Property(e => e.ScrapedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("scraped_at");
@@ -471,6 +494,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(120)
                 .HasColumnName("source_job_id");
             entity.Property(e => e.SourceUpdatedAt).HasColumnName("source_updated_at");
+            entity.Property(e => e.DetailLastSuccessAt).HasColumnName("detail_last_success_at");
+            entity.Property(e => e.DetailStatus)
+                .HasMaxLength(32)
+                .HasColumnName("detail_status");
             entity.Property(e => e.Specialties)
                 .HasDefaultValueSql("'[]'::jsonb")
                 .HasColumnType("jsonb")

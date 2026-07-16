@@ -14,6 +14,69 @@ namespace RoadmapPlatform.Tests;
 public sealed class MarketPulseRefreshFailureTests
 {
     [Fact]
+    public async Task RefreshAsync_PersistsExpandedJobsApiContractFields()
+    {
+        await using var dbContext = CreateDbContext();
+        var detailLastSuccessAt = new DateTime(2026, 6, 18, 9, 0, 0, DateTimeKind.Utc);
+        var posting = new ScrapedJobPosting(
+            "topcv",
+            "Senior Backend Engineer",
+            "Example Tech",
+            "Ha Noi",
+            "https://topcv.vn/jobs/expanded-contract",
+            "Python SQL FastAPI",
+            new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
+            null,
+            SourceJobId: "expanded-contract",
+            Category: "Backend",
+            Salary: "20 - 35 trieu",
+            Experience: "3 - 5 nam",
+            PostDateText: "Dang 1 gio truoc",
+            Requirements: ["Python"],
+            Specialties: ["FastAPI"],
+            Benefits: ["Laptop"],
+            Skills: ["Python", "SQL"],
+            SalaryRaw: "20 - 35 triệu",
+            SalaryMin: 20_000_000,
+            SalaryMax: 35_000_000,
+            SalaryCurrency: "vnd",
+            SalaryIsNegotiable: false,
+            ExperienceRaw: "3 - 5 năm",
+            ExperienceMinYears: 3,
+            ExperienceMaxYears: 5,
+            PostDateConfidence: "relative",
+            DetailStatus: "success",
+            DetailLastSuccessAt: detailLastSuccessAt);
+        var service = CreateService(
+            dbContext,
+            new JobPortalScrapeResult
+            {
+                Status = JobsApiFetchStatus.Success,
+                Total = 1,
+                FetchedCount = 1,
+                IsCompleteSync = true,
+                IsSourceFresh = true,
+                Postings = [posting]
+            });
+
+        await service.RefreshAsync(CancellationToken.None);
+
+        var saved = await dbContext.Set<JobPosting>().SingleAsync();
+        Assert.Equal("20 - 35 triệu", saved.SalaryRaw);
+        Assert.Equal(20_000_000, saved.SalaryMin);
+        Assert.Equal(35_000_000, saved.SalaryMax);
+        Assert.Equal("VND", saved.SalaryCurrency);
+        Assert.False(saved.SalaryIsNegotiable);
+        Assert.Equal("3 - 5 năm", saved.ExperienceRaw);
+        Assert.Equal(3, saved.ExperienceMinYears);
+        Assert.Equal(5, saved.ExperienceMaxYears);
+        Assert.Equal("relative", saved.PostDateConfidence);
+        Assert.Equal("success", saved.DetailStatus);
+        Assert.Equal(detailLastSuccessAt, saved.DetailLastSuccessAt);
+        Assert.Equal("[\"Python\",\"SQL\"]", saved.Skills);
+    }
+
+    [Fact]
     public async Task RefreshAsync_PartialSync_DoesNotMarkAbsentPostingMissing()
     {
         await using var dbContext = CreateDbContext();

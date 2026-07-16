@@ -32,6 +32,25 @@ public sealed class JobsApiClientTests
                         source = "topcv",
                         source_job_id = "1001",
                         title = "Backend Engineer",
+                        salary = "20 - 35 trieu",
+                        salary_raw = "20 - 35 triệu",
+                        salary_min = 20_000_000L,
+                        salary_max = 35_000_000L,
+                        salary_currency = "VND",
+                        salary_is_negotiable = false,
+                        experience = "3 - 5 nam",
+                        experience_raw = "3 - 5 năm",
+                        experience_min_years = 3,
+                        experience_max_years = 5,
+                        skills_normalized = new[] { "Python", "SQL" },
+                        requirements = new[] { "Python" },
+                        benefits = new[] { "Laptop" },
+                        specialties = new[] { "FastAPI" },
+                        post_date = "2026-06-18",
+                        post_date_text = "Đăng 1 giờ trước",
+                        post_date_confidence = "relative",
+                        detail_status = "success",
+                        detail_last_success_at = "2026-06-18T09:00:00Z",
                         url = "https://topcv.vn/jobs/1001",
                         is_active = true
                     }
@@ -59,7 +78,23 @@ public sealed class JobsApiClientTests
         Assert.Equal(1, result.FetchedCount);
         Assert.True(result.IsCompleteSync);
         Assert.True(result.IsSourceFresh);
-        Assert.Equal("topcv", result.Jobs.Single().Source);
+        var job = result.Jobs.Single();
+        Assert.Equal("topcv", job.Source);
+        Assert.Equal("20 - 35 triệu", job.SalaryRaw);
+        Assert.Equal(20_000_000L, job.SalaryMin);
+        Assert.Equal(35_000_000L, job.SalaryMax);
+        Assert.Equal("VND", job.SalaryCurrency);
+        Assert.False(job.SalaryIsNegotiable);
+        Assert.Equal("3 - 5 năm", job.ExperienceRaw);
+        Assert.Equal(3, job.ExperienceMinYears);
+        Assert.Equal(5, job.ExperienceMaxYears);
+        Assert.Equal(["Python", "SQL"], job.SkillsNormalized);
+        Assert.Equal(["Python"], job.Requirements);
+        Assert.Equal(["Laptop"], job.Benefits);
+        Assert.Equal(["FastAPI"], job.Specialties);
+        Assert.Equal("relative", job.PostDateConfidence);
+        Assert.Equal("success", job.DetailStatus);
+        Assert.Equal("2026-06-18T09:00:00Z", job.DetailLastSuccessAt);
     }
 
     [Fact]
