@@ -2,6 +2,9 @@
 -- Requires psql because it uses \i include commands.
 -- Run from the project root so these relative paths resolve correctly.
 
+\set ON_ERROR_STOP on
+\encoding UTF8
+
 \echo 'Seeding shared/core skills...'
 \i database/seeds/core/shared-skills.seed.sql
 
