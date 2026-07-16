@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (SELECT career_role_id FROM public.career_role WHERE slug = 'data-analyst'), inserted_roadmap AS (
     INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
-SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager3' LIMIT 1), 'Data Analyst Roadmap', 'data-analyst-roadmap', 'A structured learning path for becoming a data analyst, covering business context, spreadsheets, SQL, statistics, data cleaning, visualization, BI tools, Python analytics, governance, stakeholder communication, advanced analysis awareness, and portfolio-ready projects.', 'public'
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager4' LIMIT 1), 'Data Analyst Roadmap', 'data-analyst-roadmap', 'A structured learning path for becoming a data analyst, covering business context, spreadsheets, SQL, statistics, data cleaning, visualization, BI tools, Python analytics, governance, stakeholder communication, advanced analysis awareness, and portfolio-ready projects.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (

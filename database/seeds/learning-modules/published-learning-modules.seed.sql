@@ -1,4 +1,6 @@
 -- Static Learning Module seed data generated from the markdown catalog.
+-- Published modules are assigned to demo authors by subject area so learners
+-- see an author whose public creator profile matches the module domain.
 -- Source: database/seeds/learning-modules/*/lessons/*.md
 
 \echo 'Seeding published learning modules from markdown catalog...'
@@ -822,12 +824,18 @@ BEGIN
         RAISE EXCEPTION 'Missing skill slugs required by learning module seed: %', missing_skills;
     END IF;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM public."user"
-        WHERE username_normalized = 'contentmanager'
+    IF EXISTS (
+        SELECT required.username_normalized
+        FROM (VALUES
+            ('contentmanager'),
+            ('contentmanager2'),
+            ('contentmanager4')
+        ) AS required(username_normalized)
+        LEFT JOIN public."user" seeded_user
+            ON seeded_user.username_normalized = required.username_normalized
+        WHERE seeded_user.user_id IS NULL
     ) THEN
-        RAISE EXCEPTION 'Missing demo content manager user: contentmanager';
+        RAISE EXCEPTION 'Missing one or more demo content manager users required by the published learning module seed.';
     END IF;
 END $$;
 
@@ -869,7 +877,11 @@ JOIN public.skill skill
 CROSS JOIN LATERAL (
     SELECT user_id
     FROM public."user"
-    WHERE username_normalized = 'contentmanager'
+    WHERE username_normalized = CASE
+        WHEN seed.skill_slug IN ('java', 'csharp') THEN 'contentmanager'
+        WHEN seed.skill_slug IN ('python', 'sql') THEN 'contentmanager4'
+        ELSE 'contentmanager2'
+    END
     LIMIT 1
 ) actor
 ON CONFLICT (skill_module_id) DO UPDATE SET

@@ -89,6 +89,14 @@
 
 \echo 'Learning module seed completed.'
 
+\echo 'Refreshing demo content author ownership...'
+\i database/seeds/core/006-content-author-ownership.seed.sql
+\echo 'Content author ownership refresh completed.'
+
+\echo 'Refreshing content author avatars...'
+\i database/seeds/core/007-content-author-real-avatars.seed.sql
+\echo 'Content author avatar refresh completed.'
+
 \echo 'Seeding skill gap category config...'
 \i database/seeds/assessments/populate-skill-gap-category-config.seed.sql
 \echo 'Skill gap category config seed completed.'

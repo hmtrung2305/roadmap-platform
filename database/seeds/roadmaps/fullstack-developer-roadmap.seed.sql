@@ -62,7 +62,7 @@ WITH role_row AS (
     SELECT career_role_id FROM public.career_role WHERE slug = 'full-stack-developer'
 ), inserted_roadmap AS (
     INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
-SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager3' LIMIT 1), 'Full Stack Developer Roadmap', 'full-stack-developer-roadmap', 'A structured learning path for becoming a full stack developer with a frontend-first focus, covering web fundamentals, HTML, CSS, JavaScript, TypeScript, React, frontend architecture, backend APIs, databases, authentication, testing, deployment, performance, DevOps awareness, and portfolio-ready full stack applications.', 'public'
+SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager' LIMIT 1), 'Full Stack Developer Roadmap', 'full-stack-developer-roadmap', 'A structured learning path for becoming a full stack developer with a frontend-first focus, covering web fundamentals, HTML, CSS, JavaScript, TypeScript, React, frontend architecture, backend APIs, databases, authentication, testing, deployment, performance, DevOps awareness, and portfolio-ready full stack applications.', 'public'
 FROM role_row
     RETURNING roadmap_id
 ), inserted_version AS (
