@@ -42,7 +42,12 @@ jobs:
       MarketPulse__RunOnStartup: "false"
       MarketPulse__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
       MarketPulse__TodayJobsApiUrl: ${{ github.event.inputs.today_jobs_api_url || vars.MARKET_PULSE_TODAY_JOBS_API_URL }}
-      MarketPulse__Sources__0__Name: "Jobs API"
+      MarketPulse__JobsApiKey: ${{ secrets.MARKET_PULSE_JOBS_API_KEY }}
+      MarketPulse__JobsApiMaxFreshnessHours: ${{ vars.MARKET_PULSE_JOBS_API_MAX_FRESHNESS_HOURS || '24' }}
+      MarketPulse__JobsApiFailOnStaleSource: "true"
+      MarketPulse__JobsApiRequireFreshCrawlMetadata: "true"
+      MarketPulse__DisableMissingLifecycleForPartialSync: "true"
+      MarketPulse__Sources__0__Name: "topcv"
       MarketPulse__Sources__0__Kind: "JobsApi"
       MarketPulse__Sources__0__BaseUrl: ${{ github.event.inputs.jobs_api_base_url || vars.MARKET_PULSE_JOBS_API_BASE_URL }}
       MarketPulse__Sources__0__SearchUrlTemplate: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}

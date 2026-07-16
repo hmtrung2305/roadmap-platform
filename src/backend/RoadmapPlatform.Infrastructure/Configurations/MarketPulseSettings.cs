@@ -20,11 +20,21 @@ public sealed class MarketPulseSettings
 
     public int JobsApiMaxPages { get; set; } = 10;
 
+    public string JobsApiKey { get; set; } = string.Empty;
+
+    public int JobsApiMaxFreshnessHours { get; set; } = 24;
+
+    public bool JobsApiFailOnStaleSource { get; set; } = true;
+
+    public bool JobsApiRequireFreshCrawlMetadata { get; set; } = true;
+
     public int ActivePostingLookbackDays { get; set; } = 14;
 
     public int MissingScansBeforeStale { get; set; } = 3;
 
     public int MinimumPostingsForLifecycleCheck { get; set; } = 30;
+
+    public bool DisableMissingLifecycleForPartialSync { get; set; } = true;
 
     public int RequestDelaySeconds { get; set; } = 2;
 
@@ -68,6 +78,19 @@ public sealed class MarketPulseSettings
         ScheduleCron = GetString("MARKET_PULSE_SCHEDULE_CRON", ScheduleCron);
         ActiveJobsApiUrl = GetString("MARKET_PULSE_ACTIVE_JOBS_API_URL", ActiveJobsApiUrl);
         TodayJobsApiUrl = GetString("MARKET_PULSE_TODAY_JOBS_API_URL", TodayJobsApiUrl);
+        JobsApiKey = GetString("MARKET_PULSE_JOBS_API_KEY", JobsApiKey);
+        JobsApiMaxFreshnessHours = GetInt(
+            "MARKET_PULSE_JOBS_API_MAX_FRESHNESS_HOURS",
+            JobsApiMaxFreshnessHours);
+        JobsApiFailOnStaleSource = GetBool(
+            "MARKET_PULSE_JOBS_API_FAIL_ON_STALE_SOURCE",
+            JobsApiFailOnStaleSource);
+        JobsApiRequireFreshCrawlMetadata = GetBool(
+            "MARKET_PULSE_JOBS_API_REQUIRE_FRESH_CRAWL_METADATA",
+            JobsApiRequireFreshCrawlMetadata);
+        DisableMissingLifecycleForPartialSync = GetBool(
+            "MARKET_PULSE_DISABLE_MISSING_LIFECYCLE_FOR_PARTIAL_SYNC",
+            DisableMissingLifecycleForPartialSync);
     }
 
     private static bool GetBool(string name, bool fallback)

@@ -37,6 +37,10 @@ public sealed class MarketPulseAdminController(
                     "MARKET_PULSE_REFRESH_RUNNING",
                     ex.Message));
         }
+        catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
+        {
+            return MarketPulseAdminSchemaMissingResult(ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return StatusCode(
@@ -292,10 +296,16 @@ public sealed class MarketPulseAdminController(
     {
         return new ObjectResult(MarketPulseApiEnvelopeDto<object>.Failure(
             "MARKET_PULSE_ADMIN_SCHEMA_MISSING",
-            "Market Pulse admin database objects are missing or out of date. Apply database/migrations/023-market-pulse-admin-ops.sql to the Render PostgreSQL database, then restart the backend.",
+            "Market Pulse database objects are missing or out of date. Apply migrations 024, 037, 038, and 039 to the same PostgreSQL database used by the backend, then restart the backend.",
             new
             {
-                migration = "database/migrations/023-market-pulse-admin-ops.sql",
+                migrations = new[]
+                {
+                    "database/migrations/024-market-pulse-admin-ops.sql",
+                    "database/migrations/037-market-pulse-option-a-schema-cleanup.sql",
+                    "database/migrations/038-market-pulse-jobs-api-freshness.sql",
+                    "database/migrations/039-market-pulse-partial-sync-lifecycle.sql"
+                },
                 hint = "Run the migration against the same DATABASE_URL used by the Render backend.",
                 providerMessage = exception.Message
             }))
@@ -314,7 +324,7 @@ public sealed class MarketPulseAdminController(
             if (typeName == "Npgsql.PostgresException" &&
                 (sqlState == "42P01" || sqlState == "42703" || sqlState == "42P07"))
             {
-                return current.Message.Contains("market_pulse_", StringComparison.OrdinalIgnoreCase);
+                return true;
             }
         }
 

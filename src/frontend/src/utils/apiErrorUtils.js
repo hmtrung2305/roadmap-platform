@@ -21,6 +21,8 @@ export function getApiErrorCode(errorOrData) {
     errorOrData?.code ||
     data?.code ||
     data?.Code ||
+    data?.error?.code ||
+    data?.Error?.Code ||
     null
   );
 }
@@ -45,6 +47,8 @@ export function getApiErrorTraceId(errorOrData) {
     errorOrData?.traceId ||
     data?.traceId ||
     data?.TraceId ||
+    data?.error?.traceId ||
+    data?.Error?.TraceId ||
     null
   );
 }
@@ -56,6 +60,8 @@ export function getApiErrorDetails(errorOrData) {
     errorOrData?.details ||
     data?.details ||
     data?.Details ||
+    data?.error?.details ||
+    data?.Error?.Details ||
     null
   );
 }
@@ -67,6 +73,8 @@ export function getApiValidationErrors(errorOrData) {
     errorOrData?.errors ||
     data?.errors ||
     data?.Errors ||
+    data?.error?.errors ||
+    data?.Error?.Errors ||
     null
   );
 }
@@ -175,15 +183,21 @@ function getBackendMessage(errorOrData) {
 
   if (typeof data === "string") return data;
   if (isPlainObject(data)) {
-    return (
-      data.message ||
-      data.Message ||
-      data.error ||
-      data.Error ||
-      data.title ||
-      data.Title ||
-      ""
-    );
+    const nestedError = data.error ?? data.Error;
+    const nestedMessage = typeof nestedError === "string"
+      ? nestedError
+      : isPlainObject(nestedError)
+        ? nestedError.message || nestedError.Message
+        : "";
+    const candidates = [
+      data.message,
+      data.Message,
+      nestedMessage,
+      data.title,
+      data.Title,
+    ];
+
+    return candidates.find((value) => typeof value === "string" && value.trim()) || "";
   }
 
   return "";
@@ -197,19 +211,21 @@ function shouldIgnoreClientMessage(message) {
 
 function getErrorText(errorOrData) {
   const data = getApiErrorData(errorOrData);
+  const nestedError = data?.error ?? data?.Error;
   const values = [
     errorOrData?.message,
     errorOrData?.statusText,
     typeof data === "string" ? data : "",
     data?.message,
     data?.Message,
-    data?.error,
-    data?.Error,
+    typeof nestedError === "string" ? nestedError : "",
+    nestedError?.message,
+    nestedError?.Message,
     data?.title,
     data?.Title,
   ];
 
-  return values.filter(Boolean).join(" ").toLowerCase();
+  return values.filter((value) => typeof value === "string" && value).join(" ").toLowerCase();
 }
 
 export function getApiErrorMessage(errorOrData, fallback = DEFAULT_ERROR_MESSAGE) {

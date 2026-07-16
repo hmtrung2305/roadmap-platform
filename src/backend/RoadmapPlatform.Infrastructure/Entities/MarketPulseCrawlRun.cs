@@ -23,6 +23,18 @@ public partial class MarketPulseCrawlRun
 
     public int FetchedCount { get; set; }
 
+    public int? SourceTotalCount { get; set; }
+
+    public bool IsCompleteSync { get; set; }
+
+    public bool MissingLifecycleApplied { get; set; }
+
+    public string? LifecycleSkippedReason { get; set; }
+
+    public DateTime? SourceGeneratedAt { get; set; }
+
+    public DateTime? SourceLatestSuccessAt { get; set; }
+
     public int SavedCount { get; set; }
 
     public int ImportedCount { get; set; }

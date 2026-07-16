@@ -23,7 +23,23 @@ public partial class JobPosting
 
     public string? Salary { get; set; }
 
+    public string? SalaryRaw { get; set; }
+
+    public long? SalaryMin { get; set; }
+
+    public long? SalaryMax { get; set; }
+
+    public string? SalaryCurrency { get; set; }
+
+    public bool? SalaryIsNegotiable { get; set; }
+
     public string? Experience { get; set; }
+
+    public string? ExperienceRaw { get; set; }
+
+    public int? ExperienceMinYears { get; set; }
+
+    public int? ExperienceMaxYears { get; set; }
 
     public string Url { get; set; } = null!;
 
@@ -33,7 +49,13 @@ public partial class JobPosting
 
     public string? PostDateText { get; set; }
 
+    public string? PostDateConfidence { get; set; }
+
     public DateTime? SourceUpdatedAt { get; set; }
+
+    public string? DetailStatus { get; set; }
+
+    public DateTime? DetailLastSuccessAt { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
 

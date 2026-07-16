@@ -48,16 +48,21 @@ catch (Exception ex)
 static void LogResult(ILogger logger, MarketPulseRefreshResultDto result)
 {
     logger.LogInformation(
-        "Market Pulse result: snapshotDate={SnapshotDate}, sources={SourcesScraped}, scraped={PostingsScraped}, inserted={PostingsInserted}, updated={PostingsUpdated}, seen={PostingsSeen}, expiredInRun={PostingsExpired}, active={ActivePostings}, stale={StalePostings}, expired={ExpiredPostings}, skillSnapshots={SkillSnapshotsSaved}.",
-        result.SnapshotDate,
-        result.SourcesScraped,
+        "Market Pulse result: status={Status}, fetchStatus={FetchStatus}, sourceGeneratedAt={SourceGeneratedAt}, latestSuccessfulCrawlAt={LatestSuccessfulCrawlAt}, fetched={PostingsScraped}, total={SourceTotal}, completeSync={IsCompleteSync}, lifecycleApplied={MissingLifecycleApplied}, lifecycleSkippedReason={LifecycleSkippedReason}, inserted={PostingsInserted}, updated={PostingsUpdated}, seen={PostingsSeen}, expiredInRun={PostingsExpired}, active={ActivePostings}, stale={StalePostings}, expired={ExpiredPostings}.",
+        result.Status,
+        result.FetchStatus,
+        result.SourceGeneratedAt,
+        result.LatestSuccessfulCrawlAt,
         result.PostingsScraped,
+        result.SourceTotal,
+        result.IsCompleteSync,
+        result.MissingLifecycleApplied,
+        result.LifecycleSkippedReason,
         result.PostingsInserted,
         result.PostingsUpdated,
         result.PostingsSeen,
         result.PostingsExpired,
         result.ActivePostings,
         result.StalePostings,
-        result.ExpiredPostings,
-        result.SkillSnapshotsSaved);
+        result.ExpiredPostings);
 }
