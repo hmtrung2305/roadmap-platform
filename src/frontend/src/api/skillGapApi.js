@@ -9,6 +9,17 @@ function normalizeArray(data) {
   return [];
 }
 
+function normalizeHistoryPage(data) {
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    nextCursor:
+      typeof data?.nextCursor === "string" && data.nextCursor
+        ? data.nextCursor
+        : null,
+    hasMore: Boolean(data?.hasMore),
+  };
+}
+
 export const skillGapApi = {
   getCareerRoles: async () => {
     const response = await axiosClient.get("/skill-gap/career-roles");
@@ -38,9 +49,18 @@ export const skillGapApi = {
     return response.data;
   },
 
-  getHistory: async () => {
-    const response = await axiosClient.get("/me/skill-gap/history");
-    return normalizeArray(response.data);
+  getHistory: async ({ limit = 20, cursor = null } = {}) => {
+    const params = { limit };
+
+    if (cursor) {
+      params.cursor = cursor;
+    }
+
+    const response = await axiosClient.get("/me/skill-gap/history", {
+      params,
+    });
+
+    return normalizeHistoryPage(response.data);
   },
 
   getHistoryDetail: async (historyId) => {

@@ -17,24 +17,14 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
             _dbContext = dbContext;
         }
 
-        public async Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request)
+        public async Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request, CancellationToken cancellationToken)
         {
-            var lastAnalysisAt = await _dbContext.SkillGapAnalysisHistories
-                .AsNoTracking()
-                .Where(x =>
-                    x.UserId == userId &&
-                    x.RoadmapId == request.RoadmapId)
-                .MaxAsync(x => (DateTime?)x.CreatedAt);
+            ArgumentNullException.ThrowIfNull(request);
 
-            if (lastAnalysisAt.HasValue)
+            if (request.RoadmapId == Guid.Empty)
             {
-                var availableAt = lastAnalysisAt.Value.AddDays(3);
-
-                if (availableAt > DateTime.UtcNow)
-                {
-                    throw new ConflictException(
-                        $"You can analyze this roadmap again after {availableAt:yyyy-MM-dd HH:mm:ss} UTC.");
-                }
+                throw new ArgumentException(
+                    "Roadmap ID is required.");
             }
 
             var roadmap = await _dbContext.Roadmaps
@@ -67,7 +57,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                         })
                         .SingleOrDefault()
                 })
-                .SingleOrDefaultAsync();
+                .SingleOrDefaultAsync(cancellationToken);
 
             if (roadmap is null)
             {
@@ -95,7 +85,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                 })
                 .Where(x => !string.IsNullOrWhiteSpace(x.CategoryName))
                 .Distinct()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var roadmapSkillIds = roadmapSkills
                 .Select(x => x.SkillId)
@@ -139,7 +129,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     x.DisplayOrder,
                 })
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             if (categoryConfigs.Count == 0)
             {
@@ -251,10 +241,9 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     CreatedAt = DateTime.UtcNow,
 
-                    IsDeleted = false,
                 });
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return response;
         }

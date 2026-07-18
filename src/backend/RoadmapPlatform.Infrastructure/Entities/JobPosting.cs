@@ -96,5 +96,4 @@ public partial class JobPosting
     public DateTime UpdatedAt { get; set; }
 
     public virtual JobPortalSource JobPortalSource { get; set; } = null!;
-
 }

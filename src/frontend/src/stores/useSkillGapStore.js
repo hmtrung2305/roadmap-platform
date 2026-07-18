@@ -64,7 +64,6 @@ export const useSkillGapStore = create((set, get) => ({
   assessmentsByRoadmapId: {},
   selectedSkillIds: [],
   result: null,
-  analysisByKey: {},
   step: 1,
   isRolesLoading: true,
   isRoadmapsLoading: false,
@@ -273,20 +272,16 @@ export const useSkillGapStore = create((set, get) => ({
     }));
   },
 
-  analyze: async ({ force = false } = {}) => {
+  analyze: async () => {
     const state = get();
     const roadmapId = getRoadmapId(state.selectedRoadmap);
 
-    if (!roadmapId || state.isAssessmentLoading) return null;
+    if (!roadmapId || state.isAssessmentLoading || state.isAnalyzing) {
+      return null;
+    }
 
     const selectedSkillIds = [...state.selectedSkillIds];
     const analysisKey = createAnalysisKey(roadmapId, selectedSkillIds);
-    const cachedResult = state.analysisByKey[analysisKey];
-
-    if (!force && cachedResult) {
-      set({ result: cachedResult, step: 3, error: "" });
-      return cachedResult;
-    }
 
     const requestVersion = ++analysisRequestVersion;
 
@@ -309,15 +304,11 @@ export const useSkillGapStore = create((set, get) => ({
         return result;
       }
 
-      set((latest) => ({
-        analysisByKey: {
-          ...latest.analysisByKey,
-          [analysisKey]: result,
-        },
+      set({
         result,
         step: 3,
         error: "",
-      }));
+      });
 
       return result;
     } catch (error) {
@@ -408,7 +399,6 @@ export const useSkillGapStore = create((set, get) => ({
       assessmentsByRoadmapId: {},
       selectedSkillIds: [],
       result: null,
-      analysisByKey: {},
       step: 1,
       isRolesLoading: false,
       isRoadmapsLoading: false,
