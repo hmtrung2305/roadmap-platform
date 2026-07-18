@@ -307,18 +307,16 @@ public sealed class MarketPulseAdminController(
     {
         return new ObjectResult(MarketPulseApiEnvelopeDto<object>.Failure(
             "MARKET_PULSE_ADMIN_SCHEMA_MISSING",
-            "Market Pulse database objects are missing or out of date. Apply migrations 024 and 037 through 042 to the same PostgreSQL database used by the backend, then restart the backend.",
+            "Market Pulse database objects or legacy data are out of date. Apply migrations 024 and 037 through 040 to the same PostgreSQL database used by the backend, then restart the backend.",
             new
             {
                 migrations = new[]
                 {
                     "database/migrations/024-market-pulse-admin-ops.sql",
                     "database/migrations/037-market-pulse-option-a-schema-cleanup.sql",
-                    "database/migrations/038-market-pulse-jobs-api-freshness.sql",
-                    "database/migrations/039-market-pulse-partial-sync-lifecycle.sql",
-                    "database/migrations/040-market-pulse-expanded-jobs-api-contract.sql",
-                    "database/migrations/041-market-pulse-post-date-confidence.sql",
-                    "database/migrations/042-market-pulse-relative-date-observations.sql"
+                    "database/migrations/038-market-pulse-expanded-jobs-api.sql",
+                    "database/migrations/039-market-pulse-relative-date-observations.sql",
+                    "database/migrations/040-market-pulse-post-date-confidence-integrity.sql"
                 },
                 hint = "Run the migration against the same DATABASE_URL used by the Render backend.",
                 providerMessage = exception.Message
@@ -337,6 +335,13 @@ public sealed class MarketPulseAdminController(
 
             if (typeName == "Npgsql.PostgresException" &&
                 (sqlState == "42P01" || sqlState == "42703" || sqlState == "42P07"))
+            {
+                return true;
+            }
+
+            if (current.Message.Contains(
+                "Column 'post_date_confidence' is null",
+                StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

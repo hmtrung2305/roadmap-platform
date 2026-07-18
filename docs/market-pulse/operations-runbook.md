@@ -35,10 +35,10 @@ npm.cmd run dev
 
 ## Migrations
 
-For an installation upgraded from before Option A, apply `037` through `042` in numeric order. Migration `024` is also required for admin operations tables.
+For an installation upgraded from before Option A, apply `037` through `040` in numeric order. Migration `024` is also required for admin operations tables. Migration `040` repairs legacy `NULL`/invalid confidence values before enforcing the required database constraint.
 
 ```powershell
-psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f "database/migrations/042-market-pulse-relative-date-observations.sql"
+psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f "database/migrations/040-market-pulse-post-date-confidence-integrity.sql"
 ```
 
 Always point `DATABASE_URL` at the same PostgreSQL database used by `RoadmapPlatform.Api`.
@@ -72,7 +72,8 @@ HTTP `409 Conflict` means a refresh is already running; wait for that run to fin
 - `blocked`/`layout_changed`: inspect Python debug HTML and source selectors; do not retry through the .NET failure queue.
 - partial sync: raise `MaxPostingsPerSource`/page limits or repair pagination; missing lifecycle remains intentionally skipped.
 - empty source: the workflow blocks when Python reports zero active jobs, and `MarketPulseJob` exits `2` when no acceptable fresh records were imported.
-- admin endpoints fail with schema missing: apply `024` and `037` through `042` to the backend database.
+- `Column 'post_date_confidence' is null`: apply migration `040` to the PostgreSQL database used by the .NET backend; this is legacy .NET data, not a Python response error.
+- admin endpoints fail with schema missing: apply `024` and `037` through `040` to the backend database.
 
 Logs:
 
@@ -84,7 +85,7 @@ docker compose logs --tail 200 jobs-api-web jobs-scheduler
 
 1. Python readiness and protected ops health pass.
 2. Latest listing crawl is within freshness policy and not critical.
-3. Migration `042` exists in PostgreSQL.
+3. Migration `040` has completed and `job_posting.post_date_confidence` has no null/invalid values.
 4. A full .NET import exits zero and reports lifecycle state.
 5. Admin page shows both health domains without console rendering errors.
 6. A sample relative job contains representative date, bounds, confidence, and observation date.

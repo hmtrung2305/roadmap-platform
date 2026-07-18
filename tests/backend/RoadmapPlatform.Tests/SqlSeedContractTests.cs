@@ -61,6 +61,33 @@ public sealed class SqlSeedContractTests
         Assert.Contains("ON CONFLICT", seedSql, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void PostDateConfidenceMigrationBackfillsBeforeEnforcingNotNull()
+    {
+        var root = FindRepositoryRoot();
+        var migrationPath = Path.Combine(
+            root,
+            "database",
+            "migrations",
+            "040-market-pulse-post-date-confidence-integrity.sql");
+
+        var migrationSql = File.ReadAllText(migrationPath);
+        var backfillIndex = migrationSql.IndexOf(
+            "UPDATE public.job_posting",
+            StringComparison.Ordinal);
+        var notNullIndex = migrationSql.IndexOf(
+            "ALTER COLUMN post_date_confidence SET NOT NULL",
+            StringComparison.Ordinal);
+
+        Assert.True(backfillIndex >= 0);
+        Assert.True(notNullIndex > backfillIndex);
+        Assert.Contains("ELSE 'unknown'", migrationSql, StringComparison.Ordinal);
+        Assert.Contains(
+            "post_date_confidence IN ('exact', 'relative', 'unknown')",
+            migrationSql,
+            StringComparison.Ordinal);
+    }
+
     private static IEnumerable<string> FindMissingIncludes(string root, string sqlFile)
     {
         var sql = File.ReadAllText(sqlFile);

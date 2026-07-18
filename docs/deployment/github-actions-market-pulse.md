@@ -71,7 +71,7 @@ Do not commit real connection strings.
 `MARKET_PULSE_JOBS_API_KEY` must equal Python `ADMIN_API_KEY`. Before enabling the workflow, apply the Option A migrations through:
 
 ```text
-database/migrations/042-market-pulse-relative-date-observations.sql
+database/migrations/040-market-pulse-post-date-confidence-integrity.sql
 ```
 
 The refresh job writes `job_posting`, `job_posting_version`, `job_posting_observation`, `skill_taxonomy`, `job_skill_mention`, `job_market_daily_snapshot`, and `market_pulse_insight_snapshot`.
