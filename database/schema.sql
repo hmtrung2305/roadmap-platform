@@ -1735,13 +1735,12 @@ CREATE TABLE IF NOT EXISTS public.skill_gap_analysis_history
 
     snapshot_json JSONB NOT NULL,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-
-    deleted_at TIMESTAMPTZ NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS ix_skill_gap_history_user_created_at
+    ON public.skill_gap_analysis_history
+        (user_id, created_at DESC, skill_gap_analysis_history_id DESC);
 
 
 -- =========================

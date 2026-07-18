@@ -6,6 +6,6 @@ namespace RoadmapPlatform.Application.Interfaces.SkillGapAnalysis
 {
     public interface ISkillGapAnalysisService
     {
-        Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request);
+        Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request, CancellationToken cancellationToken);
     }
 }
