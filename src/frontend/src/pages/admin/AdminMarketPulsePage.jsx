@@ -47,6 +47,7 @@ export default function AdminMarketPulsePage() {
   const [mappings, setMappings] = useState([]);
   const [categories, setCategories] = useState([]);
   const [sourceHealth, setSourceHealth] = useState([]);
+  const [externalHealth, setExternalHealth] = useState(null);
   const [runFilters, setRunFilters] = useState({ status: "", source: "", from: "", to: "" });
   const [failedFilters, setFailedFilters] = useState({ status: "open", source: "", from: "", to: "" });
   const [selectedFailedIds, setSelectedFailedIds] = useState([]);
@@ -85,25 +86,30 @@ export default function AdminMarketPulsePage() {
     setIsLoading(true);
     setActionError("");
 
-    try {
-      const [runData, failedData, mappingData, categoryData, healthData] = await Promise.all([
-        marketPulseApi.getCrawlRuns({ ...normalizeDateFilters(runFilters), limit: 50 }),
-        marketPulseApi.getFailedItems({ ...normalizeDateFilters(failedFilters), limit: 50 }),
-        marketPulseApi.getClassifierMappings(),
-        marketPulseApi.getClassifierCategories(),
-        marketPulseApi.getSourceHealth(),
-      ]);
+    const requests = [
+      ["import runs", marketPulseApi.getCrawlRuns({ ...normalizeDateFilters(runFilters), limit: 50 }), (data) => setRuns(data || [])],
+      ["import failures", marketPulseApi.getFailedItems({ ...normalizeDateFilters(failedFilters), limit: 50 }), (data) => setFailedItems(data || [])],
+      ["classifier mappings", marketPulseApi.getClassifierMappings(), (data) => setMappings(data || [])],
+      ["classifier categories", marketPulseApi.getClassifierCategories(), (data) => setCategories(data || [])],
+      [".NET import health", marketPulseApi.getSourceHealth(), (data) => setSourceHealth(data || [])],
+      ["Python crawler health", marketPulseApi.getExternalSourceHealth(), setExternalHealth],
+    ];
+    const results = await Promise.allSettled(requests.map(([, request]) => request));
+    const failures = [];
 
-      setRuns(runData || []);
-      setFailedItems(failedData || []);
-      setMappings(mappingData || []);
-      setCategories(categoryData || []);
-      setSourceHealth(healthData || []);
-    } catch (error) {
-      setActionError(error?.message || "Unable to load Market Pulse admin data.");
-    } finally {
-      setIsLoading(false);
+    results.forEach((result, index) => {
+      const [label, , applyResult] = requests[index];
+      if (result.status === "fulfilled") {
+        applyResult(result.value);
+      } else {
+        failures.push(`${label}: ${result.reason?.message || "request failed"}`);
+      }
+    });
+
+    if (failures.length) {
+      setActionError(`Some admin sections could not be loaded. ${failures.join(" | ")}`);
     }
+    setIsLoading(false);
   }
 
   async function loadRuns() {
@@ -348,8 +354,38 @@ export default function AdminMarketPulsePage() {
         </div>
 
         <div className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-[#18332D]">.NET import health</h2>
-          <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-black text-[#18332D]">Python crawler health</h2>
+            <StatusBadge status={externalHealth?.status || "unavailable"} />
+          </div>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+            Direct health from the Python crawler, independent of the latest .NET import.
+          </p>
+          <div className="mt-4 space-y-2 text-sm font-semibold text-slate-700">
+            <MetricLine label="API available" value={externalHealth?.isAvailable ? "yes" : "no"} />
+            <MetricLine label="Data freshness" value={externalHealth?.isStale ? "stale" : "fresh"} />
+            <MetricLine label="Last successful crawl" value={formatDate(externalHealth?.latestSuccessfulCrawlAt)} />
+            <MetricLine label="Crawl age" value={formatHours(externalHealth?.hoursSinceSuccessfulCrawl)} />
+            <MetricLine label="Latest crawler run" value={externalHealth?.latestListingStatus || "-"} />
+            <MetricLine label="Blocked / failed pages" value={`${formatNumber(externalHealth?.pagesBlocked)} / ${formatNumber(externalHealth?.pagesFailed)}`} />
+            <MetricLine label="Active jobs" value={formatNumber(externalHealth?.activeJobs)} />
+            <MetricLine label="New jobs today" value={formatNumber(externalHealth?.newJobsToday)} />
+            <MetricLine label="Detail completion" value={formatPercent(externalHealth?.detailCompletionRate)} />
+          </div>
+          {(externalHealth?.errorMessage || externalHealth?.warnings?.length > 0) && (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-800">
+              {externalHealth?.errorMessage || externalHealth.warnings.join(" ")}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-[#B9D8CC] bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-black text-[#18332D]">.NET import health</h2>
+        <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+          Import status persisted by Roadmap Platform. Retry actions below only queue .NET import failures; they do not retry Python crawler failures.
+        </p>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {sourceHealth.length === 0 ? (
               <EmptyState message="No source health records yet." />
             ) : (
@@ -363,7 +399,7 @@ export default function AdminMarketPulsePage() {
                     Last success {formatDate(source.lastSuccessAt)} | Failures {formatNumber(source.consecutiveFailures)}
                   </div>
                   <div className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                    Python crawler latest success {formatDate(source.sourceLatestSuccessAt)}
+                    Source freshness captured by last import {formatDate(source.sourceLatestSuccessAt)}
                   </div>
                   {source.lastErrorSummary && (
                     <div className="mt-2 text-xs font-semibold text-red-700">{source.lastErrorSummary}</div>
@@ -371,7 +407,6 @@ export default function AdminMarketPulsePage() {
                 </div>
               ))
             )}
-          </div>
         </div>
       </section>
 
@@ -726,11 +761,11 @@ function FormInput({ label, value, onChange, type = "text" }) {
 
 function StatusBadge({ status }) {
   const value = String(status || "unknown");
-  const tone = value === "success"
+  const tone = value === "success" || value === "healthy"
     ? "bg-emerald-100 text-emerald-700"
-    : value === "failed" || value === "blocked"
+    : value === "failed" || value === "blocked" || value === "critical" || value === "unavailable" || value === "unauthorized" || value === "rate_limited"
       ? "bg-red-100 text-red-700"
-      : value === "open" || value === "retry_queued"
+      : value === "open" || value === "retry_queued" || value === "warning" || value === "stale"
         ? "bg-amber-100 text-amber-700"
         : "bg-slate-100 text-slate-700";
 
@@ -811,6 +846,16 @@ function formatDuration(ms) {
   if (!normalized) return "-";
   if (normalized < 1000) return `${normalized}ms`;
   return `${Math.round(normalized / 1000)}s`;
+}
+
+function formatHours(value) {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? `${normalized.toFixed(1)}h` : "unknown";
+}
+
+function formatPercent(value) {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? `${Math.round(normalized * 100)}%` : "-";
 }
 
 function shortId(value) {

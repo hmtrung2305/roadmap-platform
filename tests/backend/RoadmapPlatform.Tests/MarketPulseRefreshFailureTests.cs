@@ -14,10 +14,59 @@ namespace RoadmapPlatform.Tests;
 public sealed class MarketPulseRefreshFailureTests
 {
     [Fact]
+    public async Task GetOverviewAsync_CountsOnlyReliableDatesOnVietnamBusinessDate()
+    {
+        await using var dbContext = CreateDbContext();
+        var now = DateTime.UtcNow;
+        var businessDate = MarketPulseBusinessTime.GetBusinessDate(
+            now,
+            MarketPulseBusinessTime.DefaultTimezone);
+        var source = new JobPortalSource
+        {
+            JobPortalSourceId = Guid.NewGuid(),
+            Name = "topcv",
+            BaseUrl = "https://topcv.vn",
+            SearchUrlTemplate = string.Empty,
+            IsEnabled = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        dbContext.Set<JobPortalSource>().Add(source);
+        dbContext.Set<JobPosting>().AddRange(
+            CreateOverviewPosting(source, "exact-today", businessDate, "exact", now),
+            CreateOverviewPosting(source, "relative-today", businessDate, "relative", now),
+            CreateOverviewPosting(source, "unknown-today", businessDate, "unknown", now),
+            CreateOverviewPosting(source, "missing-date", null, "exact", now),
+            CreateOverviewPosting(source, "exact-yesterday", businessDate.AddDays(-1), "exact", now));
+        await dbContext.SaveChangesAsync();
+        var service = CreateService(
+            dbContext,
+            new JobPortalScrapeResult { Status = JobsApiFetchStatus.Empty },
+            settings =>
+            {
+                settings.BusinessTimezone = MarketPulseBusinessTime.DefaultTimezone;
+                settings.OverviewCacheSeconds = 0;
+            });
+
+        var overview = await service.GetOverviewAsync(
+            new MarketPulseOverviewQueryDto { Days = 14 },
+            CancellationToken.None);
+
+        Assert.Equal(2, overview.TodayPostings);
+        Assert.Equal(2, overview.TodayJobs.Count);
+        Assert.Equal(
+            ["exact-today", "relative-today"],
+            overview.TodayJobs.Select(x => x.Title).OrderBy(x => x).ToArray());
+    }
+
+    [Fact]
     public async Task RefreshAsync_PersistsExpandedJobsApiContractFields()
     {
         await using var dbContext = CreateDbContext();
         var detailLastSuccessAt = new DateTime(2026, 6, 18, 9, 0, 0, DateTimeKind.Utc);
+        var postDateLowerBound = new DateTime(2026, 6, 11);
+        var postDateUpperBound = new DateTime(2026, 6, 18);
+        var postDateObservedOn = new DateTime(2026, 6, 18);
         var posting = new ScrapedJobPosting(
             "topcv",
             "Senior Backend Engineer",
@@ -45,6 +94,9 @@ public sealed class MarketPulseRefreshFailureTests
             ExperienceMinYears: 3,
             ExperienceMaxYears: 5,
             PostDateConfidence: "relative",
+            PostDateLowerBound: postDateLowerBound,
+            PostDateUpperBound: postDateUpperBound,
+            PostDateObservedOn: postDateObservedOn,
             DetailStatus: "success",
             DetailLastSuccessAt: detailLastSuccessAt);
         var service = CreateService(
@@ -71,6 +123,9 @@ public sealed class MarketPulseRefreshFailureTests
         Assert.Equal(3, saved.ExperienceMinYears);
         Assert.Equal(5, saved.ExperienceMaxYears);
         Assert.Equal("relative", saved.PostDateConfidence);
+        Assert.Equal(postDateLowerBound, saved.PostDateLowerBound);
+        Assert.Equal(postDateUpperBound, saved.PostDateUpperBound);
+        Assert.Equal(postDateObservedOn, saved.PostDateObservedOn);
         Assert.Equal("success", saved.DetailStatus);
         Assert.Equal(detailLastSuccessAt, saved.DetailLastSuccessAt);
         Assert.Equal("[\"Python\",\"SQL\"]", saved.Skills);
@@ -278,6 +333,41 @@ public sealed class MarketPulseRefreshFailureTests
                 null,
                 $"job-{index}"))
             .ToList();
+
+    private static JobPosting CreateOverviewPosting(
+        JobPortalSource source,
+        string externalId,
+        DateOnly? postDate,
+        string confidence,
+        DateTime now) =>
+        new()
+        {
+            JobPostingId = Guid.NewGuid(),
+            JobPortalSourceId = source.JobPortalSourceId,
+            JobPortalSource = source,
+            ExternalId = externalId,
+            SourceJobId = externalId,
+            Title = externalId,
+            Url = $"https://topcv.vn/jobs/{externalId}",
+            Description = externalId,
+            PublishedAt = postDate?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            PostDateConfidence = confidence,
+            Requirements = "[]",
+            Specialties = "[]",
+            Benefits = "[]",
+            Skills = "[]",
+            ContentHash = externalId,
+            LifecycleStatus = "active",
+            IsActive = true,
+            MissingScanCount = 0,
+            SeenCount = 1,
+            FirstSeenAt = now,
+            LastSeenAt = now,
+            LastCheckedAt = now,
+            ScrapedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
 
     private static async Task<Guid> SeedAbsentPostingAsync(ApplicationDbContext dbContext)
     {

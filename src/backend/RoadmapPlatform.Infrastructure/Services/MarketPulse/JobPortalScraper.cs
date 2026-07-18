@@ -287,6 +287,9 @@ public sealed class JobPortalScraper(
                 ExperienceMinYears: x.ExperienceMinYears,
                 ExperienceMaxYears: x.ExperienceMaxYears,
                 PostDateConfidence: x.PostDateConfidence,
+                PostDateLowerBound: x.PostDateLowerBound?.ToDateTime(TimeOnly.MinValue),
+                PostDateUpperBound: x.PostDateUpperBound?.ToDateTime(TimeOnly.MinValue),
+                PostDateObservedOn: x.PostDateObservedOn?.ToDateTime(TimeOnly.MinValue),
                 DetailStatus: x.DetailStatus,
                 DetailLastSuccessAt: x.DetailLastSuccessAt))
             .ToList();
@@ -644,6 +647,9 @@ public sealed record ScrapedJobPosting(
     int? ExperienceMinYears = null,
     int? ExperienceMaxYears = null,
     string? PostDateConfidence = null,
+    DateTime? PostDateLowerBound = null,
+    DateTime? PostDateUpperBound = null,
+    DateTime? PostDateObservedOn = null,
     string? DetailStatus = null,
     DateTime? DetailLastSuccessAt = null);
 

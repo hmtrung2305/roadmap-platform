@@ -14,7 +14,8 @@ namespace RoadmapPlatform.Api.Controllers.MarketPulse;
 [RequirePermission(PermissionConstant.MARKET_PULSE_MANAGE_ANY)]
 public sealed class MarketPulseAdminController(
     IMarketPulseService marketPulseService,
-    IMarketPulseAdminService adminService) : ControllerBase
+    IMarketPulseAdminService adminService,
+    IJobsApiHealthService jobsApiHealthService) : ControllerBase
 {
     [HttpPost("refresh")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
@@ -292,19 +293,30 @@ public sealed class MarketPulseAdminController(
         }
     }
 
+    [HttpGet("external-source-health")]
+    [ProducesResponseType(
+        typeof(MarketPulseApiEnvelopeDto<MarketPulseExternalSourceHealthDto>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExternalSourceHealth(CancellationToken cancellationToken)
+    {
+        var health = await jobsApiHealthService.GetHealthAsync(cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseExternalSourceHealthDto>.Success(health));
+    }
+
     private static ObjectResult MarketPulseAdminSchemaMissingResult(Exception exception)
     {
         return new ObjectResult(MarketPulseApiEnvelopeDto<object>.Failure(
             "MARKET_PULSE_ADMIN_SCHEMA_MISSING",
-            "Market Pulse database objects are missing or out of date. Apply migrations 024, 037, 038, and 039 to the same PostgreSQL database used by the backend, then restart the backend.",
+            "Market Pulse database objects or legacy data are out of date. Apply migrations 024 and 037 through 040 to the same PostgreSQL database used by the backend, then restart the backend.",
             new
             {
                 migrations = new[]
                 {
                     "database/migrations/024-market-pulse-admin-ops.sql",
                     "database/migrations/037-market-pulse-option-a-schema-cleanup.sql",
-                    "database/migrations/038-market-pulse-jobs-api-freshness.sql",
-                    "database/migrations/039-market-pulse-partial-sync-lifecycle.sql"
+                    "database/migrations/038-market-pulse-expanded-jobs-api.sql",
+                    "database/migrations/039-market-pulse-relative-date-observations.sql",
+                    "database/migrations/040-market-pulse-post-date-confidence-integrity.sql"
                 },
                 hint = "Run the migration against the same DATABASE_URL used by the Render backend.",
                 providerMessage = exception.Message
@@ -323,6 +335,13 @@ public sealed class MarketPulseAdminController(
 
             if (typeName == "Npgsql.PostgresException" &&
                 (sqlState == "42P01" || sqlState == "42703" || sqlState == "42P07"))
+            {
+                return true;
+            }
+
+            if (current.Message.Contains(
+                "Column 'post_date_confidence' is null",
+                StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

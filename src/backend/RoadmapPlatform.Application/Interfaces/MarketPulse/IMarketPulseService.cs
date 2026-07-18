@@ -60,3 +60,9 @@ public interface IMarketPulseAdminService
     Task<IReadOnlyList<MarketPulseSourceHealthDto>> GetSourceHealthAsync(
         CancellationToken cancellationToken);
 }
+
+public interface IJobsApiHealthService
+{
+    Task<MarketPulseExternalSourceHealthDto> GetHealthAsync(
+        CancellationToken cancellationToken);
+}

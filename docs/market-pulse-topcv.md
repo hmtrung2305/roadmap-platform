@@ -203,7 +203,8 @@ MarketPulse__RunOnStartup=false
 MarketPulse__OverviewCacheSeconds=120
 MarketPulse__InternalApiKey=<strong-internal-key-at-least-16-chars>
 MarketPulse__ActiveJobsApiUrl=https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc
-MarketPulse__TodayJobsApiUrl=https://<jobs-api-domain>/api/v1/jobs/today
+MarketPulse__JobsApiOpsHealthUrl=https://<jobs-api-domain>/api/v1/ops/health-summary
+MarketPulse__JobsApiKey=<same-value-as-python-admin-api-key>
 MarketPulse__Sources__0__Name=Jobs API
 MarketPulse__Sources__0__Kind=JobsApi
 MarketPulse__Sources__0__BaseUrl=https://<jobs-api-domain>
@@ -229,7 +230,8 @@ PowerShell:
 ```powershell
 $jobsApi="https://<your-ngrok-host>"
 $env:MarketPulse__ActiveJobsApiUrl="$jobsApi/api/v1/jobs?active=true&sort=post_date_desc"
-$env:MarketPulse__TodayJobsApiUrl="$jobsApi/api/v1/jobs/today"
+$env:MarketPulse__JobsApiOpsHealthUrl="$jobsApi/api/v1/ops/health-summary"
+$env:MarketPulse__JobsApiKey="<same ADMIN_API_KEY>"
 $env:MarketPulse__Sources__0__Name="Jobs API"
 $env:MarketPulse__Sources__0__Kind="JobsApi"
 $env:MarketPulse__Sources__0__BaseUrl=$jobsApi
@@ -244,7 +246,8 @@ CMD:
 ```cmd
 set "jobsApi=https://<your-ngrok-host>"
 set "MarketPulse__ActiveJobsApiUrl=%jobsApi%/api/v1/jobs?active=true&sort=post_date_desc"
-set "MarketPulse__TodayJobsApiUrl=%jobsApi%/api/v1/jobs/today"
+set "MarketPulse__JobsApiOpsHealthUrl=%jobsApi%/api/v1/ops/health-summary"
+set "MarketPulse__JobsApiKey=<same ADMIN_API_KEY>"
 set "MarketPulse__Sources__0__Name=Jobs API"
 set "MarketPulse__Sources__0__Kind=JobsApi"
 set "MarketPulse__Sources__0__BaseUrl=%jobsApi%"
@@ -259,7 +262,8 @@ User secrets for local backend:
 ```powershell
 cd src/backend/RoadmapPlatform.Api
 dotnet user-secrets set "MarketPulse:ActiveJobsApiUrl" "https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc"
-dotnet user-secrets set "MarketPulse:TodayJobsApiUrl" "https://<jobs-api-domain>/api/v1/jobs/today"
+dotnet user-secrets set "MarketPulse:JobsApiOpsHealthUrl" "https://<jobs-api-domain>/api/v1/ops/health-summary"
+dotnet user-secrets set "MarketPulse:JobsApiKey" "<same ADMIN_API_KEY>"
 dotnet user-secrets set "MarketPulse:Sources:0:Name" "Jobs API"
 dotnet user-secrets set "MarketPulse:Sources:0:Kind" "JobsApi"
 dotnet user-secrets set "MarketPulse:Sources:0:BaseUrl" "https://<jobs-api-domain>"

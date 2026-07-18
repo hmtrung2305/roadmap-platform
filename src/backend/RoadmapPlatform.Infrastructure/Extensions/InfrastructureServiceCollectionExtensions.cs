@@ -171,6 +171,7 @@ namespace RoadmapPlatform.Infrastructure.Extensions
 
             // Register Market Pulse services.
             services.AddScoped<JobsApiClient>();
+            services.AddScoped<IJobsApiHealthService, JobsApiHealthClient>();
             services.AddScoped<IJobPortalScraper, JobPortalScraper>();
             services.AddScoped<IMarketPulseService, MarketPulseService>();
             services.AddScoped<IMarketPulseAdminService, MarketPulseAdminService>();

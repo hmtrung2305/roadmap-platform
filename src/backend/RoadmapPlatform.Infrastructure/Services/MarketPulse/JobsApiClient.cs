@@ -438,7 +438,11 @@ public sealed class JobsApiClient(
             ExperienceMaxYears = job.ExperienceMaxYears,
             PostedOn = ParseDateOnly(job.PostDate),
             PostedOnText = Clean(job.PostDateText),
-            PostDateConfidence = Clean(job.PostDateConfidence),
+            PostDateConfidence = MarketPulseBusinessTime.NormalizePostDateConfidence(
+                job.PostDateConfidence),
+            PostDateLowerBound = ParseDateOnly(job.PostDateLowerBound),
+            PostDateUpperBound = ParseDateOnly(job.PostDateUpperBound),
+            PostDateObservedOn = ParseDateOnly(job.PostDateObservedOn),
             UpdatedAt = updatedAt,
             DetailStatus = Clean(job.DetailStatus),
             DetailLastSuccessAt = ParseDateTime(job.DetailLastSuccessAt),
@@ -818,6 +822,15 @@ public sealed class JobsApiJobDto
 
     [JsonPropertyName("post_date_confidence")]
     public string? PostDateConfidence { get; set; }
+
+    [JsonPropertyName("post_date_lower_bound")]
+    public string? PostDateLowerBound { get; set; }
+
+    [JsonPropertyName("post_date_upper_bound")]
+    public string? PostDateUpperBound { get; set; }
+
+    [JsonPropertyName("post_date_observed_on")]
+    public string? PostDateObservedOn { get; set; }
 
     [JsonPropertyName("category")]
     public string? Category { get; set; }

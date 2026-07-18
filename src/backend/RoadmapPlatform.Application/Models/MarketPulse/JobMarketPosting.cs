@@ -42,6 +42,12 @@ public sealed class JobMarketPosting
 
     public string? PostDateConfidence { get; init; }
 
+    public DateOnly? PostDateLowerBound { get; init; }
+
+    public DateOnly? PostDateUpperBound { get; init; }
+
+    public DateOnly? PostDateObservedOn { get; init; }
+
     public DateTime? UpdatedAt { get; init; }
 
     public string? DetailStatus { get; init; }
