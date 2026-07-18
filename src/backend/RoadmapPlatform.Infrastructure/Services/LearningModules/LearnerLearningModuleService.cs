@@ -82,6 +82,71 @@ public sealed class LearnerLearningModuleService : ILearnerLearningModuleService
             .ToList();
     }
 
+    public async Task<SkillLearningModulesDto> GetPublishedModulesBySkillSlugAsync(
+        string skillSlug,
+        Guid? userId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(skillSlug))
+        {
+            throw new NotFoundException("Skill was not found.");
+        }
+
+        var normalizedSlug = skillSlug.Trim().ToLowerInvariant();
+
+        var skill = await _context.Skills
+            .AsNoTracking()
+            .Where(item => item.Slug.ToLower() == normalizedSlug)
+            .Select(item => new
+            {
+                item.SkillId,
+                item.Name,
+                item.Slug,
+                item.IsActive,
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (skill == null)
+        {
+            throw new NotFoundException("Skill was not found.");
+        }
+
+        var modules = skill.IsActive
+            ? await _context.SkillModules
+                .AsNoTracking()
+                .Include(module => module.Skill)
+                .Include(module => module.CreatedByUser)
+                    .ThenInclude(user => user!.UserProfile)
+                .Include(module => module.SkillModuleLessons)
+                .Include(module => module.SkillModuleQuiz)
+                    .ThenInclude(quiz => quiz!.SkillModuleQuizQuestions)
+                .Where(module =>
+                    module.SkillId == skill.SkillId &&
+                    module.Status == LearningModuleStatusValues.Published)
+                .OrderByDescending(module => module.PublishedAt)
+                .ThenBy(module => module.Title)
+                .ToListAsync(cancellationToken)
+            : [];
+
+        var enrollments = await GetEnrollmentsByModuleIdAsync(
+            userId,
+            modules.Select(module => module.SkillModuleId).ToList(),
+            cancellationToken);
+
+        return new SkillLearningModulesDto
+        {
+            SkillId = skill.SkillId,
+            SkillName = skill.Name,
+            SkillSlug = skill.Slug,
+            IsActive = skill.IsActive,
+            Modules = modules
+                .Select(module => MapLearnerSummary(
+                    module,
+                    enrollments.GetValueOrDefault(module.SkillModuleId)))
+                .ToList(),
+        };
+    }
+
     public async Task<LearnerLearningModuleOverviewDto> GetPublishedModuleBySlugAsync(
         string slug,
         Guid? userId,

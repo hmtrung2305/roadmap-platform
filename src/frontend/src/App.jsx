@@ -29,6 +29,7 @@ import SkillGapAnalysisPage from "./pages/SkillGapAnalysisPage";
 import LearningModulesPage from "./pages/learning/LearningModulesPage";
 import BrowseLearningModulesPage from "./pages/learning/BrowseLearningModulesPage";
 import LearningModuleOverviewPage from "./pages/learning/LearningModuleOverviewPage";
+import SkillLearningModulesPage from "./pages/learning/SkillLearningModulesPage";
 import ContentManagerLearningModulesPage from "./pages/content/learningModules/ContentManagerLearningModulesPage";
 import ContentManagerLearningModuleCreatePage from "./pages/content/learningModules/ContentManagerLearningModuleCreatePage";
 import ContentManagerLearningModuleEditorPage from "./pages/content/learningModules/ContentManagerLearningModuleEditorPage";
@@ -219,6 +220,7 @@ export default function App() {
 
             <Route path="/learning-modules" element={<LearningModulesPage />} />
             <Route path="/learning-modules/browse" element={<BrowseLearningModulesPage />} />
+            <Route path="/learning-modules/skills/:skillSlug" element={<SkillLearningModulesPage />} />
             <Route path="/learning-modules/:slug/overview" element={<LearningModuleOverviewPage />} />
             <Route path="/learning-modules/:slug/study" element={<StudyRoomPage />} />
             <Route path="/learning-modules/:slug" element={<StudyRoomPage />} />
@@ -230,6 +232,7 @@ export default function App() {
             <Route path="/market-pulse" element={<MarketPulsePage />} />
 
             <Route path="/skill-gap" element={<SkillGapAnalysisPage />} />
+            <Route path="/skill-gap/history/:historyId" element={<SkillGapAnalysisPage />} />
             <Route path="/skill-gap-analysis" element={<SkillGapAnalysisPage />} />
           </Route>
 

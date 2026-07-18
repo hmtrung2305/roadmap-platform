@@ -5,7 +5,6 @@ import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
 import {
   formatDateTime,
   normalizeSkillGapHistory,
-  normalizeSkillGapResult,
 } from "../utils/skillGapUtils";
 
 const HISTORY_PAGE_SIZE = 20;
@@ -87,20 +86,10 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
     });
   };
 
-  const handleView = async (historyId) => {
+  const handleView = (historyId) => {
     if (!historyId) return;
 
-    setBusyId(historyId);
-    setError("");
-
-    try {
-      const detail = await skillGapApi.getHistoryDetail(historyId);
-      onViewResult(normalizeSkillGapResult(detail));
-    } catch (err) {
-      setError(getFriendlyApiErrorMessage(err, "Unable to open this history item."));
-    } finally {
-      setBusyId("");
-    }
+    onViewResult(historyId);
   };
 
   const handleDelete = async (historyId) => {

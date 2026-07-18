@@ -29,10 +29,14 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
             var roadmap = await _dbContext.Roadmaps
                 .AsNoTracking()
-                .Where(x => x.RoadmapId == request.RoadmapId)
+                .Where(x =>
+                    x.RoadmapId == request.RoadmapId &&
+                    x.Visibility == "public")
                 .Select(x => new
                 {
                     x.RoadmapId,
+
+                    x.Slug,
 
                     RoadmapName = x.Title,
 
@@ -81,6 +85,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     SkillName = x.Skill.Name,
 
+                    SkillSlug = x.Skill.Slug,
+
                     CategoryName = x.Skill.Category,
                 })
                 .Where(x => !string.IsNullOrWhiteSpace(x.CategoryName))
@@ -113,6 +119,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                     skill.SkillId,
 
                     skill.SkillName,
+
+                    skill.SkillSlug,
 
                     skill.CategoryName,
 
@@ -162,6 +170,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                                 SkillName = x.SkillName,
 
+                                SkillSlug = x.SkillSlug,
+
                                 IsMatched = x.IsMatched,
                             })
                             .ToList()
@@ -183,6 +193,10 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                 SkillGapAnalysisHistoryId = historyId,
 
                 RoadmapId = roadmap.RoadmapId,
+
+                RoadmapVersionId = roadmap.PublishedVersion.RoadmapVersionId,
+
+                RoadmapSlug = roadmap.Slug,
 
                 RoadmapName = roadmap.RoadmapName,
 
