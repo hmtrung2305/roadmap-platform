@@ -49,6 +49,9 @@ public sealed class JobsApiClientTests
                         post_date = "2026-06-18",
                         post_date_text = "Đăng 1 giờ trước",
                         post_date_confidence = "relative",
+                        post_date_lower_bound = "2026-06-11",
+                        post_date_upper_bound = "2026-06-18",
+                        post_date_observed_on = "2026-06-18",
                         detail_status = "success",
                         detail_last_success_at = "2026-06-18T09:00:00Z",
                         url = "https://topcv.vn/jobs/1001",
@@ -93,6 +96,9 @@ public sealed class JobsApiClientTests
         Assert.Equal(["Laptop"], job.Benefits);
         Assert.Equal(["FastAPI"], job.Specialties);
         Assert.Equal("relative", job.PostDateConfidence);
+        Assert.Equal("2026-06-11", job.PostDateLowerBound);
+        Assert.Equal("2026-06-18", job.PostDateUpperBound);
+        Assert.Equal("2026-06-18", job.PostDateObservedOn);
         Assert.Equal("success", job.DetailStatus);
         Assert.Equal("2026-06-18T09:00:00Z", job.DetailLastSuccessAt);
     }

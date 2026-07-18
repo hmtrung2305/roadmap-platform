@@ -14,13 +14,15 @@ public sealed class MarketPulseSettings
 
     public int MaxPostingsPerSource { get; set; } = 160;
 
-    public int MaxItemsPerRun { get; set; } = 500;
-
     public int JobsApiPageSize { get; set; } = 100;
 
     public int JobsApiMaxPages { get; set; } = 10;
 
     public string JobsApiKey { get; set; } = string.Empty;
+
+    public string JobsApiOpsHealthUrl { get; set; } = string.Empty;
+
+    public int JobsApiHealthTimeoutSeconds { get; set; } = 10;
 
     public int JobsApiMaxFreshnessHours { get; set; } = 24;
 
@@ -36,6 +38,8 @@ public sealed class MarketPulseSettings
 
     public bool DisableMissingLifecycleForPartialSync { get; set; } = true;
 
+    public string BusinessTimezone { get; set; } = "Asia/Ho_Chi_Minh";
+
     public int RequestDelaySeconds { get; set; } = 2;
 
     public int DelayMinMs { get; set; } = 1_500;
@@ -46,10 +50,6 @@ public sealed class MarketPulseSettings
 
     public int BackoffBaseMs { get; set; } = 1_000;
 
-    public int SourceRateLimit { get; set; } = 1;
-
-    public string ScheduleCron { get; set; } = "30 2 * * *";
-
     public int RequestTimeoutSeconds { get; set; } = 30;
 
     public int OverviewCacheSeconds { get; set; } = 120;
@@ -58,8 +58,6 @@ public sealed class MarketPulseSettings
 
     public string ActiveJobsApiUrl { get; set; } = string.Empty;
 
-    public string TodayJobsApiUrl { get; set; } = string.Empty;
-    
     public string[] TrackedKeywords { get; set; } = [];
 
     public List<MarketPulseSourceSettings> Sources { get; set; } = [];
@@ -69,16 +67,18 @@ public sealed class MarketPulseSettings
         Enabled = GetBool("MARKET_PULSE_CRAWL_ENABLED", Enabled);
         MaxPagesPerSource = GetInt("MARKET_PULSE_MAX_PAGES_PER_RUN", MaxPagesPerSource);
         MaxPostingsPerSource = GetInt("MARKET_PULSE_MAX_ITEMS_PER_RUN", MaxPostingsPerSource);
-        MaxItemsPerRun = GetInt("MARKET_PULSE_MAX_ITEMS_PER_RUN", MaxItemsPerRun);
         DelayMinMs = GetInt("MARKET_PULSE_DELAY_MIN_MS", DelayMinMs);
         DelayMaxMs = GetInt("MARKET_PULSE_DELAY_MAX_MS", DelayMaxMs);
         RetryMax = GetInt("MARKET_PULSE_RETRY_MAX", RetryMax);
         BackoffBaseMs = GetInt("MARKET_PULSE_BACKOFF_BASE_MS", BackoffBaseMs);
-        SourceRateLimit = GetInt("MARKET_PULSE_SOURCE_RATE_LIMIT", SourceRateLimit);
-        ScheduleCron = GetString("MARKET_PULSE_SCHEDULE_CRON", ScheduleCron);
         ActiveJobsApiUrl = GetString("MARKET_PULSE_ACTIVE_JOBS_API_URL", ActiveJobsApiUrl);
-        TodayJobsApiUrl = GetString("MARKET_PULSE_TODAY_JOBS_API_URL", TodayJobsApiUrl);
         JobsApiKey = GetString("MARKET_PULSE_JOBS_API_KEY", JobsApiKey);
+        JobsApiOpsHealthUrl = GetString(
+            "MARKET_PULSE_JOBS_API_OPS_HEALTH_URL",
+            JobsApiOpsHealthUrl);
+        JobsApiHealthTimeoutSeconds = GetInt(
+            "MARKET_PULSE_JOBS_API_HEALTH_TIMEOUT_SECONDS",
+            JobsApiHealthTimeoutSeconds);
         JobsApiMaxFreshnessHours = GetInt(
             "MARKET_PULSE_JOBS_API_MAX_FRESHNESS_HOURS",
             JobsApiMaxFreshnessHours);
@@ -91,6 +91,9 @@ public sealed class MarketPulseSettings
         DisableMissingLifecycleForPartialSync = GetBool(
             "MARKET_PULSE_DISABLE_MISSING_LIFECYCLE_FOR_PARTIAL_SYNC",
             DisableMissingLifecycleForPartialSync);
+        BusinessTimezone = GetString(
+            "MARKET_PULSE_BUSINESS_TIMEZONE",
+            BusinessTimezone);
     }
 
     private static bool GetBool(string name, bool fallback)

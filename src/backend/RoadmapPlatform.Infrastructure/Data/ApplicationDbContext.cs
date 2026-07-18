@@ -466,7 +466,18 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("post_date_text");
             entity.Property(e => e.PostDateConfidence)
                 .HasMaxLength(20)
+                .HasDefaultValue("unknown")
+                .IsRequired()
                 .HasColumnName("post_date_confidence");
+            entity.Property(e => e.PostDateLowerBound)
+                .HasColumnType("date")
+                .HasColumnName("post_date_lower_bound");
+            entity.Property(e => e.PostDateObservedOn)
+                .HasColumnType("date")
+                .HasColumnName("post_date_observed_on");
+            entity.Property(e => e.PostDateUpperBound)
+                .HasColumnType("date")
+                .HasColumnName("post_date_upper_bound");
             entity.Property(e => e.PublishedAt).HasColumnName("published_at");
             entity.Property(e => e.Requirements)
                 .HasDefaultValueSql("'[]'::jsonb")

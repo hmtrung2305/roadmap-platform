@@ -48,6 +48,14 @@ public sealed class MarketPulseIngestPostingDto
 
     public string? PostDateText { get; set; }
 
+    public string? PostDateConfidence { get; set; }
+
+    public DateTime? PostDateLowerBound { get; set; }
+
+    public DateTime? PostDateUpperBound { get; set; }
+
+    public DateTime? PostDateObservedOn { get; set; }
+
     public DateTime? SourceUpdatedAt { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
