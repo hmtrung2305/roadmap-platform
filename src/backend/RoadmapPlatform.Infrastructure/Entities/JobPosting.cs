@@ -49,7 +49,13 @@ public partial class JobPosting
 
     public string? PostDateText { get; set; }
 
-    public string? PostDateConfidence { get; set; }
+    public string PostDateConfidence { get; set; } = "unknown";
+
+    public DateTime? PostDateLowerBound { get; set; }
+
+    public DateTime? PostDateUpperBound { get; set; }
+
+    public DateTime? PostDateObservedOn { get; set; }
 
     public DateTime? SourceUpdatedAt { get; set; }
 

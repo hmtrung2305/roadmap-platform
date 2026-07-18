@@ -132,4 +132,9 @@ export const marketPulseApi = {
     const response = await axiosClient.get("/market-pulse/admin/source-health");
     return unwrapEnvelope(response);
   },
+
+  getExternalSourceHealth: async () => {
+    const response = await axiosClient.get("/market-pulse/admin/external-source-health");
+    return unwrapEnvelope(response);
+  },
 };

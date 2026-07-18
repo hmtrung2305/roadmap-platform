@@ -122,7 +122,10 @@ CREATE TABLE IF NOT EXISTS public.job_posting
     description text NOT NULL,
     published_at timestamptz,
     post_date_text varchar(80),
-    post_date_confidence varchar(20),
+    post_date_confidence varchar(20) NOT NULL DEFAULT 'unknown',
+    post_date_lower_bound date,
+    post_date_upper_bound date,
+    post_date_observed_on date,
     source_updated_at timestamptz,
     detail_status varchar(32),
     detail_last_success_at timestamptz,
@@ -182,6 +185,18 @@ CREATE TABLE IF NOT EXISTS public.job_posting
                 experience_max_years IS NULL OR
                 experience_min_years <= experience_max_years
             )
+        ),
+
+    CONSTRAINT chk_job_posting_post_date_confidence
+        CHECK (
+            post_date_confidence IN ('exact', 'relative', 'unknown')
+        ),
+
+    CONSTRAINT chk_job_posting_post_date_bounds
+        CHECK (
+            post_date_lower_bound IS NULL OR
+            post_date_upper_bound IS NULL OR
+            post_date_lower_bound <= post_date_upper_bound
         )
 );
 

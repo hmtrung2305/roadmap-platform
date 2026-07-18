@@ -51,12 +51,13 @@ In `src/backend/RoadmapPlatform.Api/appsettings.json`, keep:
 
 Reason: the public Web API should respond to users quickly. The scheduled worker should handle persistence.
 
-## Step 2: Add GitHub Secret
+## Step 2: Add GitHub Secrets
 
 Create this repository secret:
 
 ```text
 MARKET_PULSE_DB_CONNECTION_STRING
+MARKET_PULSE_JOBS_API_KEY
 ```
 
 Example value:
@@ -67,10 +68,10 @@ Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;
 
 Do not commit real connection strings.
 
-Before enabling the workflow, apply database migrations through:
+`MARKET_PULSE_JOBS_API_KEY` must equal Python `ADMIN_API_KEY`. Before enabling the workflow, apply the Option A migrations through:
 
 ```text
-database/migrations/016-market-pulse-analytical-schema.sql
+database/migrations/040-market-pulse-post-date-confidence-integrity.sql
 ```
 
 The refresh job writes `job_posting`, `job_posting_version`, `job_posting_observation`, `skill_taxonomy`, `job_skill_mention`, `job_market_daily_snapshot`, and `market_pulse_insight_snapshot`.
@@ -99,12 +100,12 @@ The workflow derives these URLs from the base URL when they are not set:
 
 ```text
 MARKET_PULSE_ACTIVE_JOBS_API_URL=https://<jobs-api-domain>/api/v1/jobs?active=true&sort=post_date_desc
-MARKET_PULSE_TODAY_JOBS_API_URL=https://<jobs-api-domain>/api/v1/jobs/today
+MARKET_PULSE_JOBS_API_OPS_HEALTH_URL=https://<jobs-api-domain>/api/v1/ops/health-summary
 ```
 
 You can still define either URL explicitly as a repository variable when you
 need a custom query. Manual workflow runs can also override the base URL or the
-full active/today URLs. Repository variables are literal values. Do not use
+full active URL. Repository variables are literal values. Do not use
 Windows CMD interpolation such as `%jobsApi%` here; paste the full production
 URL into each variable.
 
@@ -112,7 +113,9 @@ Optional variables:
 
 ```text
 MARKET_PULSE_ACTIVE_JOBS_API_URL
-MARKET_PULSE_TODAY_JOBS_API_URL
+MARKET_PULSE_JOBS_API_OPS_HEALTH_URL
+MARKET_PULSE_JOBS_API_HEALTH_TIMEOUT_SECONDS
+MARKET_PULSE_JOBS_API_MAX_FRESHNESS_HOURS
 MARKET_PULSE_MAX_POSTINGS
 MARKET_PULSE_JOBS_API_PAGE_SIZE
 MARKET_PULSE_JOBS_API_MAX_PAGES
@@ -130,19 +133,20 @@ GitHub repo -> Actions -> Refresh Market Pulse -> Run workflow
 Manual input:
 
 ```text
-max_postings = 80
+max_postings = 500
 ```
 
-Increase gradually after the job is stable.
+Use a smaller value only for an intentionally partial diagnostic import. Partial imports do not run missing-job lifecycle changes.
 
 ## Step 5: Check Result
 
 Successful logs include:
 
 ```text
-Starting Market Pulse cron refresh...
-Market Pulse result: snapshotDate=..., sources=..., scraped=..., inserted=..., updated=..., seen=..., expiredInRun=...
-Market Pulse cron refresh finished successfully...
+Crawler pipeline status: healthy
+Crawler freshness age: ... hours (max ...)
+Market Pulse source: sourceFresh=True, syncType=full, lifecycle=executed, ...
+Market Pulse cron refresh finished successfully.
 ```
 
 Then open the app's Market Pulse page or call:
@@ -223,4 +227,4 @@ Jobs API returns zero jobs:
 - If the Jobs API uses SQLite on a hosted platform, mount a persistent disk for
   `/app/data` or switch `DATABASE_URL` to durable storage. Ephemeral disks become
   empty after redeploy/restart.
-- Check workflow logs for HTTP status warnings from `JobsApiClient`.
+- Check readiness and crawler-freshness preflight logs before `JobsApiClient` import logs.

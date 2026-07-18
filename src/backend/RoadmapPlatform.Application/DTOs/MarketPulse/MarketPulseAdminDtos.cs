@@ -176,6 +176,45 @@ public sealed class MarketPulseSourceHealthDto
     public DateTime UpdatedAt { get; set; }
 }
 
+public sealed class MarketPulseExternalSourceHealthDto
+{
+    public bool IsAvailable { get; set; }
+
+    public string Status { get; set; } = "unavailable";
+
+    public bool IsStale { get; set; }
+
+    public bool IsBlocked { get; set; }
+
+    public DateTime CheckedAt { get; set; }
+
+    public DateTime? GeneratedAt { get; set; }
+
+    public DateTime? LatestSuccessfulCrawlAt { get; set; }
+
+    public double? HoursSinceSuccessfulCrawl { get; set; }
+
+    public string? LatestListingStatus { get; set; }
+
+    public DateTime? LatestListingStartedAt { get; set; }
+
+    public DateTime? LatestListingFinishedAt { get; set; }
+
+    public int PagesBlocked { get; set; }
+
+    public int PagesFailed { get; set; }
+
+    public int ActiveJobs { get; set; }
+
+    public int NewJobsToday { get; set; }
+
+    public decimal DetailCompletionRate { get; set; }
+
+    public IReadOnlyList<string> Warnings { get; set; } = [];
+
+    public string? ErrorMessage { get; set; }
+}
+
 public sealed class MarketPulseBulkActionRequestDto
 {
     public IReadOnlyList<Guid> FailedItemIds { get; set; } = [];

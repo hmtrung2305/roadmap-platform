@@ -8,17 +8,13 @@ on:
       max_postings:
         description: "Max Jobs API postings to persist for this manual run"
         required: false
-        default: "80"
+        default: "500"
       jobs_api_base_url:
         description: "Optional Jobs API base URL override, for example https://jobs-api.example.com"
         required: false
         default: ""
       active_jobs_api_url:
         description: "Optional full active jobs URL override"
-        required: false
-        default: ""
-      today_jobs_api_url:
-        description: "Optional full today jobs URL override"
         required: false
         default: ""
 
@@ -41,12 +37,14 @@ jobs:
       MarketPulse__Enabled: "true"
       MarketPulse__RunOnStartup: "false"
       MarketPulse__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
-      MarketPulse__TodayJobsApiUrl: ${{ github.event.inputs.today_jobs_api_url || vars.MARKET_PULSE_TODAY_JOBS_API_URL }}
       MarketPulse__JobsApiKey: ${{ secrets.MARKET_PULSE_JOBS_API_KEY }}
+      MarketPulse__JobsApiOpsHealthUrl: ${{ vars.MARKET_PULSE_JOBS_API_OPS_HEALTH_URL }}
+      MarketPulse__JobsApiHealthTimeoutSeconds: ${{ vars.MARKET_PULSE_JOBS_API_HEALTH_TIMEOUT_SECONDS || '10' }}
       MarketPulse__JobsApiMaxFreshnessHours: ${{ vars.MARKET_PULSE_JOBS_API_MAX_FRESHNESS_HOURS || '24' }}
       MarketPulse__JobsApiFailOnStaleSource: "true"
       MarketPulse__JobsApiRequireFreshCrawlMetadata: "true"
       MarketPulse__DisableMissingLifecycleForPartialSync: "true"
+      MarketPulse__BusinessTimezone: "Asia/Ho_Chi_Minh"
       MarketPulse__Sources__0__Name: "topcv"
       MarketPulse__Sources__0__Kind: "JobsApi"
       MarketPulse__Sources__0__BaseUrl: ${{ github.event.inputs.jobs_api_base_url || vars.MARKET_PULSE_JOBS_API_BASE_URL }}
@@ -58,7 +56,6 @@ jobs:
       MarketPulse__RequestTimeoutSeconds: ${{ vars.MARKET_PULSE_REQUEST_TIMEOUT_SECONDS || '30' }}
       WorkflowInput__JobsApiBaseUrl: ${{ github.event.inputs.jobs_api_base_url }}
       WorkflowInput__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url }}
-      WorkflowInput__TodayJobsApiUrl: ${{ github.event.inputs.today_jobs_api_url }}
 
     steps:
       - name: Checkout repository
@@ -77,17 +74,17 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$MarketPulse__JobsApiKey" ]; then
+            echo "Missing MARKET_PULSE_JOBS_API_KEY secret required by Python ops health."
+            exit 1
+          fi
+
           jobs_api_base_url="${WorkflowInput__JobsApiBaseUrl:-$MarketPulse__Sources__0__BaseUrl}"
           jobs_api_base_url="${jobs_api_base_url%/}"
           active_jobs_api_url="${WorkflowInput__ActiveJobsApiUrl:-$MarketPulse__ActiveJobsApiUrl}"
-          today_jobs_api_url="${WorkflowInput__TodayJobsApiUrl:-$MarketPulse__TodayJobsApiUrl}"
 
           if [ -n "$WorkflowInput__JobsApiBaseUrl" ] && [ -z "$WorkflowInput__ActiveJobsApiUrl" ]; then
             active_jobs_api_url=""
-          fi
-
-          if [ -n "$WorkflowInput__JobsApiBaseUrl" ] && [ -z "$WorkflowInput__TodayJobsApiUrl" ]; then
-            today_jobs_api_url=""
           fi
 
           if [ -z "$jobs_api_base_url" ] && [ -n "$active_jobs_api_url" ]; then
@@ -103,20 +100,93 @@ jobs:
             active_jobs_api_url="$jobs_api_base_url/api/v1/jobs?active=true&sort=post_date_desc"
           fi
 
-          if [ -z "$today_jobs_api_url" ]; then
-            today_jobs_api_url="$jobs_api_base_url/api/v1/jobs/today"
-          fi
+          ops_health_url="${MarketPulse__JobsApiOpsHealthUrl:-$jobs_api_base_url/api/v1/ops/health-summary}"
+          readiness_url="$jobs_api_base_url/health"
 
           {
             echo "MarketPulse__Sources__0__BaseUrl=$jobs_api_base_url"
             echo "MarketPulse__ActiveJobsApiUrl=$active_jobs_api_url"
-            echo "MarketPulse__TodayJobsApiUrl=$today_jobs_api_url"
+            echo "MarketPulse__JobsApiOpsHealthUrl=$ops_health_url"
             echo "MarketPulse__Sources__0__SearchUrlTemplate=$active_jobs_api_url"
+            echo "JobsApiReadinessUrl=$readiness_url"
           } >> "$GITHUB_ENV"
 
           echo "Using Jobs API base URL: $jobs_api_base_url"
           echo "Using active jobs path: ${active_jobs_api_url#"$jobs_api_base_url"}"
-          echo "Using today jobs path: ${today_jobs_api_url#"$jobs_api_base_url"}"
+          echo "Using ops health path: ${ops_health_url#"$jobs_api_base_url"}"
+
+      - name: Check Python Jobs API readiness
+        shell: bash
+        run: |
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --max-time "$MarketPulse__JobsApiHealthTimeoutSeconds" \
+            "$JobsApiReadinessUrl" > /dev/null
+          echo "Python Jobs API readiness check passed."
+
+      - name: Check Python crawler freshness
+        shell: bash
+        run: |
+          max_freshness="$MarketPulse__JobsApiMaxFreshnessHours"
+          case "$max_freshness" in
+            ''|0|*[!0-9]*)
+              echo "MARKET_PULSE_JOBS_API_MAX_FRESHNESS_HOURS must be a positive integer."
+              exit 1
+              ;;
+          esac
+
+          health_json=$(curl \
+            --fail \
+            --silent \
+            --show-error \
+            --max-time "$MarketPulse__JobsApiHealthTimeoutSeconds" \
+            -H "X-API-Key: $MarketPulse__JobsApiKey" \
+            "$MarketPulse__JobsApiOpsHealthUrl")
+
+          echo "$health_json" | jq -e \
+            '.ok == true and (.data | type == "object")' > /dev/null || {
+              echo "Python ops health returned an invalid contract."
+              exit 1
+            }
+
+          pipeline_status=$(echo "$health_json" | jq -r '.data.pipeline_status // "unknown"')
+          latest_run_status=$(echo "$health_json" | jq -r '.data.latest_listing_run.status // "unknown"')
+          latest_success=$(echo "$health_json" | jq -r '.data.freshness.latest_successful_listing_run_at // "missing"')
+          freshness_hours=$(echo "$health_json" | jq -r '.data.freshness.hours_since_successful_listing // "missing"')
+          active_jobs=$(echo "$health_json" | jq -r '.data.data_quality.active_jobs // 0')
+          blocked_pages=$(echo "$health_json" | jq -r '.data.latest_listing_run.pages_blocked // 0')
+
+          echo "Crawler pipeline status: $pipeline_status"
+          echo "Latest crawler run status: $latest_run_status"
+          echo "Latest successful crawl: $latest_success"
+          echo "Crawler freshness age: $freshness_hours hours (max $max_freshness)"
+          echo "Crawler active jobs: $active_jobs"
+          echo "Latest crawler blocked pages: $blocked_pages"
+
+          if [ "$pipeline_status" = "critical" ]; then
+            echo "Python crawler health is critical. Refresh is blocked."
+            exit 1
+          fi
+
+          echo "$health_json" | jq -e \
+            '.data.data_quality.active_jobs != null and
+             .data.data_quality.active_jobs > 0' > /dev/null || {
+              echo "Python crawler reports zero active jobs. Refresh is blocked to prevent an empty production import."
+              exit 1
+            }
+
+          echo "$health_json" | jq -e --argjson max "$max_freshness" \
+            '.data.freshness.hours_since_successful_listing != null and
+             .data.freshness.hours_since_successful_listing <= $max' > /dev/null || {
+              echo "Python crawler data is missing freshness metadata or is stale."
+              exit 1
+            }
+
+          if [ "$pipeline_status" = "warning" ]; then
+            echo "::warning::Python crawler health has warnings; freshness is still within policy."
+          fi
 
       - name: Restore Market Pulse job
         run: dotnet restore src/backend/RoadmapPlatform.MarketPulseJob/RoadmapPlatform.MarketPulseJob.csproj

@@ -62,9 +62,10 @@ public sealed class MarketPulseService(
     {
         var settings = options.Value;
         var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
-        var todayStart = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-        var tomorrowStart = todayStart.AddDays(1);
+        var today = MarketPulseBusinessTime.GetBusinessDate(now, settings.BusinessTimezone);
+        var (todayStartUtc, tomorrowStartUtc) = MarketPulseBusinessTime.GetBusinessDayUtcRange(
+            today,
+            settings.BusinessTimezone);
         var activeLookbackDays = Math.Clamp(settings.ActivePostingLookbackDays, 1, 90);
         var activeCutoff = now.AddDays(-activeLookbackDays);
         var maxPostings = Math.Clamp(Math.Max(settings.MaxPostingsPerSource, 500), 100, 5_000);
@@ -88,8 +89,9 @@ public sealed class MarketPulseService(
                 (categoryFilter == null || x.Category == categoryFilter) &&
                 (locationFilter == null || x.Location == locationFilter) &&
                 x.PublishedAt.HasValue &&
-                x.PublishedAt.Value >= todayStart &&
-                x.PublishedAt.Value < tomorrowStart,
+                (x.PostDateConfidence == "exact" || x.PostDateConfidence == "relative") &&
+                x.PublishedAt.Value >= todayStartUtc &&
+                x.PublishedAt.Value < tomorrowStartUtc,
                 cancellationToken);
 
         var stalePostings = await dbContext.Set<JobPosting>()
@@ -113,11 +115,13 @@ public sealed class MarketPulseService(
             .ToListAsync(cancellationToken);
 
         var activeJobs = postings
-            .Select(ToJobMarketPosting)
+            .Select(x => ToJobMarketPosting(x, settings.BusinessTimezone))
             .Where(x => MatchesMemoryFilters(x, query))
             .ToList();
         var todayJobs = activeJobs
-            .Where(x => x.PostedOn == today)
+            .Where(x =>
+                x.PostedOn == today &&
+                MarketPulseBusinessTime.IsReliablePostDate(x.PostDateConfidence))
             .ToList();
         var useMemoryTotals = HasMemoryFilters(query);
 
@@ -142,7 +146,9 @@ public sealed class MarketPulseService(
         return overview;
     }
 
-    private static JobMarketPosting ToJobMarketPosting(JobPosting posting)
+    private static JobMarketPosting ToJobMarketPosting(
+        JobPosting posting,
+        string businessTimezone)
     {
         return new JobMarketPosting
         {
@@ -163,9 +169,20 @@ public sealed class MarketPulseService(
             ExperienceRaw = posting.ExperienceRaw,
             ExperienceMinYears = posting.ExperienceMinYears,
             ExperienceMaxYears = posting.ExperienceMaxYears,
-            PostedOn = posting.PublishedAt.HasValue ? DateOnly.FromDateTime(posting.PublishedAt.Value) : null,
+            PostedOn = posting.PublishedAt.HasValue
+                ? MarketPulseBusinessTime.GetBusinessDate(posting.PublishedAt.Value, businessTimezone)
+                : null,
             PostedOnText = posting.PostDateText,
             PostDateConfidence = posting.PostDateConfidence,
+            PostDateLowerBound = posting.PostDateLowerBound.HasValue
+                ? DateOnly.FromDateTime(posting.PostDateLowerBound.Value)
+                : null,
+            PostDateUpperBound = posting.PostDateUpperBound.HasValue
+                ? DateOnly.FromDateTime(posting.PostDateUpperBound.Value)
+                : null,
+            PostDateObservedOn = posting.PostDateObservedOn.HasValue
+                ? DateOnly.FromDateTime(posting.PostDateObservedOn.Value)
+                : null,
             UpdatedAt = posting.SourceUpdatedAt ?? posting.UpdatedAt,
             DetailStatus = posting.DetailStatus,
             DetailLastSuccessAt = posting.DetailLastSuccessAt,
@@ -324,7 +341,11 @@ public sealed class MarketPulseService(
             CleanStringList(posting.Requirements),
             CleanStringList(posting.Specialties),
             CleanStringList(posting.Benefits),
-            CleanStringList(posting.Skills));
+            CleanStringList(posting.Skills),
+            PostDateConfidence: posting.PostDateConfidence,
+            PostDateLowerBound: NormalizeDate(posting.PostDateLowerBound),
+            PostDateUpperBound: NormalizeDate(posting.PostDateUpperBound),
+            PostDateObservedOn: NormalizeDate(posting.PostDateObservedOn));
     }
 
     private static string BuildIngestDescription(MarketPulseIngestPostingDto posting)
@@ -438,8 +459,8 @@ public sealed class MarketPulseService(
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        var snapshotDate = DateOnly.FromDateTime(now);
         var settings = options.Value;
+        var snapshotDate = MarketPulseBusinessTime.GetBusinessDate(now, settings.BusinessTimezone);
 
         if (rawPostings.Count == 0 && !lifecycleDecision.ShouldApply)
         {
@@ -545,7 +566,11 @@ public sealed class MarketPulseService(
                     posting.Description = rawPosting.Description;
                     posting.PublishedAt = publishedAt;
                     posting.PostDateText = TrimTo(rawPosting.PostDateText, 80);
-                    posting.PostDateConfidence = TrimTo(rawPosting.PostDateConfidence, 20);
+                    posting.PostDateConfidence = MarketPulseBusinessTime.NormalizePostDateConfidence(
+                        rawPosting.PostDateConfidence);
+                    posting.PostDateLowerBound = NormalizeDate(rawPosting.PostDateLowerBound);
+                    posting.PostDateUpperBound = NormalizeDate(rawPosting.PostDateUpperBound);
+                    posting.PostDateObservedOn = NormalizeDate(rawPosting.PostDateObservedOn);
                     posting.SourceUpdatedAt = NormalizeUtc(rawPosting.SourceUpdatedAt);
                     posting.DetailStatus = TrimTo(rawPosting.DetailStatus, 32);
                     posting.DetailLastSuccessAt = NormalizeUtc(rawPosting.DetailLastSuccessAt);
@@ -610,7 +635,11 @@ public sealed class MarketPulseService(
                     Description = rawPosting.Description,
                     PublishedAt = publishedAt,
                     PostDateText = TrimTo(rawPosting.PostDateText, 80),
-                    PostDateConfidence = TrimTo(rawPosting.PostDateConfidence, 20),
+                    PostDateConfidence = MarketPulseBusinessTime.NormalizePostDateConfidence(
+                        rawPosting.PostDateConfidence),
+                    PostDateLowerBound = NormalizeDate(rawPosting.PostDateLowerBound),
+                    PostDateUpperBound = NormalizeDate(rawPosting.PostDateUpperBound),
+                    PostDateObservedOn = NormalizeDate(rawPosting.PostDateObservedOn),
                     SourceUpdatedAt = NormalizeUtc(rawPosting.SourceUpdatedAt),
                     DetailStatus = TrimTo(rawPosting.DetailStatus, 32),
                     DetailLastSuccessAt = NormalizeUtc(rawPosting.DetailLastSuccessAt),
@@ -935,6 +964,7 @@ public sealed class MarketPulseService(
         CancellationToken cancellationToken)
     {
         var expiredInRun = 0;
+        var businessTimezone = options.Value.BusinessTimezone;
         var missingPostings = await dbContext.Set<JobPosting>()
             .Where(x =>
                 x.JobPortalSourceId == sourceId &&
@@ -944,7 +974,7 @@ public sealed class MarketPulseService(
 
         foreach (var posting in missingPostings)
         {
-            if (DateOnly.FromDateTime(posting.LastCheckedAt) < snapshotDate)
+            if (MarketPulseBusinessTime.GetBusinessDate(posting.LastCheckedAt, businessTimezone) < snapshotDate)
             {
                 posting.MissingScanCount++;
             }
@@ -1141,6 +1171,9 @@ public sealed class MarketPulseService(
             NormalizeForHash(posting.Description),
             NormalizeForHash(posting.PostDateText),
             NormalizeForHash(posting.PostDateConfidence),
+            NormalizeForHash(posting.PostDateLowerBound?.ToString("O")),
+            NormalizeForHash(posting.PostDateUpperBound?.ToString("O")),
+            NormalizeForHash(posting.PostDateObservedOn?.ToString("O")),
             NormalizeForHash(posting.SourceUpdatedAt?.ToString("O")),
             NormalizeForHash(posting.DetailStatus),
             NormalizeForHash(posting.DetailLastSuccessAt?.ToString("O")),
@@ -1167,6 +1200,13 @@ public sealed class MarketPulseService(
             DateTimeKind.Local => value.Value.ToUniversalTime(),
             _ => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
         };
+    }
+
+    private static DateTime? NormalizeDate(DateTime? value)
+    {
+        return value.HasValue
+            ? DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Unspecified)
+            : null;
     }
 
     private static string NormalizeForHash(string? value)
