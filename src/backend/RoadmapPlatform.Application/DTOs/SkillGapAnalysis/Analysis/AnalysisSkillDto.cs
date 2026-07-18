@@ -10,6 +10,8 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis.Analysis
 
         public string SkillName { get; set; } = string.Empty;
 
+        public string SkillSlug { get; set; } = string.Empty;
+
         public bool IsMatched { get; set; }
     }
 }

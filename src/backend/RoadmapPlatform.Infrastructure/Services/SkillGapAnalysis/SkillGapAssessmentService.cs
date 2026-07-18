@@ -20,7 +20,9 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
         {
             var roadmap = await _dbContext.Roadmaps
                 .AsNoTracking()
-                .Where(x => x.RoadmapId == roadmapId)
+                .Where(x =>
+                    x.RoadmapId == roadmapId &&
+                    x.Visibility == "public")
                 .Select(x => new
                 {
                     x.RoadmapId,

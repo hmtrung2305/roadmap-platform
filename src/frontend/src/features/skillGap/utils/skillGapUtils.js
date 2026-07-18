@@ -54,6 +54,9 @@ export function normalizeRoadmapOption(roadmap) {
   const publishedRoadmapVersionId = normalizeId(
     pick(roadmap, ["publishedRoadmapVersionId", "PublishedRoadmapVersionId"]),
   );
+  const slug = String(
+    pick(roadmap, ["slug", "Slug", "roadmapSlug", "RoadmapSlug"], ""),
+  );
   const title = String(
     pick(roadmap, ["title", "Title", "roadmapName", "RoadmapName", "name", "Name"], "Untitled roadmap"),
   );
@@ -63,6 +66,8 @@ export function normalizeRoadmapOption(roadmap) {
     roadmapId,
     id: roadmapId,
     publishedRoadmapVersionId,
+    slug,
+    roadmapSlug: slug,
     title,
     roadmapName: String(pick(roadmap, ["roadmapName", "RoadmapName"], title)),
     careerRoleName: String(pick(roadmap, ["careerRoleName", "CareerRoleName"], "")),
@@ -84,12 +89,17 @@ export function normalizeAssessmentSkill(skill) {
 
   const skillId = normalizeId(pick(skill, ["skillId", "SkillId", "id", "Id"]));
   const skillName = String(pick(skill, ["skillName", "SkillName", "name", "Name"], "Untitled skill"));
+  const skillSlug = String(
+    pick(skill, ["skillSlug", "SkillSlug", "slug", "Slug"], ""),
+  );
 
   return {
     ...skill,
     skillId,
     id: skillId,
     skillName,
+    skillSlug,
+    slug: skillSlug,
     name: skillName,
     isMatched: Boolean(pick(skill, ["isMatched", "IsMatched"], false)),
   };
@@ -168,6 +178,12 @@ export function normalizeSkillGapResult(response) {
       pick(response, ["skillGapAnalysisHistoryId", "SkillGapAnalysisHistoryId", "historyId", "HistoryId"]),
     ),
     roadmapId,
+    roadmapVersionId: normalizeId(
+      pick(response, ["roadmapVersionId", "RoadmapVersionId", "publishedRoadmapVersionId", "PublishedRoadmapVersionId"]),
+    ),
+    roadmapSlug: String(
+      pick(response, ["roadmapSlug", "RoadmapSlug", "slug", "Slug"], ""),
+    ),
     roadmapName: String(
       pick(response, ["roadmapName", "RoadmapName", "roadmapTitle", "RoadmapTitle", "title", "Title"], "Selected roadmap"),
     ),

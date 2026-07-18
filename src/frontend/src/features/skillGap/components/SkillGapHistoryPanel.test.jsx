@@ -84,4 +84,23 @@ describe("SkillGapHistoryPanel", () => {
     });
     expect(screen.getByText("No history yet")).toBeInTheDocument();
   });
+
+  it("hands the selected history id to the route owner", async () => {
+    const user = userEvent.setup();
+    const onViewResult = vi.fn();
+
+    skillGapApi.getHistory.mockResolvedValue({
+      items: [createHistoryItem("history-1", "Backend roadmap")],
+      nextCursor: null,
+      hasMore: false,
+    });
+
+    render(<SkillGapHistoryPanel onViewResult={onViewResult} />);
+
+    expect(await screen.findByText("Backend roadmap")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    expect(onViewResult).toHaveBeenCalledWith("history-1");
+    expect(skillGapApi.getHistoryDetail).not.toHaveBeenCalled();
+  });
 });

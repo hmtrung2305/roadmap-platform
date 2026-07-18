@@ -147,6 +147,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                 .Select(x => new
                 {
                     x.SnapshotJson,
+                    x.RoadmapId,
+                    x.RoadmapVersionId,
                 })
                 .SingleOrDefaultAsync(cancellationToken);
 
@@ -177,7 +179,56 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                     "Skill gap analysis snapshot is invalid.");
             }
 
+            response.RoadmapId = history.RoadmapId;
+            response.RoadmapVersionId = history.RoadmapVersionId;
+
+            await EnrichNavigationAsync(response, cancellationToken);
+
             return response;
+        }
+
+        private async Task EnrichNavigationAsync(
+            AnalyzeSkillGapResponseDto response,
+            CancellationToken cancellationToken)
+        {
+            response.RoadmapSlug = await _dbContext.Roadmaps
+                .AsNoTracking()
+                .Where(roadmap =>
+                    roadmap.RoadmapId == response.RoadmapId &&
+                    roadmap.Visibility == "public" &&
+                    roadmap.RoadmapVersions.Any(version => version.Status == "published"))
+                .Select(roadmap => roadmap.Slug)
+                .SingleOrDefaultAsync(cancellationToken)
+                ?? string.Empty;
+
+            var skills = response.Categories
+                .SelectMany(category => category.Skills)
+                .ToList();
+
+            var skillIds = skills
+                .Select(skill => skill.SkillId)
+                .Where(skillId => skillId != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (skillIds.Count == 0)
+            {
+                return;
+            }
+
+            var slugsBySkillId = await _dbContext.Skills
+                .AsNoTracking()
+                .Where(skill => skillIds.Contains(skill.SkillId))
+                .ToDictionaryAsync(
+                    skill => skill.SkillId,
+                    skill => skill.Slug,
+                    cancellationToken);
+
+            foreach (var skill in skills)
+            {
+                skill.SkillSlug = slugsBySkillId.GetValueOrDefault(skill.SkillId)
+                    ?? string.Empty;
+            }
         }
 
         private static string EncodeCursor(DateTime createdAt, Guid historyId)
