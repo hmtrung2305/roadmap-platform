@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RoadmapPlatform.Application.DTOs.MarketPulse;
 using RoadmapPlatform.Application.Models.MarketPulse;
 using RoadmapPlatform.Infrastructure.Configurations;
 
@@ -33,6 +35,10 @@ public sealed class JobsApiFetchResult
 
     public DateTimeOffset? LatestSuccessfulCrawlAt { get; init; }
 
+    public DateTimeOffset? HistoryCoverageStart { get; init; }
+
+    public bool IsSourceComplete { get; init; }
+
     public string? ErrorMessage { get; init; }
 
     public bool IsCompleteSync { get; init; }
@@ -40,20 +46,201 @@ public sealed class JobsApiFetchResult
     public bool IsSourceFresh { get; init; }
 }
 
-public sealed class JobsApiClient(
+public sealed class TopCvJobsApiClient(
     IHttpClientFactory httpClientFactory,
     IOptions<MarketPulseSettings> settings,
-    ILogger<JobsApiClient> logger)
+    ILogger<TopCvJobsApiClient> logger)
 {
+    public const string Provider = "topcv";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
+    public async Task<(bool Accepted, string? Error)> TriggerListingCrawlAsync(
+        CancellationToken cancellationToken)
+    {
+        var url = ResolveCrawlTriggerUrl();
+        if (url is null)
+        {
+            return (
+                false,
+                "TopCV crawl trigger URL is not configured and could not be derived from MarketPulse:JobsApiUrl.");
+        }
+
+        var client = httpClientFactory.CreateClient("market-pulse");
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.TryAddWithoutValidation("Accept", "application/json");
+        if (!string.IsNullOrWhiteSpace(settings.Value.JobsApiKey))
+        {
+            request.Headers.TryAddWithoutValidation("X-API-Key", settings.Value.JobsApiKey.Trim());
+        }
+        using var response = await client.SendAsync(request, cancellationToken);
+        if ((int)response.StatusCode == 409)
+        {
+            // A durable refresh can safely attach to the active listing run. The operation
+            // still requires a successful crawler timestamp newer than its own baseline.
+            return (true, "The TopCV listing crawler is already running; waiting for it.");
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            return (false, $"TopCV crawler trigger returned HTTP {(int)response.StatusCode}.");
+        }
+        return (true, null);
+    }
+
+    private Uri? ResolveCrawlTriggerUrl()
+    {
+        if (Uri.TryCreate(
+                settings.Value.JobsApiCrawlTriggerUrl?.Trim(),
+                UriKind.Absolute,
+                out var configured))
+        {
+            return configured;
+        }
+
+        var jobsUrl = FirstNonEmpty(settings.Value.JobsApiUrl, settings.Value.ActiveJobsApiUrl);
+        if (!Uri.TryCreate(jobsUrl?.Trim(), UriKind.Absolute, out var sourceUri))
+        {
+            return null;
+        }
+
+        return new UriBuilder(sourceUri)
+        {
+            Path = "/api/crawl/listing/run",
+            Query = string.Empty,
+            Fragment = string.Empty
+        }.Uri;
+    }
+
+    public async Task<IReadOnlyList<MarketPulseCrawlerFailureDto>> GetCrawlerFailuresAsync(
+        string? status,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var endpoint = ResolveFailedJobsUrl();
+        var separator = endpoint.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        var url = $"{endpoint}{separator}source=topcv&limit={Math.Clamp(limit, 1, 200)}";
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            url += $"&status={Uri.EscapeDataString(status.Trim())}";
+        }
+
+        using var request = CreateRequest(url);
+        var client = httpClientFactory.CreateClient("market-pulse");
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var envelope = await response.Content.ReadFromJsonAsync<CrawlerFailureEnvelope>(
+            JsonOptions,
+            cancellationToken);
+        return MapCrawlerFailures(envelope);
+    }
+
+    public async Task<int> GetOpenCrawlerFailureCountAsync(CancellationToken cancellationToken)
+    {
+        var openTask = GetCrawlerFailureCountAsync("open", cancellationToken);
+        var queuedTask = GetCrawlerFailureCountAsync("retry_queued", cancellationToken);
+        var retryingTask = GetCrawlerFailureCountAsync("retrying", cancellationToken);
+        await Task.WhenAll(openTask, queuedTask, retryingTask);
+        var openCount = await openTask;
+        var queuedCount = await queuedTask;
+        var retryingCount = await retryingTask;
+        return openCount + queuedCount + retryingCount;
+    }
+
+    public async Task<IReadOnlyList<MarketPulseCrawlerFailureDto>> UpdateCrawlerFailuresAsync(
+        IReadOnlyCollection<long> failureIds,
+        string action,
+        CancellationToken cancellationToken)
+    {
+        var normalizedAction = action.Trim().ToLowerInvariant();
+        if (normalizedAction is not "retry" and not "ignore")
+        {
+            throw new ArgumentOutOfRangeException(nameof(action), "Crawler failure action must be retry or ignore.");
+        }
+        var ids = failureIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        using var request = CreateRequest(
+            $"{ResolveFailedJobsUrl()}/{normalizedAction}",
+            HttpMethod.Post);
+        request.Content = JsonContent.Create(new { failed_item_ids = ids });
+        var client = httpClientFactory.CreateClient("market-pulse");
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var envelope = await response.Content.ReadFromJsonAsync<CrawlerFailureEnvelope>(
+            JsonOptions,
+            cancellationToken);
+        return MapCrawlerFailures(envelope);
+    }
+
+    private async Task<int> GetCrawlerFailureCountAsync(
+        string status,
+        CancellationToken cancellationToken)
+    {
+        var endpoint = ResolveFailedJobsUrl();
+        var separator = endpoint.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        var url = $"{endpoint}{separator}source=topcv&limit=1&status={Uri.EscapeDataString(status)}";
+        using var request = CreateRequest(url);
+        var client = httpClientFactory.CreateClient("market-pulse");
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var envelope = await response.Content.ReadFromJsonAsync<CrawlerFailureEnvelope>(
+            JsonOptions,
+            cancellationToken);
+        return Math.Max(0, envelope?.Pagination?.Total ?? envelope?.Data?.Count ?? 0);
+    }
+
     public Task<JobsApiFetchResult> FetchAsync(
         string url,
         CancellationToken cancellationToken) =>
         FetchAsync(url, JobsApiFetchOptions.Default, cancellationToken);
+
+    public Task<TopCvImportBatch> FetchImportBatchAsync(
+        MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken) =>
+        FetchImportBatchAsync(request, TopCvJobScope.Active, cancellationToken);
+
+    public async Task<TopCvImportBatch> FetchImportBatchAsync(
+        MarketPulseRefreshRequestDto? request,
+        TopCvJobScope scope,
+        CancellationToken cancellationToken)
+    {
+        var configuredUrl = FirstNonEmpty(settings.Value.JobsApiUrl, settings.Value.ActiveJobsApiUrl);
+        if (string.IsNullOrWhiteSpace(configuredUrl))
+        {
+            return TopCvImportBatch.Failure(
+                JobsApiFetchStatus.InvalidContract,
+                "MarketPulse:JobsApiUrl must point to the TopCV Jobs API.");
+        }
+
+        var maxItems = Math.Clamp(
+            request?.JobsApiMaxItems ?? settings.Value.JobsApiMaxItems,
+            1,
+            50_000);
+        var fetch = await FetchAsync(
+            configuredUrl,
+            new JobsApiFetchOptions(
+                maxItems,
+                request?.JobsApiPageSize ?? settings.Value.JobsApiPageSize,
+                request?.JobsApiMaxPages ?? settings.Value.JobsApiMaxPages,
+                scope),
+            cancellationToken);
+
+        if (fetch.Status is not JobsApiFetchStatus.Success and not JobsApiFetchStatus.Empty)
+        {
+            return TopCvImportBatch.FromFetch(fetch, []);
+        }
+
+        var postings = fetch.Jobs
+            .Select(ToJobMarketPosting)
+            .Select(ToScrapedPosting)
+            .ToList();
+        return TopCvImportBatch.FromFetch(fetch, postings);
+    }
 
     public async Task<JobsApiFetchResult> FetchAsync(
         string url,
@@ -71,18 +258,27 @@ public sealed class JobsApiClient(
         int? total = null;
         DateTimeOffset? generatedAt = null;
         DateTimeOffset? latestSuccessfulCrawlAt = null;
+        DateTimeOffset? historyCoverageStart = null;
+        var isSourceComplete = false;
 
         var firstPage = await FetchPageAsync(
-            WithPaging(url, page: 1, pageSize: normalizedOptions.PageSize),
+            WithPaging(url, page: 1, pageSize: normalizedOptions.PageSize, normalizedOptions.Scope),
             cancellationToken);
         if (firstPage.Status != JobsApiFetchStatus.Success)
         {
             return firstPage.ToFetchResult();
         }
+        if (firstPage.Page != 1 || firstPage.PageSize != normalizedOptions.PageSize)
+        {
+            return InvalidContract(
+                $"Jobs API returned page={firstPage.Page}, pageSize={firstPage.PageSize}; expected page=1, pageSize={normalizedOptions.PageSize}.");
+        }
 
         total = firstPage.Total;
         generatedAt = firstPage.GeneratedAt;
         latestSuccessfulCrawlAt = firstPage.LatestSuccessfulCrawlAt;
+        historyCoverageStart = firstPage.HistoryCoverageStart;
+        isSourceComplete = firstPage.IsSourceComplete;
         jobs.AddRange(firstPage.Jobs);
 
         var totalPages = ResolveTotalPages(firstPage, normalizedOptions);
@@ -91,11 +287,21 @@ public sealed class JobsApiClient(
         for (var page = 2; page <= pageLimit && jobs.Count < normalizedOptions.MaxItems; page++)
         {
             var nextPage = await FetchPageAsync(
-                WithPaging(url, page, normalizedOptions.PageSize),
+                WithPaging(url, page, normalizedOptions.PageSize, normalizedOptions.Scope),
                 cancellationToken);
             if (nextPage.Status != JobsApiFetchStatus.Success)
             {
                 return nextPage.ToFetchResult(
+                    total,
+                    jobs.Count,
+                    generatedAt,
+                    latestSuccessfulCrawlAt);
+            }
+
+            if (nextPage.Page != page || nextPage.PageSize != firstPage.PageSize)
+            {
+                return InvalidContract(
+                    $"Jobs API returned page={nextPage.Page}, pageSize={nextPage.PageSize}; expected page={page}, pageSize={firstPage.PageSize}.",
                     total,
                     jobs.Count,
                     generatedAt,
@@ -112,6 +318,36 @@ public sealed class JobsApiClient(
                     latestSuccessfulCrawlAt);
             }
 
+            if (nextPage.LatestSuccessfulCrawlAt != latestSuccessfulCrawlAt)
+            {
+                return InvalidContract(
+                    "Jobs API latestSuccessfulCrawlAt changed during one paginated fetch.",
+                    total,
+                    jobs.Count,
+                    generatedAt,
+                    latestSuccessfulCrawlAt);
+            }
+
+            if (nextPage.HistoryCoverageStart != historyCoverageStart)
+            {
+                return InvalidContract(
+                    "Jobs API historyCoverageStart changed during one paginated fetch.",
+                    total,
+                    jobs.Count,
+                    generatedAt,
+                    latestSuccessfulCrawlAt);
+            }
+
+            if (nextPage.IsSourceComplete != isSourceComplete)
+            {
+                return InvalidContract(
+                    "Jobs API isSourceComplete changed during one paginated fetch.",
+                    total,
+                    jobs.Count,
+                    generatedAt,
+                    latestSuccessfulCrawlAt);
+            }
+
             if (nextPage.Jobs.Count == 0)
             {
                 break;
@@ -122,11 +358,50 @@ public sealed class JobsApiClient(
         }
 
         var selectedJobs = jobs
-            .Where(x => x.IsActive != false)
+            .Where(x => normalizedOptions.Scope switch
+            {
+                TopCvJobScope.Active => x.IsActive != false,
+                TopCvJobScope.Inactive => x.IsActive == false,
+                _ => true
+            })
             .Take(normalizedOptions.MaxItems)
             .ToList();
         var fetchedCount = selectedJobs.Count;
-        var isCompleteSync = total.HasValue && fetchedCount >= total.Value;
+        if (selectedJobs.Any(job => string.IsNullOrWhiteSpace(job.Url)))
+        {
+            return InvalidContract(
+                "Jobs API returned a job without a URL; lifecycle-safe import cannot silently omit it.",
+                total,
+                fetchedCount,
+                generatedAt,
+                latestSuccessfulCrawlAt);
+        }
+        var stableIdentities = selectedJobs
+            .Select(ResolveStableIdentity)
+            .ToList();
+        if (stableIdentities.Any(string.IsNullOrWhiteSpace))
+        {
+            return InvalidContract(
+                "Jobs API returned a job without id, source_job_id, or URL; lifecycle-safe import requires a stable identity.",
+                total,
+                fetchedCount,
+                generatedAt,
+                latestSuccessfulCrawlAt);
+        }
+        var distinctIdentityCount = stableIdentities
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        if (distinctIdentityCount != fetchedCount)
+        {
+            return InvalidContract(
+                $"Jobs API pagination returned {fetchedCount - distinctIdentityCount} duplicate stable job identities.",
+                total,
+                fetchedCount,
+                generatedAt,
+                latestSuccessfulCrawlAt);
+        }
+        var isCompleteSync = total.HasValue && distinctIdentityCount >= total.Value &&
+            isSourceComplete;
         var freshness = ValidateFreshness(generatedAt, latestSuccessfulCrawlAt);
 
         if (freshness.Status == JobsApiFetchStatus.InvalidContract)
@@ -150,8 +425,10 @@ public sealed class JobsApiClient(
                 FetchedCount = fetchedCount,
                 GeneratedAt = generatedAt,
                 LatestSuccessfulCrawlAt = latestSuccessfulCrawlAt,
+                HistoryCoverageStart = historyCoverageStart,
                 ErrorMessage = freshness.ErrorMessage,
                 IsCompleteSync = isCompleteSync,
+                IsSourceComplete = isSourceComplete,
                 IsSourceFresh = false
             };
         }
@@ -169,10 +446,12 @@ public sealed class JobsApiClient(
             FetchedCount = fetchedCount,
             GeneratedAt = generatedAt,
             LatestSuccessfulCrawlAt = latestSuccessfulCrawlAt,
+            HistoryCoverageStart = historyCoverageStart,
             ErrorMessage = freshness.Status == JobsApiFetchStatus.StaleSource
                 ? freshness.ErrorMessage
                 : null,
             IsCompleteSync = isCompleteSync,
+            IsSourceComplete = isSourceComplete,
             IsSourceFresh = freshness.Status == JobsApiFetchStatus.Success
         };
     }
@@ -279,6 +558,19 @@ public sealed class JobsApiClient(
                 $"Jobs API contract requires a non-null data array for {url}.");
         }
 
+        var invalidProvider = envelope.Data.FirstOrDefault(job =>
+            (!string.IsNullOrWhiteSpace(job.Source) &&
+             !string.Equals(job.Source.Trim(), Provider, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrWhiteSpace(job.Id) &&
+             job.Id.Contains(':', StringComparison.Ordinal) &&
+             !job.Id.StartsWith(Provider + ":", StringComparison.OrdinalIgnoreCase)));
+        if (invalidProvider is not null)
+        {
+            return JobsApiPageFetchResult.Failure(
+                JobsApiFetchStatus.InvalidContract,
+                $"TopCV Jobs API returned unsupported provider '{invalidProvider.Source ?? invalidProvider.Id}'.");
+        }
+
         if (envelope.Pagination?.Total is null || envelope.Pagination.Total < 0)
         {
             return JobsApiPageFetchResult.Failure(
@@ -298,6 +590,8 @@ public sealed class JobsApiClient(
                 envelope.Meta,
                 out var generatedAt,
                 out var latestSuccessfulCrawlAt,
+                out var historyCoverageStart,
+                out var isSourceComplete,
                 out var metadataError))
         {
             return JobsApiPageFetchResult.Failure(
@@ -312,6 +606,8 @@ public sealed class JobsApiClient(
             envelope.Pagination.TotalPages,
             generatedAt,
             latestSuccessfulCrawlAt,
+            historyCoverageStart,
+            isSourceComplete,
             envelope.Data);
     }
 
@@ -319,10 +615,14 @@ public sealed class JobsApiClient(
         JobsApiMeta? meta,
         out DateTimeOffset? generatedAt,
         out DateTimeOffset? latestSuccessfulCrawlAt,
+        out DateTimeOffset? historyCoverageStart,
+        out bool isSourceComplete,
         out string? error)
     {
         generatedAt = null;
         latestSuccessfulCrawlAt = null;
+        historyCoverageStart = null;
+        isSourceComplete = false;
         error = null;
 
         if (meta is null)
@@ -344,7 +644,30 @@ public sealed class JobsApiClient(
         if (!TryParseDateTimeOffset(
                 meta.LatestSuccessfulCrawlAt,
                 "meta.latestSuccessfulCrawlAt",
-                out latestSuccessfulCrawlAt,
+                out var latestCompleteCrawlAt,
+                out error))
+        {
+            return false;
+        }
+
+        if (!TryParseDateTimeOffset(
+                meta.LatestDataCrawlAt,
+                "meta.latestDataCrawlAt",
+                out var latestDataCrawlAt,
+                out error))
+        {
+            return false;
+        }
+
+        latestSuccessfulCrawlAt = latestDataCrawlAt ?? latestCompleteCrawlAt;
+        isSourceComplete = meta.IsSourceComplete ??
+            (latestCompleteCrawlAt.HasValue &&
+             (!latestDataCrawlAt.HasValue || latestDataCrawlAt == latestCompleteCrawlAt));
+
+        if (!TryParseDateTimeOffset(
+                meta.HistoryCoverageStart,
+                "meta.historyCoverageStart",
+                out historyCoverageStart,
                 out error))
         {
             return false;
@@ -397,9 +720,9 @@ public sealed class JobsApiClient(
         return new FreshnessValidationResult(JobsApiFetchStatus.Success, null);
     }
 
-    private HttpRequestMessage CreateRequest(string url)
+    private HttpRequestMessage CreateRequest(string url, HttpMethod? method = null)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        var request = new HttpRequestMessage(method ?? HttpMethod.Get, url);
         request.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
         request.Headers.TryAddWithoutValidation("Accept", "application/json");
 
@@ -409,6 +732,56 @@ public sealed class JobsApiClient(
         }
 
         return request;
+    }
+
+    private string ResolveFailedJobsUrl()
+    {
+        var configured = FirstNonEmpty(settings.Value.JobsApiUrl, settings.Value.ActiveJobsApiUrl);
+        if (string.IsNullOrWhiteSpace(configured) ||
+            !Uri.TryCreate(configured, UriKind.Absolute, out var uri))
+        {
+            throw new InvalidOperationException("MarketPulse:JobsApiUrl is not configured.");
+        }
+
+        var builder = new UriBuilder(uri) { Query = string.Empty, Fragment = string.Empty };
+        var path = builder.Path.TrimEnd('/');
+        const string apiMarker = "/api/v1/";
+        var apiIndex = path.IndexOf(apiMarker, StringComparison.OrdinalIgnoreCase);
+        builder.Path = apiIndex >= 0
+            ? path[..(apiIndex + apiMarker.Length)] + "failed-jobs"
+            : path.EndsWith("/jobs", StringComparison.OrdinalIgnoreCase)
+                ? path[..^5] + "/failed-jobs"
+                : path + "/failed-jobs";
+        return builder.Uri.ToString();
+    }
+
+    private static IReadOnlyList<MarketPulseCrawlerFailureDto> MapCrawlerFailures(
+        CrawlerFailureEnvelope? envelope)
+    {
+        if (envelope?.Ok != true || envelope.Data is null)
+        {
+            throw new InvalidOperationException("TopCV failed-jobs API returned an invalid contract.");
+        }
+        var invalidSource = envelope.Data.FirstOrDefault(item =>
+            !string.IsNullOrWhiteSpace(item.Source) &&
+            !string.Equals(item.Source, Provider, StringComparison.OrdinalIgnoreCase));
+        if (invalidSource is not null)
+        {
+            throw new InvalidOperationException("TopCV failed-jobs API returned a non-TopCV item.");
+        }
+
+        return envelope.Data.Select(item => new MarketPulseCrawlerFailureDto
+        {
+            FailureId = $"crawler:{item.Id}",
+            Stage = item.Stage ?? "unknown",
+            ErrorCode = item.ErrorCode ?? "UNKNOWN",
+            ErrorMessage = item.ErrorMessage ?? "TopCV crawler failure",
+            Status = item.Status ?? "open",
+            RetryCount = item.RetryCount,
+            CreatedAt = item.CreatedAt,
+            LastRetryAt = item.LastRetryAt,
+            Actionable = item.Id > 0
+        }).ToList();
     }
 
     internal static JobMarketPosting ToJobMarketPosting(JobsApiJobDto job)
@@ -421,7 +794,7 @@ public sealed class JobsApiClient(
         {
             Id = Clean(job.Id),
             SourceJobId = Clean(FirstNonEmpty(job.SourceJobId, StripSourcePrefix(job.Id))),
-            Source = Clean(job.Source),
+            Source = Provider,
             Title = Clean(job.Title),
             Company = Clean(job.Company),
             Category = Clean(category),
@@ -517,31 +890,23 @@ public sealed class JobsApiClient(
         await Task.Delay(delayMs, cancellationToken);
     }
 
-    private async Task DelayBetweenRequestsAsync(CancellationToken cancellationToken)
-    {
-        var minMs = Math.Clamp(settings.Value.DelayMinMs, 0, 120_000);
-        var maxMs = Math.Clamp(settings.Value.DelayMaxMs, 0, 120_000);
+    private static Task DelayBetweenRequestsAsync(CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 
-        if (maxMs < minMs)
-        {
-            (minMs, maxMs) = (maxMs, minMs);
-        }
-
-        var delayMs = Random.Shared.Next(minMs, maxMs + 1);
-        if (delayMs > 0)
-        {
-            await Task.Delay(delayMs, cancellationToken);
-        }
-    }
-
-    private static string WithPaging(string url, int page, int pageSize)
+    private static string WithPaging(string url, int page, int pageSize, TopCvJobScope scope)
     {
         var uri = new Uri(url);
         var builder = new UriBuilder(uri);
         var query = ParseQuery(builder.Query);
+        if (builder.Path.EndsWith("/jobs/active", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.Path = builder.Path[..^"/active".Length];
+        }
+        query.Remove("active");
         query["page"] = page.ToString(CultureInfo.InvariantCulture);
         query["page_size"] = pageSize.ToString(CultureInfo.InvariantCulture);
         query["pageSize"] = pageSize.ToString(CultureInfo.InvariantCulture);
+        query["scope"] = scope.ToString().ToLowerInvariant();
         builder.Query = string.Join(
             '&',
             query.Select(x =>
@@ -620,6 +985,12 @@ public sealed class JobsApiClient(
     private static string? FirstNonEmpty(params string?[] values) =>
         values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim();
 
+    private static string? ResolveStableIdentity(JobsApiJobDto job)
+    {
+        var identity = FirstNonEmpty(job.Id, job.SourceJobId, job.Url);
+        return string.IsNullOrWhiteSpace(identity) ? null : identity.Trim().ToLowerInvariant();
+    }
+
     private static string? StripSourcePrefix(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -632,6 +1003,58 @@ public sealed class JobsApiClient(
         return separatorIndex >= 0 && separatorIndex < trimmed.Length - 1
             ? trimmed[(separatorIndex + 1)..]
             : trimmed;
+    }
+
+    private static ScrapedJobPosting ToScrapedPosting(JobMarketPosting job)
+    {
+        var parts = new[]
+        {
+            job.Title,
+            job.Company,
+            job.Category,
+            job.Salary,
+            job.Experience,
+            job.Location,
+            string.Join(' ', job.Skills),
+            string.Join(' ', job.Requirements),
+            string.Join(' ', job.Specialties),
+            string.Join(' ', job.Benefits)
+        };
+
+        return new ScrapedJobPosting(
+            job.Title?.Trim() ?? "Untitled IT job",
+            job.Company,
+            job.Location,
+            job.Url!,
+            string.Join(' ', parts.Where(value => !string.IsNullOrWhiteSpace(value))),
+            job.PostedOn?.ToDateTime(TimeOnly.MinValue),
+            null,
+            job.SourceJobId,
+            job.Category,
+            job.Salary,
+            job.Experience,
+            job.PostedOnText,
+            job.UpdatedAt,
+            job.Requirements,
+            job.Specialties,
+            job.Benefits,
+            job.Skills,
+            job.SalaryRaw,
+            job.SalaryMin,
+            job.SalaryMax,
+            job.SalaryCurrency,
+            job.SalaryIsNegotiable,
+            job.ExperienceRaw,
+            job.ExperienceMinYears,
+            job.ExperienceMaxYears,
+            job.PostDateConfidence,
+            job.PostDateLowerBound?.ToDateTime(TimeOnly.MinValue),
+            job.PostDateUpperBound?.ToDateTime(TimeOnly.MinValue),
+            job.PostDateObservedOn?.ToDateTime(TimeOnly.MinValue),
+            job.DetailStatus,
+            job.DetailLastSuccessAt,
+            job.IsActive,
+            job.Id);
     }
 
     private static JobsApiFetchResult InvalidContract(
@@ -653,14 +1076,26 @@ public sealed class JobsApiClient(
         };
 }
 
-public sealed record JobsApiFetchOptions(int MaxItems, int PageSize, int MaxPages)
+public enum TopCvJobScope
 {
-    public static JobsApiFetchOptions Default { get; } = new(160, 100, 2);
+    Active,
+    Inactive,
+    All
+}
+
+public sealed record JobsApiFetchOptions(
+    int MaxItems,
+    int PageSize,
+    int MaxPages,
+    TopCvJobScope Scope = TopCvJobScope.Active)
+{
+    public static JobsApiFetchOptions Default { get; } = new(50_000, 100, 500);
 
     public JobsApiFetchOptions Normalize() => new(
-        Math.Clamp(MaxItems, 1, 5_000),
+        Math.Clamp(MaxItems, 1, 50_000),
         Math.Clamp(PageSize, 1, 500),
-        Math.Clamp(MaxPages, 1, 100));
+        Math.Clamp(MaxPages, 1, 500),
+        Scope);
 }
 
 internal sealed class JobsApiPageFetchResult
@@ -679,6 +1114,10 @@ internal sealed class JobsApiPageFetchResult
 
     public DateTimeOffset? LatestSuccessfulCrawlAt { get; init; }
 
+    public DateTimeOffset? HistoryCoverageStart { get; init; }
+
+    public bool IsSourceComplete { get; init; }
+
     public IReadOnlyList<JobsApiJobDto> Jobs { get; init; } = [];
 
     public string? ErrorMessage { get; init; }
@@ -690,6 +1129,8 @@ internal sealed class JobsApiPageFetchResult
         int? totalPages,
         DateTimeOffset? generatedAt,
         DateTimeOffset? latestSuccessfulCrawlAt,
+        DateTimeOffset? historyCoverageStart,
+        bool isSourceComplete,
         IReadOnlyList<JobsApiJobDto> jobs) =>
         new()
         {
@@ -700,6 +1141,8 @@ internal sealed class JobsApiPageFetchResult
             TotalPages = totalPages,
             GeneratedAt = generatedAt,
             LatestSuccessfulCrawlAt = latestSuccessfulCrawlAt,
+            HistoryCoverageStart = historyCoverageStart,
+            IsSourceComplete = isSourceComplete,
             Jobs = jobs
         };
 
@@ -726,6 +1169,7 @@ internal sealed class JobsApiPageFetchResult
             LatestSuccessfulCrawlAt = latestSuccessfulCrawlAt ?? LatestSuccessfulCrawlAt,
             ErrorMessage = ErrorMessage,
             IsCompleteSync = false,
+            IsSourceComplete = IsSourceComplete,
             IsSourceFresh = false
         };
 }
@@ -771,6 +1215,15 @@ internal sealed class JobsApiMeta
 
     [JsonPropertyName("latestSuccessfulCrawlAt")]
     public string? LatestSuccessfulCrawlAt { get; set; }
+
+    [JsonPropertyName("latestDataCrawlAt")]
+    public string? LatestDataCrawlAt { get; set; }
+
+    [JsonPropertyName("isSourceComplete")]
+    public bool? IsSourceComplete { get; set; }
+
+    [JsonPropertyName("historyCoverageStart")]
+    public string? HistoryCoverageStart { get; set; }
 }
 
 public sealed class JobsApiJobDto
@@ -882,4 +1335,124 @@ public sealed class JobsApiJobDto
 
     [JsonPropertyName("detail_last_success_at")]
     public string? DetailLastSuccessAt { get; set; }
+}
+
+internal sealed class CrawlerFailureEnvelope
+{
+    public bool? Ok { get; set; }
+
+    public List<CrawlerFailureItem>? Data { get; set; }
+
+    public CrawlerFailurePagination? Pagination { get; set; }
+}
+
+internal sealed class CrawlerFailurePagination
+{
+    public int Total { get; set; }
+}
+
+internal sealed class CrawlerFailureItem
+{
+    public long Id { get; set; }
+
+    public string? Source { get; set; }
+
+    public string? Stage { get; set; }
+
+    public string? ErrorCode { get; set; }
+
+    public string? ErrorMessage { get; set; }
+
+    public string? Status { get; set; }
+
+    public int RetryCount { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? LastRetryAt { get; set; }
+}
+
+public sealed record ScrapedJobPosting(
+    string Title,
+    string? CompanyName,
+    string? Location,
+    string Url,
+    string Description,
+    DateTime? PublishedAt,
+    DateTime? ExpiresAt,
+    string? SourceJobId = null,
+    string? Category = null,
+    string? Salary = null,
+    string? Experience = null,
+    string? PostDateText = null,
+    DateTime? SourceUpdatedAt = null,
+    IReadOnlyList<string>? Requirements = null,
+    IReadOnlyList<string>? Specialties = null,
+    IReadOnlyList<string>? Benefits = null,
+    IReadOnlyList<string>? Skills = null,
+    string? SalaryRaw = null,
+    long? SalaryMin = null,
+    long? SalaryMax = null,
+    string? SalaryCurrency = null,
+    bool? SalaryIsNegotiable = null,
+    string? ExperienceRaw = null,
+    int? ExperienceMinYears = null,
+    int? ExperienceMaxYears = null,
+    string? PostDateConfidence = null,
+    DateTime? PostDateLowerBound = null,
+    DateTime? PostDateUpperBound = null,
+    DateTime? PostDateObservedOn = null,
+    string? DetailStatus = null,
+    DateTime? DetailLastSuccessAt = null,
+    bool IsActive = true,
+    string? ExternalId = null);
+
+public sealed class TopCvImportBatch
+{
+    public JobsApiFetchStatus Status { get; init; }
+
+    public IReadOnlyList<ScrapedJobPosting> Postings { get; init; } = [];
+
+    public int? Total { get; init; }
+
+    public int FetchedCount { get; init; }
+
+    public DateTimeOffset? GeneratedAt { get; init; }
+
+    public DateTimeOffset? LatestSuccessfulCrawlAt { get; init; }
+
+    public DateTimeOffset? HistoryCoverageStart { get; init; }
+
+    public string? ErrorMessage { get; init; }
+
+    public bool IsCompleteSync { get; init; }
+
+    public bool IsSourceComplete { get; init; }
+
+    public bool IsSourceFresh { get; init; }
+
+    public static TopCvImportBatch FromFetch(
+        JobsApiFetchResult fetch,
+        IReadOnlyList<ScrapedJobPosting> postings) => new()
+    {
+        Status = fetch.Status,
+        Postings = postings,
+        Total = fetch.Total,
+        FetchedCount = fetch.FetchedCount,
+        GeneratedAt = fetch.GeneratedAt,
+        LatestSuccessfulCrawlAt = fetch.LatestSuccessfulCrawlAt,
+        HistoryCoverageStart = fetch.HistoryCoverageStart,
+        ErrorMessage = fetch.ErrorMessage,
+        IsCompleteSync = fetch.IsCompleteSync,
+        IsSourceComplete = fetch.IsSourceComplete,
+        IsSourceFresh = fetch.IsSourceFresh
+    };
+
+    public static TopCvImportBatch Failure(JobsApiFetchStatus status, string error) => new()
+    {
+        Status = status,
+        ErrorMessage = error,
+        IsCompleteSync = false,
+        IsSourceFresh = false
+    };
 }

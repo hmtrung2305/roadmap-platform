@@ -7,8 +7,6 @@ public partial class MarketPulseCrawlRun
 {
     public Guid MarketPulseCrawlRunId { get; set; }
 
-    public string SourceName { get; set; } = null!;
-
     public string Status { get; set; } = null!;
 
     public string Mode { get; set; } = null!;
@@ -54,4 +52,5 @@ public partial class MarketPulseCrawlRun
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<MarketPulseFailedItem> MarketPulseFailedItems { get; set; } = new List<MarketPulseFailedItem>();
+
 }

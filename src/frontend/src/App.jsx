@@ -207,6 +207,16 @@ export default function App() {
 
           <Route
             element={
+              <RequirePermission anyPermissions={[PERMISSIONS.MARKET_PULSE_VIEW_CATALOG]}>
+                <MainLayout />
+              </RequirePermission>
+            }
+          >
+            <Route path="/market-pulse" element={<MarketPulsePage />} />
+          </Route>
+
+          <Route
+            element={
               <RequirePermission anyPermissions={LEARNER_SURFACE_PERMISSIONS}>
                 <MainLayout />
               </RequirePermission>
@@ -228,8 +238,6 @@ export default function App() {
             <Route path="/roadmaps" element={<RoadmapSelectionPage />} />
             <Route path="/roadmaps/:slug" element={<RoadmapViewerPage />} />
             <Route path="/roadmap" element={<Navigate to="/roadmaps" replace />} />
-
-            <Route path="/market-pulse" element={<MarketPulsePage />} />
 
             <Route path="/skill-gap" element={<SkillGapAnalysisPage />} />
             <Route path="/skill-gap/history/:historyId" element={<SkillGapAnalysisPage />} />
@@ -389,7 +397,14 @@ export default function App() {
                 </RequirePermission>
               }
             />
-            <Route path="/admin/market-pulse" element={<AdminMarketPulsePage />} />
+            <Route
+              path="/admin/market-pulse"
+              element={
+                <RequirePermission anyPermissions={[PERMISSIONS.MARKET_PULSE_MANAGE_ANY]}>
+                  <AdminMarketPulsePage />
+                </RequirePermission>
+              }
+            />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
           </Route>
 

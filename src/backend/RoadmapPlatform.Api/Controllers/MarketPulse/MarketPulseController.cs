@@ -24,16 +24,27 @@ public sealed class MarketPulseController(IMarketPulseService marketPulseService
         [FromQuery] decimal? salaryMaxMonthlyVnd = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await GetOverviewDtoAsync(
-            days,
-            skills,
-            category,
-            location,
-            experience,
-            source,
-            salaryMinMonthlyVnd,
-            salaryMaxMonthlyVnd,
-            cancellationToken);
+        MarketPulseOverviewDto result;
+        try
+        {
+            result = await GetOverviewDtoAsync(
+                days,
+                skills,
+                category,
+                location,
+                experience,
+                source,
+                salaryMinMonthlyVnd,
+                salaryMaxMonthlyVnd,
+                cancellationToken);
+        }
+        catch (ArgumentException exception) when (
+            exception.Message.Contains("source='topcv'", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(MarketPulseApiEnvelopeDto<object>.Failure(
+                "UNSUPPORTED_MARKET_PULSE_SOURCE",
+                exception.Message));
+        }
 
         return Ok(MarketPulseApiEnvelopeDto<MarketPulseOverviewDto>.Success(result));
     }
@@ -48,7 +59,6 @@ public sealed class MarketPulseController(IMarketPulseService marketPulseService
             overview.TotalPostings,
             overview.ActivePostings,
             overview.TodayPostings,
-            overview.SourceCount,
             overview.LastUpdatedAt,
             TopTrendingSkill = overview.Skills.FirstOrDefault(),
             MostActiveCategory = overview.CategorySummaries.FirstOrDefault(),

@@ -453,6 +453,7 @@ WITH role_permissions(role_name, permission_name) AS (
         ('admin', 'user_role.assign.any'),
         ('admin', 'user_role.revoke.any'),
         ('admin', 'system_health.view.any'),
+        ('admin', 'market_pulse.view.catalog'),
         ('admin', 'skill.view.catalog'),
         ('admin', 'skill.view.any'),
         ('admin', 'skill.create.any'),

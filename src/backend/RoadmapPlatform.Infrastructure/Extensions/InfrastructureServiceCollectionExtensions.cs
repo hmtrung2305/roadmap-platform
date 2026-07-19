@@ -170,14 +170,14 @@ namespace RoadmapPlatform.Infrastructure.Extensions
             services.AddScoped<IStreakService, StreakService>();
 
             // Register Market Pulse services.
-            services.AddScoped<JobsApiClient>();
+            services.AddScoped<TopCvJobsApiClient>();
             services.AddScoped<IJobsApiHealthService, JobsApiHealthClient>();
-            services.AddScoped<IJobPortalScraper, JobPortalScraper>();
             services.AddScoped<IMarketPulseService, MarketPulseService>();
             services.AddScoped<IMarketPulseAdminService, MarketPulseAdminService>();
 
             // Register the hosted background service for scheduled Market Pulse refresh.
             services.AddHostedService<MarketPulseHostedService>();
+            services.AddHostedService<MarketPulseRefreshOperationWorker>();
 
             // Register a named HTTP client for Market Pulse external calls.
             services.AddHttpClient("market-pulse", client =>

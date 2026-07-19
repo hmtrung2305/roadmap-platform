@@ -6,6 +6,7 @@ using RoadmapPlatform.Api.Constants;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
 using RoadmapPlatform.Application.Interfaces.MarketPulse;
+using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
 namespace RoadmapPlatform.Api.Controllers.MarketPulse;
 
@@ -15,8 +16,154 @@ namespace RoadmapPlatform.Api.Controllers.MarketPulse;
 public sealed class MarketPulseAdminController(
     IMarketPulseService marketPulseService,
     IMarketPulseAdminService adminService,
-    IJobsApiHealthService jobsApiHealthService) : ControllerBase
+    IJobsApiHealthService jobsApiHealthService,
+    TopCvJobsApiClient topCvClient) : ControllerBase
 {
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetDashboard(CancellationToken cancellationToken)
+    {
+        var dashboard = await adminService.GetDashboardAsync(cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseAdminDashboardDto>.Success(dashboard));
+    }
+
+    [HttpPost("refresh-operations")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    public async Task<IActionResult> CreateRefreshOperation(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var operation = await adminService.CreateRefreshOperationAsync(cancellationToken);
+            return Accepted(MarketPulseApiEnvelopeDto<MarketPulseRefreshOperationDto>.Success(operation));
+        }
+        catch (MarketPulseRefreshOperationConflictException conflict)
+        {
+            return Conflict(MarketPulseApiEnvelopeDto<MarketPulseRefreshOperationDto>.Failure(
+                "MARKET_PULSE_REFRESH_RUNNING",
+                conflict.Message,
+                conflict.CurrentOperation));
+        }
+    }
+
+    [HttpGet("refresh-operations/current")]
+    public async Task<IActionResult> GetCurrentRefreshOperation(CancellationToken cancellationToken)
+    {
+        var operation = await adminService.GetCurrentRefreshOperationAsync(cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseRefreshOperationDto?>.Success(operation));
+    }
+
+    [HttpGet("refresh-operations/{operationId:guid}")]
+    public async Task<IActionResult> GetRefreshOperation(
+        Guid operationId,
+        CancellationToken cancellationToken)
+    {
+        var operation = await adminService.GetRefreshOperationAsync(operationId, cancellationToken);
+        return operation is null
+            ? NotFound(MarketPulseApiEnvelopeDto<object>.Failure(
+                "MARKET_PULSE_REFRESH_NOT_FOUND",
+                "Refresh operation was not found."))
+            : Ok(MarketPulseApiEnvelopeDto<MarketPulseRefreshOperationDto>.Success(operation));
+    }
+
+    [HttpPost("history-sync")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    public async Task<IActionResult> SyncHistory(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] MarketPulseHistorySyncRequestDto? request,
+        CancellationToken cancellationToken)
+    {
+        var result = await marketPulseService.SyncPublicationHistoryAsync(
+            request,
+            cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseRefreshResultDto>.Success(result));
+    }
+
+    [HttpPost("import-latest")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    public async Task<IActionResult> ImportLatest(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] MarketPulseRefreshRequestDto? request,
+        CancellationToken cancellationToken)
+    {
+        var result = await marketPulseService.RefreshAsync(request, cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseRefreshResultDto>.Success(result));
+    }
+
+    [HttpGet("import-runs")]
+    public Task<IActionResult> GetImportRuns(
+        [FromQuery] string? status = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default) =>
+        GetCrawlRuns(status, "topcv", from, to, limit, cancellationToken);
+
+    [HttpGet("failures")]
+    public async Task<IActionResult> GetFailures(
+        [FromQuery] string? status = "open",
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var failures = await adminService.GetFailureGroupsAsync(
+            new MarketPulseAdminQueryDto
+            {
+                Status = status,
+                Source = "topcv",
+                From = from,
+                To = to,
+                Limit = limit
+            },
+            cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseFailureGroupsDto>.Success(failures));
+    }
+
+    [HttpPost("failures/retry")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    public async Task<IActionResult> RetryFailures(
+        [FromBody] MarketPulseBulkActionRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var importFailures = await adminService.RetryFailedItemsAsync(
+                request.ResolveImportIds(),
+                cancellationToken);
+            var crawlerFailures = await topCvClient.UpdateCrawlerFailuresAsync(
+                request.ResolveCrawlerIds(),
+                "retry",
+                cancellationToken);
+            return Ok(MarketPulseApiEnvelopeDto<MarketPulseFailureGroupsDto>.Success(new MarketPulseFailureGroupsDto
+            {
+                CrawlerFailures = crawlerFailures,
+                ImportFailures = importFailures
+            }));
+        }
+        catch (InvalidOperationException exception) when (
+            exception.Message.Contains("already running", StringComparison.OrdinalIgnoreCase))
+        {
+            return MarketPulseRefreshRunningResult(exception.Message);
+        }
+    }
+
+    [HttpPost("failures/ignore")]
+    [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
+    public async Task<IActionResult> IgnoreFailures(
+        [FromBody] MarketPulseBulkActionRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var importFailures = await adminService.IgnoreFailedItemsAsync(
+            request.ResolveImportIds(),
+            cancellationToken);
+        var crawlerFailures = await topCvClient.UpdateCrawlerFailuresAsync(
+            request.ResolveCrawlerIds(),
+            "ignore",
+            cancellationToken);
+        return Ok(MarketPulseApiEnvelopeDto<MarketPulseFailureGroupsDto>.Success(new MarketPulseFailureGroupsDto
+        {
+            CrawlerFailures = crawlerFailures,
+            ImportFailures = importFailures
+        }));
+    }
+
     [HttpPost("refresh")]
     [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
     [ProducesResponseType(typeof(MarketPulseApiEnvelopeDto<MarketPulseRefreshResultDto>), StatusCodes.Status200OK)]
@@ -63,6 +210,11 @@ public sealed class MarketPulseAdminController(
         [FromQuery] int limit = 50,
         CancellationToken cancellationToken = default)
     {
+        if (!IsSupportedSource(source))
+        {
+            return UnsupportedSourceResult(source);
+        }
+
         try
         {
             var runs = await adminService.GetCrawlRunsAsync(
@@ -94,6 +246,11 @@ public sealed class MarketPulseAdminController(
         [FromQuery] int limit = 50,
         CancellationToken cancellationToken = default)
     {
+        if (!IsSupportedSource(source))
+        {
+            return UnsupportedSourceResult(source);
+        }
+
         try
         {
             var items = await adminService.GetFailedItemsAsync(
@@ -126,6 +283,11 @@ public sealed class MarketPulseAdminController(
             var items = await adminService.RetryFailedItemsAsync([failedItemId], cancellationToken);
             return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
         }
+        catch (InvalidOperationException exception) when (
+            exception.Message.Contains("already running", StringComparison.OrdinalIgnoreCase))
+        {
+            return MarketPulseRefreshRunningResult(exception.Message);
+        }
         catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
         {
             return MarketPulseAdminSchemaMissingResult(ex);
@@ -142,6 +304,11 @@ public sealed class MarketPulseAdminController(
         {
             var items = await adminService.RetryFailedItemsAsync(request.FailedItemIds, cancellationToken);
             return Ok(MarketPulseApiEnvelopeDto<IReadOnlyList<MarketPulseFailedItemDto>>.Success(items));
+        }
+        catch (InvalidOperationException exception) when (
+            exception.Message.Contains("already running", StringComparison.OrdinalIgnoreCase))
+        {
+            return MarketPulseRefreshRunningResult(exception.Message);
         }
         catch (Exception ex) when (IsMarketPulseAdminSchemaMissing(ex))
         {
@@ -307,7 +474,7 @@ public sealed class MarketPulseAdminController(
     {
         return new ObjectResult(MarketPulseApiEnvelopeDto<object>.Failure(
             "MARKET_PULSE_ADMIN_SCHEMA_MISSING",
-            "Market Pulse database objects or legacy data are out of date. Apply migrations 024 and 037 through 040 to the same PostgreSQL database used by the backend, then restart the backend.",
+            "Market Pulse database objects are out of date. Apply the TopCV-only consolidated migration 039 to the same PostgreSQL database used by the backend, then restart the backend.",
             new
             {
                 migrations = new[]
@@ -315,8 +482,7 @@ public sealed class MarketPulseAdminController(
                     "database/migrations/024-market-pulse-admin-ops.sql",
                     "database/migrations/037-market-pulse-option-a-schema-cleanup.sql",
                     "database/migrations/038-market-pulse-expanded-jobs-api.sql",
-                    "database/migrations/039-market-pulse-relative-date-observations.sql",
-                    "database/migrations/040-market-pulse-post-date-confidence-integrity.sql"
+                    "database/migrations/039-market-pulse-topcv-consolidated.sql"
                 },
                 hint = "Run the migration against the same DATABASE_URL used by the Render backend.",
                 providerMessage = exception.Message
@@ -325,6 +491,14 @@ public sealed class MarketPulseAdminController(
             StatusCode = StatusCodes.Status503ServiceUnavailable
         };
     }
+
+    private static ObjectResult MarketPulseRefreshRunningResult(string message) => new (
+        MarketPulseApiEnvelopeDto<object>.Failure(
+            "MARKET_PULSE_REFRESH_RUNNING",
+            message))
+    {
+        StatusCode = StatusCodes.Status409Conflict
+    };
 
     private static bool IsMarketPulseAdminSchemaMissing(Exception exception)
     {
@@ -349,4 +523,13 @@ public sealed class MarketPulseAdminController(
 
         return false;
     }
+
+    private static bool IsSupportedSource(string? source) =>
+        string.IsNullOrWhiteSpace(source) ||
+        string.Equals(source.Trim(), "topcv", StringComparison.OrdinalIgnoreCase);
+
+    private static BadRequestObjectResult UnsupportedSourceResult(string? source) => new (
+        MarketPulseApiEnvelopeDto<object>.Failure(
+            "UNSUPPORTED_MARKET_PULSE_SOURCE",
+            $"Market Pulse only supports source='topcv'; received '{source}'."));
 }

@@ -7,6 +7,7 @@ import { useStreakStore } from "../../stores/useStreakStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useProfileStore } from "../../stores/useProfileStore";
 import AvatarDropdown from "./AvatarDropdown";
+import { buildTopNavItems } from "./topNavItems";
 
 export default function TopNavbar() {
   const navigate = useNavigate();
@@ -30,13 +31,7 @@ export default function TopNavbar() {
     return "/login";
   }, [user, location.pathname, params]);
 
-  const navItems = [
-    { label: "Roadmaps", path: user ? "/roadmaps" : "/login" },
-    { label: "Learning", path: user ? "/learning-modules" : "/login" },
-    { label: "Skill Gap", path: user ? "/skill-gap" : "/login" },
-    { label: "Market Pulse", path: user ? "/market-pulse" : "/login" },
-    { label: "E-Portfolio", path: portfolioPath },
-  ];
+  const navItems = buildTopNavItems(user, portfolioPath);
 
   const userProfileKey =
     user?.userId ?? user?.id ?? user?.email ?? user?.username ?? null;

@@ -1,5 +1,9 @@
 namespace RoadmapPlatform.Infrastructure.Configurations;
 
+/// <summary>
+/// Runtime settings for the single supported Market Pulse provider: TopCV Jobs API.
+/// TopCV provenance is deliberately not configurable; adding another provider is a new feature.
+/// </summary>
 public sealed class MarketPulseSettings
 {
     public bool Enabled { get; set; }
@@ -8,19 +12,24 @@ public sealed class MarketPulseSettings
 
     public string DailyRunTime { get; set; } = "02:30";
 
-    public string SearchKeyword { get; set; } = "cong nghe thong tin";
+    public string JobsApiUrl { get; set; } = string.Empty;
 
-    public int MaxPagesPerSource { get; set; } = 4;
-
-    public int MaxPostingsPerSource { get; set; } = 160;
-
-    public int JobsApiPageSize { get; set; } = 100;
-
-    public int JobsApiMaxPages { get; set; } = 10;
+    // Compatibility alias for existing deployments. It is normalized into JobsApiUrl.
+    public string ActiveJobsApiUrl { get; set; } = string.Empty;
 
     public string JobsApiKey { get; set; } = string.Empty;
 
+    public int JobsApiPageSize { get; set; } = 100;
+
+    public int JobsApiMaxPages { get; set; } = 500;
+
+    public int JobsApiMaxItems { get; set; } = 50_000;
+
     public string JobsApiOpsHealthUrl { get; set; } = string.Empty;
+
+    public string JobsApiCrawlTriggerUrl { get; set; } = string.Empty;
+
+    public string JobsApiCrawlStatusUrl { get; set; } = string.Empty;
 
     public int JobsApiHealthTimeoutSeconds { get; set; } = 10;
 
@@ -30,8 +39,6 @@ public sealed class MarketPulseSettings
 
     public bool JobsApiRequireFreshCrawlMetadata { get; set; } = true;
 
-    public int ActivePostingLookbackDays { get; set; } = 14;
-
     public int MissingScansBeforeStale { get; set; } = 3;
 
     public int MinimumPostingsForLifecycleCheck { get; set; } = 30;
@@ -39,12 +46,6 @@ public sealed class MarketPulseSettings
     public bool DisableMissingLifecycleForPartialSync { get; set; } = true;
 
     public string BusinessTimezone { get; set; } = "Asia/Ho_Chi_Minh";
-
-    public int RequestDelaySeconds { get; set; } = 2;
-
-    public int DelayMinMs { get; set; } = 1_500;
-
-    public int DelayMaxMs { get; set; } = 4_500;
 
     public int RetryMax { get; set; } = 3;
 
@@ -54,28 +55,30 @@ public sealed class MarketPulseSettings
 
     public int OverviewCacheSeconds { get; set; } = 120;
 
+    public int HistoryLookbackDays { get; set; } = 400;
+
+    public int RefreshOperationTimeoutMinutes { get; set; } = 30;
+
     public string InternalApiKey { get; set; } = string.Empty;
 
-    public string ActiveJobsApiUrl { get; set; } = string.Empty;
-
     public string[] TrackedKeywords { get; set; } = [];
-
-    public List<MarketPulseSourceSettings> Sources { get; set; } = [];
 
     public void ApplyEnvironmentAliases()
     {
         Enabled = GetBool("MARKET_PULSE_CRAWL_ENABLED", Enabled);
-        MaxPagesPerSource = GetInt("MARKET_PULSE_MAX_PAGES_PER_RUN", MaxPagesPerSource);
-        MaxPostingsPerSource = GetInt("MARKET_PULSE_MAX_ITEMS_PER_RUN", MaxPostingsPerSource);
-        DelayMinMs = GetInt("MARKET_PULSE_DELAY_MIN_MS", DelayMinMs);
-        DelayMaxMs = GetInt("MARKET_PULSE_DELAY_MAX_MS", DelayMaxMs);
-        RetryMax = GetInt("MARKET_PULSE_RETRY_MAX", RetryMax);
-        BackoffBaseMs = GetInt("MARKET_PULSE_BACKOFF_BASE_MS", BackoffBaseMs);
-        ActiveJobsApiUrl = GetString("MARKET_PULSE_ACTIVE_JOBS_API_URL", ActiveJobsApiUrl);
+        JobsApiUrl = GetString(
+            "MARKET_PULSE_JOBS_API_URL",
+            GetString("MARKET_PULSE_ACTIVE_JOBS_API_URL", FirstNonEmpty(JobsApiUrl, ActiveJobsApiUrl)));
+        ActiveJobsApiUrl = JobsApiUrl;
         JobsApiKey = GetString("MARKET_PULSE_JOBS_API_KEY", JobsApiKey);
-        JobsApiOpsHealthUrl = GetString(
-            "MARKET_PULSE_JOBS_API_OPS_HEALTH_URL",
-            JobsApiOpsHealthUrl);
+        JobsApiPageSize = GetInt("MARKET_PULSE_JOBS_API_PAGE_SIZE", JobsApiPageSize);
+        JobsApiMaxPages = GetInt("MARKET_PULSE_JOBS_API_MAX_PAGES", JobsApiMaxPages);
+        JobsApiMaxItems = GetInt(
+            "MARKET_PULSE_JOBS_API_MAX_ITEMS",
+            GetInt("MARKET_PULSE_MAX_ITEMS_PER_RUN", JobsApiMaxItems));
+        JobsApiOpsHealthUrl = GetString("MARKET_PULSE_JOBS_API_OPS_HEALTH_URL", JobsApiOpsHealthUrl);
+        JobsApiCrawlTriggerUrl = GetString("MARKET_PULSE_JOBS_API_CRAWL_TRIGGER_URL", JobsApiCrawlTriggerUrl);
+        JobsApiCrawlStatusUrl = GetString("MARKET_PULSE_JOBS_API_CRAWL_STATUS_URL", JobsApiCrawlStatusUrl);
         JobsApiHealthTimeoutSeconds = GetInt(
             "MARKET_PULSE_JOBS_API_HEALTH_TIMEOUT_SECONDS",
             JobsApiHealthTimeoutSeconds);
@@ -91,9 +94,8 @@ public sealed class MarketPulseSettings
         DisableMissingLifecycleForPartialSync = GetBool(
             "MARKET_PULSE_DISABLE_MISSING_LIFECYCLE_FOR_PARTIAL_SYNC",
             DisableMissingLifecycleForPartialSync);
-        BusinessTimezone = GetString(
-            "MARKET_PULSE_BUSINESS_TIMEZONE",
-            BusinessTimezone);
+        BusinessTimezone = GetString("MARKET_PULSE_BUSINESS_TIMEZONE", BusinessTimezone);
+        HistoryLookbackDays = GetInt("MARKET_PULSE_HISTORY_LOOKBACK_DAYS", HistoryLookbackDays);
     }
 
     private static bool GetBool(string name, bool fallback)
@@ -118,19 +120,7 @@ public sealed class MarketPulseSettings
         var value = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
     }
-}
 
-public sealed class MarketPulseSourceSettings
-{
-    public string Name { get; set; } = string.Empty;
-
-    public string Kind { get; set; } = "Html";
-
-    public string BaseUrl { get; set; } = string.Empty;
-
-    public string SearchUrlTemplate { get; set; } = string.Empty;
-
-    public bool Enabled { get; set; } = true;
-
-    public string[] DetailUrlContains { get; set; } = [];
+    private static string FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
 }

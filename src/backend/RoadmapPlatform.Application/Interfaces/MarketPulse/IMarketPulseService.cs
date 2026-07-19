@@ -17,10 +17,30 @@ public interface IMarketPulseService
     Task<MarketPulseRefreshResultDto> IngestAsync(
         MarketPulseIngestRequestDto request,
         CancellationToken cancellationToken);
+
+    Task<MarketPulseRefreshResultDto> SyncPublicationHistoryAsync(
+        MarketPulseHistorySyncRequestDto? request,
+        CancellationToken cancellationToken);
 }
 
 public interface IMarketPulseAdminService
 {
+    Task<MarketPulseAdminDashboardDto> GetDashboardAsync(CancellationToken cancellationToken);
+
+    Task<MarketPulseRefreshOperationDto> CreateRefreshOperationAsync(
+        CancellationToken cancellationToken);
+
+    Task<MarketPulseRefreshOperationDto?> GetCurrentRefreshOperationAsync(
+        CancellationToken cancellationToken);
+
+    Task<MarketPulseRefreshOperationDto?> GetRefreshOperationAsync(
+        Guid operationId,
+        CancellationToken cancellationToken);
+
+    Task<MarketPulseFailureGroupsDto> GetFailureGroupsAsync(
+        MarketPulseAdminQueryDto query,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<MarketPulseCrawlRunDto>> GetCrawlRunsAsync(
         MarketPulseAdminQueryDto query,
         CancellationToken cancellationToken);

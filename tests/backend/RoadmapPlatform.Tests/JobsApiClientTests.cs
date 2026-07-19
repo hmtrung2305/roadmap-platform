@@ -8,13 +8,48 @@ using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
 namespace RoadmapPlatform.Tests;
 
-public sealed class JobsApiClientTests
+public sealed class TopCvJobsApiClientTests
 {
+    [Fact]
+    public async Task FetchAsync_RejectsNonTopCvProviderContract()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = CreateClient(new StubHttpMessageHandler(_ => JsonResponse(new
+        {
+            ok = true,
+            data = new[]
+            {
+                new
+                {
+                    id = "other:1",
+                    source = "other",
+                    title = "Unsupported",
+                    url = "https://example.test/1",
+                    is_active = true
+                }
+            },
+            pagination = new { total = 1, page = 1, pageSize = 100, totalPages = 1 },
+            meta = new
+            {
+                generatedAt = now,
+                latestSuccessfulCrawlAt = now
+            }
+        })));
+
+        var result = await client.FetchAsync(
+            "https://jobs.example.test/api/v1/jobs",
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.InvalidContract, result.Status);
+        Assert.Contains("unsupported provider", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task FetchAsync_ReturnsSuccess_AndSendsApiKey()
     {
         string? apiKey = null;
         var now = DateTimeOffset.UtcNow;
+        var historyCoverageStart = now.AddDays(-45);
         var handler = new StubHttpMessageHandler(request =>
         {
             apiKey = request.Headers.TryGetValues("X-API-Key", out var values)
@@ -54,6 +89,7 @@ public sealed class JobsApiClientTests
                         post_date_observed_on = "2026-06-18",
                         detail_status = "success",
                         detail_last_success_at = "2026-06-18T09:00:00Z",
+                        first_seen_at = "2026-05-04T02:30:00Z",
                         url = "https://topcv.vn/jobs/1001",
                         is_active = true
                     }
@@ -62,7 +98,8 @@ public sealed class JobsApiClientTests
                 meta = new
                 {
                     generatedAt = now.AddMinutes(-1),
-                    latestSuccessfulCrawlAt = now.AddHours(-1)
+                    latestSuccessfulCrawlAt = now.AddHours(-1),
+                    historyCoverageStart
                 }
             });
         });
@@ -81,6 +118,7 @@ public sealed class JobsApiClientTests
         Assert.Equal(1, result.FetchedCount);
         Assert.True(result.IsCompleteSync);
         Assert.True(result.IsSourceFresh);
+        Assert.Equal(historyCoverageStart, result.HistoryCoverageStart);
         var job = result.Jobs.Single();
         Assert.Equal("topcv", job.Source);
         Assert.Equal("20 - 35 triệu", job.SalaryRaw);
@@ -138,6 +176,47 @@ public sealed class JobsApiClientTests
         Assert.Equal(80, result.FetchedCount);
         Assert.False(result.IsCompleteSync);
         Assert.True(result.IsSourceFresh);
+    }
+
+    [Fact]
+    public async Task FetchAsync_ImportsUsablePartialCrawlerDataWithoutClaimingLifecycleSafety()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = CreateClient(new StubHttpMessageHandler(_ => JsonResponse(new
+        {
+            ok = true,
+            data = new[]
+            {
+                new
+                {
+                    id = "topcv:partial-1",
+                    source = "topcv",
+                    source_job_id = "partial-1",
+                    title = "Usable partial role",
+                    url = "https://topcv.vn/jobs/partial-1",
+                    is_active = true
+                }
+            },
+            pagination = new { total = 1, page = 1, pageSize = 100, totalPages = 1 },
+            meta = new
+            {
+                generatedAt = now.AddMinutes(-1),
+                latestSuccessfulCrawlAt = (DateTimeOffset?)null,
+                latestDataCrawlAt = now.AddMinutes(-5),
+                isSourceComplete = false
+            }
+        })));
+
+        var result = await client.FetchAsync(
+            "https://jobs.example.test/api/v1/jobs",
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.Success, result.Status);
+        Assert.True(result.IsSourceFresh);
+        Assert.False(result.IsSourceComplete);
+        Assert.False(result.IsCompleteSync);
+        Assert.Equal(1, result.FetchedCount);
+        Assert.Equal(now.AddMinutes(-5), result.LatestSuccessfulCrawlAt);
     }
 
     [Fact]
@@ -279,7 +358,222 @@ public sealed class JobsApiClientTests
         Assert.Contains("stale", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static JobsApiClient CreateClient(
+    [Fact]
+    public async Task TriggerListingCrawl_TreatsBusyCrawlerAsIdempotentAttachment()
+    {
+        var client = CreateClient(
+            new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Conflict)),
+            settings => settings.JobsApiCrawlTriggerUrl =
+                "https://jobs.example.test/api/crawl/listing/run");
+
+        var result = await client.TriggerListingCrawlAsync(CancellationToken.None);
+
+        Assert.True(result.Accepted);
+        Assert.Contains("already running", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task TriggerListingCrawl_DerivesEndpointFromJobsApiUrl()
+    {
+        Uri? requestedUri = null;
+        var client = CreateClient(
+            new StubHttpMessageHandler(request =>
+            {
+                requestedUri = request.RequestUri;
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            }),
+            settings => settings.JobsApiUrl =
+                "http://localhost:8000/api/v1/jobs?scope=active");
+
+        var result = await client.TriggerListingCrawlAsync(CancellationToken.None);
+
+        Assert.True(result.Accepted);
+        Assert.Equal("/api/crawl/listing/run", requestedUri?.AbsolutePath);
+        Assert.True(string.IsNullOrEmpty(requestedUri?.Query));
+    }
+
+    [Fact]
+    public async Task GetOpenCrawlerFailureCount_UsesPaginationTotalsAcrossStatuses()
+    {
+        var client = CreateClient(
+            new StubHttpMessageHandler(request =>
+            {
+                var query = request.RequestUri?.Query ?? string.Empty;
+                var total = query.Contains("status=open", StringComparison.OrdinalIgnoreCase)
+                    ? 3
+                    : query.Contains("status=retrying", StringComparison.OrdinalIgnoreCase)
+                        ? 1
+                        : 2;
+                return JsonResponse(new
+                {
+                    ok = true,
+                    data = Array.Empty<object>(),
+                    pagination = new { total }
+                });
+            }),
+            settings => settings.JobsApiUrl = "https://jobs.example.test/api/v1/jobs");
+
+        var result = await client.GetOpenCrawlerFailureCountAsync(CancellationToken.None);
+
+        Assert.Equal(6, result);
+    }
+
+    [Fact]
+    public async Task FetchAsync_RejectsDuplicateStableIdsAcrossPages()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = CreateClient(new StubHttpMessageHandler(request =>
+        {
+            var page = request.RequestUri?.Query.Contains("page=2", StringComparison.Ordinal) == true
+                ? 2
+                : 1;
+            return JsonResponse(new
+            {
+                ok = true,
+                data = new[]
+                {
+                    new
+                    {
+                        id = "topcv:duplicate",
+                        source = "topcv",
+                        url = "https://topcv.vn/jobs/duplicate",
+                        is_active = true
+                    }
+                },
+                pagination = new { total = 2, page, pageSize = 1, totalPages = 2 },
+                meta = new { generatedAt = now, latestSuccessfulCrawlAt = now }
+            });
+        }));
+
+        var result = await client.FetchAsync(
+            "https://jobs.example.test/api/v1/jobs",
+            new JobsApiFetchOptions(2, 1, 2),
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.InvalidContract, result.Status);
+        Assert.Contains("duplicate", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FetchAsync_RejectsUnexpectedPaginationCoordinates()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = CreateClient(new StubHttpMessageHandler(request =>
+        {
+            var requestedSecondPage = request.RequestUri?.Query.Contains(
+                "page=2",
+                StringComparison.Ordinal) == true;
+            var page = requestedSecondPage ? 99 : 1;
+            var id = requestedSecondPage ? "topcv:2" : "topcv:1";
+            return JsonResponse(new
+            {
+                ok = true,
+                data = new[] { new { id, source = "topcv", url = $"https://topcv.vn/jobs/{id}", is_active = true } },
+                pagination = new { total = 2, page, pageSize = 1, totalPages = 2 },
+                meta = new { generatedAt = now, latestSuccessfulCrawlAt = now }
+            });
+        }));
+
+        var result = await client.FetchAsync(
+            "https://jobs.example.test/api/v1/jobs",
+            new JobsApiFetchOptions(2, 1, 2),
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.InvalidContract, result.Status);
+        Assert.Contains("expected page=2", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FetchAsync_RejectsCrawlerWatermarkChangeAcrossPages()
+    {
+        var firstWatermark = DateTimeOffset.UtcNow.AddHours(-1);
+        var client = CreateClient(new StubHttpMessageHandler(request =>
+        {
+            var page = request.RequestUri?.Query.Contains("page=2", StringComparison.Ordinal) == true
+                ? 2
+                : 1;
+            var watermark = page == 1 ? firstWatermark : firstWatermark.AddMinutes(5);
+            return JsonResponse(new
+            {
+                ok = true,
+                data = new[]
+                {
+                    new
+                    {
+                        id = $"topcv:{page}",
+                        source = "topcv",
+                        url = $"https://topcv.vn/jobs/{page}",
+                        is_active = true
+                    }
+                },
+                pagination = new { total = 2, page, pageSize = 1, totalPages = 2 },
+                meta = new { generatedAt = DateTimeOffset.UtcNow, latestSuccessfulCrawlAt = watermark }
+            });
+        }));
+
+        var result = await client.FetchAsync(
+            "https://jobs.example.test/api/v1/jobs",
+            new JobsApiFetchOptions(2, 1, 2),
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.InvalidContract, result.Status);
+        Assert.Contains("latestSuccessfulCrawlAt changed", result.ErrorMessage);
+        Assert.False(result.IsCompleteSync);
+    }
+
+    [Fact]
+    public async Task HistoryFetch_NormalizesLegacyActiveOnlyUrl()
+    {
+        Uri? requestedUri = null;
+        var now = DateTimeOffset.UtcNow;
+        var client = CreateClient(
+            new StubHttpMessageHandler(request =>
+            {
+                requestedUri = request.RequestUri;
+                return JsonResponse(new
+                {
+                    ok = true,
+                    data = Array.Empty<object>(),
+                    pagination = new { total = 0, page = 1, pageSize = 100, totalPages = 0 },
+                    meta = new { generatedAt = now, latestSuccessfulCrawlAt = now }
+                });
+            }),
+            settings => settings.ActiveJobsApiUrl =
+                "https://jobs.example.test/api/v1/jobs/active?active=true");
+
+        var result = await client.FetchImportBatchAsync(
+            null,
+            TopCvJobScope.All,
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.Empty, result.Status);
+        Assert.Equal("/api/v1/jobs", requestedUri?.AbsolutePath);
+        Assert.DoesNotContain("active=", requestedUri?.Query, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("scope=all", requestedUri?.Query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FetchAsync_RejectsJobWithoutUrlBeforeCompletenessIsGranted()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = CreateClient(new StubHttpMessageHandler(_ => JsonResponse(new
+        {
+            ok = true,
+            data = new[] { new { id = "topcv:missing-url", source = "topcv", is_active = true } },
+            pagination = new { total = 1, page = 1, pageSize = 100, totalPages = 1 },
+            meta = new { generatedAt = now, latestSuccessfulCrawlAt = now }
+        })));
+
+        var result = await client.FetchAsync(
+            "https://jobs.example.test/api/v1/jobs",
+            CancellationToken.None);
+
+        Assert.Equal(JobsApiFetchStatus.InvalidContract, result.Status);
+        Assert.Contains("without a URL", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.IsCompleteSync);
+    }
+
+    private static TopCvJobsApiClient CreateClient(
         HttpMessageHandler handler,
         Action<MarketPulseSettings>? configure = null)
     {
@@ -287,21 +581,19 @@ public sealed class JobsApiClientTests
         {
             RetryMax = 1,
             BackoffBaseMs = 250,
-            DelayMinMs = 0,
-            DelayMaxMs = 0,
             JobsApiMaxFreshnessHours = 24,
             JobsApiFailOnStaleSource = true,
             JobsApiRequireFreshCrawlMetadata = true
         };
         configure?.Invoke(settings);
 
-        return new JobsApiClient(
+        return new TopCvJobsApiClient(
             new StubHttpClientFactory(new HttpClient(handler)
             {
                 Timeout = Timeout.InfiniteTimeSpan
             }),
             Options.Create(settings),
-            NullLogger<JobsApiClient>.Instance);
+            NullLogger<TopCvJobsApiClient>.Instance);
     }
 
     private static HttpResponseMessage JsonResponse(object payload) =>

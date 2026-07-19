@@ -15,9 +15,7 @@ public sealed class MarketPulseAdminQueryDto
 
 public sealed class MarketPulseRefreshRequestDto
 {
-    public int? MaxPagesPerSource { get; set; }
-
-    public int? MaxPostingsPerSource { get; set; }
+    public int? JobsApiMaxItems { get; set; }
 
     public int? JobsApiPageSize { get; set; }
 
@@ -75,6 +73,8 @@ public sealed class MarketPulseCrawlRunDto
 
 public sealed class MarketPulseFailedItemDto
 {
+    public string Origin { get; set; } = "import";
+
     public Guid FailedItemId { get; set; }
 
     public Guid? RunId { get; set; }
@@ -200,6 +200,8 @@ public sealed class MarketPulseExternalSourceHealthDto
 
     public DateTime? LatestListingFinishedAt { get; set; }
 
+    public int LatestListingJobsSeen { get; set; }
+
     public int PagesBlocked { get; set; }
 
     public int PagesFailed { get; set; }
@@ -218,4 +220,184 @@ public sealed class MarketPulseExternalSourceHealthDto
 public sealed class MarketPulseBulkActionRequestDto
 {
     public IReadOnlyList<Guid> FailedItemIds { get; set; } = [];
+
+    public IReadOnlyList<string> FailureIds { get; set; } = [];
+
+    public IReadOnlyList<MarketPulseFailureActionTargetDto> Failures { get; set; } = [];
+
+    public IReadOnlyCollection<Guid> ResolveImportIds() => FailedItemIds
+        .Concat(FailureIds.Select(ParseImportId).Where(id => id.HasValue).Select(id => id!.Value))
+        .Concat(Failures
+            .Where(target => string.Equals(target.Origin, "import", StringComparison.OrdinalIgnoreCase))
+            .Select(target => ParseImportId(target.FailureId))
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value))
+        .Distinct()
+        .ToList();
+
+    public IReadOnlyCollection<long> ResolveCrawlerIds() => FailureIds
+        .Select(ParseCrawlerId)
+        .Concat(Failures
+            .Where(target => string.Equals(target.Origin, "crawler", StringComparison.OrdinalIgnoreCase))
+            .Select(target => ParseCrawlerId(target.FailureId)))
+        .Where(id => id.HasValue)
+        .Select(id => id!.Value)
+        .Distinct()
+        .ToList();
+
+    private static Guid? ParseImportId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+        return Guid.TryParse(
+            value.StartsWith("import:", StringComparison.OrdinalIgnoreCase) ? value[7..] : value,
+            out var id)
+                ? id
+                : null;
+    }
+
+    private static long? ParseCrawlerId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+        return long.TryParse(
+            value.StartsWith("crawler:", StringComparison.OrdinalIgnoreCase) ? value[8..] : value,
+            out var id)
+                ? id
+                : null;
+    }
+}
+
+public sealed class MarketPulseFailureActionTargetDto
+{
+    public string Origin { get; set; } = string.Empty;
+
+    public string FailureId { get; set; } = string.Empty;
+}
+
+public sealed class MarketPulseAdminDashboardDto
+{
+    public string OverallStatus { get; set; } = "unknown";
+
+    public DateTime? LatestSuccessfulRefreshAt { get; set; }
+
+    public MarketPulseRefreshOperationDto? CurrentOperation { get; set; }
+
+    public int ActiveJobs { get; set; }
+
+    public decimal EstimatedPostings7Days { get; set; }
+
+    public decimal? CrawlerFreshnessHours { get; set; }
+
+    public decimal ReliablePostDateCoverage { get; set; }
+
+    public string AnalyticsConfidence { get; set; } = "low";
+
+    public MarketPulsePostDateQualityDto PostDateQuality { get; set; } = new();
+
+    public decimal? ImportLagMinutes { get; set; }
+
+    public int OpenCrawlerFailures { get; set; }
+
+    public int OpenImportFailures { get; set; }
+
+    public IReadOnlyList<MarketPulsePipelineHealthItemDto> PipelineHealth { get; set; } = [];
+
+    public IReadOnlyList<MarketPulseAdminAlertDto> Alerts { get; set; } = [];
+
+    public IReadOnlyList<MarketPulsePublicationTrendPointDto> DemandTrend { get; set; } = [];
+
+    public IReadOnlyList<MarketPulseRefreshOperationDto> RecentOperations { get; set; } = [];
+}
+
+public sealed class MarketPulsePipelineHealthItemDto
+{
+    public string Key { get; set; } = string.Empty;
+
+    public string Label { get; set; } = string.Empty;
+
+    public string Status { get; set; } = "unknown";
+
+    public string Detail { get; set; } = string.Empty;
+}
+
+public sealed class MarketPulseAdminAlertDto
+{
+    public string Severity { get; set; } = "info";
+
+    public string Code { get; set; } = string.Empty;
+
+    public string Message { get; set; } = string.Empty;
+
+    public string? Action { get; set; }
+}
+
+public sealed class MarketPulseRefreshOperationDto
+{
+    public Guid OperationId { get; set; }
+
+    public string Status { get; set; } = "queued";
+
+    public string CurrentStep { get; set; } = "crawler";
+
+    public DateTime BaselineCrawlerSuccessAt { get; set; }
+
+    public DateTime? CrawlerSuccessAt { get; set; }
+
+    public Guid? ImportRunId { get; set; }
+
+    public string? ErrorCode { get; set; }
+
+    public string? ErrorMessage { get; set; }
+
+    public DateTime RequestedAt { get; set; }
+
+    public DateTime? StartedAt { get; set; }
+
+    public DateTime? FinishedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class MarketPulseFailureGroupsDto
+{
+    public IReadOnlyList<MarketPulseCrawlerFailureDto> CrawlerFailures { get; set; } = [];
+
+    public IReadOnlyList<MarketPulseFailedItemDto> ImportFailures { get; set; } = [];
+}
+
+public sealed class MarketPulseCrawlerFailureDto
+{
+    public string Origin { get; set; } = "crawler";
+
+    public string FailureId { get; set; } = string.Empty;
+
+    public string Stage { get; set; } = string.Empty;
+
+    public string ErrorCode { get; set; } = string.Empty;
+
+    public string ErrorMessage { get; set; } = string.Empty;
+
+    public string Status { get; set; } = "open";
+
+    public bool Actionable { get; set; } = true;
+
+    public int RetryCount { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? LastRetryAt { get; set; }
+}
+
+public sealed class MarketPulseHistorySyncRequestDto
+{
+    public int? LookbackDays { get; set; }
+
+    public int? JobsApiPageSize { get; set; }
+
+    public int? JobsApiMaxItems { get; set; }
 }

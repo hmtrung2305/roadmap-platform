@@ -49,6 +49,269 @@ public sealed class MarketPulseOverviewDto
     public IReadOnlyList<MarketSegmentSummaryDto> ExperienceSummaries { get; set; } = [];
 
     public IReadOnlyList<MarketLearningRecommendationDto> LearningRecommendations { get; set; } = [];
+
+    public MarketPulsePublicationAnalyticsDto PublicationAnalytics { get; set; } = new();
+
+    // Compatibility field for one release. Crawl-observation analytics has been retired.
+    public MarketPulseObservationAnalyticsDto? ObservationAnalytics { get; set; }
+}
+
+public sealed class MarketPulsePublicationAnalyticsDto
+{
+    public string Basis { get; set; } = "published_date";
+
+    public string DateModel { get; set; } = "interval_weighted";
+
+    public string Availability { get; set; } = "history_sync_required";
+
+    public DateTime AnchorDate { get; set; }
+
+    public DateTime? SourceDataAt { get; set; }
+
+    public DateTime? HistoryCoverageStart { get; set; }
+
+    public DateTime? HistoryCoverageEnd { get; set; }
+
+    public string Confidence { get; set; } = "low";
+
+    public MarketPulsePublicationPeriodDto CurrentPeriod { get; set; } = new();
+
+    public MarketPulsePublicationPeriodDto PreviousPeriod { get; set; } = new();
+
+    public IReadOnlyList<MarketPulsePublicationTrendPointDto> MarketTrendPoints { get; set; } = [];
+
+    public MarketPulsePublicationComparisonDto MarketComparison { get; set; } = new();
+
+    public IReadOnlyList<MarketPulsePublicationSkillTrendPointDto> SkillTrendPoints { get; set; } = [];
+
+    public IReadOnlyList<MarketPulsePublicationSkillComparisonDto> SkillComparisons { get; set; } = [];
+
+    public MarketPulsePostDateQualityDto PostDateQuality { get; set; } = new();
+}
+
+public sealed class MarketPulsePublicationPeriodDto
+{
+    public DateTime StartDate { get; set; }
+
+    public DateTime EndDate { get; set; }
+
+    public int ExpectedDays { get; set; }
+
+    public int CoveredDays { get; set; }
+
+    public decimal EstimatedTotal { get; set; }
+
+    public int ExactCount { get; set; }
+
+    public decimal RelativeEstimate { get; set; }
+
+    public decimal? AveragePerDay { get; set; }
+}
+
+public sealed class MarketPulsePublicationTrendPointDto
+{
+    public DateTime Date { get; set; }
+
+    public bool Available { get; set; }
+
+    public decimal? ExactPostings { get; set; }
+
+    public decimal? RelativeEstimate { get; set; }
+
+    public decimal? TotalEstimate { get; set; }
+}
+
+public sealed class MarketPulsePublicationComparisonDto
+{
+    public decimal? CurrentTotal { get; set; }
+
+    public decimal? PreviousTotal { get; set; }
+
+    public decimal? CurrentAverage { get; set; }
+
+    public decimal? PreviousAverage { get; set; }
+
+    public decimal? Delta { get; set; }
+
+    public decimal? GrowthPercent { get; set; }
+
+    public string Direction { get; set; } = "insufficient";
+
+    public string Confidence { get; set; } = "low";
+}
+
+public sealed class MarketPulsePublicationSkillTrendPointDto
+{
+    public DateTime Date { get; set; }
+
+    public string SkillName { get; set; } = string.Empty;
+
+    public string SkillSlug { get; set; } = string.Empty;
+
+    public bool Available { get; set; }
+
+    public decimal? ExactPostings { get; set; }
+
+    public decimal? RelativeEstimate { get; set; }
+
+    public decimal? TotalEstimate { get; set; }
+}
+
+public sealed class MarketPulsePublicationSkillComparisonDto
+{
+    public string SkillName { get; set; } = string.Empty;
+
+    public string SkillSlug { get; set; } = string.Empty;
+
+    public decimal? CurrentTotal { get; set; }
+
+    public decimal? PreviousTotal { get; set; }
+
+    public decimal? CurrentAverage { get; set; }
+
+    public decimal? PreviousAverage { get; set; }
+
+    public decimal? Delta { get; set; }
+
+    public decimal? GrowthPercent { get; set; }
+
+    public string Direction { get; set; } = "insufficient";
+
+    public string Confidence { get; set; } = "low";
+}
+
+public sealed class MarketPulseObservationAnalyticsDto
+{
+    public string Basis { get; set; } = "crawl_observation";
+
+    public string Availability { get; set; } = "no_observations";
+
+    public MarketPulseObservationPeriodDto CurrentPeriod { get; set; } = new();
+
+    public MarketPulseObservationPeriodDto PreviousPeriod { get; set; } = new();
+
+    public DateTime? LatestObservedAt { get; set; }
+
+    public string Confidence { get; set; } = "low";
+
+    public IReadOnlyList<MarketPulseMarketTrendPointDto> MarketTrendPoints { get; set; } = [];
+
+    public MarketPulseMarketComparisonDto MarketComparison { get; set; } = new();
+
+    public IReadOnlyList<MarketPulseObservedSkillTrendPointDto> SkillTrendPoints { get; set; } = [];
+
+    public IReadOnlyList<MarketPulseSkillPeriodComparisonDto> SkillComparisons { get; set; } = [];
+
+    public MarketPulsePostDateQualityDto PostDateQuality { get; set; } = new();
+}
+
+public sealed class MarketPulseObservationPeriodDto
+{
+    public DateTime StartDate { get; set; }
+
+    public DateTime EndDate { get; set; }
+
+    public int ExpectedDays { get; set; }
+
+    public int ObservedDays { get; set; }
+
+    public decimal CoveragePercent { get; set; }
+}
+
+public sealed class MarketPulseMarketTrendPointDto
+{
+    public DateTime Date { get; set; }
+
+    public int? ObservedPostings { get; set; }
+
+    public int? ActivePostings { get; set; }
+
+    public int? NewPostings { get; set; }
+
+    public int? SourceCount { get; set; }
+
+    public bool HasObservation { get; set; }
+}
+
+public sealed class MarketPulseMarketComparisonDto
+{
+    public MarketPulsePeriodComparisonDto ObservedPostings { get; set; } = new();
+
+    public MarketPulsePeriodComparisonDto ActivePostings { get; set; } = new();
+
+    public MarketPulsePeriodComparisonDto NewPostingsPerObservedDay { get; set; } = new();
+}
+
+public sealed class MarketPulsePeriodComparisonDto
+{
+    public decimal? CurrentAverage { get; set; }
+
+    public decimal? PreviousAverage { get; set; }
+
+    public decimal? Delta { get; set; }
+
+    public decimal? GrowthPercent { get; set; }
+
+    public string Direction { get; set; } = "insufficient";
+
+    public string Confidence { get; set; } = "low";
+}
+
+public sealed class MarketPulseObservedSkillTrendPointDto
+{
+    public DateTime Date { get; set; }
+
+    public string SkillName { get; set; } = null!;
+
+    public string SkillSlug { get; set; } = null!;
+
+    public int? PostingCount { get; set; }
+
+    public bool HasObservation { get; set; }
+}
+
+public sealed class MarketPulseSkillPeriodComparisonDto
+{
+    public string SkillName { get; set; } = null!;
+
+    public string SkillSlug { get; set; } = null!;
+
+    public decimal? CurrentAverage { get; set; }
+
+    public decimal? PreviousAverage { get; set; }
+
+    public decimal? Delta { get; set; }
+
+    public decimal? GrowthPercent { get; set; }
+
+    public string Direction { get; set; } = "insufficient";
+
+    public string Confidence { get; set; } = "low";
+}
+
+public sealed class MarketPulsePostDateQualityDto
+{
+    public int SampleSize { get; set; }
+
+    public int ExactCount { get; set; }
+
+    public int RelativeCount { get; set; }
+
+    public int UnknownCount { get; set; }
+
+    public decimal ExactPercent { get; set; }
+
+    public decimal RelativePercent { get; set; }
+
+    public decimal UnknownPercent { get; set; }
+
+    public decimal ReliablePercent { get; set; }
+
+    public decimal AverageIntervalWidthDays { get; set; }
+
+    public decimal BroadRangeSharePercent { get; set; }
+
+    public string Confidence { get; set; } = "low";
 }
 
 public sealed class MarketInsightMetaDto

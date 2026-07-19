@@ -33,9 +33,9 @@ export const marketPulseApi = {
     category,
     location,
     experience,
-    source,
     salaryMinMonthlyVnd,
     salaryMaxMonthlyVnd,
+    signal,
   } = {}) => {
     const params = new URLSearchParams();
     params.set("days", String(days));
@@ -50,51 +50,73 @@ export const marketPulseApi = {
       category,
       location,
       experience,
-      source,
       salaryMinMonthlyVnd,
       salaryMaxMonthlyVnd,
     });
 
-    const response = await axiosClient.get("/market-pulse/overview", { params });
+    const response = await axiosClient.get("/market-pulse/overview", { params, signal });
     return unwrapEnvelope(response);
   },
 
-  refresh: async (options = {}) => {
-    const response = await axiosClient.post("/market-pulse/admin/refresh", options);
+  getAdminDashboard: async ({ signal } = {}) => {
+    const response = await axiosClient.get("/market-pulse/admin/dashboard", { signal });
     return unwrapEnvelope(response);
   },
 
-  getCrawlRuns: async ({ status, source, from, to, limit = 50 } = {}) => {
+  createRefreshOperation: async (options = {}) => {
+    const response = await axiosClient.post("/market-pulse/admin/refresh-operations", options);
+    return unwrapEnvelope(response);
+  },
+
+  getCurrentRefreshOperation: async ({ signal } = {}) => {
+    const response = await axiosClient.get("/market-pulse/admin/refresh-operations/current", { signal });
+    return unwrapEnvelope(response);
+  },
+
+  getRefreshOperation: async (operationId, { signal } = {}) => {
+    const response = await axiosClient.get(`/market-pulse/admin/refresh-operations/${operationId}`, { signal });
+    return unwrapEnvelope(response);
+  },
+
+  getImportRuns: async ({ status, from, to, limit = 50, signal } = {}) => {
     const params = new URLSearchParams();
-    appendOptionalParams(params, { status, source, from, to, limit });
-    const response = await axiosClient.get("/market-pulse/admin/crawl-runs", { params });
+    appendOptionalParams(params, { status, from, to, limit });
+    const response = await axiosClient.get("/market-pulse/admin/import-runs", { params, signal });
     return unwrapEnvelope(response);
   },
 
-  getFailedItems: async ({ status, source, from, to, limit = 50 } = {}) => {
+  getOperationsFailures: async ({ status = "open", type, from, to, limit = 50, signal } = {}) => {
     const params = new URLSearchParams();
-    appendOptionalParams(params, { status, source, from, to, limit });
-    const response = await axiosClient.get("/market-pulse/admin/failed-items", { params });
+    appendOptionalParams(params, { status, type, from, to, limit });
+    const response = await axiosClient.get("/market-pulse/admin/failures", { params, signal });
     return unwrapEnvelope(response);
   },
 
-  retryFailedItem: async (failedItemId) => {
-    const response = await axiosClient.post(`/market-pulse/admin/failed-items/${failedItemId}/retry`);
+  retryOperationsFailures: async (failureIds) => {
+    const response = await axiosClient.post("/market-pulse/admin/failures/retry", { failureIds });
     return unwrapEnvelope(response);
   },
 
-  retryFailedItems: async (failedItemIds) => {
-    const response = await axiosClient.post("/market-pulse/admin/failed-items/retry", { failedItemIds });
+  ignoreOperationsFailures: async (failureIds) => {
+    const response = await axiosClient.post("/market-pulse/admin/failures/ignore", { failureIds });
     return unwrapEnvelope(response);
   },
 
-  ignoreFailedItem: async (failedItemId) => {
-    const response = await axiosClient.post(`/market-pulse/admin/failed-items/${failedItemId}/ignore`);
+  importLatest: async (options = {}) => {
+    const response = await axiosClient.post("/market-pulse/admin/import-latest", {
+      jobsApiPageSize: options.jobsApiPageSize ?? options.pageSize,
+      jobsApiMaxItems: options.jobsApiMaxItems ?? options.maxItems,
+      jobsApiMaxPages: options.jobsApiMaxPages,
+    });
     return unwrapEnvelope(response);
   },
 
-  ignoreFailedItems: async (failedItemIds) => {
-    const response = await axiosClient.post("/market-pulse/admin/failed-items/ignore", { failedItemIds });
+  syncPublicationHistory: async (options = {}) => {
+    const response = await axiosClient.post("/market-pulse/admin/history-sync", {
+      lookbackDays: options.lookbackDays,
+      jobsApiPageSize: options.jobsApiPageSize ?? options.pageSize,
+      jobsApiMaxItems: options.jobsApiMaxItems ?? options.maxItems,
+    });
     return unwrapEnvelope(response);
   },
 
@@ -128,13 +150,4 @@ export const marketPulseApi = {
     return unwrapEnvelope(response);
   },
 
-  getSourceHealth: async () => {
-    const response = await axiosClient.get("/market-pulse/admin/source-health");
-    return unwrapEnvelope(response);
-  },
-
-  getExternalSourceHealth: async () => {
-    const response = await axiosClient.get("/market-pulse/admin/external-source-health");
-    return unwrapEnvelope(response);
-  },
 };

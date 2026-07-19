@@ -8,6 +8,8 @@ namespace RoadmapPlatform.Application.Services.MarketPulse;
 
 public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAnalyzer)
 {
+    private const string MarketSourceName = "TopCV";
+
     public MarketPulseOverviewDto Build(
         JobMarketSnapshot snapshot,
         JobMarketOverviewOptions options)
@@ -55,7 +57,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             Math.Max(1, options.MaxVisibleSkills));
         var lastUpdatedAt = GetLatestUpdatedAt(activeJobs.Concat(todayJobs));
         var sourceSummaries = BuildSegmentSummaries(
-            activeJobs.Select(GetSourceName),
+            activeJobs.Select(_ => MarketSourceName),
             activeJobs.Count,
             options.MaxSegmentCount);
         var sourceCount = sourceSummaries.Count;
@@ -65,7 +67,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
         var coOccurrences = BuildSkillCoOccurrences(activeJobs, definitions);
         var salaryInsight = BuildSalaryInsight(activeJobs);
         var experienceSummaries = BuildSegmentSummaries(
-            activeJobs.Select(GetExperienceLevel),
+            activeJobs.Select(ResolveExperienceLevel),
             activeJobs.Count,
             options.MaxSegmentCount);
         var insightCards = BuildInsightCards(
@@ -129,6 +131,18 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             .ToList();
 
         return keywordAnalyzer.Analyze(documents, definitions);
+    }
+
+    public IReadOnlyList<string> ResolveSkillSlugs(
+        JobMarketPosting posting,
+        IReadOnlyCollection<string> trackedKeywordSpecs)
+    {
+        var definitions = keywordAnalyzer.BuildDefinitions(trackedKeywordSpecs);
+        return AnalyzePostings([posting], definitions)
+            .Select(x => x.SkillSlug)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private IReadOnlyList<MarketTrendPointDto> BuildTrendPoints(
@@ -232,11 +246,6 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
         {
             warnings.Add("Location coverage is below 70 percent.");
         }
-        if (sourceCount <= 1 && total >= 30)
-        {
-            warnings.Add("Snapshot is dominated by one source; sample bias may be high.");
-        }
-
         return new MarketDataQualityDto
         {
             Score = score,
@@ -265,7 +274,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             SampleSize = sampleSize,
             Confidence = dataQuality.Level,
             LastUpdatedAt = lastUpdatedAt,
-            Methodology = "Signals are computed from active job postings, normalized keywords, posting dates, salary strings, category/location coverage, and latest crawl freshness."
+            Methodology = "Demand trends use publication dates. Exact dates count on one day; relative week/month ranges contribute one posting distributed evenly across their supported interval. Dates outside verified history coverage remain unavailable."
         };
     }
 
@@ -532,7 +541,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             {
                 Title = "Data confidence",
                 Value = dataQuality.Level,
-                Detail = $"Quality score {dataQuality.Score:0.#}/100 from coverage, freshness, detail enrichment, and source diversity.",
+                Detail = $"Quality score {dataQuality.Score:0.#}/100 from freshness and salary, category, location, and detail coverage.",
                 Tone = dataQuality.Level == "high" ? "positive" : dataQuality.Level == "medium" ? "neutral" : "warning",
                 SampleSize = sampleSize,
                 PeriodDays = days,
@@ -707,23 +716,6 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
         return NormalizeWhitespace(string.Join(' ', parts.Where(x => !string.IsNullOrWhiteSpace(x))));
     }
 
-    private static string GetSourceName(JobMarketPosting job)
-    {
-        if (!string.IsNullOrWhiteSpace(job.Source))
-        {
-            return job.Source.Trim();
-        }
-
-        if (!Uri.TryCreate(job.Url, UriKind.Absolute, out var uri))
-        {
-            return "Unknown";
-        }
-
-        return uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
-            ? uri.Host[4..]
-            : uri.Host;
-    }
-
     private static bool HasSalarySignal(JobMarketPosting job)
     {
         return TryParseSalary(job.Salary) is not null;
@@ -751,7 +743,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             normalized.Equals("Other", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string GetExperienceLevel(JobMarketPosting job)
+    public static string ResolveExperienceLevel(JobMarketPosting job)
     {
         var text = RemoveDiacritics($"{job.Title} {job.Experience}".ToLowerInvariant());
 
@@ -827,7 +819,7 @@ public sealed class JobMarketOverviewBuilder(JobMarketKeywordAnalyzer keywordAna
             Id = FirstNonEmpty(job.Id, job.Url, job.Title) ?? "job",
             Title = TrimTo(job.Title, 250) ?? "Untitled IT job",
             Company = TrimTo(job.Company, 160),
-            Source = TrimTo(GetSourceName(job), 100),
+            Source = MarketSourceName,
             Category = TrimTo(job.Category, 100),
             Location = TrimTo(job.Location, 160),
             Salary = TrimTo(job.Salary, 100),

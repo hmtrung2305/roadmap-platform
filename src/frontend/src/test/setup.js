@@ -6,3 +6,11 @@ afterEach(() => {
   cleanup();
   document.body.style.overflow = "";
 });
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver = ResizeObserverMock;
