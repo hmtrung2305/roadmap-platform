@@ -3,6 +3,10 @@ using System.Collections.Generic;
 
 namespace RoadmapPlatform.Infrastructure.Entities;
 
+/// <summary>
+/// Canonical TopCV posting. Source ownership is intentionally not modeled as a
+/// foreign key because Market Pulse operates with TopCV as its only provider.
+/// </summary>
 public partial class JobPosting
 {
     public Guid JobPostingId { get; set; }
