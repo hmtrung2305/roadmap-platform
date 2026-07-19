@@ -36,6 +36,24 @@ public sealed class LearningModulesController(
         return Ok(result);
     }
 
+    [HttpGet("skills/{skillSlug}")]
+    [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_PUBLISHED)]
+    [ProducesResponseType(typeof(SkillLearningModulesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublishedModulesBySkillSlug(
+        string skillSlug,
+        CancellationToken cancellationToken)
+    {
+        var userId = TryGetCurrentUserId();
+
+        var result = await moduleService.GetPublishedModulesBySkillSlugAsync(
+            skillSlug,
+            userId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpGet("{slug}")]
     [RequirePermission(PermissionConstant.LEARNING_MODULE_VIEW_PUBLISHED)]
     [ProducesResponseType(typeof(LearnerLearningModuleOverviewDto), StatusCodes.Status200OK)]

@@ -43,7 +43,9 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
             return await _dbContext.Roadmaps
                 .AsNoTracking()
-                .Where(x => x.CareerRole.Slug == careerRoleSlug)
+                .Where(x =>
+                    x.CareerRole.Slug == careerRoleSlug &&
+                    x.Visibility == "public")
                 .Select(roadmap => new
                 {
                     Roadmap = roadmap,
@@ -57,6 +59,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                     RoadmapId = x.Roadmap.RoadmapId,
 
                     PublishedRoadmapVersionId = x.PublishedVersion!.RoadmapVersionId,
+
+                    Slug = x.Roadmap.Slug,
 
                     Title = x.PublishedVersion.Title,
 

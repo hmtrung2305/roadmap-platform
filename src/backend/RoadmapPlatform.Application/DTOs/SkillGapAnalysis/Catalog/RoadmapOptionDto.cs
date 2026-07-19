@@ -10,6 +10,8 @@ namespace RoadmapPlatform.Application.DTOs.SkillGapAnalysis.Catalog
 
         public Guid PublishedRoadmapVersionId { get; set; }
 
+        public string Slug { get; set; } = string.Empty;
+
         public string Title { get; set; } = string.Empty;
 
         public string AuthorName { get; set; } = string.Empty;

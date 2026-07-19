@@ -17,32 +17,26 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
             _dbContext = dbContext;
         }
 
-        public async Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request)
+        public async Task<AnalyzeSkillGapResponseDto> AnalyzeAsync(Guid userId, AnalyzeSkillGapRequestDto request, CancellationToken cancellationToken)
         {
-            var lastAnalysisAt = await _dbContext.SkillGapAnalysisHistories
-                .AsNoTracking()
-                .Where(x =>
-                    x.UserId == userId &&
-                    x.RoadmapId == request.RoadmapId)
-                .MaxAsync(x => (DateTime?)x.CreatedAt);
+            ArgumentNullException.ThrowIfNull(request);
 
-            if (lastAnalysisAt.HasValue)
+            if (request.RoadmapId == Guid.Empty)
             {
-                var availableAt = lastAnalysisAt.Value.AddDays(3);
-
-                if (availableAt > DateTime.UtcNow)
-                {
-                    throw new ConflictException(
-                        $"You can analyze this roadmap again after {availableAt:yyyy-MM-dd HH:mm:ss} UTC.");
-                }
+                throw new ArgumentException(
+                    "Roadmap ID is required.");
             }
 
             var roadmap = await _dbContext.Roadmaps
                 .AsNoTracking()
-                .Where(x => x.RoadmapId == request.RoadmapId)
+                .Where(x =>
+                    x.RoadmapId == request.RoadmapId &&
+                    x.Visibility == "public")
                 .Select(x => new
                 {
                     x.RoadmapId,
+
+                    x.Slug,
 
                     RoadmapName = x.Title,
 
@@ -67,7 +61,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                         })
                         .SingleOrDefault()
                 })
-                .SingleOrDefaultAsync();
+                .SingleOrDefaultAsync(cancellationToken);
 
             if (roadmap is null)
             {
@@ -91,11 +85,13 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     SkillName = x.Skill.Name,
 
+                    SkillSlug = x.Skill.Slug,
+
                     CategoryName = x.Skill.Category,
                 })
                 .Where(x => !string.IsNullOrWhiteSpace(x.CategoryName))
                 .Distinct()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var roadmapSkillIds = roadmapSkills
                 .Select(x => x.SkillId)
@@ -124,6 +120,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     skill.SkillName,
 
+                    skill.SkillSlug,
+
                     skill.CategoryName,
 
                     IsMatched = selectedSkillIds.Contains(skill.SkillId),
@@ -139,7 +137,7 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     x.DisplayOrder,
                 })
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             if (categoryConfigs.Count == 0)
             {
@@ -172,6 +170,8 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                                 SkillName = x.SkillName,
 
+                                SkillSlug = x.SkillSlug,
+
                                 IsMatched = x.IsMatched,
                             })
                             .ToList()
@@ -193,6 +193,10 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
                 SkillGapAnalysisHistoryId = historyId,
 
                 RoadmapId = roadmap.RoadmapId,
+
+                RoadmapVersionId = roadmap.PublishedVersion.RoadmapVersionId,
+
+                RoadmapSlug = roadmap.Slug,
 
                 RoadmapName = roadmap.RoadmapName,
 
@@ -251,10 +255,9 @@ namespace RoadmapPlatform.Infrastructure.Services.SkillGapAnalysis
 
                     CreatedAt = DateTime.UtcNow,
 
-                    IsDeleted = false,
                 });
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return response;
         }

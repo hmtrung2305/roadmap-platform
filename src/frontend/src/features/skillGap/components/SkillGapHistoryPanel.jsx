@@ -1,30 +1,69 @@
-import { useCallback, useEffect, useState } from "react";
-import { Eye, History, Loader2, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, Eye, History, Loader2, Trash2 } from "lucide-react";
 import { skillGapApi } from "../../../api/skillGapApi";
 import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
 import {
   formatDateTime,
   normalizeSkillGapHistory,
-  normalizeSkillGapResult,
 } from "../utils/skillGapUtils";
+
+const HISTORY_PAGE_SIZE = 20;
 
 export default function SkillGapHistoryPanel({ onViewResult }) {
   const [items, setItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
+  const historyRequestVersionRef = useRef(0);
 
-  const loadHistory = useCallback(async () => {
-    setIsLoading(true);
+  const loadHistory = useCallback(async ({ cursor = null, append = false } = {}) => {
+    const requestVersion = ++historyRequestVersionRef.current;
+
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsInitialLoading(true);
+      setIsLoadingMore(false);
+    }
+
     setError("");
 
     try {
-      const response = await skillGapApi.getHistory();
-      setItems(normalizeSkillGapHistory(response));
+      const page = await skillGapApi.getHistory({
+        limit: HISTORY_PAGE_SIZE,
+        cursor,
+      });
+
+      if (requestVersion !== historyRequestVersionRef.current) return;
+
+      const normalizedItems = normalizeSkillGapHistory(page.items);
+
+      setItems((current) => {
+        if (!append) return normalizedItems;
+
+        const itemsById = new Map(
+          [...current, ...normalizedItems].map((item) => [
+            item.skillGapAnalysisHistoryId,
+            item,
+          ]),
+        );
+
+        return [...itemsById.values()];
+      });
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
     } catch (err) {
+      if (requestVersion !== historyRequestVersionRef.current) return;
+
       setError(getFriendlyApiErrorMessage(err, "Unable to load skill gap history."));
     } finally {
-      setIsLoading(false);
+      if (requestVersion === historyRequestVersionRef.current) {
+        setIsInitialLoading(false);
+        setIsLoadingMore(false);
+      }
     }
   }, []);
 
@@ -32,20 +71,25 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
     loadHistory();
   }, [loadHistory]);
 
-  const handleView = async (historyId) => {
+  const handleRefresh = () => {
+    setNextCursor(null);
+    setHasMore(false);
+    loadHistory();
+  };
+
+  const handleLoadMore = () => {
+    if (!hasMore || !nextCursor || isLoadingMore) return;
+
+    loadHistory({
+      cursor: nextCursor,
+      append: true,
+    });
+  };
+
+  const handleView = (historyId) => {
     if (!historyId) return;
 
-    setBusyId(historyId);
-    setError("");
-
-    try {
-      const detail = await skillGapApi.getHistoryDetail(historyId);
-      onViewResult(normalizeSkillGapResult(detail));
-    } catch (err) {
-      setError(getFriendlyApiErrorMessage(err, "Unable to open this history item."));
-    } finally {
-      setBusyId("");
-    }
+    onViewResult(historyId);
   };
 
   const handleDelete = async (historyId) => {
@@ -81,11 +125,11 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
         </div>
         <button
           type="button"
-          onClick={loadHistory}
-          disabled={isLoading}
+          onClick={handleRefresh}
+          disabled={isInitialLoading || isLoadingMore}
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-4 py-2.5 text-sm font-extrabold text-[#18332D] transition hover:border-[#2FA084] hover:bg-[#F7F1E8] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? <Loader2 className="animate-spin" size={16} /> : null}
+          {isInitialLoading ? <Loader2 className="animate-spin" size={16} /> : null}
           Refresh
         </button>
       </div>
@@ -96,7 +140,7 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
         </div>
       )}
 
-      {isLoading ? (
+      {isInitialLoading ? (
         <div className="mt-6 grid place-items-center rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 py-14 text-sm font-bold text-slate-500">
           <Loader2 className="mb-2 animate-spin text-[#2FA084]" size={24} /> Loading history...
         </div>
@@ -108,57 +152,77 @@ export default function SkillGapHistoryPanel({ onViewResult }) {
           </p>
         </div>
       ) : (
-        <div className="mt-6 space-y-3">
-          {items.map((item) => {
-            const historyId = item.skillGapAnalysisHistoryId;
-            const isBusy = busyId === historyId;
+        <div className="mt-6">
+          <div className="space-y-3">
+            {items.map((item) => {
+              const historyId = item.skillGapAnalysisHistoryId;
+              const isBusy = busyId === historyId;
 
-            return (
-              <article key={historyId} className="rounded-2xl border border-[#B9D8CC]/80 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-base font-black text-[#18332D]">{item.roadmapTitle}</h3>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      {item.careerRoleName || "Career role"}
-                      {item.authorName ? ` · by ${item.authorName}` : ""}
-                      {` · ${formatDateTime(item.createdAt)}`}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-extrabold">
-                      <span className="rounded-full border border-[#B9D8CC] bg-[#EAF7F1] px-3 py-1 text-[#1F6F5F]">
-                        {item.matchedSkills} have
-                      </span>
-                      <span className="rounded-full border border-[#F1D9A8] bg-[#FFF7E6] px-3 py-1 text-[#8A5A12]">
-                        {item.missingSkills} missing
-                      </span>
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
-                        {item.totalSkills} total
-                      </span>
+              return (
+                <article key={historyId} className="rounded-2xl border border-[#B9D8CC]/80 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base font-black text-[#18332D]">{item.roadmapTitle}</h3>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {item.careerRoleName || "Career role"}
+                        {item.authorName ? ` · by ${item.authorName}` : ""}
+                        {` · ${formatDateTime(item.createdAt)}`}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-extrabold">
+                        <span className="rounded-full border border-[#B9D8CC] bg-[#EAF7F1] px-3 py-1 text-[#1F6F5F]">
+                          {item.matchedSkills} have
+                        </span>
+                        <span className="rounded-full border border-[#F1D9A8] bg-[#FFF7E6] px-3 py-1 text-[#8A5A12]">
+                          {item.missingSkills} missing
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                          {item.totalSkills} total
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleView(historyId)}
+                        disabled={isBusy}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2 text-xs font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0"
+                      >
+                        {isBusy ? <Loader2 className="animate-spin" size={14} /> : <Eye size={14} />}
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(historyId)}
+                        disabled={isBusy}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-extrabold text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
                     </div>
                   </div>
+                </article>
+              );
+            })}
+          </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleView(historyId)}
-                      disabled={isBusy}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2FA084] px-4 py-2 text-xs font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-[#1F6F5F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0"
-                    >
-                      {isBusy ? <Loader2 className="animate-spin" size={14} /> : <Eye size={14} />}
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(historyId)}
-                      disabled={isBusy}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-extrabold text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+          {hasMore && (
+            <div className="mt-5 flex justify-center">
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={isLoadingMore || !nextCursor}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B9D8CC] bg-white px-5 py-2.5 text-sm font-extrabold text-[#18332D] transition hover:border-[#2FA084] hover:bg-[#EAF7F1] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoadingMore ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                )}
+                Load more
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

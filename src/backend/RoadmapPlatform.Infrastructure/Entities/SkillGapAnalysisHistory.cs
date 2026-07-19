@@ -33,10 +33,6 @@ public partial class SkillGapAnalysisHistory
 
     public DateTime CreatedAt { get; set; }
 
-    public bool IsDeleted { get; set; }
-
-    public DateTime? DeletedAt { get; set; }
-
     public virtual CareerRole CareerRole { get; set; } = null!;
 
     public virtual Roadmap Roadmap { get; set; } = null!;

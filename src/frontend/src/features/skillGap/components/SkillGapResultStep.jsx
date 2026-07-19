@@ -1,4 +1,5 @@
-import { ArrowLeft, CheckCircle2, History, RotateCcw, XCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, History, Map, RotateCcw, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { normalizeSkillGapResult, toArray } from "../utils/skillGapUtils";
 
 function StatCard({ label, value, tone = "default" }) {
@@ -17,6 +18,32 @@ function StatCard({ label, value, tone = "default" }) {
   );
 }
 
+function SkillLearningLink({ skill, isMatched }) {
+  const className = isMatched
+    ? "inline-flex items-center gap-1.5 rounded-full border border-[#2FA084] bg-[#6FCF97]/20 px-3 py-1.5 text-xs font-bold text-[#1F6F5F] transition hover:-translate-y-0.5 hover:bg-[#6FCF97]/30 focus:outline-none focus:ring-2 focus:ring-[#6FCF97]/40"
+    : "inline-flex items-center gap-1.5 rounded-full border border-[#E4B95F] bg-[#FFF7E6] px-3 py-1.5 text-xs font-bold text-[#8A5A12] transition hover:-translate-y-0.5 hover:border-[#C98A18] hover:bg-[#FFEFCB] focus:outline-none focus:ring-2 focus:ring-[#E4B95F]/40";
+  const content = (
+    <>
+      {isMatched ? <CheckCircle2 size={12} /> : <BookOpen size={12} />}
+      {skill.skillName}
+    </>
+  );
+
+  if (!skill.skillSlug) {
+    return <span className={className}>{content}</span>;
+  }
+
+  return (
+    <Link
+      to={`/learning-modules/skills/${encodeURIComponent(skill.skillSlug)}`}
+      className={className}
+      aria-label={`View learning modules for ${skill.skillName}`}
+    >
+      {content}
+    </Link>
+  );
+}
+
 export default function SkillGapResultStep({
   result,
   canUpdateSelection = true,
@@ -32,7 +59,7 @@ export default function SkillGapResultStep({
   return (
     <section className="rounded-3xl border border-[#B9D8CC]/80 bg-white/95 p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-2 rounded-full border border-[#B9D8CC] bg-[#EAF7F1] px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
             {isHistoryView ? <History size={14} /> : <CheckCircle2 size={14} />} {isHistoryView ? "Saved result" : "Step 3"}
           </p>
@@ -43,6 +70,15 @@ export default function SkillGapResultStep({
             {normalizedResult.authorName ? ` · Author: ${normalizedResult.authorName}` : ""}
           </p>
         </div>
+
+        {normalizedResult.roadmapSlug && (
+          <Link
+            to={`/roadmaps/${encodeURIComponent(normalizedResult.roadmapSlug)}`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#2FA084] bg-[#2FA084] px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1F6F5F] focus:outline-none focus:ring-2 focus:ring-[#6FCF97]/40"
+          >
+            <Map size={16} /> {isHistoryView ? "View current roadmap" : "View roadmap"}
+          </Link>
+        )}
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -80,9 +116,11 @@ export default function SkillGapResultStep({
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {matchedSkills.map((skill) => (
-                        <span key={skill.skillId} className="inline-flex items-center gap-1.5 rounded-full border border-[#2FA084] bg-[#6FCF97]/20 px-3 py-1.5 text-xs font-bold text-[#1F6F5F]">
-                          <CheckCircle2 size={12} /> {skill.skillName}
-                        </span>
+                        <SkillLearningLink
+                          key={skill.skillId}
+                          skill={skill}
+                          isMatched
+                        />
                       ))}
                     </div>
                   )}
@@ -99,9 +137,11 @@ export default function SkillGapResultStep({
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {missingSkills.map((skill) => (
-                        <span key={skill.skillId} className="inline-flex items-center gap-1.5 rounded-full border border-[#F1D9A8] bg-[#FFF7E6] px-3 py-1.5 text-xs font-bold text-[#8A5A12]">
-                          <XCircle size={12} /> {skill.skillName}
-                        </span>
+                        <SkillLearningLink
+                          key={skill.skillId}
+                          skill={skill}
+                          isMatched={false}
+                        />
                       ))}
                     </div>
                   )}
