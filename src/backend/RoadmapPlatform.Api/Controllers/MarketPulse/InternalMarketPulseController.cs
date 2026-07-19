@@ -53,8 +53,17 @@ public sealed class InternalMarketPulseController(
             return BadRequest("At least one posting is required.");
         }
 
-        var result = await marketPulseService.IngestAsync(request, cancellationToken);
-        return Ok(result);
+        try
+        {
+            var result = await marketPulseService.IngestAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(MarketPulseApiEnvelopeDto<object>.Failure(
+                "UNSUPPORTED_MARKET_PULSE_SOURCE",
+                exception.Message));
+        }
     }
 
     private bool IsAuthorized()

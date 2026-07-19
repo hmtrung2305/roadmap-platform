@@ -86,22 +86,9 @@ CREATE TABLE IF NOT EXISTS public.user_activity_stats
 -- =========================
 -- Market Pulse
 -- =========================
-CREATE TABLE IF NOT EXISTS public.job_portal_source
-(
-    job_portal_source_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name varchar(80) NOT NULL UNIQUE,
-    base_url text NOT NULL,
-    search_url_template text NOT NULL,
-    is_enabled boolean NOT NULL DEFAULT true,
-    last_scraped_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE IF NOT EXISTS public.job_posting
 (
     job_posting_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    job_portal_source_id uuid NOT NULL,
     external_id varchar(120) NOT NULL,
     source_job_id varchar(120),
     title varchar(250) NOT NULL,
@@ -149,14 +136,6 @@ CREATE TABLE IF NOT EXISTS public.job_posting
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
 
-    CONSTRAINT fk_job_posting_source
-        FOREIGN KEY (job_portal_source_id)
-        REFERENCES public.job_portal_source(job_portal_source_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT uq_job_posting_source_external
-        UNIQUE (job_portal_source_id, external_id),
-
     CONSTRAINT chk_job_posting_requirements_json_array
         CHECK (jsonb_typeof(requirements) = 'array'),
 
@@ -200,10 +179,9 @@ CREATE TABLE IF NOT EXISTS public.job_posting
         )
 );
 
-CREATE TABLE IF NOT EXISTS public.market_pulse_crawl_run
+CREATE TABLE IF NOT EXISTS public.market_pulse_import_run
 (
-    market_pulse_crawl_run_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_name varchar(80) NOT NULL DEFAULT 'all',
+    market_pulse_import_run_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     status varchar(40) NOT NULL DEFAULT 'running',
     mode varchar(40) NOT NULL DEFAULT 'jobs_api_pull',
     trigger_type varchar(40) NOT NULL DEFAULT 'manual',
@@ -227,7 +205,7 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_crawl_run
     error_summary text,
     created_at timestamptz NOT NULL DEFAULT now(),
 
-    CONSTRAINT chk_market_pulse_crawl_run_counts
+    CONSTRAINT chk_market_pulse_import_run_counts
         CHECK (
             fetched_count >= 0 AND
             saved_count >= 0 AND
@@ -238,15 +216,14 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_crawl_run
             failed_count >= 0
         ),
 
-    CONSTRAINT chk_market_pulse_crawl_run_source_total
+    CONSTRAINT chk_market_pulse_import_run_source_total
         CHECK (source_total_count IS NULL OR source_total_count >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS public.market_pulse_failed_item
+CREATE TABLE IF NOT EXISTS public.market_pulse_import_failure
 (
-    market_pulse_failed_item_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    market_pulse_crawl_run_id uuid,
-    source_name varchar(80) NOT NULL DEFAULT 'unknown',
+    market_pulse_import_failure_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    market_pulse_import_run_id uuid,
     url varchar(500),
     stage varchar(40) NOT NULL DEFAULT 'unknown',
     error_code varchar(80) NOT NULL DEFAULT 'UNKNOWN',
@@ -259,15 +236,15 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_failed_item
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
 
-    CONSTRAINT fk_market_pulse_failed_item_run
-        FOREIGN KEY (market_pulse_crawl_run_id)
-        REFERENCES public.market_pulse_crawl_run(market_pulse_crawl_run_id)
+    CONSTRAINT fk_market_pulse_import_failure_run
+        FOREIGN KEY (market_pulse_import_run_id)
+        REFERENCES public.market_pulse_import_run(market_pulse_import_run_id)
         ON DELETE SET NULL,
 
-    CONSTRAINT chk_market_pulse_failed_item_retry_count
+    CONSTRAINT chk_market_pulse_import_failure_retry_count
         CHECK (retry_count >= 0),
 
-    CONSTRAINT chk_market_pulse_failed_item_raw_payload_json
+    CONSTRAINT chk_market_pulse_import_failure_raw_payload_json
         CHECK (raw_payload IS NULL OR jsonb_typeof(raw_payload) IN ('object', 'array'))
 );
 
@@ -288,22 +265,43 @@ CREATE TABLE IF NOT EXISTS public.market_pulse_classifier_keyword_mapping
         CHECK (weight > 0)
 );
 
-CREATE TABLE IF NOT EXISTS public.market_pulse_source_health
+CREATE TABLE IF NOT EXISTS public.market_pulse_publication_history_state
 (
-    market_pulse_source_health_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_name varchar(80) NOT NULL,
-    status varchar(40) NOT NULL DEFAULT 'unknown',
-    last_success_at timestamptz,
-    last_failure_at timestamptz,
-    source_generated_at timestamptz,
-    source_latest_success_at timestamptz,
-    consecutive_failures int NOT NULL DEFAULT 0,
-    last_run_id uuid,
-    last_error_summary text,
+    singleton_id smallint PRIMARY KEY DEFAULT 1,
+    coverage_start date NOT NULL,
+    coverage_end date NOT NULL,
+    source_data_at timestamptz NOT NULL,
+    last_successful_sync_at timestamptz NOT NULL,
+    synced_posting_count int NOT NULL DEFAULT 0,
     updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT chk_market_pulse_publication_history_singleton CHECK (singleton_id = 1),
+    CONSTRAINT chk_market_pulse_publication_history_dates CHECK (coverage_start <= coverage_end),
+    CONSTRAINT chk_market_pulse_publication_history_count CHECK (synced_posting_count >= 0)
+);
 
-    CONSTRAINT uq_market_pulse_source_health_source UNIQUE (source_name),
-    CONSTRAINT chk_market_pulse_source_health_failures CHECK (consecutive_failures >= 0)
+CREATE TABLE IF NOT EXISTS public.market_pulse_refresh_operation
+(
+    market_pulse_refresh_operation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    status varchar(24) NOT NULL DEFAULT 'queued',
+    baseline_crawler_success_at timestamptz NOT NULL,
+    crawler_success_at timestamptz,
+    market_pulse_import_run_id uuid,
+    current_step varchar(24) NOT NULL DEFAULT 'crawler',
+    trigger_type varchar(24) NOT NULL DEFAULT 'manual',
+    error_code varchar(80),
+    error_message text,
+    requested_at timestamptz NOT NULL DEFAULT now(),
+    started_at timestamptz,
+    finished_at timestamptz,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT fk_market_pulse_refresh_operation_import_run
+        FOREIGN KEY (market_pulse_import_run_id)
+        REFERENCES public.market_pulse_import_run(market_pulse_import_run_id)
+        ON DELETE SET NULL,
+    CONSTRAINT chk_market_pulse_refresh_operation_status
+        CHECK (status IN ('queued', 'crawling', 'importing', 'success', 'failed')),
+    CONSTRAINT chk_market_pulse_refresh_operation_step
+        CHECK (current_step IN ('crawler', 'import', 'analytics'))
 );
 
 CREATE INDEX IF NOT EXISTS ix_job_posting_scraped_at
@@ -333,17 +331,28 @@ CREATE INDEX IF NOT EXISTS ix_job_posting_salary_range
 CREATE INDEX IF NOT EXISTS ix_job_posting_experience_range
     ON public.job_posting(experience_min_years, experience_max_years);
 
-CREATE INDEX IF NOT EXISTS ix_market_pulse_crawl_run_started_status
-    ON public.market_pulse_crawl_run(started_at DESC, status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_job_posting_external_id
+    ON public.job_posting(external_id);
 
-CREATE INDEX IF NOT EXISTS ix_market_pulse_crawl_run_source
-    ON public.market_pulse_crawl_run(source_name);
+CREATE INDEX IF NOT EXISTS ix_job_posting_publication_bounds
+    ON public.job_posting(post_date_lower_bound, post_date_upper_bound)
+    WHERE post_date_confidence <> 'unknown';
 
-CREATE INDEX IF NOT EXISTS ix_market_pulse_failed_item_status_created
-    ON public.market_pulse_failed_item(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_job_posting_publication_filters
+    ON public.job_posting(category, location, lifecycle_status);
 
-CREATE INDEX IF NOT EXISTS ix_market_pulse_failed_item_source_stage
-    ON public.market_pulse_failed_item(source_name, stage);
+CREATE INDEX IF NOT EXISTS ix_market_pulse_import_run_started_status
+    ON public.market_pulse_import_run(started_at DESC, status);
+
+CREATE INDEX IF NOT EXISTS ix_market_pulse_import_failure_status_created
+    ON public.market_pulse_import_failure(status, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_market_pulse_refresh_operation_active
+    ON public.market_pulse_refresh_operation ((1))
+    WHERE status IN ('queued', 'crawling', 'importing');
+
+CREATE INDEX IF NOT EXISTS ix_market_pulse_refresh_operation_requested_at
+    ON public.market_pulse_refresh_operation(requested_at DESC);
 
 CREATE INDEX IF NOT EXISTS ix_market_pulse_classifier_enabled_category
     ON public.market_pulse_classifier_keyword_mapping(is_enabled, category);

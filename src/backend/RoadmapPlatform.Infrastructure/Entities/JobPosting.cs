@@ -7,8 +7,6 @@ public partial class JobPosting
 {
     public Guid JobPostingId { get; set; }
 
-    public Guid JobPortalSourceId { get; set; }
-
     public string ExternalId { get; set; } = null!;
 
     public string? SourceJobId { get; set; }
@@ -100,7 +98,5 @@ public partial class JobPosting
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
-
-    public virtual JobPortalSource JobPortalSource { get; set; } = null!;
 
 }

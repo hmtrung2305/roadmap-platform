@@ -19,7 +19,9 @@ ON CONFLICT (permission_id, role_id) DO NOTHING;
 -- =====================================================
 
 INSERT INTO public.permission (permission_name)
-VALUES ('market_pulse.manage.any')
+VALUES
+    ('market_pulse.manage.any'),
+    ('market_pulse.view.catalog')
 ON CONFLICT (permission_name) DO NOTHING;
 
 INSERT INTO public.permission_role (permission_id, role_id)
@@ -29,7 +31,9 @@ SELECT
 FROM public.permission p
 JOIN public.role r
     ON r.role_name = 'admin'
-WHERE p.permission_name = 'market_pulse.manage.any'
+WHERE p.permission_name IN (
+    'market_pulse.manage.any',
+    'market_pulse.view.catalog')
 ON CONFLICT (permission_id, role_id) DO NOTHING;
 
 COMMIT;

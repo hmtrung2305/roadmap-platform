@@ -5,14 +5,16 @@
 The .NET importer reads:
 
 ```text
-GET /api/v1/jobs?active=true&sort=post_date_desc&page=<n>&pageSize=<n>
+GET /api/v1/jobs?scope=active&page=<n>&pageSize=<n>
 ```
 
-The response envelope contains `ok`, `data`, `pagination`, and `meta`. `pagination.total`, `page`, `pageSize`, and `totalPages` determine whether the import is complete. `meta.latestSuccessfulCrawlAt` is required by freshness policy.
+The response envelope contains `ok`, `data`, `pagination`, and `meta`. `pagination.total`, `page`, `pageSize`, and `totalPages` determine whether the import is complete. Pages use stable canonical job-ID ordering. .NET validates the requested page coordinates, rejects duplicate stable IDs or missing URLs, and calculates completeness from distinct converted rows.
+
+`meta.latestSuccessfulCrawlAt` is required by freshness policy and excludes legacy, capped, resumed, blocked, and partial runs. Once at least one newly proven complete run exists, `meta.historyCoverageStart` is the earliest retained canonical job `first_seen_at`, or that run for an empty database. It is a local retained-history boundary, not a claim about postings TopCV had before collection began. The endpoint returns HTTP `409` while the listing lease is active, preventing an import from paginating across an in-progress mutation.
 
 ## Job fields
 
-Identity fields are `id`, `source`, `source_job_id`, `title`, `company`, `url`, `location`, and category fields. Normalized enrichment includes salary range/currency/negotiable state, experience range, skills, requirements, benefits, specialties, detail status, and detail success time.
+Identity fields are `id`, `source_job_id`, `title`, `company`, `url`, `location`, and category fields. `id` keeps the form `topcv:<source_job_id>`. Responses derive `source: "topcv"` for compatibility; the value is not stored. A response containing any other source is rejected by .NET. Normalized enrichment includes active state, salary range/currency/negotiable state, experience range, skills, requirements, benefits, specialties, detail status, and detail success time.
 
 Posting date fields are:
 
@@ -48,8 +50,12 @@ It consumes `pipeline_status`, `generated_at`, `latest_listing_run`, `data_quali
 
 ## Import completeness
 
-An import is complete only when all expected active pages were fetched within configured limits. A capped or interrupted result is partial. Missing-job lifecycle changes are forbidden on a partial import, because absence from a truncated payload is not evidence that a source job disappeared.
+The crawler marks a listing result complete only when it starts on page 1 and reaches empty-page end confirmation. A max-page cap, resumed suffix, lost lease, or crawler failure remains partial and cannot publish freshness or deactivate missing jobs.
+
+An .NET import is complete only when all expected pages were fetched within configured limits with stable, unique identities. A capped, interrupted, or invalid result is partial/failed. Missing-job lifecycle changes are forbidden on a partial import, because absence from a truncated payload is not evidence that a source job disappeared.
+
+Historical sync uses `scope=all`, upserts inactive rows as expired, and never applies the missing-job lifecycle. The publication-history watermark advances only after every page succeeds in one transaction. Legacy `active=true|false` remains accepted by Python and takes precedence over `scope`; `source=topcv` is accepted for one release and all other values return HTTP 400.
 
 ## Compatibility
 
-Adding nullable fields is backward-compatible. Renaming/removing fields, changing confidence values, changing null/array semantics, or changing pagination/meta fields is a breaking change and requires coordinated Python, .NET, migration, and test updates.
+Adding nullable fields is backward-compatible. Renaming/removing response fields, changing confidence values, changing null/array semantics, or changing pagination/meta fields is a breaking change and requires coordinated Python, .NET, migration, and test updates. Persisted source columns are intentionally not part of the contract.

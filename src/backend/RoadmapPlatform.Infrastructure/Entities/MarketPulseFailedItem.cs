@@ -9,8 +9,6 @@ public partial class MarketPulseFailedItem
 
     public Guid? MarketPulseCrawlRunId { get; set; }
 
-    public string SourceName { get; set; } = null!;
-
     public string? Url { get; set; }
 
     public string Stage { get; set; } = null!;

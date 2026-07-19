@@ -99,13 +99,22 @@ public sealed class JobsApiHealthClient(
         DateTime checkedAt,
         int maxFreshnessHours)
     {
-        var hoursSinceSuccess = data.Freshness?.HoursSinceSuccessfulListing;
-        var isStale = !hoursSinceSuccess.HasValue ||
-            hoursSinceSuccess.Value > Math.Max(1, maxFreshnessHours);
+        var hoursSinceData = data.Freshness?.HoursSinceDataListing ??
+            data.Freshness?.HoursSinceSuccessfulListing;
+        var latestDataAt = data.Freshness?.LatestDataListingRunAt ??
+            data.Freshness?.LatestSuccessfulListingRunAt;
+        var isStale = !hoursSinceData.HasValue ||
+            hoursSinceData.Value > Math.Max(1, maxFreshnessHours);
         var listingStatus = data.LatestListingRun?.Status;
-        var isBlocked = string.Equals(listingStatus, "blocked", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(listingStatus, "layout_changed", StringComparison.OrdinalIgnoreCase) ||
-            data.LatestListingRun?.PagesBlocked > 0;
+        var usablePartial = string.Equals(
+                listingStatus,
+                "partial_success",
+                StringComparison.OrdinalIgnoreCase) &&
+            data.LatestListingRun?.UniqueJobsSeen > 0;
+        var isBlocked = !usablePartial &&
+            (string.Equals(listingStatus, "blocked", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(listingStatus, "layout_changed", StringComparison.OrdinalIgnoreCase) ||
+             data.LatestListingRun?.PagesBlocked > 0);
         var status = string.IsNullOrWhiteSpace(data.PipelineStatus)
             ? "unknown"
             : data.PipelineStatus.Trim().ToLowerInvariant();
@@ -122,11 +131,12 @@ public sealed class JobsApiHealthClient(
             IsBlocked = isBlocked,
             CheckedAt = checkedAt,
             GeneratedAt = data.GeneratedAt,
-            LatestSuccessfulCrawlAt = data.Freshness?.LatestSuccessfulListingRunAt,
-            HoursSinceSuccessfulCrawl = hoursSinceSuccess,
+            LatestSuccessfulCrawlAt = latestDataAt,
+            HoursSinceSuccessfulCrawl = hoursSinceData,
             LatestListingStatus = listingStatus,
             LatestListingStartedAt = data.LatestListingRun?.StartedAt,
             LatestListingFinishedAt = data.LatestListingRun?.FinishedAt,
+            LatestListingJobsSeen = data.LatestListingRun?.UniqueJobsSeen ?? 0,
             PagesBlocked = data.LatestListingRun?.PagesBlocked ?? 0,
             PagesFailed = data.LatestListingRun?.PagesFailed ?? 0,
             ActiveJobs = data.DataQuality?.ActiveJobs ?? 0,
@@ -157,15 +167,9 @@ public sealed class JobsApiHealthClient(
             return configured;
         }
 
-        var candidate = settings.ActiveJobsApiUrl;
-        if (string.IsNullOrWhiteSpace(candidate))
-        {
-            var source = settings.Sources.FirstOrDefault(x =>
-                x.Enabled && string.Equals(x.Kind, "JobsApi", StringComparison.OrdinalIgnoreCase));
-            candidate = !string.IsNullOrWhiteSpace(source?.SearchUrlTemplate)
-                ? source.SearchUrlTemplate
-                : source?.BaseUrl;
-        }
+        var candidate = string.IsNullOrWhiteSpace(settings.JobsApiUrl)
+            ? settings.ActiveJobsApiUrl
+            : settings.JobsApiUrl;
 
         if (!Uri.TryCreate(candidate?.Trim(), UriKind.Absolute, out var sourceUri))
         {
@@ -228,6 +232,9 @@ internal sealed class JobsApiOpsRun
 
     [JsonPropertyName("pages_failed")]
     public int? PagesFailed { get; set; }
+
+    [JsonPropertyName("unique_jobs_seen")]
+    public int? UniqueJobsSeen { get; set; }
 }
 
 internal sealed class JobsApiOpsDataQuality
@@ -249,4 +256,13 @@ internal sealed class JobsApiOpsFreshness
 
     [JsonPropertyName("hours_since_successful_listing")]
     public double? HoursSinceSuccessfulListing { get; set; }
+
+    [JsonPropertyName("latest_data_listing_run_at")]
+    public DateTime? LatestDataListingRunAt { get; set; }
+
+    [JsonPropertyName("hours_since_data_listing")]
+    public double? HoursSinceDataListing { get; set; }
+
+    [JsonPropertyName("is_source_complete")]
+    public bool IsSourceComplete { get; set; }
 }

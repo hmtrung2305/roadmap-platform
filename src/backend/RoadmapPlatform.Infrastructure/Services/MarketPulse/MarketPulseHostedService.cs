@@ -46,9 +46,8 @@ public sealed class MarketPulseHostedService(
             var result = await service.RefreshAsync(cancellationToken);
 
             logger.LogInformation(
-                "Market Pulse refreshed {PostingsScraped} postings from {SourcesScraped} sources; inserted={PostingsInserted}, updated={PostingsUpdated}, seen={PostingsSeen}, expiredInRun={PostingsExpired}, active={ActivePostings}, stale={StalePostings}, expired={ExpiredPostings}, skillSnapshots={SkillSnapshotsSaved}.",
+                "Market Pulse refreshed {PostingsScraped} TopCV postings; inserted={PostingsInserted}, updated={PostingsUpdated}, seen={PostingsSeen}, expiredInRun={PostingsExpired}, active={ActivePostings}, stale={StalePostings}, expired={ExpiredPostings}, skillSnapshots={SkillSnapshotsSaved}.",
                 result.PostingsScraped,
-                result.SourcesScraped,
                 result.PostingsInserted,
                 result.PostingsUpdated,
                 result.PostingsSeen,

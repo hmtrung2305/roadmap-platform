@@ -69,7 +69,7 @@ public sealed class SqlSeedContractTests
             root,
             "database",
             "migrations",
-            "040-market-pulse-post-date-confidence-integrity.sql");
+            "039-market-pulse-topcv-consolidated.sql");
 
         var migrationSql = File.ReadAllText(migrationPath);
         var backfillIndex = migrationSql.IndexOf(
@@ -85,6 +85,27 @@ public sealed class SqlSeedContractTests
         Assert.Contains(
             "post_date_confidence IN ('exact', 'relative', 'unknown')",
             migrationSql,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ConsolidatedMigrationAndSchemaDefinePublicationHistoryContract()
+    {
+        var root = FindRepositoryRoot();
+        var migrationSql = File.ReadAllText(Path.Combine(
+            root,
+            "database",
+            "migrations",
+            "039-market-pulse-topcv-consolidated.sql"));
+        var schemaSql = File.ReadAllText(Path.Combine(root, "database", "schema.sql"));
+
+        Assert.Contains("public.market_pulse_publication_history_state", migrationSql, StringComparison.Ordinal);
+        Assert.Contains("public.market_pulse_refresh_operation", migrationSql, StringComparison.Ordinal);
+        Assert.Contains("public.market_pulse_publication_history_state", schemaSql, StringComparison.Ordinal);
+        Assert.Contains("public.market_pulse_refresh_operation", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "CREATE TABLE IF NOT EXISTS public.market_pulse_daily_observation",
+            schemaSql,
             StringComparison.Ordinal);
     }
 

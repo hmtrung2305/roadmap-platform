@@ -97,12 +97,11 @@ public static class ApiErrorResponseFactory
         ModelStateDictionary modelState)
     {
         // Extract only fields that contain validation errors.
+        // Empty keys are request-level errors; empty messages receive a safe fallback.
         var errors = modelState
             .Where(entry => entry.Value?.Errors.Count > 0)
             .ToDictionary(
-                // Use "request" when the validation error is not tied to a specific field.
                 entry => string.IsNullOrWhiteSpace(entry.Key) ? "request" : entry.Key,
-                // Normalize empty validation messages to a safe default message.
                 entry => entry.Value!.Errors
                     .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage)
                         ? "The input was not valid."

@@ -21,7 +21,7 @@ public sealed class MarketPulseOverviewQueryDto
 
 public sealed class MarketPulseIngestRequestDto
 {
-    public string SourceName { get; set; } = "Jobs API";
+    public string SourceName { get; set; } = "topcv";
 
     public IReadOnlyList<MarketPulseIngestPostingDto> Postings { get; set; } = [];
 }

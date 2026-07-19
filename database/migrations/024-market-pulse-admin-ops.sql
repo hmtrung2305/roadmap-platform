@@ -131,12 +131,16 @@ VALUES
 ON CONFLICT (keyword, category) DO NOTHING;
 
 INSERT INTO public.permission (permission_name)
-VALUES ('market_pulse.manage.any')
+VALUES
+    ('market_pulse.manage.any'),
+    ('market_pulse.view.catalog')
 ON CONFLICT (permission_name) DO NOTHING;
 
 INSERT INTO public.permission_role (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM public.role r
-JOIN public.permission p ON p.permission_name = 'market_pulse.manage.any'
+JOIN public.permission p ON p.permission_name IN (
+    'market_pulse.manage.any',
+    'market_pulse.view.catalog')
 WHERE r.role_name = 'admin'
 ON CONFLICT DO NOTHING;

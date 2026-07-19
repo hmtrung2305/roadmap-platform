@@ -9,7 +9,11 @@ using RoadmapPlatform.Infrastructure.Entities;
 
 namespace RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
-public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IMarketPulseAdminService
+public sealed class MarketPulseAdminService(
+    ApplicationDbContext dbContext,
+    IMarketPulseService marketPulseService,
+    IJobsApiHealthService jobsApiHealthService,
+    TopCvJobsApiClient topCvClient) : IMarketPulseAdminService
 {
     private static readonly IReadOnlyList<string> DefaultCategories =
     [
@@ -27,6 +31,321 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
         "Other"
     ];
 
+    public async Task<MarketPulseAdminDashboardDto> GetDashboardAsync(
+        CancellationToken cancellationToken)
+    {
+        var overviewTask = marketPulseService.GetOverviewAsync(
+            new MarketPulseOverviewQueryDto { Days = 7 },
+            cancellationToken);
+        var healthTask = jobsApiHealthService.GetHealthAsync(cancellationToken);
+        await Task.WhenAll(overviewTask, healthTask);
+        var overview = await overviewTask;
+        var health = await healthTask;
+        var crawlerCritical = IsCriticalCrawlerHealth(health);
+        var crawlerDegraded = crawlerCritical || IsDegradedCrawlerHealth(health);
+        int openCrawlerFailures;
+        try
+        {
+            openCrawlerFailures = await topCvClient.GetOpenCrawlerFailureCountAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            openCrawlerFailures = health.PagesFailed + health.PagesBlocked;
+        }
+        var latestRun = await dbContext.Set<MarketPulseCrawlRun>()
+            .AsNoTracking()
+            .OrderByDescending(run => run.StartedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        var latestSuccessfulImport = await dbContext.Set<MarketPulseCrawlRun>()
+            .AsNoTracking()
+            .Where(run =>
+                (run.Status == "success" || run.Status == "empty") &&
+                run.IsCompleteSync)
+            .OrderByDescending(run => run.FinishedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        var openFailures = await dbContext.Set<MarketPulseFailedItem>()
+            .AsNoTracking()
+            .CountAsync(
+                item =>
+                    item.Status == "open" ||
+                    item.Status == "retry_queued" ||
+                    item.Status == "retrying",
+                cancellationToken);
+        var operations = await dbContext.Set<MarketPulseRefreshOperation>()
+            .AsNoTracking()
+            .OrderByDescending(operation => operation.RequestedAt)
+            .Take(5)
+            .ToListAsync(cancellationToken);
+        var latestSuccessfulRefreshAt = await dbContext.Set<MarketPulseRefreshOperation>()
+            .AsNoTracking()
+            .Where(operation => operation.Status == "success")
+            .OrderByDescending(operation => operation.FinishedAt)
+            .Select(operation => operation.FinishedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        var analytics = overview.PublicationAnalytics;
+        decimal? importLag = latestSuccessfulImport?.SourceLatestSuccessAt.HasValue == true &&
+            latestSuccessfulImport.FinishedAt.HasValue
+            ? Math.Max(
+                0,
+                (decimal)(latestSuccessfulImport.FinishedAt.Value -
+                    latestSuccessfulImport.SourceLatestSuccessAt.Value).TotalMinutes)
+            : null;
+        var alerts = new List<MarketPulseAdminAlertDto>();
+        if (crawlerCritical)
+        {
+            alerts.Add(new MarketPulseAdminAlertDto
+            {
+                Severity = "critical",
+                Code = "TOPCV_CRAWLER_UNAVAILABLE",
+                Message = health.ErrorMessage ?? "TopCV crawler is unavailable.",
+                Action = "Check Python crawler logs"
+            });
+        }
+        else if (crawlerDegraded)
+        {
+            alerts.Add(new MarketPulseAdminAlertDto
+            {
+                Severity = "warning",
+                Code = "TOPCV_CRAWLER_DEGRADED",
+                Message = health.ErrorMessage ??
+                    $"TopCV crawler health is {health.Status}; latest listing status is {health.LatestListingStatus ?? "unknown"}.",
+                Action = "Review crawler runs and failures"
+            });
+        }
+        if (latestRun?.Status is "failed" or "stale_source" or "partial")
+        {
+            alerts.Add(new MarketPulseAdminAlertDto
+            {
+                Severity = latestRun.Status is "failed" or "stale_source" ? "critical" : "warning",
+                Code = "TOPCV_IMPORT_INCOMPLETE",
+                Message = latestRun.ErrorSummary ??
+                    $"The latest .NET TopCV import ended with status '{latestRun.Status}'.",
+                Action = "Review import run details"
+            });
+        }
+        if (analytics.Availability != "available")
+        {
+            alerts.Add(new MarketPulseAdminAlertDto
+            {
+                Severity = "warning",
+                Code = "PUBLICATION_HISTORY_INCOMPLETE",
+                Message = "Publication history does not fully cover both comparison periods.",
+                Action = "Run historical sync"
+            });
+        }
+        if (analytics.PostDateQuality.ReliablePercent < 50)
+        {
+            alerts.Add(new MarketPulseAdminAlertDto
+            {
+                Severity = "warning",
+                Code = "POST_DATE_QUALITY_LOW",
+                Message = "Fewer than half of TopCV postings have reliable publication dates.",
+                Action = "Run Python post-date backfill"
+            });
+        }
+
+        var overall = alerts.Any(alert => alert.Severity == "critical")
+            ? "critical"
+            : alerts.Count > 0 || openFailures > 0 || openCrawlerFailures > 0
+                ? "degraded"
+                : "healthy";
+        return new MarketPulseAdminDashboardDto
+        {
+            OverallStatus = overall,
+            LatestSuccessfulRefreshAt = latestSuccessfulRefreshAt,
+            CurrentOperation = operations
+                .Where(operation =>
+                    operation.Status == "queued" ||
+                    operation.Status == "crawling" ||
+                    operation.Status == "importing")
+                .Select(ToOperationDto)
+                .FirstOrDefault(),
+            ActiveJobs = overview.ActivePostings,
+            EstimatedPostings7Days = analytics.CurrentPeriod.EstimatedTotal,
+            CrawlerFreshnessHours = health.HoursSinceSuccessfulCrawl.HasValue
+                ? Math.Round((decimal)health.HoursSinceSuccessfulCrawl.Value, 1)
+                : null,
+            ReliablePostDateCoverage = analytics.PostDateQuality.ReliablePercent,
+            AnalyticsConfidence = analytics.Confidence,
+            PostDateQuality = analytics.PostDateQuality,
+            ImportLagMinutes = importLag.HasValue ? Math.Round(importLag.Value, 1) : null,
+            OpenCrawlerFailures = openCrawlerFailures,
+            OpenImportFailures = openFailures,
+            PipelineHealth =
+            [
+                new MarketPulsePipelineHealthItemDto
+                {
+                    Key = "crawler",
+                    Label = "Python TopCV crawler",
+                    Status = crawlerCritical
+                        ? "critical"
+                        : crawlerDegraded
+                            ? "degraded"
+                            : "healthy",
+                    Detail = health.LatestSuccessfulCrawlAt.HasValue
+                        ? $"Latest success {health.LatestSuccessfulCrawlAt:O}"
+                        : "No successful crawl metadata"
+                },
+                new MarketPulsePipelineHealthItemDto
+                {
+                    Key = "import",
+                    Label = ".NET TopCV import",
+                    Status = latestRun?.Status ?? "unknown",
+                    Detail = latestRun?.FinishedAt.HasValue == true
+                        ? $"Latest run finished {latestRun.FinishedAt:O}"
+                        : "No completed import"
+                },
+                new MarketPulsePipelineHealthItemDto
+                {
+                    Key = "history",
+                    Label = "Publication-history coverage",
+                    Status = analytics.Availability == "available" ? "healthy" : "degraded",
+                    Detail = analytics.HistoryCoverageStart.HasValue
+                        ? $"{analytics.HistoryCoverageStart:yyyy-MM-dd} to {analytics.HistoryCoverageEnd:yyyy-MM-dd}"
+                        : "Historical sync required"
+                },
+                new MarketPulsePipelineHealthItemDto
+                {
+                    Key = "quality",
+                    Label = "Detail/category/salary quality",
+                    Status = overview.DataQuality.Level,
+                    Detail = $"Detail {overview.DataQuality.DetailCoveragePercent:F1}%, salary {overview.DataQuality.SalaryCoveragePercent:F1}%"
+                }
+            ],
+            Alerts = alerts,
+            DemandTrend = analytics.MarketTrendPoints,
+            RecentOperations = operations.Select(ToOperationDto).ToList()
+        };
+    }
+
+    public async Task<MarketPulseRefreshOperationDto> CreateRefreshOperationAsync(
+        CancellationToken cancellationToken)
+    {
+        var active = await dbContext.Set<MarketPulseRefreshOperation>()
+            .AsNoTracking()
+            .OrderByDescending(operation => operation.RequestedAt)
+            .FirstOrDefaultAsync(operation =>
+                operation.Status == "queued" ||
+                operation.Status == "crawling" ||
+                operation.Status == "importing",
+                cancellationToken);
+        if (active is not null)
+        {
+            throw new MarketPulseRefreshOperationConflictException(ToOperationDto(active));
+        }
+
+        var baseline = await dbContext.Set<MarketPulseCrawlRun>()
+            .AsNoTracking()
+            .Where(run => run.SourceLatestSuccessAt.HasValue)
+            .MaxAsync(run => (DateTime?)run.SourceLatestSuccessAt, cancellationToken) ?? DateTime.UnixEpoch;
+        var crawlerHealth = await jobsApiHealthService.GetHealthAsync(cancellationToken);
+        if (crawlerHealth.LatestSuccessfulCrawlAt.HasValue)
+        {
+            var crawlerBaseline = NormalizeUtc(crawlerHealth.LatestSuccessfulCrawlAt.Value);
+            if (crawlerBaseline > baseline)
+            {
+                baseline = crawlerBaseline;
+            }
+        }
+        var now = DateTime.UtcNow;
+        var operation = new MarketPulseRefreshOperation
+        {
+            MarketPulseRefreshOperationId = Guid.NewGuid(),
+            Status = "queued",
+            CurrentStep = "crawler",
+            BaselineCrawlerSuccessAt = baseline,
+            TriggerType = "manual",
+            RequestedAt = now,
+            UpdatedAt = now
+        };
+        dbContext.Set<MarketPulseRefreshOperation>().Add(operation);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            dbContext.ChangeTracker.Clear();
+            var concurrent = await dbContext.Set<MarketPulseRefreshOperation>()
+                .AsNoTracking()
+                .OrderByDescending(item => item.RequestedAt)
+                .FirstOrDefaultAsync(item =>
+                    item.Status == "queued" ||
+                    item.Status == "crawling" ||
+                    item.Status == "importing",
+                    cancellationToken);
+            if (concurrent is not null)
+            {
+                throw new MarketPulseRefreshOperationConflictException(ToOperationDto(concurrent));
+            }
+            throw;
+        }
+        return ToOperationDto(operation);
+    }
+
+    public async Task<MarketPulseRefreshOperationDto?> GetCurrentRefreshOperationAsync(
+        CancellationToken cancellationToken)
+    {
+        var operation = await dbContext.Set<MarketPulseRefreshOperation>()
+            .AsNoTracking()
+            .OrderByDescending(item => item.RequestedAt)
+            .FirstOrDefaultAsync(item =>
+                item.Status == "queued" || item.Status == "crawling" || item.Status == "importing",
+                cancellationToken);
+        return operation is null ? null : ToOperationDto(operation);
+    }
+
+    public async Task<MarketPulseRefreshOperationDto?> GetRefreshOperationAsync(
+        Guid operationId,
+        CancellationToken cancellationToken)
+    {
+        var operation = await dbContext.Set<MarketPulseRefreshOperation>()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                item => item.MarketPulseRefreshOperationId == operationId,
+                cancellationToken);
+        return operation is null ? null : ToOperationDto(operation);
+    }
+
+    public async Task<MarketPulseFailureGroupsDto> GetFailureGroupsAsync(
+        MarketPulseAdminQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<MarketPulseCrawlerFailureDto> crawlerFailures;
+        try
+        {
+            crawlerFailures = await topCvClient.GetCrawlerFailuresAsync(
+                query.Status,
+                query.Limit,
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            var health = await jobsApiHealthService.GetHealthAsync(cancellationToken);
+            crawlerFailures = health.PagesFailed + health.PagesBlocked <= 0 && !health.IsBlocked
+                ? []
+                :
+                [
+                    new MarketPulseCrawlerFailureDto
+                    {
+                        FailureId = "crawler-health",
+                        Stage = "listing",
+                        ErrorCode = health.IsBlocked ? "CRAWLER_BLOCKED" : "CRAWLER_PAGE_FAILURE",
+                        ErrorMessage = health.ErrorMessage ??
+                            $"TopCV crawler reports {health.PagesFailed} failed and {health.PagesBlocked} blocked pages.",
+                        Status = "open",
+                        CreatedAt = health.LatestListingFinishedAt,
+                        Actionable = false
+                    }
+                ];
+        }
+        return new MarketPulseFailureGroupsDto
+        {
+            CrawlerFailures = crawlerFailures,
+            ImportFailures = await GetFailedItemsAsync(query, cancellationToken)
+        };
+    }
+
     public async Task<IReadOnlyList<MarketPulseCrawlRunDto>> GetCrawlRunsAsync(
         MarketPulseAdminQueryDto query,
         CancellationToken cancellationToken)
@@ -42,8 +361,7 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
 
         if (!string.IsNullOrWhiteSpace(query.Source))
         {
-            var source = query.Source.Trim();
-            runs = runs.Where(x => x.SourceName == source);
+            ValidateTopCvSource(query.Source);
         }
 
         if (query.From.HasValue)
@@ -79,8 +397,7 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
 
         if (!string.IsNullOrWhiteSpace(query.Source))
         {
-            var source = query.Source.Trim();
-            items = items.Where(x => x.SourceName == source);
+            ValidateTopCvSource(query.Source);
         }
 
         if (query.From.HasValue)
@@ -101,10 +418,71 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
         return rows.Select(ToFailedItemDto).ToList();
     }
 
-    public Task<IReadOnlyList<MarketPulseFailedItemDto>> RetryFailedItemsAsync(
+    public async Task<IReadOnlyList<MarketPulseFailedItemDto>> RetryFailedItemsAsync(
         IReadOnlyCollection<Guid> failedItemIds,
-        CancellationToken cancellationToken) =>
-        UpdateFailedItemStatusAsync(failedItemIds, "retry_queued", incrementRetry: true, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        var ids = failedItemIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var now = DateTime.UtcNow;
+        var selected = await dbContext.Set<MarketPulseFailedItem>()
+            .Where(item =>
+                ids.Contains(item.MarketPulseFailedItemId) &&
+                (item.Status == "open" || item.Status == "retry_queued"))
+            .ToListAsync(cancellationToken);
+        if (selected.Count == 0)
+        {
+            return [];
+        }
+        var selectedIds = selected
+            .Select(item => item.MarketPulseFailedItemId)
+            .ToList();
+
+        foreach (var item in selected)
+        {
+            item.Status = "retrying";
+            item.RetryCount++;
+            item.LastRetryAt = now;
+            item.UpdatedAt = now;
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            var result = await marketPulseService.RefreshAsync(cancellationToken);
+            var replayedSuccessfulObservation = result.Status == "skipped" &&
+                result.LifecycleSkippedReason == "source_observation_not_newer";
+            var succeeded = (result.Status is "success" or "empty" || replayedSuccessfulObservation) &&
+                result.IsSourceFresh &&
+                result.IsCompleteSync;
+            selected = await ReloadFailedItemsAsync(selectedIds, cancellationToken);
+            foreach (var item in selected)
+            {
+                item.Status = succeeded ? "resolved" : "open";
+                item.UpdatedAt = DateTime.UtcNow;
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return selected.Select(ToFailedItemDto).ToList();
+        }
+        catch
+        {
+            selected = await ReloadFailedItemsAsync(selectedIds, CancellationToken.None);
+            foreach (var item in selected)
+            {
+                item.Status = "open";
+                item.UpdatedAt = DateTime.UtcNow;
+            }
+            await dbContext.SaveChangesAsync(CancellationToken.None);
+            throw;
+        }
+    }
 
     public Task<IReadOnlyList<MarketPulseFailedItemDto>> IgnoreFailedItemsAsync(
         IReadOnlyCollection<Guid> failedItemIds,
@@ -296,38 +674,29 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
     public async Task<IReadOnlyList<MarketPulseSourceHealthDto>> GetSourceHealthAsync(
         CancellationToken cancellationToken)
     {
-        var healthRows = await dbContext.Set<MarketPulseSourceHealth>()
+        var latest = await dbContext.Set<MarketPulseCrawlRun>()
             .AsNoTracking()
-            .OrderBy(x => x.SourceName)
-            .ToListAsync(cancellationToken);
-
-        var healthDtos = healthRows.Select(ToSourceHealthDto).ToList();
-
-        var knownSources = await dbContext.Set<JobPortalSource>()
-            .AsNoTracking()
-            .Select(x => new { x.Name, x.LastScrapedAt, x.IsEnabled })
-            .ToListAsync(cancellationToken);
-
-        var bySource = healthDtos.ToDictionary(x => x.Source, StringComparer.OrdinalIgnoreCase);
-        foreach (var source in knownSources)
+            .OrderByDescending(run => run.StartedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (latest is null)
         {
-            if (bySource.ContainsKey(source.Name))
-            {
-                continue;
-            }
-
-            bySource[source.Name] = new MarketPulseSourceHealthDto
-            {
-                Source = source.Name,
-                Status = source.IsEnabled ? "unknown" : "disabled",
-                LastSuccessAt = source.LastScrapedAt,
-                UpdatedAt = source.LastScrapedAt ?? DateTime.UtcNow
-            };
+            return [];
         }
-
-        return bySource.Values
-            .OrderBy(x => x.Source)
-            .ToList();
+        return
+        [
+            new MarketPulseSourceHealthDto
+            {
+                Source = "topcv",
+                Status = latest.Status,
+                LastSuccessAt = latest.Status is "success" or "empty" ? latest.FinishedAt : null,
+                LastFailureAt = latest.Status is "failed" or "stale_source" ? latest.FinishedAt : null,
+                SourceGeneratedAt = latest.SourceGeneratedAt,
+                SourceLatestSuccessAt = latest.SourceLatestSuccessAt,
+                LastRunId = latest.MarketPulseCrawlRunId,
+                LastErrorSummary = latest.ErrorSummary,
+                UpdatedAt = latest.FinishedAt ?? latest.StartedAt
+            }
+        ];
     }
 
     private async Task<IReadOnlyList<MarketPulseFailedItemDto>> UpdateFailedItemStatusAsync(
@@ -365,6 +734,52 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return items.Select(ToFailedItemDto).ToList();
+    }
+
+    private async Task<List<MarketPulseFailedItem>> ReloadFailedItemsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        foreach (var tracked in dbContext.ChangeTracker.Entries<MarketPulseFailedItem>().ToList())
+        {
+            tracked.State = EntityState.Detached;
+        }
+        return await dbContext.Set<MarketPulseFailedItem>()
+            .Where(item =>
+                ids.Contains(item.MarketPulseFailedItemId) &&
+                item.Status == "retrying")
+            .ToListAsync(cancellationToken);
+    }
+
+    private static bool IsCriticalCrawlerHealth(MarketPulseExternalSourceHealthDto health)
+    {
+        if (!health.IsAvailable || health.IsBlocked)
+        {
+            return true;
+        }
+
+        var healthStatus = health.Status.Trim().ToLowerInvariant();
+        var listingStatus = health.LatestListingStatus?.Trim().ToLowerInvariant();
+        return healthStatus is
+                "critical" or
+                "failed" or
+                "blocked" or
+                "layout_changed" or
+                "unavailable" or
+                "unauthorized" or
+                "invalid_contract" or
+                "http_error" or
+                "timeout" ||
+            listingStatus is "failed" or "blocked" or "layout_changed";
+    }
+
+    private static bool IsDegradedCrawlerHealth(MarketPulseExternalSourceHealthDto health)
+    {
+        var healthStatus = health.Status.Trim().ToLowerInvariant();
+        var listingStatus = health.LatestListingStatus?.Trim().ToLowerInvariant();
+        return health.IsStale ||
+            healthStatus is "stale" or "warning" or "degraded" or "rate_limited" ||
+            listingStatus is "partial" or "partial_success" or "empty_protected";
     }
 
     private async Task EnsureDefaultClassifierMappingsAsync(CancellationToken cancellationToken)
@@ -449,7 +864,7 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
     private static MarketPulseCrawlRunDto ToRunDto(MarketPulseCrawlRun run) => new()
     {
         RunId = run.MarketPulseCrawlRunId,
-        Source = run.SourceName,
+        Source = "topcv",
         Status = run.Status,
         Mode = run.Mode,
         TriggerType = run.TriggerType,
@@ -477,7 +892,7 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
     {
         FailedItemId = item.MarketPulseFailedItemId,
         RunId = item.MarketPulseCrawlRunId,
-        Source = item.SourceName,
+        Source = "topcv",
         Url = item.Url,
         Stage = item.Stage,
         ErrorCode = item.ErrorCode,
@@ -501,19 +916,30 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
         UpdatedAt = mapping.UpdatedAt
     };
 
-    private static MarketPulseSourceHealthDto ToSourceHealthDto(MarketPulseSourceHealth health) => new()
+    private static MarketPulseRefreshOperationDto ToOperationDto(
+        MarketPulseRefreshOperation operation) => new()
     {
-        Source = health.SourceName,
-        Status = health.Status,
-        LastSuccessAt = health.LastSuccessAt,
-        LastFailureAt = health.LastFailureAt,
-        SourceGeneratedAt = health.SourceGeneratedAt,
-        SourceLatestSuccessAt = health.SourceLatestSuccessAt,
-        ConsecutiveFailures = health.ConsecutiveFailures,
-        LastRunId = health.LastRunId,
-        LastErrorSummary = health.LastErrorSummary,
-        UpdatedAt = health.UpdatedAt
+        OperationId = operation.MarketPulseRefreshOperationId,
+        Status = operation.Status,
+        CurrentStep = operation.CurrentStep ?? "crawler",
+        BaselineCrawlerSuccessAt = operation.BaselineCrawlerSuccessAt,
+        CrawlerSuccessAt = operation.CrawlerSuccessAt,
+        ImportRunId = operation.ImportRunId,
+        ErrorCode = operation.ErrorCode,
+        ErrorMessage = operation.ErrorMessage,
+        RequestedAt = operation.RequestedAt,
+        StartedAt = operation.StartedAt,
+        FinishedAt = operation.FinishedAt,
+        UpdatedAt = operation.UpdatedAt
     };
+
+    private static void ValidateTopCvSource(string source)
+    {
+        if (!string.Equals(source.Trim(), "topcv", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Market Pulse only supports source='topcv'.", nameof(source));
+        }
+    }
 
     private static DateTime NormalizeUtc(DateTime value)
     {
@@ -563,4 +989,11 @@ public sealed class MarketPulseAdminService(ApplicationDbContext dbContext) : IM
             .Replace('\u0111', 'd')
             .Replace('\u0110', 'D');
     }
+}
+
+public sealed class MarketPulseRefreshOperationConflictException(
+    MarketPulseRefreshOperationDto currentOperation)
+    : InvalidOperationException("A TopCV refresh operation is already active.")
+{
+    public MarketPulseRefreshOperationDto CurrentOperation { get; } = currentOperation;
 }

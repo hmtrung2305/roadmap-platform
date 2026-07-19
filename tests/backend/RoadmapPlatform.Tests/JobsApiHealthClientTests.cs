@@ -32,7 +32,8 @@ public sealed class JobsApiHealthClientTests
                           "started_at": "2026-07-17T09:00:00",
                           "finished_at": "2026-07-17T09:10:00",
                           "pages_blocked": 1,
-                          "pages_failed": 0
+                          "pages_failed": 0,
+                          "unique_jobs_seen": 420
                         },
                         "data_quality": {
                           "active_jobs": 420,
@@ -40,8 +41,11 @@ public sealed class JobsApiHealthClientTests
                           "detail_completion_rate": 0.91
                         },
                         "freshness": {
-                          "latest_successful_listing_run_at": "2026-07-17T09:10:00",
-                          "hours_since_successful_listing": 0.83
+                          "latest_successful_listing_run_at": "2026-07-17T08:00:00",
+                          "hours_since_successful_listing": 2,
+                          "latest_data_listing_run_at": "2026-07-17T09:10:00",
+                          "hours_since_data_listing": 0.83,
+                          "is_source_complete": false
                         },
                         "warnings": ["warning: one page was blocked."]
                       }
@@ -58,8 +62,10 @@ public sealed class JobsApiHealthClientTests
         Assert.True(result.IsAvailable);
         Assert.Equal("warning", result.Status);
         Assert.False(result.IsStale);
-        Assert.True(result.IsBlocked);
+        Assert.False(result.IsBlocked);
         Assert.Equal("partial_success", result.LatestListingStatus);
+        Assert.Equal(420, result.LatestListingJobsSeen);
+        Assert.Equal(new DateTime(2026, 7, 17, 9, 10, 0), result.LatestSuccessfulCrawlAt);
         Assert.Equal(420, result.ActiveJobs);
         Assert.Equal("test-key", apiKey);
     }

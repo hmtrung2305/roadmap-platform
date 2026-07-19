@@ -6,15 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       max_postings:
-        description: "Max Jobs API postings to persist for this manual run"
+        description: "Maximum TopCV jobs to import for this manual run"
         required: false
-        default: "500"
-      jobs_api_base_url:
-        description: "Optional Jobs API base URL override, for example https://jobs-api.example.com"
-        required: false
-        default: ""
-      active_jobs_api_url:
-        description: "Optional full active jobs URL override"
+        default: "1000"
+      jobs_api_url:
+        description: "Optional full TopCV Jobs API URL override"
         required: false
         default: ""
 
@@ -36,7 +32,7 @@ jobs:
       ConnectionStrings__DefaultConnection: ${{ secrets.MARKET_PULSE_DB_CONNECTION_STRING }}
       MarketPulse__Enabled: "true"
       MarketPulse__RunOnStartup: "false"
-      MarketPulse__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
+      MarketPulse__JobsApiUrl: ${{ github.event.inputs.jobs_api_url || vars.MARKET_PULSE_JOBS_API_URL || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
       MarketPulse__JobsApiKey: ${{ secrets.MARKET_PULSE_JOBS_API_KEY }}
       MarketPulse__JobsApiOpsHealthUrl: ${{ vars.MARKET_PULSE_JOBS_API_OPS_HEALTH_URL }}
       MarketPulse__JobsApiHealthTimeoutSeconds: ${{ vars.MARKET_PULSE_JOBS_API_HEALTH_TIMEOUT_SECONDS || '10' }}
@@ -45,17 +41,10 @@ jobs:
       MarketPulse__JobsApiRequireFreshCrawlMetadata: "true"
       MarketPulse__DisableMissingLifecycleForPartialSync: "true"
       MarketPulse__BusinessTimezone: "Asia/Ho_Chi_Minh"
-      MarketPulse__Sources__0__Name: "topcv"
-      MarketPulse__Sources__0__Kind: "JobsApi"
-      MarketPulse__Sources__0__BaseUrl: ${{ github.event.inputs.jobs_api_base_url || vars.MARKET_PULSE_JOBS_API_BASE_URL }}
-      MarketPulse__Sources__0__SearchUrlTemplate: ${{ github.event.inputs.active_jobs_api_url || vars.MARKET_PULSE_ACTIVE_JOBS_API_URL }}
-      MarketPulse__Sources__0__Enabled: "true"
-      MarketPulse__MaxPostingsPerSource: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_MAX_POSTINGS || '500' }}
       MarketPulse__JobsApiPageSize: ${{ vars.MARKET_PULSE_JOBS_API_PAGE_SIZE || '100' }}
       MarketPulse__JobsApiMaxPages: ${{ vars.MARKET_PULSE_JOBS_API_MAX_PAGES || '10' }}
+      MarketPulse__JobsApiMaxItems: ${{ github.event.inputs.max_postings || vars.MARKET_PULSE_JOBS_API_MAX_ITEMS || '1000' }}
       MarketPulse__RequestTimeoutSeconds: ${{ vars.MARKET_PULSE_REQUEST_TIMEOUT_SECONDS || '30' }}
-      WorkflowInput__JobsApiBaseUrl: ${{ github.event.inputs.jobs_api_base_url }}
-      WorkflowInput__ActiveJobsApiUrl: ${{ github.event.inputs.active_jobs_api_url }}
 
     steps:
       - name: Checkout repository
@@ -79,40 +68,24 @@ jobs:
             exit 1
           fi
 
-          jobs_api_base_url="${WorkflowInput__JobsApiBaseUrl:-$MarketPulse__Sources__0__BaseUrl}"
-          jobs_api_base_url="${jobs_api_base_url%/}"
-          active_jobs_api_url="${WorkflowInput__ActiveJobsApiUrl:-$MarketPulse__ActiveJobsApiUrl}"
-
-          if [ -n "$WorkflowInput__JobsApiBaseUrl" ] && [ -z "$WorkflowInput__ActiveJobsApiUrl" ]; then
-            active_jobs_api_url=""
-          fi
-
-          if [ -z "$jobs_api_base_url" ] && [ -n "$active_jobs_api_url" ]; then
-            jobs_api_base_url="${active_jobs_api_url%%/api/*}"
-          fi
-
-          if [ -z "$jobs_api_base_url" ]; then
-            echo "Missing Jobs API URL. Set MARKET_PULSE_JOBS_API_BASE_URL, MARKET_PULSE_ACTIVE_JOBS_API_URL, or provide a workflow_dispatch override."
+          jobs_api_url="$MarketPulse__JobsApiUrl"
+          if [ -z "$jobs_api_url" ]; then
+            echo "Missing TopCV Jobs API URL. Set MARKET_PULSE_JOBS_API_URL or provide a workflow_dispatch override."
             exit 1
           fi
-
-          if [ -z "$active_jobs_api_url" ]; then
-            active_jobs_api_url="$jobs_api_base_url/api/v1/jobs?active=true&sort=post_date_desc"
-          fi
-
+          jobs_api_base_url="${jobs_api_url%%/api/*}"
+          jobs_api_base_url="${jobs_api_base_url%/}"
           ops_health_url="${MarketPulse__JobsApiOpsHealthUrl:-$jobs_api_base_url/api/v1/ops/health-summary}"
           readiness_url="$jobs_api_base_url/health"
 
           {
-            echo "MarketPulse__Sources__0__BaseUrl=$jobs_api_base_url"
-            echo "MarketPulse__ActiveJobsApiUrl=$active_jobs_api_url"
+            echo "MarketPulse__JobsApiUrl=$jobs_api_url"
             echo "MarketPulse__JobsApiOpsHealthUrl=$ops_health_url"
-            echo "MarketPulse__Sources__0__SearchUrlTemplate=$active_jobs_api_url"
             echo "JobsApiReadinessUrl=$readiness_url"
           } >> "$GITHUB_ENV"
 
           echo "Using Jobs API base URL: $jobs_api_base_url"
-          echo "Using active jobs path: ${active_jobs_api_url#"$jobs_api_base_url"}"
+          echo "Using jobs path: ${jobs_api_url#"$jobs_api_base_url"}"
           echo "Using ops health path: ${ops_health_url#"$jobs_api_base_url"}"
 
       - name: Check Python Jobs API readiness
