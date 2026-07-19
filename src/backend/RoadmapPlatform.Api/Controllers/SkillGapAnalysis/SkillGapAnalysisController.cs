@@ -22,12 +22,12 @@ namespace RoadmapPlatform.Api.Controllers.SkillGap
         [Authorize]
         [RequirePermission(PermissionConstant.SKILL_GAP_ANALYSIS_CREATE_SELF)]
         [HttpPost("me/skill-gap/analyze")]
-        public async Task<IActionResult> Analyze(AnalyzeSkillGapRequestDto request)
+        public async Task<IActionResult> Analyze(AnalyzeSkillGapRequestDto request, CancellationToken cancellationToken)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var result = await _skillGapAnalysisService
-                .AnalyzeAsync(userId, request);
+                .AnalyzeAsync(userId, request, cancellationToken);
 
             return Ok(result);
         }

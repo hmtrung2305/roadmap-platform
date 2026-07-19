@@ -510,8 +510,7 @@ public sealed class AiMentorService : IAiMentorService
         var skillGapHistories = await _context.SkillGapAnalysisHistories
             .AsNoTracking()
             .Where(history =>
-                history.UserId == userId &&
-                !history.IsDeleted)
+                history.UserId == userId)
             .OrderByDescending(history => history.CreatedAt)
             .Take(SkillGapHistoryLimit)
             .Select(history => new

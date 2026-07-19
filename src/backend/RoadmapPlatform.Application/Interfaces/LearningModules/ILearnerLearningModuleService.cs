@@ -11,6 +11,11 @@ public interface ILearnerLearningModuleService
         Guid userId,
         CancellationToken cancellationToken);
 
+    Task<SkillLearningModulesDto> GetPublishedModulesBySkillSlugAsync(
+        string skillSlug,
+        Guid? userId,
+        CancellationToken cancellationToken);
+
     Task<LearnerLearningModuleOverviewDto> GetPublishedModuleBySlugAsync(
         string slug,
         Guid? userId,

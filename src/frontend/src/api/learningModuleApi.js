@@ -127,6 +127,19 @@ export const learningModuleApi = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
+  getPublishedModulesBySkillSlug: async (skillSlug) => {
+    const response = await axiosClient.get(
+      `/learning-modules/skills/${encode(skillSlug)}`,
+    );
+
+    return {
+      ...response.data,
+      modules: Array.isArray(response.data?.modules)
+        ? response.data.modules
+        : [],
+    };
+  },
+
   getPublishedModuleBySlug: async (slug) => {
     const response = await axiosClient.get(`/learning-modules/${encode(slug)}`);
     return response.data;

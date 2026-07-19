@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using RoadmapPlatform.Infrastructure.Entities;
@@ -359,15 +359,13 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.Category, "ix_job_posting_category");
 
+            entity.HasIndex(e => new { e.ExperienceMinYears, e.ExperienceMaxYears }, "ix_job_posting_experience_range");
+
             entity.HasIndex(e => e.LifecycleStatus, "ix_job_posting_lifecycle_status");
 
             entity.HasIndex(e => e.PublishedAt, "ix_job_posting_published_at");
 
             entity.HasIndex(e => new { e.SalaryMin, e.SalaryMax }, "ix_job_posting_salary_range");
-
-            entity.HasIndex(
-                e => new { e.ExperienceMinYears, e.ExperienceMaxYears },
-                "ix_job_posting_experience_range");
 
             entity.HasIndex(e => e.ScrapedAt, "ix_job_posting_scraped_at");
 
@@ -399,6 +397,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.DetailLastSuccessAt).HasColumnName("detail_last_success_at");
+            entity.Property(e => e.DetailStatus)
+                .HasMaxLength(32)
+                .HasColumnName("detail_status");
             entity.Property(e => e.Experience)
                 .HasMaxLength(100)
                 .HasColumnName("experience");
@@ -432,9 +434,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(160)
                 .HasColumnName("location");
             entity.Property(e => e.MissingScanCount).HasColumnName("missing_scan_count");
-            entity.Property(e => e.PostDateText)
-                .HasMaxLength(80)
-                .HasColumnName("post_date_text");
             entity.Property(e => e.PostDateConfidence)
                 .HasMaxLength(20)
                 .HasDefaultValue("unknown")
@@ -472,22 +471,18 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.SeenCount)
                 .HasDefaultValue(1)
                 .HasColumnName("seen_count");
-            entity.Property(e => e.SourceJobId)
-                .HasMaxLength(120)
-                .HasColumnName("source_job_id");
-            entity.Property(e => e.SourceUpdatedAt).HasColumnName("source_updated_at");
-            entity.Property(e => e.DetailLastSuccessAt).HasColumnName("detail_last_success_at");
-            entity.Property(e => e.DetailStatus)
-                .HasMaxLength(32)
-                .HasColumnName("detail_status");
-            entity.Property(e => e.Specialties)
-                .HasDefaultValueSql("'[]'::jsonb")
-                .HasColumnType("jsonb")
-                .HasColumnName("specialties");
             entity.Property(e => e.Skills)
                 .HasDefaultValueSql("'[]'::jsonb")
                 .HasColumnType("jsonb")
                 .HasColumnName("skills");
+            entity.Property(e => e.SourceJobId)
+                .HasMaxLength(120)
+                .HasColumnName("source_job_id");
+            entity.Property(e => e.SourceUpdatedAt).HasColumnName("source_updated_at");
+            entity.Property(e => e.Specialties)
+                .HasDefaultValueSql("'[]'::jsonb")
+                .HasColumnType("jsonb")
+                .HasColumnName("specialties");
             entity.Property(e => e.Title)
                 .HasMaxLength(250)
                 .HasColumnName("title");
@@ -629,12 +624,16 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.MissingLifecycleApplied).HasColumnName("missing_lifecycle_applied");
             entity.Property(e => e.Mode)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'scheduled'::character varying")
+                .HasDefaultValueSql("'jobs_api_pull'::character varying")
                 .HasColumnName("mode");
             entity.Property(e => e.SavedCount).HasColumnName("saved_count");
             entity.Property(e => e.SkippedCount).HasColumnName("skipped_count");
             entity.Property(e => e.SourceGeneratedAt).HasColumnName("source_generated_at");
             entity.Property(e => e.SourceLatestSuccessAt).HasColumnName("source_latest_success_at");
+            entity.Property(e => e.SourceName)
+                .HasMaxLength(80)
+                .HasDefaultValueSql("'all'::character varying")
+                .HasColumnName("source_name");
             entity.Property(e => e.SourceTotalCount).HasColumnName("source_total_count");
             entity.Property(e => e.StartedAt)
                 .HasDefaultValueSql("now()")

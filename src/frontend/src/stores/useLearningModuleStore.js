@@ -17,6 +17,7 @@ const QUIZ_SESSION_TTL_MS = 30 * 1000;
 
 const PUBLISHED_MODULES_KEY = "learning-modules:published";
 const ENROLLED_MODULES_KEY = "learning-modules:enrolled";
+const SKILL_MODULES_KEY_PREFIX = "learning-modules:skill";
 const EMPTY_ARRAY = Object.freeze([]);
 
 let publishedModulesRequestVersion = 0;
@@ -40,6 +41,10 @@ function getLessonId(lesson) {
 
 function detailKey(slug) {
   return `learning-module:detail:${normalizeSlug(slug)}`;
+}
+
+function skillModulesKey(skillSlug) {
+  return `${SKILL_MODULES_KEY_PREFIX}:${normalizeSlug(skillSlug)}`;
 }
 
 function lessonContentKey(moduleId, lessonId) {
@@ -111,6 +116,10 @@ export const useLearningModuleStore = create((set, get) => ({
   moduleLoadedBySlug: {},
   moduleLoadingBySlug: {},
   moduleErrorBySlug: {},
+  skillModulesBySlug: {},
+  skillModulesLoadingBySlug: {},
+  skillModulesLoadedBySlug: {},
+  skillModulesErrorBySlug: {},
   lessonContentByKey: {},
   lessonLoadingByKey: {},
   lessonErrorByKey: {},
@@ -125,6 +134,68 @@ export const useLearningModuleStore = create((set, get) => ({
   enrolledModulesLoaded: false,
   publishedModulesError: null,
   enrolledModulesError: null,
+
+  loadModulesBySkillSlug: async (skillSlug, { force = false } = {}) => {
+    const normalizedSlug = normalizeSlug(skillSlug);
+    if (!normalizedSlug) return null;
+
+    set((state) => ({
+      skillModulesLoadingBySlug: {
+        ...state.skillModulesLoadingBySlug,
+        [normalizedSlug]: force || !state.skillModulesBySlug[normalizedSlug],
+      },
+      skillModulesErrorBySlug: {
+        ...state.skillModulesErrorBySlug,
+        [normalizedSlug]: null,
+      },
+    }));
+
+    try {
+      const result = await cachedRequest(
+        skillModulesKey(normalizedSlug),
+        () => learningModuleApi.getPublishedModulesBySkillSlug(normalizedSlug),
+        { ttlMs: MODULE_LIST_TTL_MS, force },
+      );
+
+      set((state) => ({
+        skillModulesBySlug: {
+          ...state.skillModulesBySlug,
+          [normalizedSlug]: result,
+        },
+        skillModulesLoadingBySlug: {
+          ...state.skillModulesLoadingBySlug,
+          [normalizedSlug]: false,
+        },
+        skillModulesLoadedBySlug: {
+          ...state.skillModulesLoadedBySlug,
+          [normalizedSlug]: true,
+        },
+        skillModulesErrorBySlug: {
+          ...state.skillModulesErrorBySlug,
+          [normalizedSlug]: null,
+        },
+      }));
+
+      return result;
+    } catch (error) {
+      set((state) => ({
+        skillModulesLoadingBySlug: {
+          ...state.skillModulesLoadingBySlug,
+          [normalizedSlug]: false,
+        },
+        skillModulesLoadedBySlug: {
+          ...state.skillModulesLoadedBySlug,
+          [normalizedSlug]: true,
+        },
+        skillModulesErrorBySlug: {
+          ...state.skillModulesErrorBySlug,
+          [normalizedSlug]: error?.message || "Unable to load modules for this skill.",
+        },
+      }));
+
+      throw error;
+    }
+  },
 
   loadPublishedModules: async ({ force = false } = {}) => {
     const requestVersion = ++publishedModulesRequestVersion;
@@ -278,6 +349,7 @@ export const useLearningModuleStore = create((set, get) => ({
 
     invalidateRequestCache(ENROLLED_MODULES_KEY);
     invalidateRequestCache(PUBLISHED_MODULES_KEY);
+    invalidateRequestCacheByPrefix(`${SKILL_MODULES_KEY_PREFIX}:`);
 
     if (normalizedSlug) {
       invalidateRequestCache(detailKey(normalizedSlug));
@@ -625,6 +697,7 @@ export const useLearningModuleStore = create((set, get) => ({
 
     invalidateRequestCache(PUBLISHED_MODULES_KEY);
     invalidateRequestCache(ENROLLED_MODULES_KEY);
+    invalidateRequestCacheByPrefix(`${SKILL_MODULES_KEY_PREFIX}:`);
     invalidateRequestCacheByPrefix("learning-module:");
 
     set({
@@ -634,6 +707,10 @@ export const useLearningModuleStore = create((set, get) => ({
       moduleLoadedBySlug: {},
       moduleLoadingBySlug: {},
       moduleErrorBySlug: {},
+      skillModulesBySlug: {},
+      skillModulesLoadingBySlug: {},
+      skillModulesLoadedBySlug: {},
+      skillModulesErrorBySlug: {},
       lessonContentByKey: {},
       lessonLoadingByKey: {},
       lessonErrorByKey: {},
@@ -657,6 +734,10 @@ export const useLearningModuleStore = create((set, get) => ({
   getModuleLoaded: (slug) => Boolean(get().moduleLoadedBySlug[normalizeSlug(slug)]),
   getModuleLoading: (slug) => Boolean(get().moduleLoadingBySlug[normalizeSlug(slug)]),
   getModuleError: (slug) => get().moduleErrorBySlug[normalizeSlug(slug)] || null,
+  getSkillModulesSnapshot: (skillSlug) => get().skillModulesBySlug[normalizeSlug(skillSlug)] || null,
+  getSkillModulesLoaded: (skillSlug) => Boolean(get().skillModulesLoadedBySlug[normalizeSlug(skillSlug)]),
+  getSkillModulesLoading: (skillSlug) => Boolean(get().skillModulesLoadingBySlug[normalizeSlug(skillSlug)]),
+  getSkillModulesError: (skillSlug) => get().skillModulesErrorBySlug[normalizeSlug(skillSlug)] || null,
   getLessonContent: (moduleId, lessonId) => get().lessonContentByKey[lessonContentKey(moduleId, lessonId)] || null,
   getLessonLoading: (moduleId, lessonId) => Boolean(get().lessonLoadingByKey[lessonContentKey(moduleId, lessonId)]),
   getLessonError: (moduleId, lessonId) => get().lessonErrorByKey[lessonContentKey(moduleId, lessonId)] || null,
