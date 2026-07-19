@@ -1342,7 +1342,10 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.ActorUserId, "ix_roadmap_version_review_event_actor_user_id");
 
-            entity.HasIndex(e => e.RoadmapVersionId, "ix_roadmap_version_review_event_version_id");
+            entity.HasIndex(
+                    e => new { e.RoadmapVersionId, e.CreatedAt },
+                    "ix_roadmap_version_review_event_version_id")
+                .IsDescending(false, true);
 
             entity.Property(e => e.RoadmapVersionReviewEventId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -1427,6 +1430,11 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("skill_gap_analysis_history");
 
+            entity.HasIndex(
+                    e => new { e.UserId, e.CreatedAt, e.SkillGapAnalysisHistoryId },
+                    "ix_skill_gap_history_user_created_at")
+                .IsDescending(false, true, true);
+
             entity.Property(e => e.SkillGapAnalysisHistoryId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("skill_gap_analysis_history_id");
@@ -1440,8 +1448,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
-            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
-            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted");
             entity.Property(e => e.MatchedSkills).HasColumnName("matched_skills");
             entity.Property(e => e.MissingSkills).HasColumnName("missing_skills");
             entity.Property(e => e.RoadmapId).HasColumnName("roadmap_id");
