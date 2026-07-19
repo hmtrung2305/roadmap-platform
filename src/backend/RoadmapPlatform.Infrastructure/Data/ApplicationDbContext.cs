@@ -434,6 +434,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(160)
                 .HasColumnName("location");
             entity.Property(e => e.MissingScanCount).HasColumnName("missing_scan_count");
+            entity.Property(e => e.PostDateText)
+                .HasMaxLength(80)
+                .HasColumnName("post_date_text");
             entity.Property(e => e.PostDateConfidence)
                 .HasMaxLength(20)
                 .HasDefaultValue("unknown")
