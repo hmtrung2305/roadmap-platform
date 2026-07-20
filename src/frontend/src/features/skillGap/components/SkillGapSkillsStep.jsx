@@ -19,7 +19,7 @@ export default function SkillGapSkillsStep({
   );
 
   return (
-    <section className="rounded-3xl border border-[#B9D8CC]/80 bg-white/95 p-5 shadow-sm sm:p-6">
+    <section className="flex min-h-0 flex-col rounded-3xl border border-[#B9D8CC]/80 bg-white/95 p-5 shadow-sm sm:p-6 lg:h-full lg:overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-[#B9D8CC] bg-[#EAF7F1] px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-[#1F6F5F]">
@@ -40,18 +40,18 @@ export default function SkillGapSkillsStep({
       </div>
 
       {isLoading ? (
-        <div className="mt-6 grid place-items-center rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 py-14 text-sm font-bold text-slate-500">
+        <div className="mt-6 grid min-h-0 flex-1 place-items-center rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 py-14 text-sm font-bold text-slate-500">
           <Loader2 className="mb-2 animate-spin text-[#2FA084]" size={24} /> Loading skill checklist...
         </div>
       ) : categories.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 p-8 text-center">
+        <div className="mt-6 min-h-0 flex-1 rounded-2xl border border-dashed border-[#B9D8CC] bg-[#F7F1E8]/70 p-8 text-center">
           <p className="text-sm font-extrabold text-[#18332D]">No skills found for this roadmap</p>
           <p className="mt-1 text-xs font-semibold text-slate-500">
             Ask the content manager to add skills and publish/generate category configuration.
           </p>
         </div>
       ) : (
-        <div className="mt-6 space-y-4">
+        <div className="skill-gap-content-scroll mt-6 min-h-0 flex-1 space-y-4 pr-1">
           {categories.map((category) => {
             const skills = toArray(category.skills);
             const matched = skills.filter((skill) => selectedSet.has(skill.skillId)).length;
@@ -99,7 +99,7 @@ export default function SkillGapSkillsStep({
         </div>
       )}
 
-      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 flex shrink-0 flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={onBack}

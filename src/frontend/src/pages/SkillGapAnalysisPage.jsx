@@ -176,58 +176,56 @@ export default function SkillGapAnalysisPage() {
 
             <SkillGapErrorMessage>{error}</SkillGapErrorMessage>
 
-            <div className={`grid gap-6 ${step === 3 ? "lg:grid-cols-1" : "lg:grid-cols-[minmax(0,1fr)_360px]"}`}>
-              <div className="min-w-0">
-                {step === 1 && (
-                  <SkillGapRoleStep
-                    roles={roles}
-                    roadmaps={roadmaps}
-                    selectedRole={selectedRole}
-                    selectedRoadmap={selectedRoadmap}
-                    isLoading={isRolesLoading}
-                    isLoadingRoadmaps={isRoadmapsLoading}
-                    isLoadingAssessment={isAssessmentLoading}
-                    onSelectRole={handleSelectRole}
-                    onSelectRoadmap={actions.selectRoadmap}
-                    onNext={actions.loadAssessment}
-                  />
-                )}
+            {step === 1 && (
+              <SkillGapRoleStep
+                roles={roles}
+                roadmaps={roadmaps}
+                selectedRole={selectedRole}
+                selectedRoadmap={selectedRoadmap}
+                isLoading={isRolesLoading}
+                isLoadingRoadmaps={isRoadmapsLoading}
+                isLoadingAssessment={isAssessmentLoading}
+                onSelectRole={handleSelectRole}
+                onSelectRoadmap={actions.selectRoadmap}
+                onNext={actions.loadAssessment}
+              />
+            )}
 
-                {step === 2 && (
-                  <SkillGapSkillsStep
-                    role={selectedRole}
-                    roadmap={selectedRoadmap}
-                    categories={categories}
-                    selectedSkillIds={selectedSkillIds}
-                    isLoading={isAssessmentLoading}
-                    isAnalyzing={isAnalyzing}
-                    onToggleSkill={actions.toggleSkill}
-                    onBack={actions.goToRoleStep}
-                    onAnalyze={actions.analyze}
-                  />
-                )}
+            {step === 2 && (
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+                <div className="min-w-0 lg:relative">
+                  <div className="lg:absolute lg:inset-0">
+                    <SkillGapSkillsStep
+                      role={selectedRole}
+                      roadmap={selectedRoadmap}
+                      categories={categories}
+                      selectedSkillIds={selectedSkillIds}
+                      isLoading={isAssessmentLoading}
+                      isAnalyzing={isAnalyzing}
+                      onToggleSkill={actions.toggleSkill}
+                      onBack={actions.goToRoleStep}
+                      onAnalyze={actions.analyze}
+                    />
+                  </div>
+                </div>
 
-                {step === 3 && result && (
-                  <SkillGapResultStep
-                    result={result}
-                    canUpdateSelection={Boolean(selectedRole && selectedRoadmap)}
-                    onBack={actions.goToSkillStep}
-                    onReset={actions.reset}
-                  />
-                )}
-              </div>
-
-              {step < 3 && (
                 <SkillGapInsightPanel
-                  step={step}
                   selectedRole={selectedRole}
                   selectedRoadmap={selectedRoadmap}
                   categories={categories}
                   selectedSkillIds={selectedSkillIds}
-                  result={result}
                 />
-              )}
-            </div>
+              </div>
+            )}
+
+            {step === 3 && result && (
+              <SkillGapResultStep
+                result={result}
+                canUpdateSelection={Boolean(selectedRole && selectedRoadmap)}
+                onBack={actions.goToSkillStep}
+                onReset={actions.reset}
+              />
+            )}
           </>
         )}
       </div>
