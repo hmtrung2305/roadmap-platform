@@ -235,7 +235,7 @@ export default function EditPortfolioRepositoryCard({
           <button
             type="button"
             onClick={() =>
-              onGenerateInsight?.(repositoryId, hasCompletedInsight)
+              onGenerateInsight?.(repositoryId, hasCompletedInsight, repoName)
             }
             disabled={
               actionDisabled || aiCreditDisabled || isAnalyzing || !repositoryId
