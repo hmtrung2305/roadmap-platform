@@ -22,6 +22,9 @@ import {
 } from "../../../utils/apiErrorUtils";
 import { ModuleButton } from "../../learningModules/components/learningModuleUi";
 
+const STUDYROOM_INTRO_MESSAGE =
+  "I'm the Module Chat assistant. Ask me to explain, summarize, or quiz you on this module. I answer only from the lesson material.";
+
 function ChatMarkdown({ content = "" }) {
   return (
     <ReactMarkdown
@@ -262,8 +265,7 @@ export default function StudyRoomChatPanel({
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content:
-        "Ask about the current module material. I will answer from the lesson content.",
+      content: STUDYROOM_INTRO_MESSAGE,
     },
   ]);
   const [draft, setDraft] = useState("");
@@ -378,8 +380,7 @@ export default function StudyRoomChatPanel({
     setMessages([
       {
         role: "assistant",
-        content:
-          "Ask about the current module material. I will answer from the lesson content.",
+        content: STUDYROOM_INTRO_MESSAGE,
       },
     ]);
   };
@@ -496,7 +497,14 @@ export default function StudyRoomChatPanel({
           </div>
         </div>
 
-        <div className="border-t border-[#B9D8CC] bg-white p-3">
+        <div className="sticky bottom-0 z-20 shrink-0 border-t border-[#B9D8CC] bg-white/95 px-3 pb-3 pt-2 backdrop-blur-md">
+          <p
+            className="mb-1.5 text-center text-[10px] font-medium leading-4 text-slate-400"
+            role="note"
+          >
+            AI can make mistakes. Check important details in the lesson material.
+          </p>
+
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -510,7 +518,7 @@ export default function StudyRoomChatPanel({
             placeholder={
               creditStatus?.remainingCreditsToday <= 0
                 ? "Daily AI credits used up"
-                : "Ask about this lesson"
+                : "Ask about the lesson material"
             }
           />
 

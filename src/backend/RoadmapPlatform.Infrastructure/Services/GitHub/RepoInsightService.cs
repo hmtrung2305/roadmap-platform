@@ -152,6 +152,24 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 return ToDto(failedInsight);
             }
 
+            if (!generatedInsight.HasSufficientEvidence)
+            {
+                var semanticReason = string.IsNullOrWhiteSpace(generatedInsight.InsufficientReason)
+                    ? "README does not clearly describe the project's purpose and at least one supported feature or use case."
+                    : generatedInsight.InsufficientReason;
+
+                var insufficientInsight = UpsertInsufficientReadmeInsight(
+                    repository,
+                    existingInsight,
+                    semanticReason,
+                    readmeHash,
+                    readmeTruncated,
+                    generatedInsight.AiModel);
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return ToDto(insufficientInsight);
+            }
+
             var insight = UpsertCompletedInsight(
                 repository,
                 existingInsight,
@@ -160,7 +178,6 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
                 readmeTruncated);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
-
 
             return ToDto(insight);
         }
@@ -240,7 +257,9 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             Repository repository,
             RepoInsight? existingInsight,
             string errorMessage,
-            string readmeHash)
+            string readmeHash,
+            bool readmeTruncated = false,
+            string? aiModel = null)
         {
             var now = DateTime.UtcNow;
 
@@ -256,8 +275,8 @@ namespace RoadmapPlatform.Infrastructure.Services.GitHub
             insight.ProjectType = null;
             insight.AnalysisStatus = FailedStatus;
             insight.ReadmeHash = readmeHash;
-            insight.ReadmeTruncated = false;
-            insight.AiModel = null;
+            insight.ReadmeTruncated = readmeTruncated;
+            insight.AiModel = aiModel;
             insight.ErrorMessage = errorMessage;
             insight.AnalyzedAt = now;
             insight.UpdatedAt = now;

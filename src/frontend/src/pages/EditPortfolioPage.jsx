@@ -13,6 +13,7 @@ import EditPortfolioHero from "../features/portfolio/components/editor/EditPortf
 import EditPortfolioLoadingState from "../features/portfolio/components/editor/EditPortfolioLoadingState";
 import EditPortfolioProfileDetails from "../features/portfolio/components/editor/EditPortfolioProfileDetails";
 import EditPortfolioRepositoryManager from "../features/portfolio/components/editor/EditPortfolioRepositoryManager";
+import RepoInsightConfirmationModal from "../features/portfolio/components/editor/RepoInsightConfirmationModal";
 import EditPortfolioStatsGrid from "../features/portfolio/components/editor/EditPortfolioStatsGrid";
 import { useAiCreditStore } from "../stores/useAiCreditStore";
 import { getCurrentReturnUrl } from "../utils/navigationUtils";
@@ -85,6 +86,7 @@ export default function EditPortfolioPage() {
   const loadCreditStatus = useAiCreditStore((state) => state.loadCreditStatus);
 
   const [copied, setCopied] = useState(false);
+  const [pendingInsightRequest, setPendingInsightRequest] = useState(null);
   const lastRepoErrorToastRef = useRef("");
   const lastRepoSuccessToastRef = useRef("");
 
@@ -185,7 +187,11 @@ export default function EditPortfolioPage() {
     toggleRepository(repositoryId);
   };
 
-  const handleGenerateInsight = (repositoryId, force = false) => {
+  const handleGenerateInsight = (
+    repositoryId,
+    force = false,
+    repositoryName = "",
+  ) => {
     if (repositoryLoading || syncing || reloadingSelection || saving) return;
     if (creditStatus?.remainingCreditsToday <= 0) {
       toast.error(
@@ -194,7 +200,27 @@ export default function EditPortfolioPage() {
       return;
     }
 
-    generateInsight(repositoryId, { force })
+    setPendingInsightRequest({
+      repositoryId,
+      force,
+      repositoryName,
+    });
+  };
+
+  const handleConfirmGenerateInsight = () => {
+    const request = pendingInsightRequest;
+    if (!request) return;
+
+    setPendingInsightRequest(null);
+
+    if (creditStatus?.remainingCreditsToday <= 0) {
+      toast.error(
+        "You have no AI credits left today. Try again after the daily reset.",
+      );
+      return;
+    }
+
+    generateInsight(request.repositoryId, { force: request.force })
       .then(() => {
         loadCreditStatus({ force: true }).catch(() => {});
       })
@@ -332,6 +358,14 @@ export default function EditPortfolioPage() {
           />
         </section>
       </div>
+
+      <RepoInsightConfirmationModal
+        open={Boolean(pendingInsightRequest)}
+        repositoryName={pendingInsightRequest?.repositoryName}
+        force={Boolean(pendingInsightRequest?.force)}
+        onCancel={() => setPendingInsightRequest(null)}
+        onConfirm={handleConfirmGenerateInsight}
+      />
     </main>
   );
 }

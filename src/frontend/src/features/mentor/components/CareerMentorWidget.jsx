@@ -30,12 +30,17 @@ import {
 
 const PAGE_CONTEXT = "roadmap_selection";
 const LOCAL_SESSION_PREFIX = "local-session-";
+const AI_MENTOR_INTRO_MESSAGE =
+  "Not sure which direction to take? Tell me what you have learned, projects you have built, or the kind of work you enjoy. I can help you explore a suitable career direction and decide what to learn next.";
+
+const AI_MENTOR_TEASER_TITLE = "Not sure where to start?";
+const AI_MENTOR_TEASER_MESSAGE =
+  "Tell me what you have learned or built, and I’ll help you explore a career direction.";
 
 const introMessage = {
   id: "mentor-intro",
   role: "assistant",
-  content:
-    "Hi! I can help you compare published roadmaps, understand recent missing skills, and use completed Repo Insights for more personalized guidance.",
+  content: AI_MENTOR_INTRO_MESSAGE,
 };
 
 function createLocalSession() {
@@ -179,6 +184,7 @@ export default function CareerMentorWidget() {
 
   const initialSessionRef = useRef(createLocalSession());
   const [isOpen, setIsOpen] = useState(false);
+  const [isLauncherReady, setIsLauncherReady] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(initialSessionRef.current.id);
   const [sessions, setSessions] = useState([initialSessionRef.current]);
   const [messagesBySession, setMessagesBySession] = useState({
@@ -286,6 +292,14 @@ export default function CareerMentorWidget() {
       actionLabel: "View Repo Insights",
     };
   }, [connectionState.githubConnected, repositoryInsightStatus]);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setIsLauncherReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -513,13 +527,7 @@ export default function CareerMentorWidget() {
     setSessions((current) => [nextSession, ...current]);
     setMessagesBySession((current) => ({
       ...current,
-      [nextSession.id]: [
-        {
-          ...introMessage,
-          id: "mentor-intro",
-          content: "What career question do you want to explore today?",
-        },
-      ],
+      [nextSession.id]: [{ ...introMessage, id: "mentor-intro" }],
     }));
     setActiveSessionId(nextSession.id);
   }
@@ -537,11 +545,7 @@ export default function CareerMentorWidget() {
 
         if (nextSessions.length === 1 && nextSessions[0].isLocal && !updated[nextSessions[0].id]) {
           updated[nextSessions[0].id] = [
-            {
-              ...introMessage,
-              id: "mentor-intro",
-              content: "What career question do you want to explore today?",
-            },
+            { ...introMessage, id: "mentor-intro" },
           ];
         }
 
@@ -777,131 +781,58 @@ export default function CareerMentorWidget() {
     <>
       <style>
         {`
-          @keyframes mentorPillFloat {
-            0%, 100% {
+          @keyframes mentorMessageIn {
+            from {
+              opacity: 0;
+              transform: translateY(6px);
+            }
+
+            to {
+              opacity: 1;
               transform: translateY(0);
             }
-
-            50% {
-              transform: translateY(-5px);
-            }
           }
 
-          @keyframes mentorPillGlow {
+          @keyframes mentorStatusPulse {
             0%, 100% {
-              box-shadow: 0 18px 34px rgba(31, 111, 95, 0.22);
-            }
-
-            50% {
-              box-shadow: 0 24px 46px rgba(31, 111, 95, 0.32);
-            }
-          }
-
-          @keyframes mentorBotAttention {
-            0%, 72%, 100% {
-              transform: rotate(0deg) scale(1);
-            }
-
-            78% {
-              transform: rotate(-7deg) scale(1.04);
-            }
-
-            84% {
-              transform: rotate(7deg) scale(1.05);
-            }
-
-            90% {
-              transform: rotate(-4deg) scale(1.03);
-            }
-          }
-
-          @keyframes mentorBotWiggle {
-            0%, 100% {
-              transform: rotate(0deg) scale(1);
-            }
-
-            25% {
-              transform: rotate(-9deg) scale(1.06);
-            }
-
-            50% {
-              transform: rotate(9deg) scale(1.08);
-            }
-
-            75% {
-              transform: rotate(-5deg) scale(1.04);
-            }
-          }
-
-          @keyframes mentorDotPulse {
-            0% {
+              opacity: 0.55;
               transform: scale(1);
-              opacity: 0.9;
-            }
-
-            70% {
-              transform: scale(2.35);
-              opacity: 0;
-            }
-
-            100% {
-              transform: scale(2.35);
-              opacity: 0;
-            }
-          }
-
-          @keyframes mentorMessageIn {
-            0% {
-              opacity: 0;
-              transform: translateY(8px) scale(0.98);
-            }
-
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
-          }
-
-          @keyframes mentorActiveSessionGlow {
-            0%, 100% {
-              box-shadow: 0 8px 20px rgba(47, 160, 132, 0.08);
             }
 
             50% {
-              box-shadow: 0 12px 26px rgba(47, 160, 132, 0.13);
+              opacity: 0;
+              transform: scale(1.8);
+            }
+          }
+
+          @keyframes mentorTeaserFloat {
+            0%, 100% {
+              transform: translate3d(0, 0, 0);
+            }
+
+            50% {
+              transform: translate3d(0, -6px, 0);
             }
           }
 
           .mentor-message-enter {
-            animation: mentorMessageIn 0.28s ease-out both;
+            animation: mentorMessageIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
 
-          .mentor-active-session {
-            animation: mentorActiveSessionGlow 3.2s ease-in-out infinite;
-          }
-
-          .mentor-launcher-pill {
-            animation:
-              mentorPillFloat 4.2s ease-in-out infinite,
-              mentorPillGlow 4.2s ease-in-out infinite;
-          }
-
-          .mentor-launcher-bot {
-            animation: mentorBotAttention 3.8s ease-in-out infinite;
-            transform-origin: center;
-          }
-
-          .mentor-launcher-pill:hover .mentor-launcher-bot {
-            animation: mentorBotWiggle 0.6s ease-in-out;
+          .mentor-teaser-float {
+            animation: mentorTeaserFloat 6.4s ease-in-out infinite;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            will-change: transform;
           }
 
           .mentor-launcher-dot::after {
             content: "";
             position: absolute;
-            inset: 0;
+            inset: -2px;
             border-radius: 999px;
-            background: #6FCF97;
-            animation: mentorDotPulse 2.2s ease-out infinite;
+            border: 2px solid rgba(111, 207, 151, 0.75);
+            animation: mentorStatusPulse 2.8s ease-out infinite;
           }
 
           .mentor-scrollbar-hidden {
@@ -916,26 +847,52 @@ export default function CareerMentorWidget() {
           }
 
           @media (prefers-reduced-motion: reduce) {
-            .mentor-launcher-pill,
-            .mentor-launcher-bot,
             .mentor-launcher-dot::after,
             .mentor-message-enter,
-            .mentor-active-session {
+            .mentor-teaser-float {
               animation: none;
             }
           }
         `}
       </style>
 
+      <div
+        className={`fixed bottom-[92px] right-4 z-40 max-w-[min(19rem,calc(100vw-2rem))] transition-[opacity,transform] duration-500 ease-out sm:right-6 ${
+          isLauncherReady && !isOpen
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-2 opacity-0"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="mentor-teaser-float relative w-full rounded-2xl border border-[#B9D8CC] bg-white px-4 py-3 text-left shadow-[0_14px_34px_rgba(24,51,45,0.12)] transition-[border-color,box-shadow] duration-300 ease-out hover:border-[#6FCF97] hover:shadow-[0_20px_40px_rgba(24,51,45,0.18)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#6FCF97]/30"
+          aria-label="Open AI Career Mentor"
+        >
+          <span className="block text-sm font-black leading-5 text-[#18332D]">
+            {AI_MENTOR_TEASER_TITLE}
+          </span>
+          <span className="mt-1 block text-[13px] font-semibold leading-5 text-slate-600">
+            {AI_MENTOR_TEASER_MESSAGE}
+          </span>
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-2 right-7 h-4 w-4 rotate-45 border-b border-r border-[#B9D8CC] bg-white"
+          />
+        </button>
+      </div>
+
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`mentor-launcher-pill fixed bottom-6 right-6 z-40 inline-flex h-14 items-center gap-3 rounded-xl border border-white/80 bg-[#2FA084] px-4 pr-5 text-white shadow-xl transition duration-300 hover:-translate-y-1 hover:bg-[#1F6F5F] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#6FCF97]/40 ${
-          isOpen ? "pointer-events-none scale-95 opacity-0" : "opacity-100"
+        className={`group fixed bottom-6 right-6 z-40 inline-flex h-14 items-center gap-3 rounded-xl border border-white/80 bg-[#2FA084] px-4 pr-5 text-white shadow-[0_16px_34px_rgba(31,111,95,0.24)] transition-[opacity,transform,background-color,box-shadow] duration-500 ease-out hover:-translate-y-0.5 hover:bg-[#1F6F5F] hover:shadow-[0_20px_38px_rgba(31,111,95,0.28)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#6FCF97]/40 ${
+          isLauncherReady && !isOpen
+            ? "translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none translate-y-2 scale-[0.98] opacity-0"
         }`}
         aria-label="Open AI career mentor"
       >
-        <span className="mentor-launcher-bot grid h-9 w-9 place-items-center rounded-lg bg-white/15 text-white">
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 text-white transition-transform duration-300 ease-out group-hover:scale-105">
           <Bot size={22} strokeWidth={2.4} />
         </span>
 
@@ -1146,7 +1103,14 @@ export default function CareerMentorWidget() {
                 </div>
               </div>
 
-              <div className="border-t border-[#B9D8CC] bg-white px-5 py-4">
+              <div className="sticky bottom-0 z-20 shrink-0 border-t border-[#B9D8CC] bg-white/95 px-5 pb-4 pt-2 backdrop-blur-md">
+                <p
+                  className="mb-1.5 text-center text-[10px] font-medium leading-4 text-slate-400"
+                  role="note"
+                >
+                  AI guidance can make mistakes. Verify important career information.
+                </p>
+
                 <form
                   onSubmit={handleSubmit}
                   className="flex items-end gap-2 rounded-xl border border-[#B9D8CC] bg-[#F7F1E8] p-2 shadow-sm focus-within:border-[#2FA084] focus-within:ring-4 focus-within:ring-[#2FA084]/10"
