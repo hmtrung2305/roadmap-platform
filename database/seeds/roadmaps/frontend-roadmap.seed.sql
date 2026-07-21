@@ -1,5 +1,5 @@
 -- Frontend Developer Roadmap seed.
--- Idempotent seed. Safe to rerun.
+-- Idempotent seed. Safe to rerun without replacing user-owned roadmap state.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -11,36 +11,8 @@ DROP TABLE IF EXISTS seed_resource;
 DROP TABLE IF EXISTS seed_skill;
 DROP TABLE IF EXISTS seed_roadmap_map;
 
--- Clean previous copy of this specific roadmap only.
-DELETE FROM public.progress_event
-WHERE roadmap_enrollment_id IN (
-    SELECT e.roadmap_enrollment_id
-    FROM public.roadmap_enrollment e
-    JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
-    JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.slug = 'frontend-developer-roadmap'
-);
-
-DELETE FROM public.user_node_progress
-WHERE roadmap_enrollment_id IN (
-    SELECT e.roadmap_enrollment_id
-    FROM public.roadmap_enrollment e
-    JOIN public.roadmap_version rv ON rv.roadmap_version_id = e.roadmap_version_id
-    JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.slug = 'frontend-developer-roadmap'
-);
-
-DELETE FROM public.roadmap_enrollment
-WHERE roadmap_version_id IN (
-    SELECT rv.roadmap_version_id
-    FROM public.roadmap_version rv
-    JOIN public.roadmap r ON r.roadmap_id = rv.roadmap_id
-    WHERE r.slug = 'frontend-developer-roadmap'
-);
-
-DELETE FROM public.roadmap
-WHERE slug = 'frontend-developer-roadmap';
-
+-- Preserve the stable roadmap, version, enrollment, progress, and history identifiers.
+-- Seed-owned rows are updated and reconciled below instead of deleting the roadmap.
 -- Career role and roadmap/version.
 INSERT INTO public.career_role (name, slug, description, category, is_active)
 VALUES (
@@ -60,116 +32,186 @@ ON CONFLICT (slug) DO UPDATE SET
 DROP TABLE IF EXISTS seed_roadmap_map;
 CREATE TEMP TABLE seed_roadmap_map AS
 WITH role_row AS (
-    SELECT career_role_id FROM public.career_role WHERE slug = 'frontend-developer'
+    SELECT career_role_id
+    FROM public.career_role
+    WHERE slug = 'frontend-developer'
+), existing_roadmap AS (
+    SELECT r.roadmap_id
+    FROM public.roadmap r
+    WHERE r.slug = 'frontend-developer-roadmap'
+    ORDER BY r.created_at, r.roadmap_id
+    LIMIT 1
+), updated_roadmap AS (
+    UPDATE public.roadmap r
+    SET
+        career_role_id = role_row.career_role_id,
+        owner_user_id = COALESCE(
+            (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager2' LIMIT 1),
+            r.owner_user_id
+        ),
+        title = 'Frontend Developer Roadmap',
+        description = 'A structured learning path for becoming a frontend developer, covering web fundamentals, semantic HTML, CSS layout, JavaScript, frameworks, TypeScript, testing, authentication, security, rendering, browser APIs, performance, deployment, and production-ready frontend architecture.',
+        visibility = 'public',
+        updated_at = now()
+    FROM role_row, existing_roadmap
+    WHERE r.roadmap_id = existing_roadmap.roadmap_id
+    RETURNING r.roadmap_id
 ), inserted_roadmap AS (
-    INSERT INTO public.roadmap (career_role_id, owner_user_id, title, slug, description, visibility)
-SELECT career_role_id, (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager2' LIMIT 1), 'Frontend Developer Roadmap', 'frontend-developer-roadmap', 'A structured learning path for becoming a frontend developer, covering web fundamentals, semantic HTML, CSS layout, JavaScript, frameworks, TypeScript, testing, authentication, security, rendering, browser APIs, performance, deployment, and production-ready frontend architecture.', 'public'
-FROM role_row
+    INSERT INTO public.roadmap
+        (career_role_id, owner_user_id, title, slug, description, visibility)
+    SELECT
+        role_row.career_role_id,
+        (SELECT user_id FROM public."user" WHERE username_normalized = 'contentmanager2' LIMIT 1),
+        'Frontend Developer Roadmap',
+        'frontend-developer-roadmap',
+        'A structured learning path for becoming a frontend developer, covering web fundamentals, semantic HTML, CSS layout, JavaScript, frameworks, TypeScript, testing, authentication, security, rendering, browser APIs, performance, deployment, and production-ready frontend architecture.',
+        'public'
+    FROM role_row
+    WHERE NOT EXISTS (SELECT 1 FROM updated_roadmap)
     RETURNING roadmap_id
+), roadmap_row AS (
+    SELECT roadmap_id FROM updated_roadmap
+    UNION ALL
+    SELECT roadmap_id FROM inserted_roadmap
+), updated_version AS (
+    UPDATE public.roadmap_version rv
+    SET
+        major_version = 1,
+        minor_version = 0,
+        patch_version = 0,
+        release_type = 'initial',
+        status = 'published',
+        title = 'Frontend Developer Roadmap',
+        description = 'A practical frontend development roadmap that moves from browser fundamentals to production readiness through phases, guided topics, checkpoints, optional practice projects, and required milestone projects.',
+        estimated_total_hours = 420,
+        layout_direction = 'TB',
+        layout_algorithm = 'manual',
+        published_at = COALESCE(rv.published_at, now()),
+        updated_at = now()
+    FROM roadmap_row
+    WHERE rv.roadmap_id = roadmap_row.roadmap_id
+      AND rv.version_number = 1
+    RETURNING rv.roadmap_version_id, rv.roadmap_id
 ), inserted_version AS (
     INSERT INTO public.roadmap_version
-    (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
-SELECT
-    roadmap_id,
-    1,
-    1,
-    0,
-    0,
-    'initial',
-    'published',
-    'Frontend Developer Roadmap',
-    'A practical frontend development roadmap that moves from browser fundamentals to production readiness through phases, guided topics, checkpoints, optional practice projects, and required milestone projects.',
-    420,
-    'TB',
-    'manual',
-    now()
-FROM inserted_roadmap
+        (roadmap_id, version_number, major_version, minor_version, patch_version, release_type, status, title, description, estimated_total_hours, layout_direction, layout_algorithm, published_at)
+    SELECT
+        roadmap_row.roadmap_id,
+        1,
+        1,
+        0,
+        0,
+        'initial',
+        'published',
+        'Frontend Developer Roadmap',
+        'A practical frontend development roadmap that moves from browser fundamentals to production readiness through phases, guided topics, checkpoints, optional practice projects, and required milestone projects.',
+        420,
+        'TB',
+        'manual',
+        now()
+    FROM roadmap_row
+    WHERE NOT EXISTS (SELECT 1 FROM updated_version)
     RETURNING roadmap_version_id, roadmap_id
 )
+SELECT roadmap_id, roadmap_version_id FROM updated_version
+UNION ALL
 SELECT roadmap_id, roadmap_version_id FROM inserted_version;
 
 -- Skills.
+-- Roadmap-specific skills are consolidated into reusable competencies.
+-- Shared canonical skills are referenced from shared-skills.seed.sql and are not redefined here.
 DROP TABLE IF EXISTS seed_skill;
-CREATE TEMP TABLE seed_skill (slug text PRIMARY KEY, name text NOT NULL, category text NOT NULL, description text NOT NULL) ON COMMIT DROP;
+CREATE TEMP TABLE seed_skill (
+    slug text PRIMARY KEY,
+    name text NOT NULL UNIQUE,
+    category text NOT NULL,
+    description text NOT NULL
+) ON COMMIT DROP;
 
-INSERT INTO seed_skill VALUES
+INSERT INTO seed_skill (slug, name, category, description)
+VALUES
+('web-platform-and-browser-rendering', 'Web Platform and Browser Rendering', 'Frontend', 'Tracing navigation and page loads through requests, parsing, DOM and CSSOM construction, layout, paint, compositing, caching, and browser diagnostics.'),
+('component-based-ui-architecture', 'Component-Based UI Architecture', 'Frontend', 'Structuring interfaces with reusable components, clear ownership, predictable data flow, composition boundaries, and maintainable feature organization.'),
+('alternative-reactive-frameworks', 'Alternative Reactive Frameworks', 'Frontend', 'Comparing Svelte, Solid, Qwik, and similar frameworks through reactivity, rendering, routing, state, ecosystem maturity, and deployment tradeoffs.'),
+('rendering-and-site-generation-strategies', 'Rendering and Site Generation Strategies', 'Frontend', 'Selecting client rendering, SSR, SSG, ISR, hydration, streaming, islands, and static-site tooling based on content, performance, and deployment needs.'),
+('installable-and-cross-platform-frontend-apps', 'Installable and Cross-Platform Frontend Apps', 'Frontend', 'Evaluating PWAs, mobile web shells, native bridges, desktop web runtimes, offline behavior, platform APIs, packaging, and distribution constraints.'),
+('javascript-modules-and-boundaries', 'JavaScript Modules and Boundaries', 'Programming', 'Designing ES module imports, exports, dependency direction, code organization, lazy boundaries, and browser or bundler module behavior.'),
+('dom-event-driven-programming', 'DOM and Event-Driven Programming', 'Programming', 'Selecting and updating DOM nodes, handling events and forms, managing listeners, and avoiding fragile imperative UI behavior.'),
+('fetch-and-network-programming', 'Fetch and Network Programming', 'Programming', 'Calling HTTP APIs with fetch, parsing responses, handling failures, cancellation, retries, loading states, and browser cross-origin constraints.'),
+('browser-storage-and-persistence', 'Browser Storage and Persistence', 'Programming', 'Using cookies, local and session storage, IndexedDB, serialization, quotas, migrations, and persistence boundaries safely.'),
+('component-state-and-reactivity', 'Component State and Reactivity', 'Programming', 'Modeling local, shared, derived, persisted, and server-backed state with predictable updates, subscriptions, effects, and cleanup.'),
+('remote-data-state-and-cache-management', 'Remote Data State and Cache Management', 'Programming', 'Managing query keys, cache freshness, invalidation, retries, optimistic updates, pagination, and error recovery for remote data.'),
+('graphql-client-programming', 'GraphQL Client Programming', 'Programming', 'Working with queries, mutations, fragments, typed schemas, normalized caches, error policies, and client integration boundaries.'),
+('web-component-programming', 'Web Component Programming', 'Programming', 'Building custom elements with templates, shadow roots, lifecycle callbacks, attributes, properties, slots, and interoperable events.'),
+('service-worker-lifecycle', 'Service Worker Lifecycle', 'Programming', 'Managing install, activate, fetch interception, cache updates, offline fallbacks, version changes, and recovery from stale workers.'),
+('realtime-browser-communication', 'Realtime Browser Communication', 'Programming', 'Designing WebSocket and server-sent event clients with connection state, reconnection, ordering, backpressure awareness, and user feedback.'),
+('browser-capability-and-permission-apis', 'Browser Capability and Permission APIs', 'Programming', 'Using notifications, geolocation, credentials, payments, motion, and device APIs with capability detection, permission handling, and fallbacks.'),
+('semantic-html-and-content-structure', 'Semantic HTML and Content Structure', 'Design & UX', 'Organizing documents with meaningful landmarks, headings, sections, navigation, controls, tables, and content relationships.'),
+('accessible-form-design-and-validation', 'Accessible Form Design and Validation', 'Design & UX', 'Designing labeled inputs, constraints, errors, instructions, focus behavior, validation timing, and recovery paths that remain accessible.'),
+('css-layout-systems', 'CSS Layout Systems', 'Design & UX', 'Building layouts with normal flow, flexbox, grid, positioning, stacking, overflow, container sizing, and responsive constraints.'),
+('cascade-specificity-and-style-architecture', 'Cascade, Specificity, and Style Architecture', 'Design & UX', 'Managing inheritance, cascade layers, specificity, naming conventions, scoped styles, preprocessors, and maintainable styling boundaries.'),
+('component-composition-and-api-design', 'Component Composition and API Design', 'Design & UX', 'Designing component props, events, slots, children, variants, controlled inputs, and composition patterns that remain understandable.'),
+('design-system-and-component-library-practices', 'Design System and Component Library Practices', 'Design & UX', 'Creating reusable primitives, tokens, variants, documentation, accessibility rules, and governance for consistent interface construction.'),
+('loading-empty-error-and-feedback-states', 'Loading, Empty, Error, and Feedback States', 'Design & UX', 'Designing clear pending, empty, failure, success, disabled, skeleton, optimistic, and permission-denied experiences.'),
+('resilient-progressive-web-experiences', 'Resilient Progressive Web Experiences', 'Design & UX', 'Starting from semantic, usable content and layering style or behavior so core workflows survive unsupported features and failures.'),
+('internationalization-and-adaptive-layouts', 'Internationalization and Adaptive Layouts', 'Design & UX', 'Handling translated content length, locale formatting, pluralization, right-to-left layouts, font coverage, and culturally adaptable UI.'),
+('responsive-media-and-web-typography', 'Responsive Media and Web Typography', 'Design & UX', 'Delivering images and fonts with responsive sources, modern formats, sizing, loading strategy, readability, and layout-shift prevention.'),
+('seo-and-content-discoverability', 'SEO and Content Discoverability', 'Design & UX', 'Improving discovery with titles, descriptions, headings, canonical URLs, structured content, crawl hints, and performance-aware metadata.'),
+('interaction-consistency-and-visual-polish', 'Interaction Consistency and Visual Polish', 'Design & UX', 'Refining spacing, typography, responsive behavior, feedback, focus states, metadata, screenshots, and cross-screen consistency.'),
+('yarn-package-management', 'Yarn Package Management', 'Tools & Workflow', 'Using Yarn scripts, lockfiles, workspaces, dependency constraints, registries, and reproducible install workflows.'),
+('dependency-and-lockfile-management', 'Dependency and Lockfile Management', 'Tools & Workflow', 'Managing package versions, lockfiles, update strategy, workspace boundaries, audit signals, and reproducible dependency resolution.'),
+('module-bundling-and-code-splitting', 'Module Bundling and Code Splitting', 'Tools & Workflow', 'Configuring entry points, chunks, tree shaking, lazy loading, asset handling, source maps, and production bundle analysis.'),
+('transpilation-and-build-pipelines', 'Transpilation and Build Pipelines', 'Tools & Workflow', 'Coordinating TypeScript, JSX, CSS transforms, browser targets, SWC or Babel-style compilation, minification, and build outputs.'),
+('component-catalogs-and-ui-documentation', 'Component Catalogs and UI Documentation', 'Tools & Workflow', 'Documenting component states, variants, interactions, accessibility notes, fixtures, and review scenarios in an isolated catalog.'),
+('repository-collaboration-workflows', 'Repository Collaboration Workflows', 'Tools & Workflow', 'Using branches, issues, pull requests, reviews, merge policies, protected branches, and repository conventions for team delivery.'),
+('frontend-deployment-workflows', 'Frontend Deployment Workflows', 'Tools & Workflow', 'Preparing static, SPA, SSR, and packaged frontend builds with environments, CI checks, hosting configuration, promotion, rollback, and release verification.'),
+('component-and-dom-testing', 'Component and DOM Testing', 'Software Quality', 'Testing rendered behavior through accessible queries, user events, asynchronous states, fixtures, and implementation-independent assertions.'),
+('integration-and-contract-testing', 'Integration and Contract Testing', 'Software Quality', 'Checking boundaries between UI, APIs, caches, authentication, routing, and third-party clients with representative contracts and failures.'),
+('end-to-end-test-design', 'End-to-End Test Design', 'Software Quality', 'Designing stable browser tests around critical user journeys, resilient locators, setup data, traces, screenshots, parallelism, and CI diagnostics.'),
+('browser-compatibility-testing', 'Browser Compatibility Testing', 'Software Quality', 'Validating features across engines, devices, input modes, support baselines, polyfills, feature detection, and graceful fallback behavior.'),
+('core-web-vitals-and-performance-budgets', 'Core Web Vitals and Performance Budgets', 'Software Quality', 'Measuring loading, responsiveness, and visual stability against explicit budgets while distinguishing lab and field evidence.'),
+('lighthouse-and-devtools-auditing', 'Lighthouse and DevTools Auditing', 'Software Quality', 'Using browser tooling to inspect waterfalls, long tasks, rendering, memory, coverage, accessibility, and performance without chasing scores blindly.'),
+('frontend-error-monitoring-and-observability', 'Frontend Error Monitoring and Observability', 'Software Quality', 'Capturing runtime errors, source maps, releases, traces, user impact, breadcrumbs, and alert context for production diagnosis.'),
+('code-review-and-maintainability-analysis', 'Code Review and Maintainability Analysis', 'Software Quality', 'Reviewing accessibility, state ownership, naming, component boundaries, testability, duplication, performance risk, and change clarity.'),
+('tls-certificates-and-secure-origins', 'TLS, Certificates, and Secure Origins', 'Cybersecurity', 'Understanding certificate trust, HTTPS negotiation, mixed content, secure contexts, origin rules, and deployment failures affecting browser security.'),
+('cookies-sessions-and-token-storage', 'Cookies, Sessions, and Token Storage', 'Cybersecurity', 'Choosing session and token handling with secure cookie attributes, expiry, refresh behavior, storage risk, logout, and compromise boundaries.'),
+('protected-routes-and-permission-aware-ui', 'Protected Routes and Permission-Aware UI', 'Cybersecurity', 'Implementing route guards and permission-aware rendering while treating server authorization as the source of truth.'),
+('cors-and-cross-origin-security', 'CORS and Cross-Origin Security', 'Cybersecurity', 'Reasoning about origins, preflights, credentialed requests, allowed headers, redirects, and safe server-side CORS configuration.'),
+('xss-csrf-and-browser-threats', 'XSS, CSRF, and Browser Threats', 'Cybersecurity', 'Preventing script injection, unsafe DOM sinks, request forgery, insecure redirects, clickjacking, and related browser attack paths.'),
+('frontend-dependency-and-supply-chain-security', 'Frontend Dependency and Supply Chain Security', 'Cybersecurity', 'Reducing dependency risk through provenance checks, version review, lockfiles, audits, minimal packages, trusted build inputs, and update discipline.'),
+('browser-permissions-and-sensitive-api-safety', 'Browser Permissions and Sensitive API Safety', 'Cybersecurity', 'Handling location, notifications, credentials, payments, sensors, and personal data with consent, minimization, secure contexts, and denial-safe UX.'),
+('technical-readme-and-setup-documentation', 'Technical README and Setup Documentation', 'Career & Communication', 'Writing reproducible setup, environment, script, test, deployment, architecture, and limitation guidance for reviewers and collaborators.'),
+('architecture-decision-records', 'Architecture Decision Records', 'Career & Communication', 'Recording context, options, decisions, consequences, assumptions, and follow-up triggers for frontend architecture choices.'),
+('project-scoping-and-acceptance-criteria', 'Project Scoping and Acceptance Criteria', 'Career & Communication', 'Defining a focused problem, user path, constraints, required states, evidence, and completion criteria before implementation.'),
+('reproducible-demos-and-review-evidence', 'Reproducible Demos and Review Evidence', 'Career & Communication', 'Packaging screenshots, walkthroughs, fixtures, test results, performance evidence, and setup steps so work can be independently inspected.'),
+('debugging-and-incident-narratives', 'Debugging and Incident Narratives', 'Career & Communication', 'Explaining symptoms, hypotheses, evidence, root cause, corrective action, validation, and prevention for frontend defects or incidents.'),
+('frontend-system-design-communication', 'Frontend System Design Communication', 'Career & Communication', 'Presenting rendering, routing, state, caching, API, design-system, performance, security, and deployment tradeoffs coherently.'),
+('pull-request-and-code-review-communication', 'Pull Request and Code Review Communication', 'Career & Communication', 'Writing scoped changes, review context, test evidence, risk notes, actionable comments, and clear resolution summaries.'),
+('performance-and-quality-reporting', 'Performance and Quality Reporting', 'Career & Communication', 'Summarizing baselines, methods, findings, fixes, regressions, limitations, and next actions from testing or performance work.'),
+('release-handoff-and-operational-notes', 'Release Handoff and Operational Notes', 'Career & Communication', 'Preparing release notes, environment requirements, monitoring expectations, rollback guidance, known issues, and ownership handoff.'),
+('learning-gap-assessment-and-roadmap-planning', 'Learning Gap Assessment and Roadmap Planning', 'Career & Communication', 'Reviewing evidence, identifying unresolved gaps, prioritizing next skills, and separating demonstrated work from future development goals.');
 
+-- Keep roadmap-owned skill definitions current on reruns.
+UPDATE public.skill s
+SET name = ss.name,
+    category = ss.category,
+    description = ss.description,
+    is_active = true
+FROM seed_skill ss
+WHERE s.slug = ss.slug;
 
-
-
-('apollo-client', 'Apollo Client', 'Frontend', 'Using Apollo Client for queries, mutations, cache policies, error handling, and GraphQL developer workflow.'),
-('asset-and-bundle-optimization', 'Asset and Bundle Optimization', 'Game Development', 'Using code splitting, lazy loading, image optimization, fonts, compression, tree shaking, and caching.'),
-('astro', 'Astro', 'Frontend', 'Using Astro islands, content collections, integrations, and static/SSR output modes.'),
-('authentication-strategies', 'Authentication Strategies', 'Cybersecurity', 'Comparing session auth, JWT, OAuth, SSO, Basic Auth, cookie-based auth, token storage, and frontend responsibility boundaries.'),
-('bem-css-architecture', 'BEM CSS Architecture', 'Frontend', 'Using BEM naming to keep component styling predictable in plain CSS projects.'),
-('box-model-cascade-and-specificity', 'Box Model, Cascade, and Specificity', 'Frontend', 'Debug width, height, margin, padding, borders, overflow, inheritance, cascade layers, and specificity conflicts.'),
-('browser-compatibility', 'Browser Compatibility', 'Software Quality', 'Using compatibility tables, feature detection, polyfills, Baseline awareness, and graceful fallbacks.'),
-('component-composition', 'Component Composition', 'Frontend', 'Designing reusable components, props/events contracts, children/slots, controlled inputs, and layout composition.'),
-('component-documentation-and-storybook', 'Component Documentation and Storybook', 'Tools & Workflow', 'Documenting UI components, states, variants, accessibility notes, and interaction examples.'),
-('component-libraries-and-design-systems', 'Component Libraries and Design Systems', 'Design & UX', 'Evaluating and use libraries such as shadcn/ui, Mantine, and design-system primitives responsibly.'),
-('content-security-policy', 'Content Security Policy', 'Cybersecurity', 'Using CSP to reduce XSS impact and understand nonce/hash/source directives.'),
-('credentials-and-payments', 'Credentials and Payments', 'Frontend', 'Understanding credential management, passkey awareness, payment request flows, permissions, and browser support limitations.'),
-('css-modules-and-css-in-js', 'CSS Modules and CSS-in-JS', 'Frontend', 'Understanding scoped styles, component-level CSS, runtime CSS tradeoffs, and styled-components.'),
-('custom-elements', 'Custom Elements', 'Frontend', 'Defining custom elements, lifecycle callbacks, attributes, properties, and interoperability.'),
-('debugging-stories', 'Debugging Stories', 'Frontend', 'Applying explaining real bugs involving CORS, layout, state, async requests, auth, performance, and deployment.'),
-('device-orientation', 'Device Orientation', 'Frontend', 'Using orientation and motion events safely for sensor-based UI experiments.'),
-('dom-manipulation', 'DOM Manipulation', 'Frontend', 'Select elements, update content, create nodes, attach listeners, handle forms, and avoid fragile DOM code.'),
-('domain-names-and-dns', 'Domain Names and DNS', 'Networking', 'Understanding domains, DNS records, TTLs, resolvers, authoritative servers, and propagation.'),
-('electron', 'Electron', 'Frontend', 'Understanding desktop app packaging with Chromium/Node and its performance/security tradeoffs.'),
-('eleventy', 'Eleventy', 'Frontend', 'Building flexible static sites using templates, collections, data files, and transforms.'),
-('fetch-api-ajax', 'Fetch API / AJAX', 'Frontend', 'Call APIs using fetch, handle JSON, HTTP errors, loading states, aborting requests, and browser CORS failures.'),
-('forms-and-validation', 'Forms and Validation', 'Frontend', 'Building forms with labels, input types, constraints, native validation, custom messages, and accessible error states.'),
-('forms-in-frameworks', 'Forms in Frameworks', 'Frontend', 'Building validated framework forms with controlled/uncontrolled inputs, schema validation awareness, and accessible error UX.'),
-('frontend-architecture-notes', 'Frontend Architecture Notes', 'Frontend', 'Explaining component structure, state choices, API boundaries, routing, auth, testing, and performance decisions.'),
-('frontend-code-review', 'Frontend Code Review', 'Frontend', 'Review UI code for accessibility, state bugs, component boundaries, naming, testability, and performance risks.'),
-('frontend-deployment', 'Frontend Deployment', 'DevOps & Platform', 'Deploying SPAs, static sites, and SSR apps to Vercel, Netlify, Cloudflare Pages, or similar platforms.'),
-('frontend-error-monitoring', 'Frontend Error Monitoring', 'Frontend', 'Track runtime errors, source maps, performance traces, releases, and user-impacting failures.'),
-('frontend-frameworks', 'Frontend Frameworks', 'Frontend', 'Competency in Frontend Frameworks requires attention to components, state, rendering, accessibility, browser behavior, performance, and maintainable UI structure.'),
-('frontend-project-work', 'Frontend Project Work', 'Frontend', 'Effective Frontend Project Work combines components, state, rendering, accessibility, browser behavior, performance, and maintainable UI structure.'),
-('frontend-readme-and-setup-docs', 'Frontend README and Setup Docs', 'Frontend', 'Writing clear setup, env var, script, test, deployment, architecture, and known-limitations documentation.'),
-('frontend-system-design', 'Frontend System Design', 'Frontend', 'Discuss rendering, routing, state, caching, API contracts, performance budgets, design systems, and deployment strategy.'),
-('hosting', 'Hosting', 'Web', 'Understanding static hosting, CDN-backed hosting, PaaS, serverless frontend hosting, and deployment targets.'),
-('how-browsers-work', 'How Browsers Work', 'Frontend', 'Understanding browser networking, parsing, DOM/CSSOM, rendering, paint, compositing, cache, and DevTools basics.'),
-('html-templates', 'HTML Templates', 'Frontend', 'Using template and slot elements to define reusable markup and component content projection.'),
-('internationalization', 'Internationalization', 'Software Quality', 'Understanding locale formatting, translated content length, RTL layout issues, pluralization, and accessibility impact.'),
-('ionic', 'Ionic', 'Frontend', 'Understanding hybrid mobile apps using web technology and native bridges.'),
-('javascript-modules', 'JavaScript Modules', 'Programming', 'Using ES modules, named/default exports, module boundaries, and browser/bundler module behavior.'),
-('jwt-oauth-and-sso', 'JWT, OAuth, and SSO', 'Cybersecurity', 'Understanding auth code flow, PKCE, access tokens, refresh tokens, claims, expiration, and common SPA mistakes.'),
-('making-layouts', 'Making Layouts', 'Frontend', 'Using normal flow, positioning, display modes, flexbox, grid, z-index, overflow, and layout debugging.'),
-('notifications-and-location', 'Notifications and Location', 'Frontend', 'Using notification and geolocation APIs with permissions, privacy, error states, and progressive enhancement.'),
-('owasp-security-risks', 'OWASP Security Risks', 'Cybersecurity', 'Understanding XSS, CSRF, injection, broken access control, insecure storage, dependency risk, and frontend-specific mitigations.'),
-('portfolio-polish', 'Portfolio Polish', 'Career & Communication', 'Improve visual consistency, mobile behavior, accessibility, metadata, screenshots, demo data, and deployed reliability.'),
-('progressive-enhancement', 'Progressive Enhancement', 'Frontend', 'Start with semantic HTML and layer CSS/JavaScript behavior so core experiences remain usable.'),
-('protected-routes-and-auth-ui', 'Protected Routes and Auth UI', 'Design & UX', 'Building login/logout UI, guarded routes, permission-aware rendering, session refresh handling, and auth error states.'),
-('prpl-pattern', 'PRPL Pattern', 'Frontend', 'Understanding push/preload, render, pre-cache, lazy-load strategy and its modern equivalents.'),
-('pwa', 'PWA', 'Frontend', 'Understanding manifests, installability, offline behavior, cache strategies, HTTPS, and app shell tradeoffs.'),
-('qwik', 'Qwik', 'Frontend', 'Understanding resumability, lazy execution, Qwik components, routing, and advanced performance model.'),
-('rail-model', 'RAIL Model', 'Frontend', 'Using response, animation, idle, and load thinking to evaluate frontend responsiveness.'),
-('relay-modern', 'Relay Modern', 'Frontend', 'Understanding Relay data masking, fragments, compiler workflow, and advanced React GraphQL architecture.'),
-('responsive-images-and-fonts', 'Responsive Images and Fonts', 'Frontend', 'Using srcset, sizes, modern image formats, lazy loading, font-display, preloading, and layout-shift prevention.'),
-('rollup-parcel-and-esbuild', 'Rollup, Parcel, and esbuild', 'Frontend', 'Understanding when library bundlers, zero-config bundlers, and fast transpilers are used.'),
-('sass-and-postcss', 'Sass and PostCSS', 'Frontend', 'Using preprocessors and postprocessors for variables, nesting, modules, autoprefixing, and build-time transformations.'),
-('security-fundamentals', 'Security Fundamentals', 'Cybersecurity', 'Working with Security Fundamentals requires sound decisions about assets, threats, trust boundaries, preventive controls, detection, and response.'),
-('seo', 'SEO', 'Frontend', 'Using titles, descriptions, semantic headings, robots hints, canonical URLs, structured content, and performance-aware SEO basics.'),
-('server-state-and-client-caching', 'Server State and Client Caching', 'Frontend', 'Using query keys, caching, invalidation, retries, stale data, optimistic updates, and error boundaries.'),
-('service-workers', 'Service Workers', 'Frontend', 'Using service workers for request interception, caching, offline fallback, and background lifecycle awareness.'),
-('shadow-dom', 'Shadow DOM', 'Frontend', 'Using encapsulated DOM/CSS boundaries and understand styling, slots, and event retargeting.'),
-('solid-js', 'Solid JS', 'Frontend', 'Developing working knowledge of fine-grained reactivity, signals, components, effects, and Solid app structure.'),
-('ssr-ssg-isr-and-hydration', 'SSR, SSG, ISR, and Hydration', 'Frontend', 'Understanding client rendering, server rendering, static generation, incremental regeneration, hydration, streaming, and tradeoffs.'),
-('state-management', 'State Management', 'Frontend', 'Separating local state, shared UI state, server state, derived state, and persisted state.'),
-('storage-performance-best-practices', 'Storage Performance Best Practices', 'Frontend', 'Selecting storage APIs carefully and avoid blocking UI with large synchronous reads/writes.'),
-('svelte', 'Svelte', 'Frontend', 'Developing working knowledge of Svelte components, reactivity, stores, events, bindings, and SvelteKit awareness.'),
-('sveltekit', 'SvelteKit', 'Frontend', 'Building Svelte apps with file routing, load functions, actions, adapters, and deployment.'),
-('swc', 'SWC', 'Frontend', 'Understanding fast TypeScript/JavaScript compilation and how it appears in frameworks and tooling.'),
-('tailwind-css', 'Tailwind CSS', 'Frontend', 'Building utility-first interfaces and understand when Tailwind helps or hurts maintainability.'),
-('tauri', 'Tauri', 'Frontend', 'Understanding lightweight desktop apps using web UI with Rust-backed shells.'),
-('testing-library', 'Testing Library', 'Software Quality', 'Testing components through user behavior, accessible queries, events, and async UI states.'),
-('ui-states-and-empty-states', 'UI States and Empty States', 'Design & UX', 'Designing loading, empty, error, success, disabled, skeleton, optimistic, and permission-denied states.'),
-('using-devtools', 'Using DevTools', 'Frontend', 'Debug network waterfalls, layout shifts, long tasks, memory leaks, rendering, and JavaScript performance.'),
-('using-lighthouse', 'Using Lighthouse', 'Frontend', 'Running Lighthouse, interpret audits, avoid gaming scores, and prioritize meaningful fixes.'),
-('websockets-and-server-sent-events', 'WebSockets and Server-Sent Events', 'Web', 'Building realtime UI with WebSocket and SSE tradeoffs, reconnection, loading states, and backpressure awareness.'),
-('writing-semantic-html', 'Writing Semantic HTML', 'Frontend', 'Using landmarks, headings, sections, navigation, main content, articles, buttons, labels, and meaningful markup.'),
-('yarn', 'Yarn', 'Tools & Workflow', 'Understanding Yarn workflows and when a project standardizes on Yarn.');
+-- Reuse an existing row with the same canonical name when a legacy slug exists.
+UPDATE public.skill s
+SET category = ss.category,
+    description = ss.description,
+    is_active = true
+FROM seed_skill ss
+WHERE s.name = ss.name
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.skill canonical
+      WHERE canonical.slug = ss.slug
+  );
 
 INSERT INTO public.skill (name, slug, category, description, is_active)
 SELECT ss.name, ss.slug, ss.category, ss.description, true
@@ -648,14 +690,15 @@ VALUES
 ('gate-portfolio-review', 'ph-frontend-portfolio', 81, 'checkpoint', 'assessment', NULL, NULL, 'Portfolio Review Gate', 'Final roadmap checkpoint for Frontend Portfolio and Interview Readiness. The learner reviews portfolio evidence, unresolved gaps, and next learning priorities across the frontend engineering path.', 'checkpoint', 2, 'intermediate', '{"reviewFocus":"Final roadmap checkpoint for Frontend Portfolio and Interview Readiness. The learner reviews portfolio evidence, unresolved gaps, and next learning priorities across the frontend engineering path.","reviewCriteria":["Summarize completed phases, projects, and major skill groups.","Attach or reference portfolio evidence, project links, diagrams, reports, tests, or notes where available.","List remaining gaps or specialization topics for future learning.","State that the checkpoint is a planning review, not proof of job readiness."],"source":"roadmap.sh/frontend","nodeKey":"gate-portfolio-review"}'::jsonb, true, true, '["Connect completed roadmap work to a coherent frontend engineering learning narrative.", "Review portfolio or project evidence and identify which artifacts are ready to share.", "Define remaining gaps and future specialization priorities."]'::jsonb, '["Summarize completed phases, projects, and major skill groups.", "Attach or reference portfolio evidence, project links, diagrams, reports, tests, or notes where available.", "List remaining gaps or specialization topics for future learning.", "State that the checkpoint is a planning review, not proof of job readiness."]'::jsonb),
 ('proj-portfolio-final-package', 'ph-frontend-portfolio', 91, 'project', NULL, NULL, NULL, 'Required Portfolio Final Package', 'Capstone project: Polish the capstone with README, architecture notes, screenshots, deploy link, test instructions, performance results, and known tradeoffs.', 'checkpoint', 8, 'intermediate', '{"whatToBuild":"Polish the capstone with README, architecture notes, screenshots, deploy link, test instructions, performance results, and known tradeoffs.","buildSteps":["Define the Portfolio Final Package scenario and list the specific items to demonstrate: test evidence.","Choose a coherent product or case-study scenario that can integrate the strongest projects from the roadmap.","Define the architecture, data or workflow model, user path, and review evidence before implementation.","Build the core artifact end-to-end with scoped features rather than disconnected demos.","Add validation evidence appropriate to the role, such as tests, metrics, query checks, playtest notes, traces, screenshots, or incident notes.","Prepare a case study explaining decisions, trade-offs, limitations, and what would need further review for real deployment.","Package the repository or artifact so another person can reproduce or inspect the result.","Create a review checklist that connects the artifact to the relevant skills and roadmap segment.","Write a limitation and risk section so the project is presented as reviewable evidence, not a certification claim."],"source":"roadmap.sh/frontend","nodeKey":"proj-portfolio-final-package"}'::jsonb, true, true, '["Apply Frontend Project Work, React, JavaScript through a focused Portfolio Final Package artifact.","Integrate multiple roadmap areas into one coherent case study rather than isolated exercises.","Explain the main design, data, tooling, workflow, or review decisions behind the project.","Validate the result with evidence that another person can inspect.","Document assumptions, limitations, and a concrete follow-up improvement."]'::jsonb, '["The a portfolio-ready Portfolio Final Package case study and integrated artifact is available for review.","The Portfolio Final Package scope, setup path, input data or scenario, and expected output are documented.","The main workflow runs or can be inspected through a notebook, repository, dashboard, prototype, report, configuration, or case study.","The case study connects implementation decisions to relevant roadmap skills and explains why alternatives were not chosen.","Validation evidence is included and directly relates to the project brief.","The notes identify trade-offs, limitations, and one next improvement without claiming mastery or job readiness.","The project is packaged so a reviewer can understand the artifact without live mentoring."]'::jsonb);
 
+-- Upsert nodes without replacing roadmap_node_id values. Parent links are assigned
+-- after every node exists so reruns cannot point at newly generated temporary UUIDs.
 INSERT INTO public.roadmap_node
-(roadmap_node_id, roadmap_version_id, parent_node_id, slug, node_type, checkpoint_type, selection_type, required_count, title, description, order_index, layout_role, estimated_hours, difficulty_level, metadata, is_required, is_trackable, learning_outcomes, completion_criteria)
-SELECT sn.node_id, m.roadmap_version_id, parent.node_id, sn.node_key, sn.node_type, sn.checkpoint_type, sn.selection_type, sn.required_count, sn.title, sn.description, sn.order_index, sn.layout_role, sn.estimated_hours, sn.difficulty_level, sn.metadata, sn.is_required, sn.is_trackable, sn.learning_outcomes, sn.completion_criteria
+(roadmap_version_id, parent_node_id, slug, node_type, checkpoint_type, selection_type, required_count, title, description, order_index, layout_role, estimated_hours, difficulty_level, metadata, is_required, is_trackable, learning_outcomes, completion_criteria)
+SELECT m.roadmap_version_id, NULL, sn.node_key, sn.node_type, sn.checkpoint_type, sn.selection_type, sn.required_count, sn.title, sn.description, sn.order_index, sn.layout_role, sn.estimated_hours, sn.difficulty_level, sn.metadata, sn.is_required, sn.is_trackable, sn.learning_outcomes, sn.completion_criteria
 FROM seed_node sn
 CROSS JOIN seed_roadmap_map m
-LEFT JOIN seed_node parent ON parent.node_key = sn.parent_key
 ON CONFLICT (roadmap_version_id, slug) DO UPDATE SET
-    parent_node_id = EXCLUDED.parent_node_id,
+    parent_node_id = NULL,
     node_type = EXCLUDED.node_type,
     checkpoint_type = EXCLUDED.checkpoint_type,
     selection_type = EXCLUDED.selection_type,
@@ -672,7 +715,20 @@ ON CONFLICT (roadmap_version_id, slug) DO UPDATE SET
     learning_outcomes = EXCLUDED.learning_outcomes,
     completion_criteria = EXCLUDED.completion_criteria;
 
+UPDATE public.roadmap_node rn
+SET parent_node_id = parent_rn.roadmap_node_id
+FROM seed_roadmap_map m
+JOIN seed_node sn ON true
+LEFT JOIN seed_node parent_seed
+    ON parent_seed.node_key = sn.parent_key
+LEFT JOIN public.roadmap_node parent_rn
+    ON parent_rn.roadmap_version_id = m.roadmap_version_id
+   AND parent_rn.slug = parent_seed.node_key
+WHERE rn.roadmap_version_id = m.roadmap_version_id
+  AND rn.slug = sn.node_key;
+
 -- Node-skill mappings.
+-- Only topic, choice_option, and project nodes may own skill mappings.
 DROP TABLE IF EXISTS seed_node_skill;
 CREATE TEMP TABLE seed_node_skill (
     node_key text NOT NULL,
@@ -680,207 +736,278 @@ CREATE TEMP TABLE seed_node_skill (
     PRIMARY KEY (node_key, skill_slug)
 ) ON COMMIT DROP;
 
-INSERT INTO seed_node_skill VALUES
-
-('a11y-testing', 'accessibility'),
-('a11y-testing', 'accessibility-testing'),
-('accessibility-basics', 'accessibility'),
-('angular-path', 'angular'),
-('angular-path', 'frontend-frameworks'),
-('apollo-client', 'apollo-client'),
-('asset-bundle-optimization', 'asset-and-bundle-optimization'),
-('asset-bundle-optimization', 'frontend-performance'),
-('astro', 'astro'),
-('async-javascript', 'asynchronous-javascript'),
-('async-javascript', 'javascript'),
-('auth-strategies', 'authentication-strategies'),
-('auth-strategies', 'security-fundamentals'),
-('bem-css-architecture', 'bem-css-architecture'),
-('bem-css-architecture', 'css'),
-('bitbucket-workflow', 'bitbucket'),
-('box-model-cascade', 'box-model-cascade-and-specificity'),
-('browser-compatibility', 'browser-compatibility'),
-('browser-storage', 'browser-storage'),
-('browser-storage', 'javascript'),
-('component-composition', 'component-composition'),
-('component-libraries', 'component-libraries-and-design-systems'),
-('component-libraries', 'css'),
-('content-security-policy', 'content-security-policy'),
-('content-security-policy', 'security-fundamentals'),
-('cors-https', 'http'),
-('cors-https', 'security-fundamentals'),
-('credentials-payments', 'credentials-and-payments'),
-('css-basics', 'css'),
-('css-layouts', 'css'),
-('css-layouts', 'making-layouts'),
-('css-modules-css-in-js', 'css'),
-('css-modules-css-in-js', 'css-modules-and-css-in-js'),
-('custom-elements', 'custom-elements'),
-('cypress-testing', 'cypress'),
-('cypress-testing', 'testing'),
-('design-tokens', 'design-tokens-and-theming'),
-('device-orientation', 'device-orientation'),
-('devtools-performance', 'frontend-performance'),
-('devtools-performance', 'using-devtools'),
-('dom-manipulation', 'dom-manipulation'),
-('dom-manipulation', 'javascript'),
-('domain-names-dns', 'domain-names-and-dns'),
-('domain-names-dns', 'javascript'),
-('electron-desktop', 'electron'),
-('eleventy', 'eleventy'),
-('eslint-prettier', 'eslint-and-prettier'),
-('fetch-api-ajax', 'fetch-api-ajax'),
-('fetch-api-ajax', 'javascript'),
-('flutter-mobile', 'flutter'),
-('forms-in-frameworks', 'forms-in-frameworks'),
-('forms-in-frameworks', 'html'),
-('forms-validation', 'forms-and-validation'),
+INSERT INTO seed_node_skill (node_key, skill_slug)
+VALUES
+('internet-how-it-works', 'web-platform-and-browser-rendering'),
+('http-fundamentals', 'web-platform-and-browser-rendering'),
+('http-fundamentals', 'fetch-and-network-programming'),
+('domain-names-dns', 'web-platform-and-browser-rendering'),
+('hosting-basics', 'frontend-deployment-workflows'),
+('how-browsers-work', 'web-platform-and-browser-rendering'),
+('how-browsers-work', 'lighthouse-and-devtools-auditing'),
+('https-certificates', 'tls-certificates-and-secure-origins'),
+('proj-network-debugger', 'web-platform-and-browser-rendering'),
+('proj-network-debugger', 'lighthouse-and-devtools-auditing'),
+('proj-network-debugger', 'debugging-and-incident-narratives'),
+('proj-network-debugger', 'reproducible-demos-and-review-evidence'),
+('html-basics', 'html'),
+('semantic-html', 'semantic-html-and-content-structure'),
+('semantic-html', 'accessibility'),
 ('forms-validation', 'html'),
-('frontend-architecture-notes', 'frontend-architecture-notes'),
-('frontend-ci-cd', 'ci-cd'),
-('frontend-code-review', 'frontend-code-review'),
-('frontend-debugging-stories', 'debugging-stories'),
-('frontend-deployment', 'frontend-deployment'),
-('frontend-i18n', 'internationalization'),
-('frontend-monitoring', 'frontend-error-monitoring'),
-('frontend-readme-docs', 'frontend-readme-and-setup-docs'),
-('frontend-system-design-basics', 'frontend-system-design'),
-('gate-final-review', 'frontend-project-work'),
-('gate-frontend-quality', 'frontend-project-work'),
-('gate-portfolio-review', 'frontend-project-work'),
+('forms-validation', 'accessible-form-design-and-validation'),
+('accessibility-basics', 'accessibility'),
+('seo-basics', 'seo-and-content-discoverability'),
+('proj-accessible-form-page', 'accessible-form-design-and-validation'),
+('proj-accessible-form-page', 'accessibility'),
+('proj-accessible-form-page', 'project-scoping-and-acceptance-criteria'),
+('proj-accessible-form-page', 'reproducible-demos-and-review-evidence'),
+('proj-accessible-form-page', 'semantic-html-and-content-structure'),
+('css-basics', 'css'),
+('box-model-cascade', 'cascade-specificity-and-style-architecture'),
+('css-layouts', 'css-layout-systems'),
+('responsive-design', 'responsive-design'),
+('bem-css-architecture', 'cascade-specificity-and-style-architecture'),
+('sass-postcss', 'cascade-specificity-and-style-architecture'),
+('sass-postcss', 'transpilation-and-build-pipelines'),
+('tailwind-css', 'css'),
+('tailwind-css', 'design-system-and-component-library-practices'),
+('css-modules-css-in-js', 'cascade-specificity-and-style-architecture'),
+('css-modules-css-in-js', 'component-based-ui-architecture'),
+('component-libraries', 'design-system-and-component-library-practices'),
+('component-libraries', 'accessibility'),
+('proj-responsive-landing-page', 'responsive-design'),
+('proj-responsive-landing-page', 'css-layout-systems'),
+('proj-responsive-landing-page', 'interaction-consistency-and-visual-polish'),
+('proj-responsive-landing-page', 'reproducible-demos-and-review-evidence'),
+('proj-responsive-landing-page', 'responsive-media-and-web-typography'),
+('js-basics', 'javascript'),
+('js-modules', 'javascript-modules-and-boundaries'),
+('async-javascript', 'asynchronous-javascript'),
+('dom-manipulation', 'dom-event-driven-programming'),
+('fetch-api-ajax', 'fetch-and-network-programming'),
+('browser-storage', 'browser-storage-and-persistence'),
+('proj-vanilla-js-app', 'javascript'),
+('proj-vanilla-js-app', 'dom-event-driven-programming'),
+('proj-vanilla-js-app', 'project-scoping-and-acceptance-criteria'),
+('proj-vanilla-js-app', 'reproducible-demos-and-review-evidence'),
 ('git-basics', 'git'),
 ('github-workflow', 'github'),
+('github-workflow', 'repository-collaboration-workflows'),
 ('gitlab-workflow', 'gitlab'),
-('graphql-basics', 'graphql'),
-('hosting-basics', 'hosting'),
-('how-browsers-work', 'how-browsers-work'),
-('html-basics', 'html'),
-('html-templates', 'html'),
-('html-templates', 'html-templates'),
-('http-fundamentals', 'http'),
-('https-certificates', 'http'),
-('https-certificates', 'security-fundamentals'),
-('internet-how-it-works', 'internet'),
-('ionic-mobile', 'ionic'),
-('jest-vitest', 'jest-and-vitest'),
-('js-basics', 'javascript'),
-('js-modules', 'javascript'),
-('js-modules', 'javascript-modules'),
-('jwt-oauth-sso', 'jwt-oauth-and-sso'),
-('jwt-oauth-sso', 'security-fundamentals'),
-('lighthouse-audits', 'frontend-performance'),
-('lighthouse-audits', 'using-lighthouse'),
-('nextjs', 'next-js'),
-('notifications-location', 'notifications-and-location'),
+('gitlab-workflow', 'repository-collaboration-workflows'),
+('bitbucket-workflow', 'bitbucket'),
+('bitbucket-workflow', 'repository-collaboration-workflows'),
 ('npm-basics', 'npm'),
-('nuxtjs', 'nuxt-js'),
-('owasp-frontend-risks', 'owasp-security-risks'),
-('owasp-frontend-risks', 'security-fundamentals'),
-('performance-metrics', 'html'),
-('performance-metrics', 'core-web-vitals'),
-('playwright-testing', 'playwright'),
-('playwright-testing', 'testing'),
+('npm-basics', 'dependency-and-lockfile-management'),
+('yarn-basics', 'yarn-package-management'),
+('yarn-basics', 'dependency-and-lockfile-management'),
 ('pnpm-basics', 'pnpm'),
-('portfolio-polish', 'portfolio-polish'),
-('progressive-enhancement', 'progressive-enhancement'),
-('proj-accessible-form-page', 'frontend-project-work'),
-('proj-api-driven-ui', 'frontend-project-work'),
-('proj-capstone-frontend-app', 'frontend-project-work'),
-('proj-component-library', 'frontend-project-work'),
-('proj-framework-dashboard', 'frontend-project-work'),
-('proj-github-frontend-workflow', 'frontend-project-work'),
-('proj-network-debugger', 'frontend-project-work'),
-('proj-offline-pwa', 'frontend-project-work'),
-('proj-performance-audit', 'frontend-project-work'),
-('proj-portfolio-final-package', 'frontend-project-work'),
-('proj-responsive-landing-page', 'frontend-project-work'),
-('proj-secure-auth-frontend', 'frontend-project-work'),
-('proj-ssg-portfolio', 'frontend-project-work'),
-('proj-tested-frontend-app', 'frontend-project-work'),
-('proj-ts-vite-template', 'frontend-project-work'),
-('proj-vanilla-js-app', 'frontend-project-work'),
-('protected-routes', 'protected-routes-and-auth-ui'),
-('protected-routes', 'security-fundamentals'),
-('prpl-pattern', 'frontend-performance'),
-('prpl-pattern', 'prpl-pattern'),
-('pwa-fundamentals', 'pwa'),
-('qwik-path', 'frontend-frameworks'),
-('qwik-path', 'qwik'),
-('rail-model', 'frontend-performance'),
-('rail-model', 'rail-model'),
-('react-native', 'frontend-frameworks'),
-('react-native', 'react-native'),
-('react-path', 'frontend-frameworks'),
+('pnpm-basics', 'dependency-and-lockfile-management'),
+('proj-github-frontend-workflow', 'github'),
+('proj-github-frontend-workflow', 'repository-collaboration-workflows'),
+('proj-github-frontend-workflow', 'pull-request-and-code-review-communication'),
+('proj-github-frontend-workflow', 'reproducible-demos-and-review-evidence'),
 ('react-path', 'react'),
-('relay-modern', 'relay-modern'),
-('responsive-design', 'css'),
-('responsive-design', 'responsive-design'),
-('responsive-images-fonts', 'css'),
-('responsive-images-fonts', 'responsive-images-and-fonts'),
-('rollup-parcel-esbuild', 'rollup-parcel-and-esbuild'),
-('routing-spa', 'client-side-routing'),
-('routing-spa', 'frontend-frameworks'),
-('sass-postcss', 'css'),
-('sass-postcss', 'sass-and-postcss'),
-('semantic-html', 'html'),
-('semantic-html', 'writing-semantic-html'),
-('seo-basics', 'html'),
-('seo-basics', 'seo'),
-('server-state-caching', 'frontend-frameworks'),
-('server-state-caching', 'server-state-and-client-caching'),
-('service-workers', 'service-workers'),
-('shadow-dom', 'javascript'),
-('shadow-dom', 'shadow-dom'),
-('solid-path', 'frontend-frameworks'),
-('solid-path', 'solid-js'),
-('ssr-ssg-isr', 'ssr-ssg-isr-and-hydration'),
-('state-management', 'frontend-frameworks'),
-('state-management', 'state-management'),
-('storage-performance', 'html'),
-('storage-performance', 'storage-performance-best-practices'),
-('storybook-components', 'component-documentation-and-storybook'),
-('svelte-path', 'frontend-frameworks'),
-('svelte-path', 'svelte'),
-('sveltekit', 'frontend-frameworks'),
-('sveltekit', 'sveltekit'),
-('swc-tooling', 'swc'),
-('tailwind-css', 'css'),
-('tailwind-css', 'tailwind-css'),
-('tauri-desktop', 'tauri'),
-('testing-library', 'testing'),
-('testing-library', 'testing-library'),
-('testing-strategy', 'testing'),
-('typescript-core', 'typescript'),
-('ui-state-patterns', 'frontend-frameworks'),
-('ui-state-patterns', 'ui-states-and-empty-states'),
-('vite-tooling', 'vite'),
-('vue-path', 'frontend-frameworks'),
+('react-path', 'component-based-ui-architecture'),
 ('vue-path', 'vue-js'),
-('vuepress', 'frontend-frameworks'),
-('vuepress', 'vuepress'),
+('vue-path', 'component-based-ui-architecture'),
+('angular-path', 'angular'),
+('angular-path', 'component-based-ui-architecture'),
+('svelte-path', 'alternative-reactive-frameworks'),
+('solid-path', 'alternative-reactive-frameworks'),
+('qwik-path', 'alternative-reactive-frameworks'),
+('component-composition', 'component-based-ui-architecture'),
+('component-composition', 'component-composition-and-api-design'),
+('routing-spa', 'client-side-routing'),
+('state-management', 'component-state-and-reactivity'),
+('forms-in-frameworks', 'component-state-and-reactivity'),
+('forms-in-frameworks', 'accessible-form-design-and-validation'),
+('proj-framework-dashboard', 'component-based-ui-architecture'),
+('proj-framework-dashboard', 'client-side-routing'),
+('proj-framework-dashboard', 'project-scoping-and-acceptance-criteria'),
+('proj-framework-dashboard', 'reproducible-demos-and-review-evidence'),
+('proj-framework-dashboard', 'component-composition-and-api-design'),
+('proj-framework-dashboard', 'loading-empty-error-and-feedback-states'),
+('vite-tooling', 'vite'),
+('vite-tooling', 'transpilation-and-build-pipelines'),
 ('webpack-tooling', 'webpack'),
-('websockets-sse', 'websockets-and-server-sent-events'),
-('yarn-basics', 'yarn'),
-('gate-final-review', 'react'),
-('gate-final-review', 'javascript'),
-('gate-final-review', 'css'),
-('gate-final-review', 'accessibility'),
-('proj-capstone-frontend-app', 'react'),
-('proj-capstone-frontend-app', 'javascript'),
-('proj-capstone-frontend-app', 'css'),
-('proj-capstone-frontend-app', 'accessibility'),
-('proj-portfolio-final-package', 'react'),
-('proj-portfolio-final-package', 'javascript'),
-('proj-portfolio-final-package', 'css'),
-('proj-portfolio-final-package', 'accessibility')
-ON CONFLICT (node_key, skill_slug) DO NOTHING;
+('webpack-tooling', 'module-bundling-and-code-splitting'),
+('rollup-parcel-esbuild', 'module-bundling-and-code-splitting'),
+('swc-tooling', 'transpilation-and-build-pipelines'),
+('typescript-core', 'typescript'),
+('eslint-prettier', 'eslint-and-prettier'),
+('proj-ts-vite-template', 'typescript'),
+('proj-ts-vite-template', 'vite'),
+('proj-ts-vite-template', 'dependency-and-lockfile-management'),
+('proj-ts-vite-template', 'technical-readme-and-setup-documentation'),
+('proj-ts-vite-template', 'javascript-modules-and-boundaries'),
+('testing-strategy', 'testing'),
+('jest-vitest', 'jest-and-vitest'),
+('testing-library', 'component-and-dom-testing'),
+('playwright-testing', 'playwright'),
+('playwright-testing', 'end-to-end-test-design'),
+('cypress-testing', 'cypress'),
+('cypress-testing', 'end-to-end-test-design'),
+('a11y-testing', 'accessibility-testing'),
+('proj-tested-frontend-app', 'integration-and-contract-testing'),
+('proj-tested-frontend-app', 'release-readiness'),
+('proj-tested-frontend-app', 'performance-and-quality-reporting'),
+('proj-tested-frontend-app', 'reproducible-demos-and-review-evidence'),
+('proj-tested-frontend-app', 'component-and-dom-testing'),
+('proj-tested-frontend-app', 'browser-compatibility-testing'),
+('auth-strategies', 'authentication'),
+('auth-strategies', 'cookies-sessions-and-token-storage'),
+('jwt-oauth-sso', 'jwt'),
+('jwt-oauth-sso', 'oauth'),
+('protected-routes', 'authorization'),
+('protected-routes', 'protected-routes-and-permission-aware-ui'),
+('cors-https', 'cors-and-cross-origin-security'),
+('cors-https', 'tls-certificates-and-secure-origins'),
+('content-security-policy', 'security-headers-and-csp'),
+('owasp-frontend-risks', 'secure-web-application-development'),
+('owasp-frontend-risks', 'xss-csrf-and-browser-threats'),
+('owasp-frontend-risks', 'frontend-dependency-and-supply-chain-security'),
+('proj-secure-auth-frontend', 'authentication'),
+('proj-secure-auth-frontend', 'authorization'),
+('proj-secure-auth-frontend', 'cookies-sessions-and-token-storage'),
+('proj-secure-auth-frontend', 'secure-web-application-development'),
+('proj-secure-auth-frontend', 'reproducible-demos-and-review-evidence'),
+('proj-secure-auth-frontend', 'protected-routes-and-permission-aware-ui'),
+('proj-secure-auth-frontend', 'cors-and-cross-origin-security'),
+('proj-secure-auth-frontend', 'xss-csrf-and-browser-threats'),
+('server-state-caching', 'remote-data-state-and-cache-management'),
+('graphql-basics', 'graphql-client-programming'),
+('apollo-client', 'graphql-client-programming'),
+('apollo-client', 'remote-data-state-and-cache-management'),
+('relay-modern', 'graphql-client-programming'),
+('relay-modern', 'component-state-and-reactivity'),
+('custom-elements', 'web-component-programming'),
+('html-templates', 'web-component-programming'),
+('html-templates', 'html'),
+('shadow-dom', 'web-component-programming'),
+('shadow-dom', 'css'),
+('proj-api-driven-ui', 'fetch-and-network-programming'),
+('proj-api-driven-ui', 'remote-data-state-and-cache-management'),
+('proj-api-driven-ui', 'integration-and-contract-testing'),
+('proj-api-driven-ui', 'reproducible-demos-and-review-evidence'),
+('ssr-ssg-isr', 'rendering-and-site-generation-strategies'),
+('nextjs', 'rendering-and-site-generation-strategies'),
+('nextjs', 'component-based-ui-architecture'),
+('nuxtjs', 'rendering-and-site-generation-strategies'),
+('nuxtjs', 'component-based-ui-architecture'),
+('sveltekit', 'rendering-and-site-generation-strategies'),
+('sveltekit', 'alternative-reactive-frameworks'),
+('astro', 'rendering-and-site-generation-strategies'),
+('eleventy', 'rendering-and-site-generation-strategies'),
+('vuepress', 'rendering-and-site-generation-strategies'),
+('vuepress', 'vue-js'),
+('proj-ssg-portfolio', 'rendering-and-site-generation-strategies'),
+('proj-ssg-portfolio', 'seo-and-content-discoverability'),
+('proj-ssg-portfolio', 'portfolio-communication'),
+('proj-ssg-portfolio', 'reproducible-demos-and-review-evidence'),
+('pwa-fundamentals', 'installable-and-cross-platform-frontend-apps'),
+('service-workers', 'service-worker-lifecycle'),
+('service-workers', 'installable-and-cross-platform-frontend-apps'),
+('websockets-sse', 'realtime-browser-communication'),
+('notifications-location', 'browser-capability-and-permission-apis'),
+('notifications-location', 'browser-permissions-and-sensitive-api-safety'),
+('notifications-location', 'privacy-and-data-protection'),
+('credentials-payments', 'browser-capability-and-permission-apis'),
+('credentials-payments', 'browser-permissions-and-sensitive-api-safety'),
+('credentials-payments', 'authentication'),
+('device-orientation', 'browser-capability-and-permission-apis'),
+('device-orientation', 'browser-permissions-and-sensitive-api-safety'),
+('proj-offline-pwa', 'installable-and-cross-platform-frontend-apps'),
+('proj-offline-pwa', 'service-worker-lifecycle'),
+('proj-offline-pwa', 'browser-storage-and-persistence'),
+('proj-offline-pwa', 'reproducible-demos-and-review-evidence'),
+('performance-metrics', 'core-web-vitals-and-performance-budgets'),
+('rail-model', 'core-web-vitals-and-performance-budgets'),
+('prpl-pattern', 'core-web-vitals-and-performance-budgets'),
+('prpl-pattern', 'module-bundling-and-code-splitting'),
+('lighthouse-audits', 'lighthouse-and-devtools-auditing'),
+('devtools-performance', 'lighthouse-and-devtools-auditing'),
+('asset-bundle-optimization', 'module-bundling-and-code-splitting'),
+('asset-bundle-optimization', 'core-web-vitals-and-performance-budgets'),
+('storage-performance', 'browser-storage-and-persistence'),
+('storage-performance', 'core-web-vitals-and-performance-budgets'),
+('proj-performance-audit', 'core-web-vitals-and-performance-budgets'),
+('proj-performance-audit', 'lighthouse-and-devtools-auditing'),
+('proj-performance-audit', 'performance-and-quality-reporting'),
+('proj-performance-audit', 'release-readiness'),
+('react-native', 'react'),
+('react-native', 'installable-and-cross-platform-frontend-apps'),
+('flutter-mobile', 'installable-and-cross-platform-frontend-apps'),
+('ionic-mobile', 'installable-and-cross-platform-frontend-apps'),
+('electron-desktop', 'installable-and-cross-platform-frontend-apps'),
+('tauri-desktop', 'installable-and-cross-platform-frontend-apps'),
+('frontend-deployment', 'frontend-deployment-workflows'),
+('frontend-deployment', 'release-readiness'),
+('frontend-ci-cd', 'frontend-deployment-workflows'),
+('frontend-ci-cd', 'release-readiness'),
+('frontend-monitoring', 'frontend-error-monitoring-and-observability'),
+('proj-capstone-frontend-app', 'component-based-ui-architecture'),
+('proj-capstone-frontend-app', 'integration-and-contract-testing'),
+('proj-capstone-frontend-app', 'secure-web-application-development'),
+('proj-capstone-frontend-app', 'release-readiness'),
+('proj-capstone-frontend-app', 'stakeholder-communication'),
+('proj-capstone-frontend-app', 'release-handoff-and-operational-notes'),
+('proj-capstone-frontend-app', 'reproducible-demos-and-review-evidence'),
+('proj-capstone-frontend-app', 'browser-compatibility-testing'),
+('proj-capstone-frontend-app', 'frontend-error-monitoring-and-observability'),
+('proj-capstone-frontend-app', 'code-review-and-maintainability-analysis'),
+('proj-capstone-frontend-app', 'frontend-dependency-and-supply-chain-security'),
+('proj-capstone-frontend-app', 'frontend-system-design-communication'),
+('proj-capstone-frontend-app', 'learning-gap-assessment-and-roadmap-planning'),
+('design-tokens', 'design-tokens-and-theming'),
+('storybook-components', 'component-catalogs-and-ui-documentation'),
+('storybook-components', 'design-system-and-component-library-practices'),
+('ui-state-patterns', 'loading-empty-error-and-feedback-states'),
+('frontend-i18n', 'internationalization-and-adaptive-layouts'),
+('browser-compatibility', 'browser-compatibility-testing'),
+('browser-compatibility', 'resilient-progressive-web-experiences'),
+('progressive-enhancement', 'resilient-progressive-web-experiences'),
+('responsive-images-fonts', 'responsive-media-and-web-typography'),
+('proj-component-library', 'design-system-and-component-library-practices'),
+('proj-component-library', 'component-catalogs-and-ui-documentation'),
+('proj-component-library', 'accessibility'),
+('proj-component-library', 'reproducible-demos-and-review-evidence'),
+('proj-component-library', 'component-composition-and-api-design'),
+('proj-component-library', 'loading-empty-error-and-feedback-states'),
+('proj-component-library', 'internationalization-and-adaptive-layouts'),
+('frontend-readme-docs', 'technical-readme-and-setup-documentation'),
+('frontend-architecture-notes', 'architecture-decision-records'),
+('portfolio-polish', 'portfolio-communication'),
+('portfolio-polish', 'interaction-consistency-and-visual-polish'),
+('frontend-debugging-stories', 'debugging-and-incident-narratives'),
+('frontend-debugging-stories', 'technical-case-studies'),
+('frontend-code-review', 'code-review-and-maintainability-analysis'),
+('frontend-code-review', 'pull-request-and-code-review-communication'),
+('frontend-system-design-basics', 'frontend-system-design-communication'),
+('frontend-system-design-basics', 'architecture-decision-records'),
+('frontend-system-design-basics', 'interview-readiness'),
+('proj-portfolio-final-package', 'portfolio-communication'),
+('proj-portfolio-final-package', 'technical-case-studies'),
+('proj-portfolio-final-package', 'technical-readme-and-setup-documentation'),
+('proj-portfolio-final-package', 'reproducible-demos-and-review-evidence'),
+('proj-portfolio-final-package', 'release-handoff-and-operational-notes'),
+('proj-portfolio-final-package', 'learning-gap-assessment-and-roadmap-planning'),
+('proj-portfolio-final-package', 'frontend-system-design-communication'),
+('proj-portfolio-final-package', 'code-review-and-maintainability-analysis');
+
+-- Skill mappings are seed-owned for this roadmap. Reconcile them exactly so
+-- removed, duplicate, or formerly forbidden mappings do not survive reruns.
+DELETE FROM public.roadmap_node_skill rns
+USING public.roadmap_node rn, seed_roadmap_map m
+WHERE rns.roadmap_node_id = rn.roadmap_node_id
+  AND rn.roadmap_version_id = m.roadmap_version_id;
 
 INSERT INTO public.roadmap_node_skill (roadmap_node_id, skill_id)
 SELECT DISTINCT
-    rn.roadmap_node_id, resolved_skill.skill_id
+    rn.roadmap_node_id,
+    resolved_skill.skill_id
 FROM seed_node_skill sns
-JOIN seed_roadmap_map m
-    ON true
+CROSS JOIN seed_roadmap_map m
 JOIN public.roadmap_node rn
     ON rn.roadmap_version_id = m.roadmap_version_id
    AND rn.slug = sns.node_key
@@ -894,24 +1021,7 @@ JOIN LATERAL (
     ORDER BY
         CASE WHEN s.slug = sns.skill_slug THEN 0 ELSE 1 END
     LIMIT 1
-) resolved_skill ON true
-ON CONFLICT (roadmap_node_id, skill_id) DO NOTHING;
-
-WITH duplicate_node_skill AS (
-    SELECT
-        rns.roadmap_node_skill_id,
-        row_number() OVER (
-            PARTITION BY rns.roadmap_node_id, rns.skill_id
-            ORDER BY rns.roadmap_node_skill_id
-        ) AS duplicate_rank
-    FROM public.roadmap_node_skill rns
-    JOIN public.roadmap_node rn ON rn.roadmap_node_id = rns.roadmap_node_id
-    JOIN seed_roadmap_map m ON m.roadmap_version_id = rn.roadmap_version_id
-)
-DELETE FROM public.roadmap_node_skill rns
-USING duplicate_node_skill dns
-WHERE rns.roadmap_node_skill_id = dns.roadmap_node_skill_id
-  AND dns.duplicate_rank > 1;
+) resolved_skill ON true;
 
 -- Node-resource mappings.
 DROP TABLE IF EXISTS seed_node_resource;
@@ -1725,21 +1835,209 @@ INSERT INTO seed_edge VALUES
 
 INSERT INTO public.roadmap_edge
 (roadmap_version_id, from_node_id, to_node_id, edge_type, dependency_type, condition)
-SELECT m.roadmap_version_id, source.node_id, target.node_id, se.edge_type, se.dependency_type, se.condition
+SELECT
+    m.roadmap_version_id,
+    source.roadmap_node_id,
+    target.roadmap_node_id,
+    se.edge_type,
+    se.dependency_type,
+    se.condition
 FROM seed_edge se
 CROSS JOIN seed_roadmap_map m
-JOIN seed_node source ON source.node_key = se.from_key
-JOIN seed_node target ON target.node_key = se.to_key
+JOIN public.roadmap_node source
+    ON source.roadmap_version_id = m.roadmap_version_id
+   AND source.slug = se.from_key
+JOIN public.roadmap_node target
+    ON target.roadmap_version_id = m.roadmap_version_id
+   AND target.slug = se.to_key
 ON CONFLICT (roadmap_version_id, from_node_id, to_node_id, edge_type) DO UPDATE SET
     dependency_type = EXCLUDED.dependency_type,
     condition = EXCLUDED.condition;
 
-COMMIT;
+-- Summary and invariant checks.
+DO $$
+DECLARE
+    local_skill_count int;
+    roadmap_skill_count int;
+    category_count int;
+    min_category_skill_count int;
+    max_category_skill_count int;
+    resource_count int;
+    node_count int;
+    node_skill_count int;
+    node_resource_count int;
+    edge_count int;
+    invalid_node_skill_count int;
+    persisted_invalid_node_skill_count int;
+    unmapped_allowed_node_count int;
+    missing_skill_reference_count int;
+    missing_node_reference_count int;
+    persisted_node_skill_count int;
+    required_trackable_hours int;
+    all_trackable_hours int;
+BEGIN
+    SELECT COUNT(*) INTO local_skill_count FROM seed_skill;
+    SELECT COUNT(DISTINCT skill_slug) INTO roadmap_skill_count FROM seed_node_skill;
+    SELECT COUNT(*) INTO resource_count FROM seed_resource;
+    SELECT COUNT(*) INTO node_count FROM seed_node;
+    SELECT COUNT(*) INTO node_skill_count FROM seed_node_skill;
+    SELECT COUNT(*) INTO node_resource_count FROM seed_node_resource;
+    SELECT COUNT(*) INTO edge_count FROM seed_edge;
 
--- Summary:
--- Skills: 122
--- Learning resources: 157
--- Roadmap nodes: 176
--- Node-skill mappings: 185
--- Node-resource mappings: 694
--- Edges: 276
+    SELECT COUNT(*)
+    INTO invalid_node_skill_count
+    FROM seed_node_skill sns
+    JOIN seed_node sn ON sn.node_key = sns.node_key
+    WHERE sn.node_type NOT IN ('topic', 'choice_option', 'project');
+
+    SELECT COUNT(*)
+    INTO persisted_invalid_node_skill_count
+    FROM public.roadmap_node_skill rns
+    JOIN public.roadmap_node rn
+        ON rn.roadmap_node_id = rns.roadmap_node_id
+    CROSS JOIN seed_roadmap_map m
+    WHERE rn.roadmap_version_id = m.roadmap_version_id
+      AND rn.node_type NOT IN ('topic', 'choice_option', 'project');
+
+    SELECT COUNT(*)
+    INTO unmapped_allowed_node_count
+    FROM seed_node sn
+    WHERE sn.node_type IN ('topic', 'choice_option', 'project')
+      AND NOT EXISTS (
+          SELECT 1
+          FROM seed_node_skill sns
+          WHERE sns.node_key = sn.node_key
+      );
+
+    SELECT COUNT(*)
+    INTO missing_node_reference_count
+    FROM seed_node_skill sns
+    LEFT JOIN seed_node sn ON sn.node_key = sns.node_key
+    WHERE sn.node_key IS NULL;
+
+    SELECT COUNT(*)
+    INTO missing_skill_reference_count
+    FROM (
+        SELECT DISTINCT skill_slug
+        FROM seed_node_skill
+    ) referenced
+    LEFT JOIN seed_skill local_skill
+        ON local_skill.slug = referenced.skill_slug
+    LEFT JOIN public.skill shared_or_existing_skill
+        ON shared_or_existing_skill.slug = referenced.skill_slug
+    WHERE local_skill.slug IS NULL
+      AND shared_or_existing_skill.skill_id IS NULL;
+
+    WITH roadmap_skill AS (
+        SELECT DISTINCT
+            sns.skill_slug,
+            COALESCE(local_skill.category, shared_skill.category) AS category
+        FROM seed_node_skill sns
+        LEFT JOIN seed_skill local_skill
+            ON local_skill.slug = sns.skill_slug
+        LEFT JOIN public.skill shared_skill
+            ON shared_skill.slug = sns.skill_slug
+    ),
+    category_total AS (
+        SELECT category, COUNT(*) AS skill_count
+        FROM roadmap_skill
+        GROUP BY category
+    )
+    SELECT
+        COUNT(*),
+        MIN(skill_count),
+        MAX(skill_count)
+    INTO
+        category_count,
+        min_category_skill_count,
+        max_category_skill_count
+    FROM category_total;
+
+    SELECT COUNT(*)
+    INTO persisted_node_skill_count
+    FROM public.roadmap_node_skill rns
+    JOIN public.roadmap_node rn
+        ON rn.roadmap_node_id = rns.roadmap_node_id
+    CROSS JOIN seed_roadmap_map m
+    WHERE rn.roadmap_version_id = m.roadmap_version_id;
+
+    SELECT COALESCE(SUM(estimated_hours), 0)
+    INTO required_trackable_hours
+    FROM seed_node
+    WHERE is_required = true
+      AND is_trackable = true;
+
+    SELECT COALESCE(SUM(estimated_hours), 0)
+    INTO all_trackable_hours
+    FROM seed_node
+    WHERE is_trackable = true;
+
+    IF roadmap_skill_count NOT BETWEEN 90 AND 100 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap must map 90-100 distinct skills; found %.',
+            roadmap_skill_count;
+    END IF;
+
+    IF category_count <> 7 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap must use 7 focused skill categories; found %.',
+            category_count;
+    END IF;
+
+    IF min_category_skill_count < 12 OR max_category_skill_count > 16 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap skill categories must remain near 15 skills; observed range %-% across % categories.',
+            min_category_skill_count,
+            max_category_skill_count,
+            category_count;
+    END IF;
+
+    IF invalid_node_skill_count <> 0 OR persisted_invalid_node_skill_count <> 0 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap contains forbidden skill mappings. Seed: %, persisted: %.',
+            invalid_node_skill_count,
+            persisted_invalid_node_skill_count;
+    END IF;
+
+    IF unmapped_allowed_node_count <> 0 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap contains % allowed nodes without a skill mapping.',
+            unmapped_allowed_node_count;
+    END IF;
+
+    IF missing_node_reference_count <> 0 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap contains % node-skill references to unknown nodes.',
+            missing_node_reference_count;
+    END IF;
+
+    IF missing_skill_reference_count <> 0 THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap references % missing skills. Run shared-skills.seed.sql first.',
+            missing_skill_reference_count;
+    END IF;
+
+    IF persisted_node_skill_count <> node_skill_count THEN
+        RAISE EXCEPTION
+            'Frontend Developer roadmap persisted % node-skill mappings but the seed defines %.',
+            persisted_node_skill_count,
+            node_skill_count;
+    END IF;
+
+    RAISE NOTICE
+        'Frontend Developer seed complete. LocalSkills: %, RoadmapSkills: %, SkillCategories: % (%-% each), Resources: %, Nodes: %, NodeSkills: %, NodeResources: %, Edges: %, RequiredTrackableHours: %, AllTrackableHours: %, RoadmapEstimatedHours: 420',
+        local_skill_count,
+        roadmap_skill_count,
+        category_count,
+        min_category_skill_count,
+        max_category_skill_count,
+        resource_count,
+        node_count,
+        node_skill_count,
+        node_resource_count,
+        edge_count,
+        required_trackable_hours,
+        all_trackable_hours;
+END $$;
+
+COMMIT;

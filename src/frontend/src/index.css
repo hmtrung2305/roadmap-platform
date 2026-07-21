@@ -423,3 +423,51 @@ textarea {
   }
 }
 
+
+/* Keep each roadmap selector panel bounded and independently scrollable on desktop. */
+.skill-gap-selector-scroll {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-color: #9DCDBC transparent;
+  scrollbar-width: thin;
+}
+
+.skill-gap-selector-scroll::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.skill-gap-selector-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #9DCDBC;
+}
+
+.skill-gap-selector-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Keep long skill-gap content inside its owning panel without growing the page. */
+.skill-gap-content-scroll {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-color: #9DCDBC transparent;
+  scrollbar-width: thin;
+}
+
+.skill-gap-content-scroll::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.skill-gap-content-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #9DCDBC;
+}
+
+.skill-gap-content-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (min-width: 64rem) {
+  .skill-gap-result-shell {
+    height: clamp(32rem, calc(100vh - 15rem), 48rem);
+  }
+}

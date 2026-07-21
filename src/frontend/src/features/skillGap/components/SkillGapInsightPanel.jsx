@@ -11,7 +11,6 @@ function MiniStat({ label, value }) {
 }
 
 export default function SkillGapInsightPanel({
-  step,
   selectedRole,
   selectedRoadmap,
   categories,
@@ -48,7 +47,7 @@ export default function SkillGapInsightPanel({
         <MiniStat label="Marked" value={`${summary.selectedCount}/${summary.totalCount}`} />
       </div>
 
-      {step === 2 && categories.length > 0 && (
+      {categories.length > 0 && (
         <div className="mt-5">
           <h3 className="mb-3 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Checklist categories</h3>
           <div className="space-y-2">
@@ -64,9 +63,6 @@ export default function SkillGapInsightPanel({
         </div>
       )}
 
-      <p className="mt-5 rounded-2xl border border-[#B9D8CC] bg-[#EAF7F1]/70 px-4 py-3 text-xs font-semibold leading-5 text-[#1F6F5F]">
-        This feature only compares the skills you select against all skills in the published roadmap. It does not calculate readiness or recommend a learning path.
-      </p>
     </aside>
   );
 }
