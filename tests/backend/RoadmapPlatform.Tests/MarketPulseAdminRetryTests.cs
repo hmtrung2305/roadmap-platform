@@ -46,17 +46,20 @@ public sealed class MarketPulseAdminRetryTests
     {
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
-        var operation = new MarketPulseRefreshOperation
+        var operation = new MarketPulsePipelineRun
         {
-            MarketPulseRefreshOperationId = Guid.NewGuid(),
+            MarketPulsePipelineRunId = Guid.NewGuid(),
+            OperationType = "refresh",
             Status = "importing",
+            Mode = "end_to_end",
+            TriggerType = "manual",
             CurrentStep = "import",
             BaselineCrawlerSuccessAt = now.AddMinutes(-5),
             RequestedAt = now.AddMinutes(-5),
             StartedAt = now.AddMinutes(-4),
             UpdatedAt = now.AddMinutes(-1)
         };
-        context.Set<MarketPulseRefreshOperation>().Add(operation);
+        context.Set<MarketPulsePipelineRun>().Add(operation);
         await context.SaveChangesAsync();
 
         context.ChangeTracker.Clear();
@@ -64,10 +67,14 @@ public sealed class MarketPulseAdminRetryTests
             "FailAsync",
             BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(failMethod);
-        var detached = new MarketPulseRefreshOperation
+        var detached = new MarketPulsePipelineRun
         {
-            MarketPulseRefreshOperationId = operation.MarketPulseRefreshOperationId,
-            Status = "importing"
+            MarketPulsePipelineRunId = operation.MarketPulsePipelineRunId,
+            OperationType = "refresh",
+            Status = "importing",
+            Mode = "end_to_end",
+            TriggerType = "manual",
+            CurrentStep = "import"
         };
 
         var task = Assert.IsAssignableFrom<Task>(failMethod.Invoke(
@@ -76,7 +83,7 @@ public sealed class MarketPulseAdminRetryTests
         await task;
 
         context.ChangeTracker.Clear();
-        var persisted = await context.Set<MarketPulseRefreshOperation>().SingleAsync();
+        var persisted = await context.Set<MarketPulsePipelineRun>().SingleAsync();
         Assert.Equal("failed", persisted.Status);
         Assert.Equal("PIPELINE_FAILED", persisted.ErrorCode);
         Assert.Equal("Synthetic import failure", persisted.ErrorMessage);

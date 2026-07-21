@@ -99,9 +99,12 @@ pg_dump "$env:DATABASE_URL" -Fc `
 
 psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 `
   -f ".\database\migrations\039-market-pulse-topcv-consolidated.sql"
+
+psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 `
+  -f ".\database\migrations\041-market-pulse-pipeline-consolidation.sql"
 ```
 
-Run this consolidated file once even if the database already ran an older 039. It is idempotent but migration-file renaming does not cause external migration runners to replay it automatically. A detected non-TopCV source aborts the transaction without partial schema changes.
+Run 039 once even if the database already ran an older 039, then run 041. Both are idempotent. Migration 041 verifies operational row counts, rewires import failures, consolidates Market Pulse to four tables, and drops the unused `payment_transaction`, `invoice`, and `user_insight` tables in the same transaction. A detected non-TopCV source aborts 039 without partial schema changes.
 
 ### 5. Test and build
 
@@ -164,7 +167,7 @@ dotnet run `
   -- --mode history-sync --lookback-days 400
 ```
 
-History sync must finish every `scope=all` page before it advances `market_pulse_publication_history_state`. After the newly proven complete crawl gates freshness, the start watermark is the earliest retained Python job `first_seen_at`, clamped to the requested 400-day window. A failed run is safe to rerun.
+History sync must finish every `scope=all` page before it advances the `operation_type=history_sync` row in `market_pulse_pipeline_run`. After the newly proven complete crawl gates freshness, the start watermark is the earliest retained Python job `first_seen_at`, clamped to the requested 400-day window. A failed run is safe to rerun.
 
 ### 8. Run the application
 
@@ -239,20 +242,22 @@ FROM public.job_posting
 GROUP BY external_id
 HAVING COUNT(*) > 1;
 
-SELECT *
-FROM public.market_pulse_publication_history_state;
+SELECT coverage_start, coverage_end, source_data_at, last_successful_sync_at
+FROM public.market_pulse_pipeline_run
+WHERE operation_type = 'history_sync';
 
 SELECT status, COUNT(*)
-FROM public.market_pulse_refresh_operation
+FROM public.market_pulse_pipeline_run
+WHERE operation_type = 'refresh'
 GROUP BY status;
 ```
 
 Expected:
 
 - no duplicate `external_id`;
-- one history-state row;
+- one `history_sync` pipeline row;
 - at most one refresh operation in `queued`, `crawling`, or `importing`;
-- no `job_portal_source`, `market_pulse_source_health`, or daily observation tables.
+- no legacy import-run, refresh-operation, publication-history, source-health, provider, or daily-observation tables.
 
 ## Troubleshooting
 

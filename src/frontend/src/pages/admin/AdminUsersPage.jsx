@@ -393,7 +393,7 @@ export default function AdminUsersPage() {
                               {roleName}
                             </div>
                             <div className="mt-1 text-xs font-semibold text-slate-500">
-                              Role ID {roleId}
+                              Access role
                             </div>
                             {isSelfAdminRevoke && (
                               <div className="mt-1 text-xs font-extrabold text-[#1F6F5F]">

@@ -106,10 +106,11 @@ public sealed class MarketPulseHistorySyncTests
         Assert.Equal(updatedScanCount, repeated.UpdatedScanCount);
         Assert.Equal(updatedAt, repeated.UpdatedAt);
 
-        var history = await context.Set<MarketPulsePublicationHistoryState>().SingleAsync();
+        var history = await context.Set<MarketPulsePipelineRun>()
+            .SingleAsync(item => item.OperationType == "history_sync");
         Assert.Equal(
             MarketPulseBusinessTime.GetBusinessDate(coverageStart, settings.BusinessTimezone),
-            DateOnly.FromDateTime(history.CoverageStart));
+            DateOnly.FromDateTime(history.CoverageStart!.Value));
     }
 
     private static ApplicationDbContext CreateContext()

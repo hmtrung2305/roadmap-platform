@@ -25,8 +25,6 @@ public partial class User
 
     public virtual ICollection<EmailVerificationToken> EmailVerificationTokens { get; set; } = new List<EmailVerificationToken>();
 
-    public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
-
     public virtual ICollection<ProgressEvent> ProgressEvents { get; set; } = new List<ProgressEvent>();
 
     public virtual ICollection<Repository> Repositories { get; set; } = new List<Repository>();
@@ -52,8 +50,6 @@ public partial class User
     public virtual UserAiCreditPlan? UserAiCreditPlan { get; set; }
 
     public virtual ICollection<UserAuthProvider> UserAuthProviders { get; set; } = new List<UserAuthProvider>();
-
-    public virtual ICollection<UserInsight> UserInsights { get; set; } = new List<UserInsight>();
 
     public virtual UserProfile? UserProfile { get; set; }
 

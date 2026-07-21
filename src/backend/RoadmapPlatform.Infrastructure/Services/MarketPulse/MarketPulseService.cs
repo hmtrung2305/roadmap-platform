@@ -193,21 +193,22 @@ public sealed class MarketPulseService(
         DateOnly fallbackAnchor,
         CancellationToken cancellationToken)
     {
-        var sourceDataAt = await dbContext.Set<MarketPulseCrawlRun>()
+        var sourceDataAt = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
             .Where(run =>
+                run.OperationType == "import" &&
                 (run.Status == "success" || run.Status == "empty" || run.Status == "partial") &&
                 run.SourceLatestSuccessAt.HasValue)
             .OrderByDescending(run => run.SourceLatestSuccessAt)
             .Select(run => run.SourceLatestSuccessAt)
             .FirstOrDefaultAsync(cancellationToken);
-        var history = await dbContext.Set<MarketPulsePublicationHistoryState>()
+        var history = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
-            .SingleOrDefaultAsync(state => state.SingletonId == 1, cancellationToken);
-        if (history is not null &&
-            (!sourceDataAt.HasValue || history.SourceDataAt > sourceDataAt.Value))
+            .SingleOrDefaultAsync(state => state.OperationType == "history_sync", cancellationToken);
+        if (history?.SourceDataAt is not null &&
+            (!sourceDataAt.HasValue || history.SourceDataAt.Value > sourceDataAt.Value))
         {
-            sourceDataAt = history.SourceDataAt;
+            sourceDataAt = history.SourceDataAt.Value;
         }
         // Publication demand is always compared with the current Vietnam calendar
         // date. Crawler timestamps describe freshness only; hour/minute differences
@@ -259,8 +260,8 @@ public sealed class MarketPulseService(
             factsWithSkills,
             anchor,
             sourceDataAt,
-            history is null ? null : DateOnly.FromDateTime(history.CoverageStart),
-            history is null ? null : DateOnly.FromDateTime(history.CoverageEnd),
+            history?.CoverageStart is null ? null : DateOnly.FromDateTime(history.CoverageStart.Value),
+            history?.CoverageEnd is null ? null : DateOnly.FromDateTime(history.CoverageEnd.Value),
             query.Days,
             selectedSkills);
     }
@@ -500,7 +501,7 @@ public sealed class MarketPulseService(
             throw new InvalidOperationException("A Market Pulse refresh is already running.");
         }
 
-        MarketPulseCrawlRun? run = null;
+        MarketPulsePipelineRun? run = null;
 
         try
         {
@@ -537,7 +538,7 @@ public sealed class MarketPulseService(
             result.IsCompleteSync = fetchResult.IsCompleteSync;
             result.IsSourceFresh = fetchResult.IsSourceFresh;
             result.FetchStatus = fetchResult.Status.ToString();
-            result.RunId = run.MarketPulseCrawlRunId;
+            result.RunId = run.MarketPulsePipelineRunId;
             result.StartedAt = run.StartedAt;
             result.FinishedAt = run.FinishedAt;
             result.Status = run.Status;
@@ -549,10 +550,10 @@ public sealed class MarketPulseService(
         {
             if (run is not null)
             {
-                var runId = run.MarketPulseCrawlRunId;
+                var runId = run.MarketPulsePipelineRunId;
                 dbContext.ChangeTracker.Clear();
-                var persistedRun = await dbContext.Set<MarketPulseCrawlRun>()
-                    .SingleAsync(x => x.MarketPulseCrawlRunId == runId, cancellationToken);
+                var persistedRun = await dbContext.Set<MarketPulsePipelineRun>()
+                    .SingleAsync(x => x.MarketPulsePipelineRunId == runId, cancellationToken);
                 await RecordRefreshFailureAsync(persistedRun, ex, cancellationToken);
             }
 
@@ -658,7 +659,7 @@ public sealed class MarketPulseService(
     private async Task<MarketPulseRefreshResultDto> PersistScrapedPostingsAsync(
         IReadOnlyList<ScrapedJobPosting> rawPostings,
         MissingLifecycleDecision lifecycleDecision,
-        MarketPulseCrawlRun? run,
+        MarketPulsePipelineRun? run,
         TopCvImportBatch? fetchResult,
         string? finalStatus,
         int? historyCoverageDays,
@@ -691,9 +692,10 @@ public sealed class MarketPulseService(
             fetchResult.LatestSuccessfulCrawlAt.HasValue)
         {
             var sourceDataAt = fetchResult.LatestSuccessfulCrawlAt.Value.UtcDateTime;
-            var latestImportedAt = await dbContext.Set<MarketPulseCrawlRun>()
+            var latestImportedAt = await dbContext.Set<MarketPulsePipelineRun>()
                 .AsNoTracking()
                 .Where(item =>
+                    item.OperationType == "import" &&
                     (item.Status == "success" || item.Status == "empty") &&
                     item.SourceLatestSuccessAt.HasValue)
                 .OrderByDescending(item => item.SourceLatestSuccessAt)
@@ -705,9 +707,10 @@ public sealed class MarketPulseService(
                     "TopCV history data is older than the latest successful import; refetch scope=all before syncing history.");
             }
 
-            var historyState = await dbContext.Set<MarketPulsePublicationHistoryState>()
-                .SingleOrDefaultAsync(item => item.SingletonId == 1, cancellationToken);
-            if (historyState is not null && NormalizeUtc(historyState.SourceDataAt) > sourceDataAt)
+            var historyState = await dbContext.Set<MarketPulsePipelineRun>()
+                .SingleOrDefaultAsync(item => item.OperationType == "history_sync", cancellationToken);
+            if (historyState?.SourceDataAt is not null &&
+                NormalizeUtc(historyState.SourceDataAt.Value) > sourceDataAt)
             {
                 throw new InvalidOperationException(
                     "TopCV history data is older than the existing publication-history watermark.");
@@ -1042,8 +1045,8 @@ public sealed class MarketPulseService(
             return;
         }
 
-        var state = await dbContext.Set<MarketPulsePublicationHistoryState>()
-            .SingleOrDefaultAsync(item => item.SingletonId == 1, cancellationToken);
+        var state = await dbContext.Set<MarketPulsePipelineRun>()
+            .SingleOrDefaultAsync(item => item.OperationType == "history_sync", cancellationToken);
         var sourceDataAt = fetchResult.LatestSuccessfulCrawlAt.Value.UtcDateTime;
         var coverageEnd = MarketPulseBusinessTime.GetBusinessDate(
             fetchResult.LatestSuccessfulCrawlAt.Value,
@@ -1061,22 +1064,32 @@ public sealed class MarketPulseService(
         var effectiveStart = evidenceStart > requestedStart ? evidenceStart : requestedStart;
         if (state is null)
         {
-            state = new MarketPulsePublicationHistoryState
+            state = new MarketPulsePipelineRun
             {
-                SingletonId = 1,
+                MarketPulsePipelineRunId = Guid.NewGuid(),
+                OperationType = "history_sync",
+                Status = "success",
+                Mode = "history_sync",
+                TriggerType = "history_sync",
+                CurrentStep = "analytics",
+                BaselineCrawlerSuccessAt = DateTime.UnixEpoch,
+                RequestedAt = now,
+                StartedAt = now,
+                FinishedAt = now,
                 CoverageStart = effectiveStart.ToDateTime(TimeOnly.MinValue),
                 CoverageEnd = coverageEnd.ToDateTime(TimeOnly.MinValue),
                 SourceDataAt = sourceDataAt,
                 LastSuccessfulSyncAt = now,
                 SyncedPostingCount = fetchResult.FetchedCount,
+                CreatedAt = now,
                 UpdatedAt = now
             };
-            dbContext.Set<MarketPulsePublicationHistoryState>().Add(state);
+            dbContext.Set<MarketPulsePipelineRun>().Add(state);
             return;
         }
 
         var effectiveStartDateTime = effectiveStart.ToDateTime(TimeOnly.MinValue);
-        if (effectiveStartDateTime < state.CoverageStart)
+        if (!state.CoverageStart.HasValue || effectiveStartDateTime < state.CoverageStart.Value)
         {
             state.CoverageStart = effectiveStartDateTime;
         }
@@ -1084,11 +1097,11 @@ public sealed class MarketPulseService(
         state.SyncedPostingCount = fetchResult.FetchedCount;
 
         var coverageEndDateTime = coverageEnd.ToDateTime(TimeOnly.MinValue);
-        if (coverageEndDateTime > state.CoverageEnd)
+        if (!state.CoverageEnd.HasValue || coverageEndDateTime > state.CoverageEnd.Value)
         {
             state.CoverageEnd = coverageEndDateTime;
         }
-        if (sourceDataAt > state.SourceDataAt)
+        if (!state.SourceDataAt.HasValue || sourceDataAt > state.SourceDataAt.Value)
         {
             state.SourceDataAt = sourceDataAt;
         }
@@ -1108,8 +1121,8 @@ public sealed class MarketPulseService(
             return;
         }
 
-        var state = await dbContext.Set<MarketPulsePublicationHistoryState>()
-            .SingleOrDefaultAsync(item => item.SingletonId == 1, cancellationToken);
+        var state = await dbContext.Set<MarketPulsePipelineRun>()
+            .SingleOrDefaultAsync(item => item.OperationType == "history_sync", cancellationToken);
         if (state is null)
         {
             return;
@@ -1118,7 +1131,11 @@ public sealed class MarketPulseService(
         var sourceDate = MarketPulseBusinessTime.GetBusinessDate(
             fetchResult.LatestSuccessfulCrawlAt.Value,
             options.Value.BusinessTimezone);
-        var currentCoverageEnd = DateOnly.FromDateTime(state.CoverageEnd);
+        if (!state.CoverageEnd.HasValue)
+        {
+            return;
+        }
+        var currentCoverageEnd = DateOnly.FromDateTime(state.CoverageEnd.Value);
         if (sourceDate > currentCoverageEnd.AddDays(1))
         {
             return;
@@ -1157,9 +1174,10 @@ public sealed class MarketPulseService(
             return false;
         }
 
-        var latestCompletedRunAt = await dbContext.Set<MarketPulseCrawlRun>()
+        var latestCompletedRunAt = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
             .Where(x =>
+                x.OperationType == "import" &&
                 (x.Status == "success" || x.Status == "empty") &&
                 x.IsCompleteSync &&
                 x.SourceLatestSuccessAt.HasValue)
@@ -1192,28 +1210,33 @@ public sealed class MarketPulseService(
         return MissingLifecycleDecision.Apply();
     }
 
-    private async Task<MarketPulseCrawlRun> StartImportRunAsync(
+    private async Task<MarketPulsePipelineRun> StartImportRunAsync(
         string triggerType,
         DateTime startedAt,
         CancellationToken cancellationToken)
     {
-        var run = new MarketPulseCrawlRun
+        var run = new MarketPulsePipelineRun
         {
-            MarketPulseCrawlRunId = Guid.NewGuid(),
+            MarketPulsePipelineRunId = Guid.NewGuid(),
+            OperationType = "import",
             Status = "running",
             Mode = "jobs_api_pull",
             TriggerType = triggerType,
+            CurrentStep = "import",
+            BaselineCrawlerSuccessAt = DateTime.UnixEpoch,
+            RequestedAt = startedAt,
             StartedAt = startedAt,
-            CreatedAt = startedAt
+            CreatedAt = startedAt,
+            UpdatedAt = startedAt
         };
 
-        dbContext.Set<MarketPulseCrawlRun>().Add(run);
+        dbContext.Set<MarketPulsePipelineRun>().Add(run);
         await dbContext.SaveChangesAsync(cancellationToken);
         return run;
     }
 
     private static Task CompleteImportRunAsync(
-        MarketPulseCrawlRun run,
+        MarketPulsePipelineRun run,
         MarketPulseRefreshResultDto result,
         TopCvImportBatch fetchResult,
         string status,
@@ -1222,6 +1245,7 @@ public sealed class MarketPulseService(
         var finishedAt = DateTime.UtcNow;
         run.Status = status;
         run.FinishedAt = finishedAt;
+        run.UpdatedAt = finishedAt;
         run.DurationMs = Math.Max(0, (int)Math.Round((finishedAt - run.StartedAt).TotalMilliseconds));
         run.FetchedCount = fetchResult.FetchedCount;
         run.SavedCount = result.PostingsSaved;
@@ -1243,7 +1267,7 @@ public sealed class MarketPulseService(
     }
 
     private async Task RecordRefreshFailureAsync(
-        MarketPulseCrawlRun run,
+        MarketPulsePipelineRun run,
         Exception exception,
         CancellationToken cancellationToken)
     {
@@ -1256,6 +1280,7 @@ public sealed class MarketPulseService(
 
         run.Status = failureStatus;
         run.FinishedAt = now;
+        run.UpdatedAt = now;
         run.DurationMs = Math.Max(0, (int)Math.Round((now - run.StartedAt).TotalMilliseconds));
         run.FailedCount = Math.Max(1, run.FailedCount);
         run.StoppedReason = fetchException?.FetchResult.Status.ToString() ?? "exception";
@@ -1277,7 +1302,7 @@ public sealed class MarketPulseService(
         dbContext.Set<MarketPulseFailedItem>().Add(new MarketPulseFailedItem
         {
             MarketPulseFailedItemId = Guid.NewGuid(),
-            MarketPulseCrawlRunId = run.MarketPulseCrawlRunId,
+            MarketPulsePipelineRunId = run.MarketPulsePipelineRunId,
             Stage = "import",
             ErrorCode = fetchException?.FetchResult.Status.ToString() ?? exception.GetType().Name,
             ErrorMessage = errorSummary ?? "Market Pulse refresh failed.",
