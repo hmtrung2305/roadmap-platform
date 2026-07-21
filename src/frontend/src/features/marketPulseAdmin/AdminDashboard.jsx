@@ -142,7 +142,7 @@ function RecentOperations({ operations }) {
       {operations.length === 0 ? <p className="mt-4 rounded-xl bg-[#FCFAF6] p-4 text-sm font-semibold text-slate-500">No end-to-end refresh has been requested yet.</p> : (
         <div className="mt-3 space-y-2">{operations.map((operation) => (
           <article key={operation.id} className="flex flex-col gap-2 rounded-xl border border-[#DCEBE5] p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0"><div className="truncate font-mono text-xs font-bold text-[#18332D]">{operation.id}</div><div className="mt-1 text-xs text-slate-500">{formatDateTime(operation.createdAt)}</div></div>
+            <div className="min-w-0"><div className="truncate text-sm font-extrabold text-[#18332D]">TopCV market data refresh</div><div className="mt-1 text-xs text-slate-500">{formatDateTime(operation.createdAt)}</div></div>
             <StatusPill status={operation.status} />
           </article>
         ))}</div>

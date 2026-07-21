@@ -36,6 +36,10 @@ public sealed class MarketPulseTopCvSchemaTests
         Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.job_portal_source", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_daily_observation", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_source_health", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_import_run", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_refresh_operation", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_publication_history_state", sql, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS public.market_pulse_pipeline_run", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("external_id varchar(120) NOT NULL UNIQUE", sql, StringComparison.Ordinal);
         Assert.Contains("CREATE UNIQUE INDEX IF NOT EXISTS uq_job_posting_external_id", sql, StringComparison.Ordinal);
     }

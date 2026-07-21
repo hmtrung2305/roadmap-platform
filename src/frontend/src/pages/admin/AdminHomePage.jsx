@@ -1,7 +1,7 @@
 import {
   Activity,
+  Settings,
   ShieldCheck,
-  SlidersHorizontal,
   UsersRound,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -29,7 +29,11 @@ const adminAreas = [
       PERMISSIONS.ROLE_PERMISSION_VIEW_ANY,
     ],
   },
-  { title: "Skills", icon: SlidersHorizontal },
+  {
+    title: "Settings",
+    icon: Settings,
+    href: "/admin/settings",
+  },
   {
     title: "Market Pulse",
     icon: Activity,

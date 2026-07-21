@@ -97,6 +97,9 @@ describe("AdminMarketPulsePage", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Failures" }));
 
     const checkboxes = await screen.findAllByRole("checkbox");
+    expect(screen.queryByText("crawler:12")).not.toBeInTheDocument();
+    expect(screen.queryByText("05ef5845-5827-49dc-8f79-a5165ad86c7c")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Pipeline failure")).toHaveLength(2);
     fireEvent.click(checkboxes[0]);
     fireEvent.click(checkboxes[1]);
     fireEvent.click(screen.getByRole("button", { name: "Retry selected" }));

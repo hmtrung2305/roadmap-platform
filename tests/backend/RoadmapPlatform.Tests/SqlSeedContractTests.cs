@@ -89,20 +89,25 @@ public sealed class SqlSeedContractTests
     }
 
     [Fact]
-    public void ConsolidatedMigrationAndSchemaDefinePublicationHistoryContract()
+    public void PipelineMigrationAndSchemaDefineConsolidatedMarketPulseContract()
     {
         var root = FindRepositoryRoot();
         var migrationSql = File.ReadAllText(Path.Combine(
             root,
             "database",
             "migrations",
-            "039-market-pulse-topcv-consolidated.sql"));
+            "041-market-pulse-pipeline-consolidation.sql"));
         var schemaSql = File.ReadAllText(Path.Combine(root, "database", "schema.sql"));
 
-        Assert.Contains("public.market_pulse_publication_history_state", migrationSql, StringComparison.Ordinal);
-        Assert.Contains("public.market_pulse_refresh_operation", migrationSql, StringComparison.Ordinal);
-        Assert.Contains("public.market_pulse_publication_history_state", schemaSql, StringComparison.Ordinal);
-        Assert.Contains("public.market_pulse_refresh_operation", schemaSql, StringComparison.Ordinal);
+        Assert.Contains("public.market_pulse_pipeline_run", migrationSql, StringComparison.Ordinal);
+        Assert.Contains("operation_type IN ('import', 'refresh', 'history_sync')", migrationSql, StringComparison.Ordinal);
+        Assert.Contains("public.market_pulse_pipeline_run", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_import_run", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_publication_history_state", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.market_pulse_refresh_operation", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.invoice", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.payment_transaction", schemaSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS public.user_insight", schemaSql, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "CREATE TABLE IF NOT EXISTS public.market_pulse_daily_observation",
             schemaSql,

@@ -56,13 +56,14 @@ public sealed class MarketPulseRefreshOperationWorker(
             return false;
         }
 
-        MarketPulseRefreshOperation? operation = null;
+        MarketPulsePipelineRun? operation = null;
         try
         {
-            operation = await db.Set<MarketPulseRefreshOperation>()
+            operation = await db.Set<MarketPulsePipelineRun>()
                 .OrderBy(item => item.RequestedAt)
                 .FirstOrDefaultAsync(item =>
-                    item.Status == "queued" || item.Status == "crawling" || item.Status == "importing",
+                    item.OperationType == "refresh" &&
+                    (item.Status == "queued" || item.Status == "crawling" || item.Status == "importing"),
                     cancellationToken);
             if (operation is null)
             {
@@ -73,7 +74,6 @@ public sealed class MarketPulseRefreshOperationWorker(
             {
                 operation.Status = "crawling";
                 operation.CurrentStep = "crawler";
-                operation.StartedAt ??= DateTime.UtcNow;
                 operation.UpdatedAt = DateTime.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
                 var client = scope.ServiceProvider.GetRequiredService<TopCvJobsApiClient>();
@@ -92,7 +92,7 @@ public sealed class MarketPulseRefreshOperationWorker(
             {
                 var healthService = scope.ServiceProvider.GetRequiredService<IJobsApiHealthService>();
                 var health = await healthService.GetHealthAsync(cancellationToken);
-                var operationStartedAt = NormalizeUtc(operation.StartedAt ?? operation.RequestedAt);
+                var operationStartedAt = NormalizeUtc(operation.StartedAt);
                 var hasOperationCrawlerRun = health.LatestListingStartedAt.HasValue &&
                     NormalizeUtc(health.LatestListingStartedAt.Value) >= operationStartedAt;
                 if (hasOperationCrawlerRun && IsUsablePartialCrawlerResult(health))
@@ -135,7 +135,7 @@ public sealed class MarketPulseRefreshOperationWorker(
                     operation.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(cancellationToken);
                 }
-                else if (DateTime.UtcNow - (operation.StartedAt ?? operation.RequestedAt) >
+                else if (DateTime.UtcNow - operation.StartedAt >
                          TimeSpan.FromMinutes(Math.Clamp(settings.Value.RefreshOperationTimeoutMinutes, 1, 120)))
                 {
                     await FailAsync(db, operation, "CRAWLER_TIMEOUT", "No newer successful TopCV crawl arrived before timeout.", cancellationToken);
@@ -213,7 +213,7 @@ public sealed class MarketPulseRefreshOperationWorker(
             logger.LogWarning(
                 exception,
                 "TopCV refresh operation {OperationId} failed.",
-                operation.MarketPulseRefreshOperationId);
+                operation.MarketPulsePipelineRunId);
             await FailAsync(
                 db,
                 operation,
@@ -277,7 +277,7 @@ public sealed class MarketPulseRefreshOperationWorker(
 
     private static async Task FailAsync(
         ApplicationDbContext db,
-        MarketPulseRefreshOperation operation,
+        MarketPulsePipelineRun operation,
         string code,
         string? message,
         CancellationToken cancellationToken)
@@ -285,10 +285,10 @@ public sealed class MarketPulseRefreshOperationWorker(
         // RefreshAsync clears its shared scoped change tracker while recording an
         // import failure. Re-query by the durable ID so a detached worker entity
         // cannot leave the operation permanently stuck in `importing`.
-        var operationId = operation.MarketPulseRefreshOperationId;
-        var persisted = await db.Set<MarketPulseRefreshOperation>()
+        var operationId = operation.MarketPulsePipelineRunId;
+        var persisted = await db.Set<MarketPulsePipelineRun>()
             .SingleOrDefaultAsync(
-                item => item.MarketPulseRefreshOperationId == operationId,
+                item => item.OperationType == "refresh" && item.MarketPulsePipelineRunId == operationId,
                 cancellationToken);
         if (persisted is null)
         {

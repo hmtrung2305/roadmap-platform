@@ -24,8 +24,6 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
 
-    public virtual DbSet<Invoice> Invoices { get; set; }
-
     public virtual DbSet<JobPosting> JobPostings { get; set; }
 
     public virtual DbSet<LearningResource> LearningResources { get; set; }
@@ -34,15 +32,9 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<MarketPulseClassifierKeywordMapping> MarketPulseClassifierKeywordMappings { get; set; }
 
-    public virtual DbSet<MarketPulseCrawlRun> MarketPulseCrawlRuns { get; set; }
+    public virtual DbSet<MarketPulsePipelineRun> MarketPulsePipelineRuns { get; set; }
 
     public virtual DbSet<MarketPulseFailedItem> MarketPulseFailedItems { get; set; }
-
-    public virtual DbSet<MarketPulsePublicationHistoryState> MarketPulsePublicationHistoryStates { get; set; }
-
-    public virtual DbSet<MarketPulseRefreshOperation> MarketPulseRefreshOperations { get; set; }
-
-    public virtual DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
     public virtual DbSet<PendingLocalRegistration> PendingLocalRegistrations { get; set; }
 
@@ -105,8 +97,6 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<UserAiCreditPlan> UserAiCreditPlans { get; set; }
 
     public virtual DbSet<UserAuthProvider> UserAuthProviders { get; set; }
-
-    public virtual DbSet<UserInsight> UserInsights { get; set; }
 
     public virtual DbSet<UserNodeProgress> UserNodeProgresses { get; set; }
 
@@ -317,36 +307,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_email_verification_user_id");
-        });
-
-        modelBuilder.Entity<Invoice>(entity =>
-        {
-            entity.HasKey(e => e.InvoiceId).HasName("invoice_pkey");
-
-            entity.ToTable("invoice");
-
-            entity.Property(e => e.InvoiceId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("invoice_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Currency)
-                .HasMaxLength(10)
-                .HasDefaultValueSql("'VND'::character varying")
-                .HasColumnName("currency");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Status)
-                .HasMaxLength(30)
-                .HasColumnName("status");
-            entity.Property(e => e.TotalAmount)
-                .HasPrecision(12, 2)
-                .HasColumnName("total_amount");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Invoices)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("fk_invoice_user_id");
         });
 
         modelBuilder.Entity<JobPosting>(entity =>
@@ -601,23 +561,33 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("weight");
         });
 
-        modelBuilder.Entity<MarketPulseCrawlRun>(entity =>
+        modelBuilder.Entity<MarketPulsePipelineRun>(entity =>
         {
-            entity.HasKey(e => e.MarketPulseCrawlRunId).HasName("market_pulse_import_run_pkey");
+            entity.HasKey(e => e.MarketPulsePipelineRunId).HasName("market_pulse_pipeline_run_pkey");
 
-            entity.ToTable("market_pulse_import_run");
+            entity.ToTable("market_pulse_pipeline_run");
 
-            entity.HasIndex(e => new { e.StartedAt, e.Status }, "ix_market_pulse_import_run_started_status").IsDescending(true, false);
+            entity.HasIndex(e => new { e.OperationType, e.StartedAt, e.Status }, "ix_market_pulse_pipeline_type_started_status")
+                .IsDescending(false, true, false);
+            entity.HasIndex(e => e.RequestedAt, "ix_market_pulse_pipeline_requested_at").IsDescending();
 
-            entity.Property(e => e.MarketPulseCrawlRunId)
+            entity.Property(e => e.MarketPulsePipelineRunId)
                 .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("market_pulse_import_run_id");
+                .HasColumnName("market_pulse_pipeline_run_id");
+            entity.Property(e => e.OperationType).HasMaxLength(24).HasColumnName("operation_type");
+            entity.Property(e => e.CurrentStep).HasMaxLength(24).HasColumnName("current_step");
+            entity.Property(e => e.BaselineCrawlerSuccessAt).HasColumnName("baseline_crawler_success_at");
+            entity.Property(e => e.CrawlerSuccessAt).HasColumnName("crawler_success_at");
+            entity.Property(e => e.ImportRunId).HasColumnName("import_run_id");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DuplicateCount).HasColumnName("duplicate_count");
             entity.Property(e => e.DurationMs).HasColumnName("duration_ms");
             entity.Property(e => e.ErrorSummary).HasColumnName("error_summary");
+            entity.Property(e => e.ErrorCode).HasMaxLength(80).HasColumnName("error_code");
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
             entity.Property(e => e.FailedCount).HasColumnName("failed_count");
             entity.Property(e => e.FetchedCount).HasColumnName("fetched_count");
             entity.Property(e => e.FinishedAt).HasColumnName("finished_at");
@@ -647,6 +617,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'manual'::character varying")
                 .HasColumnName("trigger_type");
             entity.Property(e => e.UpdatedCount).HasColumnName("updated_count");
+            entity.Property(e => e.CoverageStart).HasColumnType("date").HasColumnName("coverage_start");
+            entity.Property(e => e.CoverageEnd).HasColumnType("date").HasColumnName("coverage_end");
+            entity.Property(e => e.SourceDataAt).HasColumnName("source_data_at");
+            entity.Property(e => e.LastSuccessfulSyncAt).HasColumnName("last_successful_sync_at");
+            entity.Property(e => e.SyncedPostingCount).HasColumnName("synced_posting_count");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<MarketPulseFailedItem>(entity =>
@@ -670,7 +646,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.ErrorDetail).HasColumnName("error_detail");
             entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
             entity.Property(e => e.LastRetryAt).HasColumnName("last_retry_at");
-            entity.Property(e => e.MarketPulseCrawlRunId).HasColumnName("market_pulse_import_run_id");
+            entity.Property(e => e.MarketPulsePipelineRunId).HasColumnName("market_pulse_pipeline_run_id");
             entity.Property(e => e.RawPayload)
                 .HasColumnType("jsonb")
                 .HasColumnName("raw_payload");
@@ -690,84 +666,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(500)
                 .HasColumnName("url");
 
-            entity.HasOne(d => d.MarketPulseCrawlRun).WithMany(p => p.MarketPulseFailedItems)
-                .HasForeignKey(d => d.MarketPulseCrawlRunId)
+            entity.HasOne(d => d.MarketPulsePipelineRun).WithMany(p => p.MarketPulseFailedItems)
+                .HasForeignKey(d => d.MarketPulsePipelineRunId)
                 .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_market_pulse_import_failure_run");
-        });
-
-        modelBuilder.Entity<MarketPulsePublicationHistoryState>(entity =>
-        {
-            entity.HasKey(e => e.SingletonId)
-                .HasName("market_pulse_publication_history_state_pkey");
-            entity.ToTable("market_pulse_publication_history_state");
-            entity.Property(e => e.SingletonId).HasColumnName("singleton_id");
-            entity.Property(e => e.CoverageStart).HasColumnType("date").HasColumnName("coverage_start");
-            entity.Property(e => e.CoverageEnd).HasColumnType("date").HasColumnName("coverage_end");
-            entity.Property(e => e.SourceDataAt).HasColumnName("source_data_at");
-            entity.Property(e => e.LastSuccessfulSyncAt).HasColumnName("last_successful_sync_at");
-            entity.Property(e => e.SyncedPostingCount).HasColumnName("synced_posting_count");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
-        });
-
-        modelBuilder.Entity<MarketPulseRefreshOperation>(entity =>
-        {
-            entity.HasKey(e => e.MarketPulseRefreshOperationId)
-                .HasName("market_pulse_refresh_operation_pkey");
-            entity.ToTable("market_pulse_refresh_operation");
-            entity.HasIndex(e => e.RequestedAt, "ix_market_pulse_refresh_operation_requested_at")
-                .IsDescending();
-            // The database owns uq_market_pulse_refresh_operation_active as a partial
-            // expression index on the constant (1), ensuring exactly one active row.
-            entity.Property(e => e.MarketPulseRefreshOperationId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("market_pulse_refresh_operation_id");
-            entity.Property(e => e.Status).HasMaxLength(24).HasColumnName("status");
-            entity.Property(e => e.BaselineCrawlerSuccessAt).HasColumnName("baseline_crawler_success_at");
-            entity.Property(e => e.CrawlerSuccessAt).HasColumnName("crawler_success_at");
-            entity.Property(e => e.ImportRunId).HasColumnName("market_pulse_import_run_id");
-            entity.Property(e => e.CurrentStep).HasMaxLength(24).HasColumnName("current_step");
-            entity.Property(e => e.TriggerType).HasMaxLength(24).HasColumnName("trigger_type");
-            entity.Property(e => e.ErrorCode).HasMaxLength(80).HasColumnName("error_code");
-            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
-            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
-            entity.Property(e => e.StartedAt).HasColumnName("started_at");
-            entity.Property(e => e.FinishedAt).HasColumnName("finished_at");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-        });
-
-        modelBuilder.Entity<PaymentTransaction>(entity =>
-        {
-            entity.HasKey(e => e.TransactionId).HasName("payment_transaction_pkey");
-
-            entity.ToTable("payment_transaction");
-
-            entity.Property(e => e.TransactionId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("transaction_id");
-            entity.Property(e => e.Amount)
-                .HasPrecision(12, 2)
-                .HasColumnName("amount");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Gateway)
-                .HasMaxLength(30)
-                .HasColumnName("gateway");
-            entity.Property(e => e.GatewayTransactionId)
-                .HasMaxLength(100)
-                .HasColumnName("gateway_transaction_id");
-            entity.Property(e => e.InvoiceId).HasColumnName("invoice_id");
-            entity.Property(e => e.Status)
-                .HasMaxLength(30)
-                .HasColumnName("status");
-            entity.Property(e => e.WebhookPayload)
-                .HasColumnType("jsonb")
-                .HasColumnName("webhook_payload");
-
-            entity.HasOne(d => d.Invoice).WithMany(p => p.PaymentTransactions)
-                .HasForeignKey(d => d.InvoiceId)
-                .HasConstraintName("fk_payment_transaction_invoice_id");
+                .HasConstraintName("fk_market_pulse_import_failure_pipeline_run");
         });
 
         modelBuilder.Entity<PendingLocalRegistration>(entity =>
@@ -2031,25 +1933,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserAuthProviders)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_user_auth_provider_user_id");
-        });
-
-        modelBuilder.Entity<UserInsight>(entity =>
-        {
-            entity.HasKey(e => e.InsightId).HasName("user_insight_pkey");
-
-            entity.ToTable("user_insight");
-
-            entity.Property(e => e.InsightId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("insight_id");
-            entity.Property(e => e.Metadata)
-                .HasColumnType("jsonb")
-                .HasColumnName("metadata");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.User).WithMany(p => p.UserInsights)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("fk_user_insight_user_id");
         });
 
         modelBuilder.Entity<UserNodeProgress>(entity =>

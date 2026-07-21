@@ -39,18 +39,16 @@ The API accepts legacy `source=topcv` and returns HTTP 400 for every other sourc
 
 ## PostgreSQL runtime store
 
-The consolidated migration is `database/migrations/039-market-pulse-topcv-consolidated.sql`. It is transactional and idempotent, and it must be run once even when an older migration named 039 was previously applied.
+TopCV consolidation starts in `database/migrations/039-market-pulse-topcv-consolidated.sql`. Operational-state consolidation is completed by `database/migrations/041-market-pulse-pipeline-consolidation.sql`; both migrations are transactional and idempotent.
 
 Market Pulse retains:
 
 - `job_posting`, with globally unique `external_id`;
-- `market_pulse_import_run`;
+- `market_pulse_pipeline_run`, discriminated by `operation_type=import|refresh|history_sync`;
 - `market_pulse_import_failure`;
-- `market_pulse_classifier_keyword_mapping`;
-- singleton `market_pulse_publication_history_state`;
-- `market_pulse_refresh_operation`.
+- `market_pulse_classifier_keyword_mapping`.
 
-The migration removes the provider table/FK, source columns/indexes, source-health table, and crawler-observation analytics tables. It aborts if legacy PostgreSQL rows identify a provider other than TopCV. Job IDs, external IDs, import run/failure IDs, and classifier mappings are preserved.
+Migration 041 moves import runs, refresh operations and the singleton publication-history watermark into the pipeline table, rewires failure foreign keys, verifies row counts, then drops the three legacy lifecycle tables. Job IDs, external IDs, pipeline IDs, failure IDs and classifier mappings are preserved.
 
 ## Publication-date model
 
@@ -87,7 +85,7 @@ No posting publication date is synthesized from `first_seen_at`, `last_seen_at`,
 
 ## End-to-end refresh operation
 
-The Operations Console starts a durable `market_pulse_refresh_operation`:
+The Operations Console starts a durable `operation_type=refresh` row in `market_pulse_pipeline_run`:
 
 ```text
 queued -> crawling -> importing -> success

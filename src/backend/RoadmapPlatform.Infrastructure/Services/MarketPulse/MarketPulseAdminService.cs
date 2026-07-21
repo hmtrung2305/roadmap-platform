@@ -52,13 +52,15 @@ public sealed class MarketPulseAdminService(
         {
             openCrawlerFailures = health.PagesFailed + health.PagesBlocked;
         }
-        var latestRun = await dbContext.Set<MarketPulseCrawlRun>()
+        var latestRun = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
+            .Where(run => run.OperationType == "import")
             .OrderByDescending(run => run.StartedAt)
             .FirstOrDefaultAsync(cancellationToken);
-        var latestSuccessfulImport = await dbContext.Set<MarketPulseCrawlRun>()
+        var latestSuccessfulImport = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
             .Where(run =>
+                run.OperationType == "import" &&
                 (run.Status == "success" || run.Status == "empty") &&
                 run.IsCompleteSync)
             .OrderByDescending(run => run.FinishedAt)
@@ -71,14 +73,15 @@ public sealed class MarketPulseAdminService(
                     item.Status == "retry_queued" ||
                     item.Status == "retrying",
                 cancellationToken);
-        var operations = await dbContext.Set<MarketPulseRefreshOperation>()
+        var operations = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
+            .Where(operation => operation.OperationType == "refresh")
             .OrderByDescending(operation => operation.RequestedAt)
             .Take(5)
             .ToListAsync(cancellationToken);
-        var latestSuccessfulRefreshAt = await dbContext.Set<MarketPulseRefreshOperation>()
+        var latestSuccessfulRefreshAt = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
-            .Where(operation => operation.Status == "success")
+            .Where(operation => operation.OperationType == "refresh" && operation.Status == "success")
             .OrderByDescending(operation => operation.FinishedAt)
             .Select(operation => operation.FinishedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -221,22 +224,23 @@ public sealed class MarketPulseAdminService(
     public async Task<MarketPulseRefreshOperationDto> CreateRefreshOperationAsync(
         CancellationToken cancellationToken)
     {
-        var active = await dbContext.Set<MarketPulseRefreshOperation>()
+        var active = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
             .OrderByDescending(operation => operation.RequestedAt)
             .FirstOrDefaultAsync(operation =>
-                operation.Status == "queued" ||
-                operation.Status == "crawling" ||
-                operation.Status == "importing",
+                operation.OperationType == "refresh" &&
+                (operation.Status == "queued" ||
+                 operation.Status == "crawling" ||
+                 operation.Status == "importing"),
                 cancellationToken);
         if (active is not null)
         {
             throw new MarketPulseRefreshOperationConflictException(ToOperationDto(active));
         }
 
-        var baseline = await dbContext.Set<MarketPulseCrawlRun>()
+        var baseline = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
-            .Where(run => run.SourceLatestSuccessAt.HasValue)
+            .Where(run => run.OperationType == "import" && run.SourceLatestSuccessAt.HasValue)
             .MaxAsync(run => (DateTime?)run.SourceLatestSuccessAt, cancellationToken) ?? DateTime.UnixEpoch;
         var crawlerHealth = await jobsApiHealthService.GetHealthAsync(cancellationToken);
         if (crawlerHealth.LatestSuccessfulCrawlAt.HasValue)
@@ -248,17 +252,21 @@ public sealed class MarketPulseAdminService(
             }
         }
         var now = DateTime.UtcNow;
-        var operation = new MarketPulseRefreshOperation
+        var operation = new MarketPulsePipelineRun
         {
-            MarketPulseRefreshOperationId = Guid.NewGuid(),
+            MarketPulsePipelineRunId = Guid.NewGuid(),
+            OperationType = "refresh",
             Status = "queued",
+            Mode = "end_to_end",
             CurrentStep = "crawler",
             BaselineCrawlerSuccessAt = baseline,
             TriggerType = "manual",
             RequestedAt = now,
+            StartedAt = now,
+            CreatedAt = now,
             UpdatedAt = now
         };
-        dbContext.Set<MarketPulseRefreshOperation>().Add(operation);
+        dbContext.Set<MarketPulsePipelineRun>().Add(operation);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -266,13 +274,14 @@ public sealed class MarketPulseAdminService(
         catch (DbUpdateException)
         {
             dbContext.ChangeTracker.Clear();
-            var concurrent = await dbContext.Set<MarketPulseRefreshOperation>()
+            var concurrent = await dbContext.Set<MarketPulsePipelineRun>()
                 .AsNoTracking()
                 .OrderByDescending(item => item.RequestedAt)
                 .FirstOrDefaultAsync(item =>
-                    item.Status == "queued" ||
-                    item.Status == "crawling" ||
-                    item.Status == "importing",
+                    item.OperationType == "refresh" &&
+                    (item.Status == "queued" ||
+                     item.Status == "crawling" ||
+                     item.Status == "importing"),
                     cancellationToken);
             if (concurrent is not null)
             {
@@ -286,11 +295,12 @@ public sealed class MarketPulseAdminService(
     public async Task<MarketPulseRefreshOperationDto?> GetCurrentRefreshOperationAsync(
         CancellationToken cancellationToken)
     {
-        var operation = await dbContext.Set<MarketPulseRefreshOperation>()
+        var operation = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
             .OrderByDescending(item => item.RequestedAt)
             .FirstOrDefaultAsync(item =>
-                item.Status == "queued" || item.Status == "crawling" || item.Status == "importing",
+                item.OperationType == "refresh" &&
+                (item.Status == "queued" || item.Status == "crawling" || item.Status == "importing"),
                 cancellationToken);
         return operation is null ? null : ToOperationDto(operation);
     }
@@ -299,10 +309,10 @@ public sealed class MarketPulseAdminService(
         Guid operationId,
         CancellationToken cancellationToken)
     {
-        var operation = await dbContext.Set<MarketPulseRefreshOperation>()
+        var operation = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                item => item.MarketPulseRefreshOperationId == operationId,
+                item => item.OperationType == "refresh" && item.MarketPulsePipelineRunId == operationId,
                 cancellationToken);
         return operation is null ? null : ToOperationDto(operation);
     }
@@ -351,7 +361,9 @@ public sealed class MarketPulseAdminService(
         CancellationToken cancellationToken)
     {
         var limit = Math.Clamp(query.Limit, 1, 200);
-        var runs = dbContext.Set<MarketPulseCrawlRun>().AsNoTracking();
+        var runs = dbContext.Set<MarketPulsePipelineRun>()
+            .AsNoTracking()
+            .Where(run => run.OperationType == "import");
 
         if (!string.IsNullOrWhiteSpace(query.Status))
         {
@@ -674,8 +686,9 @@ public sealed class MarketPulseAdminService(
     public async Task<IReadOnlyList<MarketPulseSourceHealthDto>> GetSourceHealthAsync(
         CancellationToken cancellationToken)
     {
-        var latest = await dbContext.Set<MarketPulseCrawlRun>()
+        var latest = await dbContext.Set<MarketPulsePipelineRun>()
             .AsNoTracking()
+            .Where(run => run.OperationType == "import")
             .OrderByDescending(run => run.StartedAt)
             .FirstOrDefaultAsync(cancellationToken);
         if (latest is null)
@@ -692,7 +705,7 @@ public sealed class MarketPulseAdminService(
                 LastFailureAt = latest.Status is "failed" or "stale_source" ? latest.FinishedAt : null,
                 SourceGeneratedAt = latest.SourceGeneratedAt,
                 SourceLatestSuccessAt = latest.SourceLatestSuccessAt,
-                LastRunId = latest.MarketPulseCrawlRunId,
+                LastRunId = latest.MarketPulsePipelineRunId,
                 LastErrorSummary = latest.ErrorSummary,
                 UpdatedAt = latest.FinishedAt ?? latest.StartedAt
             }
@@ -861,9 +874,9 @@ public sealed class MarketPulseAdminService(
         };
     }
 
-    private static MarketPulseCrawlRunDto ToRunDto(MarketPulseCrawlRun run) => new()
+    private static MarketPulseCrawlRunDto ToRunDto(MarketPulsePipelineRun run) => new()
     {
-        RunId = run.MarketPulseCrawlRunId,
+        RunId = run.MarketPulsePipelineRunId,
         Source = "topcv",
         Status = run.Status,
         Mode = run.Mode,
@@ -891,7 +904,7 @@ public sealed class MarketPulseAdminService(
     private static MarketPulseFailedItemDto ToFailedItemDto(MarketPulseFailedItem item) => new()
     {
         FailedItemId = item.MarketPulseFailedItemId,
-        RunId = item.MarketPulseCrawlRunId,
+        RunId = item.MarketPulsePipelineRunId,
         Source = "topcv",
         Url = item.Url,
         Stage = item.Stage,
@@ -917,9 +930,9 @@ public sealed class MarketPulseAdminService(
     };
 
     private static MarketPulseRefreshOperationDto ToOperationDto(
-        MarketPulseRefreshOperation operation) => new()
+        MarketPulsePipelineRun operation) => new()
     {
-        OperationId = operation.MarketPulseRefreshOperationId,
+        OperationId = operation.MarketPulsePipelineRunId,
         Status = operation.Status,
         CurrentStep = operation.CurrentStep ?? "crawler",
         BaselineCrawlerSuccessAt = operation.BaselineCrawlerSuccessAt,

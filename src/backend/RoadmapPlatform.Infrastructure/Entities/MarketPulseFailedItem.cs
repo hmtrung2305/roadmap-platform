@@ -7,7 +7,7 @@ public partial class MarketPulseFailedItem
 {
     public Guid MarketPulseFailedItemId { get; set; }
 
-    public Guid? MarketPulseCrawlRunId { get; set; }
+    public Guid? MarketPulsePipelineRunId { get; set; }
 
     public string? Url { get; set; }
 
@@ -31,5 +31,5 @@ public partial class MarketPulseFailedItem
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual MarketPulseCrawlRun? MarketPulseCrawlRun { get; set; }
+    public virtual MarketPulsePipelineRun? MarketPulsePipelineRun { get; set; }
 }
