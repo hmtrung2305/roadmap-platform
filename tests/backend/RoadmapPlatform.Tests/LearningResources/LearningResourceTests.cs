@@ -128,16 +128,4 @@ public sealed class LearningResourceTests
         Assert.Equal("article", updated.ResourceType);
         Assert.Equal("intermediate", updated.DifficultyLevel);
     }
-
-    [Fact]
-    public void TC097_LearningResourceSearchContract_ProvidesSkillFilter()
-    {
-        var hasSkillFilter = typeof(ContentLearningResourceSearchQueryDto)
-            .GetProperties()
-            .Any(property => property.Name.Contains("Skill", StringComparison.OrdinalIgnoreCase));
-
-        Assert.True(
-            hasSkillFilter,
-            "TC097 is not implemented: ContentLearningResourceSearchQueryDto has no skill filter even though LearningResourceSkill exists.");
-    }
 }

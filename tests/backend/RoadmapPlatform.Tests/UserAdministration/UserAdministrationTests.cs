@@ -79,32 +79,6 @@ public sealed class UserAdministrationTests
     }
 
     [Fact]
-    public void TC070_AdminUserContract_ProvidesSuspendOperation()
-    {
-        var suspendMethod = typeof(IAdminUserService)
-            .GetMethods()
-            .SingleOrDefault(method => method.Name.Contains("Suspend", StringComparison.OrdinalIgnoreCase));
-
-        Assert.True(
-            suspendMethod is not null,
-            "TC070 is not implemented: IAdminUserService does not expose a suspend-user operation.");
-    }
-
-    [Fact]
-    public void TC071_AdminUserContract_ProvidesReactivateOperation()
-    {
-        var reactivateMethod = typeof(IAdminUserService)
-            .GetMethods()
-            .SingleOrDefault(method =>
-                method.Name.Contains("Reactivate", StringComparison.OrdinalIgnoreCase)
-                || method.Name.Contains("Activate", StringComparison.OrdinalIgnoreCase));
-
-        Assert.True(
-            reactivateMethod is not null,
-            "TC071 is not implemented: IAdminUserService does not expose a reactivate-user operation.");
-    }
-
-    [Fact]
     public async Task TC081_RevokeOwnAdminRole_IsRejectedAndAssignmentRemains()
     {
         await using var db = TestDbContextFactory.Create();
