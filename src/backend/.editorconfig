@@ -2,6 +2,7 @@ root = true
 
 [*.cs]
 
+dotnet_diagnostic.SA1000.severity = none
 dotnet_diagnostic.SA1009.severity = none
 dotnet_diagnostic.SA1010.severity = none
 dotnet_diagnostic.SA1011.severity = none
