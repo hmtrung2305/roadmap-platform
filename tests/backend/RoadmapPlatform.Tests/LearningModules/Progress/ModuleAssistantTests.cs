@@ -143,7 +143,7 @@ public sealed class ModuleAssistantTests
     }
 
     [Fact]
-    public async Task TC227_AskAsync_WhenLearnerIsNotEnrolled_ShouldThrowForbiddenWithoutRetrievalOrCreditSpend()
+    public async Task TC227_AskAsync_WhenLearnerIsNotEnrolled_ShouldThrowConflictWithoutRetrievalOrCreditSpend()
     {
         await using var fixture = await ModuleAssistantTestFixture.CreateAsync(
             enrolled: false);
@@ -165,9 +165,9 @@ public sealed class ModuleAssistantTests
         Assert.Equal(0, fixture.AiCreditService.SpendCallCount);
         Assert.Equal(creditsBefore, fixture.AiCreditService.RemainingCredits);
 
-        var forbiddenException = Assert.IsType<ForbiddenException>(exception);
+        var conflictException = Assert.IsType<ConflictException>(exception);
         Assert.Equal(
             "Start the module before using module chat.",
-            forbiddenException.Message);
+            conflictException.Message);
     }
 }

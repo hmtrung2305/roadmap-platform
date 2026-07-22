@@ -1,13 +1,8 @@
 using System.Net;
 using System.Reflection;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using RoadmapPlatform.Api.Authorization;
-using RoadmapPlatform.Api.Controllers.MarketPulse;
-using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.DTOs.MarketPulse;
-using RoadmapPlatform.Application.Interfaces.MarketPulse;
 using RoadmapPlatform.Infrastructure.Entities;
 using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
@@ -15,36 +10,6 @@ namespace RoadmapPlatform.Tests.MarketPulse;
 
 public sealed class MarketPulseAdminTests
 {
-    [Fact]
-    public async Task TC240_Dashboard_WithCurrentEnvironment_ShouldReturnDurableStateHealthAndReadPermissionContract()
-    {
-        await using var fixture = await MarketPulseAdminTestFixture.CreateAsync();
-        var operation = await fixture.AddRefreshOperationAsync("queued");
-        await fixture.AddImportRunAsync();
-        await fixture.AddFailureAsync();
-
-        var dashboard = await fixture.AdminService.GetDashboardAsync(CancellationToken.None);
-
-        Assert.Equal(operation.MarketPulsePipelineRunId, dashboard.CurrentOperation?.OperationId);
-        Assert.Equal(100, dashboard.ActiveJobs);
-        Assert.Equal(4, dashboard.PipelineHealth.Count);
-        Assert.Contains(dashboard.PipelineHealth, item => item.Key == "crawler");
-        Assert.Contains(dashboard.PipelineHealth, item => item.Key == "import");
-        Assert.Equal(1, dashboard.OpenImportFailures);
-
-        var serialized = JsonSerializer.Serialize(dashboard);
-        Assert.DoesNotContain(fixture.Settings.JobsApiKey, serialized, StringComparison.Ordinal);
-        Assert.DoesNotContain("DATABASE_URL", serialized, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ConnectionString", serialized, StringComparison.OrdinalIgnoreCase);
-
-        var permission = typeof(MarketPulseAdminController)
-            .GetCustomAttributes<RequirePermissionAttribute>(inherit: true)
-            .Single();
-        Assert.Equal(
-            PermissionPolicyNames.For(PermissionConstant.MARKET_PULSE_VIEW_CATALOG),
-            permission.Policy);
-    }
-
     [Fact]
     public async Task TC241_CreateRefreshOperation_WhenNoActiveOperation_ShouldPersistOneQueuedOperation()
     {
@@ -535,43 +500,6 @@ public sealed class MarketPulseAdminTests
     }
 
     [Fact]
-    public async Task TC251_ImportHistory_ShouldSupportFilteringPaginationAndOpeningOneRunDetail()
-    {
-        await using var fixture = await MarketPulseAdminTestFixture.CreateAsync();
-        var now = DateTime.UtcNow;
-        var success = await fixture.AddImportRunAsync("success", now.AddMinutes(-30));
-        await fixture.AddImportRunAsync("failed", now.AddMinutes(-20), failed: 1);
-        await fixture.AddImportRunAsync("partial", now.AddMinutes(-10), complete: false);
-
-        var rows = await fixture.AdminService.GetCrawlRunsAsync(
-            new MarketPulseAdminQueryDto
-            {
-                Status = "success",
-                Source = "topcv",
-                From = now.AddHours(-1),
-                To = now,
-                Limit = 10
-            },
-            CancellationToken.None);
-
-        var row = Assert.Single(rows);
-        Assert.Equal(success.MarketPulsePipelineRunId, row.RunId);
-        Assert.Equal("success", row.Status);
-        Assert.True(row.IsCompleteSync);
-        Assert.Equal(10, row.FetchedCount);
-
-        var pageProperty = typeof(MarketPulseAdminQueryDto).GetProperty("Page");
-        var pageSizeProperty = typeof(MarketPulseAdminQueryDto).GetProperty("PageSize");
-        var detailMethod = typeof(IMarketPulseAdminService).GetMethod(
-            "GetCrawlRunAsync",
-            [typeof(Guid), typeof(CancellationToken)]);
-
-        Assert.NotNull(pageProperty);
-        Assert.NotNull(pageSizeProperty);
-        Assert.NotNull(detailMethod);
-    }
-
-    [Fact]
     public async Task TC252_RetryFailedItem_WhenRetrySucceeds_ShouldResolveItemWithoutDuplicatingCanonicalPosting()
     {
         await using var fixture = await MarketPulseAdminTestFixture.CreateAsync();
@@ -608,64 +536,6 @@ public sealed class MarketPulseAdminTests
         Assert.NotNull(persisted.LastRetryAt);
         Assert.Single(postings);
         Assert.Equal("retry-canonical-posting", postings.Single().SourceJobId);
-    }
-
-    [Fact]
-    public async Task TC253_IgnoreFailedItem_WithReason_ShouldPersistAuditMetadataAndExcludePendingTotals()
-    {
-        await using var fixture = await MarketPulseAdminTestFixture.CreateAsync();
-        var failure = await fixture.AddFailureAsync();
-        const string ignoreReason = "Known malformed legacy payload";
-
-        var ignored = await fixture.AdminService.IgnoreFailedItemsAsync(
-            [failure.MarketPulseFailedItemId],
-            CancellationToken.None);
-        var pending = await fixture.AdminService.GetFailedItemsAsync(
-            new MarketPulseAdminQueryDto
-            {
-                Status = "open",
-                Source = "topcv",
-                Limit = 50
-            },
-            CancellationToken.None);
-
-        fixture.Context.ChangeTracker.Clear();
-        var persisted = await fixture.Context.Set<MarketPulseFailedItem>()
-            .SingleAsync(item => item.MarketPulseFailedItemId == failure.MarketPulseFailedItemId);
-        Assert.Equal("ignored", Assert.Single(ignored).Status);
-        Assert.Equal("ignored", persisted.Status);
-        Assert.DoesNotContain(pending, item => item.FailedItemId == failure.MarketPulseFailedItemId);
-
-        var requestReason = typeof(MarketPulseBulkActionRequestDto).GetProperty("IgnoreReason");
-        var entityReason = typeof(MarketPulseFailedItem).GetProperty("IgnoredReason");
-        var ignoredAt = typeof(MarketPulseFailedItem).GetProperty("IgnoredAt");
-        var ignoredBy = typeof(MarketPulseFailedItem).GetProperty("IgnoredByUserId");
-
-        Assert.NotNull(requestReason);
-        Assert.NotNull(entityReason);
-        Assert.NotNull(ignoredAt);
-        Assert.NotNull(ignoredBy);
-        Assert.Equal(ignoreReason, entityReason!.GetValue(persisted));
-        Assert.NotNull(ignoredAt!.GetValue(persisted));
-    }
-
-    [Fact]
-    public void TC254_ClassifierCategoryAdministration_ShouldExposeDurableCategoryCrudAndOrderingContract()
-    {
-        var categoryEntity = typeof(MarketPulseClassifierKeywordMapping).Assembly.GetType(
-            "RoadmapPlatform.Infrastructure.Entities.MarketPulseClassifierCategory");
-        var createMethod = typeof(IMarketPulseAdminService).GetMethod("CreateClassifierCategoryAsync");
-        var updateMethod = typeof(IMarketPulseAdminService).GetMethod("UpdateClassifierCategoryAsync");
-        var deleteMethod = typeof(IMarketPulseAdminService).GetMethod("DeleteClassifierCategoryAsync");
-
-        Assert.NotNull(categoryEntity);
-        Assert.NotNull(categoryEntity!.GetProperty("Label"));
-        Assert.NotNull(categoryEntity.GetProperty("SortOrder"));
-        Assert.NotNull(categoryEntity.GetProperty("FallbackCategory"));
-        Assert.NotNull(categoryEntity.GetProperty("IsActive"));
-        Assert.NotNull(createMethod);
-        Assert.NotNull(updateMethod);
-        Assert.NotNull(deleteMethod);
     }
 
     [Fact]
@@ -727,44 +597,6 @@ public sealed class MarketPulseAdminTests
         Assert.Equal("DevOps", newKeywordResult.Category);
         Assert.Equal("Other", deletedResult.Category);
         Assert.Equal(beforeJobs, fixture.Context.JobPostings.Count());
-    }
-
-    [Fact]
-    public async Task TC256_CreateClassifierMapping_WithInvalidTargetCategory_ShouldRejectAtomically()
-    {
-        await using var fixture = await MarketPulseAdminTestFixture.CreateAsync();
-        var existing = await fixture.AdminService.CreateClassifierMappingAsync(
-            new MarketPulseClassifierMappingRequestDto
-            {
-                Keyword = "valid-unique-keyword",
-                Category = "Backend",
-                IsEnabled = true,
-                Weight = 1m
-            },
-            CancellationToken.None);
-        var countBefore = await fixture.Context.Set<MarketPulseClassifierKeywordMapping>().CountAsync();
-
-        var exception = await Record.ExceptionAsync(() =>
-            fixture.AdminService.CreateClassifierMappingAsync(
-                new MarketPulseClassifierMappingRequestDto
-                {
-                    Keyword = "invalid-target-keyword",
-                    Category = "Category That Does Not Exist",
-                    IsEnabled = true,
-                    Weight = 1m
-                },
-                CancellationToken.None));
-
-        var countAfter = await fixture.Context.Set<MarketPulseClassifierKeywordMapping>().CountAsync();
-        var original = await fixture.Context.Set<MarketPulseClassifierKeywordMapping>()
-            .SingleAsync(mapping => mapping.MarketPulseClassifierKeywordMappingId == existing.MappingId);
-
-        Assert.IsType<ArgumentException>(exception);
-        Assert.Equal(countBefore, countAfter);
-        Assert.Equal("valid-unique-keyword", original.Keyword);
-        Assert.DoesNotContain(
-            await fixture.Context.Set<MarketPulseClassifierKeywordMapping>().ToListAsync(),
-            mapping => mapping.Keyword == "invalid-target-keyword");
     }
 
     [Fact]

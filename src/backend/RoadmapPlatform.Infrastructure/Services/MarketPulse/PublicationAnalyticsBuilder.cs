@@ -39,21 +39,19 @@ public static class PublicationAnalyticsBuilder
         var evidenceStart = reliableRanges.Count > 0
             ? reliableRanges.Min(range => range.Lower)
             : (DateOnly?)null;
-        var effectiveCoverageStart = MinDate(coverageStart, evidenceStart);
-        var effectiveCoverageEnd = coverageEnd;
-        if (reliableRanges.Count > 0 &&
-            (!effectiveCoverageEnd.HasValue || effectiveCoverageEnd.Value < anchorDate))
-        {
-            effectiveCoverageEnd = anchorDate;
-        }
+        // Explicit crawler/history watermarks describe complete retained coverage.
+        // Publication evidence may predate that boundary, but it cannot prove that
+        // the retained dataset was complete on those earlier days.
+        var effectiveCoverageStart = coverageStart ?? evidenceStart;
+        var effectiveCoverageEnd = coverageEnd ??
+            (reliableRanges.Count > 0 ? anchorDate : null);
         if (effectiveCoverageEnd.HasValue && effectiveCoverageEnd.Value > anchorDate)
         {
             effectiveCoverageEnd = anchorDate;
         }
         var coverageIsKnown = effectiveCoverageStart.HasValue && effectiveCoverageEnd.HasValue;
         var coverageIsInferredFromPostings = reliableRanges.Count > 0 &&
-            (!coverageStart.HasValue || evidenceStart!.Value < coverageStart.Value ||
-             !coverageEnd.HasValue || coverageEnd.Value < anchorDate);
+            (!coverageStart.HasValue || !coverageEnd.HasValue);
         bool Available(DateOnly date) =>
             coverageIsKnown && date >= effectiveCoverageStart!.Value &&
             date <= effectiveCoverageEnd!.Value;
@@ -465,19 +463,6 @@ public static class PublicationAnalyticsBuilder
         }
 
         return (lower.Value, upper.Value > anchorDate ? anchorDate : upper.Value);
-    }
-
-    private static DateOnly? MinDate(DateOnly? left, DateOnly? right)
-    {
-        if (!left.HasValue)
-        {
-            return right;
-        }
-        if (!right.HasValue)
-        {
-            return left;
-        }
-        return left.Value <= right.Value ? left : right;
     }
 
     private static IEnumerable<DateOnly> EnumerateDates(DateOnly start, DateOnly end)

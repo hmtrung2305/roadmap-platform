@@ -196,7 +196,7 @@ public sealed class MarketPulsePublicationAnalyticsTests
     }
 
     [Fact]
-    public void PostingEvidenceExtendsCoverageBeyondAnOlderWatermark()
+    public void PostingEvidenceDoesNotExtendCoverageBeforeRetainedWatermark()
     {
         var result = PublicationAnalyticsBuilder.Build(
             [
@@ -219,11 +219,12 @@ public sealed class MarketPulsePublicationAnalyticsTests
             .Sum(point => point.TotalEstimate ?? 0);
         var currentTotal = result.SkillComparisons.Single().CurrentTotal;
         Assert.NotNull(currentTotal);
-        Assert.Equal(1m, currentTotal.Value);
+        Assert.Equal(0.43m, currentTotal.Value);
         // Daily chart points are rounded independently, so their displayed sum
         // can differ slightly from the unrounded period total.
         Assert.InRange(Math.Abs(visibleTotal - currentTotal.Value), 0m, 0.03m);
-        Assert.Equal(new DateTime(2026, 7, 8), result.HistoryCoverageStart);
+        Assert.Equal(3, result.CurrentPeriod.CoveredDays);
+        Assert.Equal(new DateTime(2026, 7, 12), result.HistoryCoverageStart);
     }
 
     [Fact]

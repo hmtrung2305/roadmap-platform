@@ -115,6 +115,16 @@ public sealed class MarketPulseRefreshOperationWorker(
                         cancellationToken);
                     return true;
                 }
+                else if (IsCriticalCrawlerHealth(health))
+                {
+                    await FailAsync(
+                        db,
+                        operation,
+                        "CRAWLER_HEALTH_CRITICAL",
+                        health.ErrorMessage ?? "Jobs API crawler health is critical or unavailable.",
+                        cancellationToken);
+                    return true;
+                }
                 else if (hasOperationCrawlerRun && IsTerminalCrawlerFailure(health.LatestListingStatus))
                 {
                     await FailAsync(
@@ -317,6 +327,22 @@ public sealed class MarketPulseRefreshOperationWorker(
             "blocked" or
             "layout_changed" or
             "empty_protected";
+
+    private static bool IsCriticalCrawlerHealth(MarketPulseExternalSourceHealthDto health)
+    {
+        var healthStatus = health.Status.Trim().ToLowerInvariant();
+        var listingStatus = health.LatestListingStatus?.Trim().ToLowerInvariant();
+        return !health.IsAvailable ||
+            healthStatus is
+                "critical" or
+                "failed" or
+                "unavailable" or
+                "unauthorized" or
+                "invalid_contract" or
+                "http_error" or
+                "timeout" ||
+            listingStatus == "critical";
+    }
 
     private static bool IsUsablePartialCrawlerResult(MarketPulseExternalSourceHealthDto health) =>
         string.Equals(
