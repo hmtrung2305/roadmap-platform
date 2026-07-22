@@ -51,6 +51,11 @@ public sealed class RoadmapProgressService(ApplicationDbContext dbContext) : IRo
             throw new InvalidOperationException("This roadmap node has computed progress and cannot be updated manually.");
         }
 
+        if (request.Status == "skipped" && node.IsRequired)
+        {
+            throw new InvalidOperationException("Required roadmap nodes cannot be skipped.");
+        }
+
         var beforeStatusByNodeId = RoadmapProgressCalculator.CalculateStatuses(
             snapshot.Nodes,
             snapshot.Edges,

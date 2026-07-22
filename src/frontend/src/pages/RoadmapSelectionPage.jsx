@@ -3,6 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import CareerMentorWidget from "../features/mentor/components/CareerMentorWidget";
 import { CreatorProfileModal } from "../features/creatorProfile/components/CreatorProfileDisplay";
 import RoadmapCard from "../features/roadmaps/components/RoadmapCard";
+import {
+  buildRoadmapCatalogSearchParams,
+  matchesRoadmapCatalogSearch,
+} from "../features/roadmaps/utils/roadmapCatalogUtils";
 import { getRoadmapVersionId, useRoadmapStore } from "../stores/useRoadmapStore";
 
 export default function RoadmapSelectionPage() {
@@ -39,28 +43,10 @@ export default function RoadmapSelectionPage() {
     [baseRoadmaps, enrollmentByVersionId],
   );
 
-  const filteredRoadmaps = useMemo(() => {
-    const value = query.trim().toLowerCase();
-
-    if (!value) return roadmaps;
-
-    return roadmaps.filter((roadmap) => {
-      const searchable = [
-        roadmap.title,
-        roadmap.description,
-        roadmap.slug,
-        roadmap.careerRole?.name,
-        roadmap.careerRole?.category,
-        roadmap.creatorProfile?.displayName,
-        roadmap.creatorProfile?.headline,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchable.includes(value);
-    });
-  }, [roadmaps, query]);
+  const filteredRoadmaps = useMemo(
+    () => roadmaps.filter((roadmap) => matchesRoadmapCatalogSearch(roadmap, query)),
+    [roadmaps, query],
+  );
 
   useEffect(() => {
     loadRoadmaps({ includeEnrollments: true }).catch((error) => {
@@ -69,19 +55,10 @@ export default function RoadmapSelectionPage() {
   }, [loadRoadmaps]);
 
   function updateQuery(value) {
-    setSearchParams((current) => {
-      const nextParams = new URLSearchParams(current);
-      const trimmed = value.trim();
-
-      if (trimmed) {
-        nextParams.set("q", trimmed);
-      } else {
-        nextParams.delete("q");
-        nextParams.delete("role");
-      }
-
-      return nextParams;
-    }, { replace: true });
+    setSearchParams(
+      (current) => buildRoadmapCatalogSearchParams(current, value),
+      { replace: true },
+    );
   }
 
   function handleRetry() {
@@ -171,7 +148,8 @@ export default function RoadmapSelectionPage() {
             <input
               value={query}
               onChange={(event) => updateQuery(event.target.value)}
-              placeholder="Search career role"
+              aria-label="Search roadmaps by career role or title"
+              placeholder="Search by career role or roadmap title"
               className="w-full rounded-lg border border-[#B9D8CC] bg-white py-3 pl-12 pr-4 text-sm font-bold text-[#18332D] shadow-sm outline-none placeholder:text-slate-400 transition-colors duration-150 focus:border-[#2FA084] focus:bg-[#EAF8F1] focus:ring-4 focus:ring-[#2FA084]/10"
             />
           </div>
