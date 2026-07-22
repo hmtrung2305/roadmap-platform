@@ -128,18 +128,19 @@ public sealed class RoadmapEnrollmentService(ApplicationDbContext dbContext) : I
             throw new InvalidOperationException("Target version must belong to the same roadmap.");
         }
 
-        if (!IsNewerVersion(targetVersion, enrollment.RoadmapVersion))
+        var migrationType = RoadmapVersionLabels.GetChangeType(targetVersion, enrollment.RoadmapVersion);
+
+        if (migrationType == null)
         {
             throw new InvalidOperationException("Target roadmap version must be newer than the current enrollment version.");
         }
 
-        if (targetVersion.ReleaseType.Equals(PatchReleaseType, StringComparison.OrdinalIgnoreCase))
+        if (migrationType == PatchReleaseType)
         {
             throw new InvalidOperationException("Patch updates are applied automatically.");
         }
 
-        if (!targetVersion.ReleaseType.Equals(MajorReleaseType, StringComparison.OrdinalIgnoreCase)
-            && !targetVersion.ReleaseType.Equals(MinorReleaseType, StringComparison.OrdinalIgnoreCase))
+        if (migrationType != MajorReleaseType && migrationType != MinorReleaseType)
         {
             throw new InvalidOperationException("Only major and minor roadmap updates can be migrated manually.");
         }
@@ -255,16 +256,6 @@ public sealed class RoadmapEnrollmentService(ApplicationDbContext dbContext) : I
             ? "completed"
             : "active";
         enrollment.CompletedAt = enrollment.Status == "completed" ? now : null;
-    }
-
-    private static bool IsNewerVersion(RoadmapVersion targetVersion, RoadmapVersion sourceVersion)
-    {
-        return targetVersion.MajorVersion > sourceVersion.MajorVersion
-            || (targetVersion.MajorVersion == sourceVersion.MajorVersion
-                && targetVersion.MinorVersion > sourceVersion.MinorVersion)
-            || (targetVersion.MajorVersion == sourceVersion.MajorVersion
-                && targetVersion.MinorVersion == sourceVersion.MinorVersion
-                && targetVersion.PatchVersion > sourceVersion.PatchVersion);
     }
 
     private static string GetNodeIdentityKey(RoadmapNode node)

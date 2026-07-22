@@ -80,9 +80,10 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
         var statusByNodeId = RoadmapProgressCalculator.CalculateStatuses(nodes, edges, progressByNodeId);
         var progressSummary = RoadmapProgressCalculator.CalculateRoadmapProgress(nodes, edges, statusByNodeId);
         var estimatedTime = RoadmapEstimatedTimeCalculator.Calculate(nodes, edges);
-        var availableUpdate = enrollment == null
-            ? await LoadAvailableUpdateAsync(version, userId, cancellationToken)
-            : null;
+        var availableUpdate = await LoadAvailableUpdateAsync(
+            version,
+            enrollment,
+            cancellationToken);
         var versionHistory = await LoadVersionHistoryAsync(version.RoadmapId, cancellationToken);
 
         return new RoadmapDetailDto
@@ -194,33 +195,35 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
     }
 
     public async Task<RoadmapVersionUpdateDto?> LoadAvailableUpdateAsync(
-        RoadmapVersion targetVersion,
-        Guid? userId,
+        RoadmapVersion currentVersion,
+        RoadmapEnrollment? currentEnrollment,
         CancellationToken cancellationToken)
     {
-        if (!userId.HasValue
-            || !targetVersion.Status.Equals(PublishedStatus, StringComparison.OrdinalIgnoreCase)
-            || (!targetVersion.ReleaseType.Equals(MajorReleaseType, StringComparison.OrdinalIgnoreCase)
-                && !targetVersion.ReleaseType.Equals(MinorReleaseType, StringComparison.OrdinalIgnoreCase)))
+        if (currentEnrollment == null)
         {
             return null;
         }
 
-        var currentEnrollment = await dbContext.Set<RoadmapEnrollment>()
+        var targetVersion = await dbContext.Set<RoadmapVersion>()
             .AsNoTracking()
-            .Include(enrollment => enrollment.RoadmapVersion)
-            .Where(enrollment =>
-                enrollment.UserId == userId.Value
-                && enrollment.RoadmapVersion.RoadmapId == targetVersion.RoadmapId
-                && enrollment.RoadmapVersionId != targetVersion.RoadmapVersionId
-                && (enrollment.RoadmapVersion.Status == PublishedStatus
-                    || enrollment.RoadmapVersion.Status == ArchivedStatus))
-            .OrderByDescending(enrollment => enrollment.RoadmapVersion.MajorVersion)
-            .ThenByDescending(enrollment => enrollment.RoadmapVersion.MinorVersion)
-            .ThenByDescending(enrollment => enrollment.RoadmapVersion.PatchVersion)
+            .Where(version =>
+                version.RoadmapId == currentVersion.RoadmapId
+                && version.RoadmapVersionId != currentVersion.RoadmapVersionId
+                && version.Status == PublishedStatus)
+            .OrderByDescending(version => version.MajorVersion)
+            .ThenByDescending(version => version.MinorVersion)
+            .ThenByDescending(version => version.PatchVersion)
+            .ThenByDescending(version => version.VersionNumber)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (currentEnrollment == null || !IsNewerVersion(targetVersion, currentEnrollment.RoadmapVersion))
+        if (targetVersion == null)
+        {
+            return null;
+        }
+
+        var updateType = RoadmapVersionLabels.GetChangeType(targetVersion, currentVersion);
+
+        if (updateType != MajorReleaseType && updateType != MinorReleaseType)
         {
             return null;
         }
@@ -228,11 +231,11 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
         return new RoadmapVersionUpdateDto
         {
             RoadmapEnrollmentId = currentEnrollment.RoadmapEnrollmentId,
-            CurrentRoadmapVersionId = currentEnrollment.RoadmapVersionId,
-            CurrentVersionLabel = RoadmapVersionLabels.Format(currentEnrollment.RoadmapVersion),
+            CurrentRoadmapVersionId = currentVersion.RoadmapVersionId,
+            CurrentVersionLabel = RoadmapVersionLabels.Format(currentVersion),
             TargetRoadmapVersionId = targetVersion.RoadmapVersionId,
             TargetVersionLabel = RoadmapVersionLabels.Format(targetVersion),
-            ReleaseType = targetVersion.ReleaseType,
+            ReleaseType = updateType,
             Title = targetVersion.Title,
             Description = targetVersion.Description,
             PublishedAt = targetVersion.PublishedAt,
@@ -423,16 +426,6 @@ public sealed class RoadmapDetailBuilder(ApplicationDbContext dbContext)
             SkippedAt = progress.SkippedAt,
             UpdatedAt = progress.UpdatedAt
         };
-    }
-
-    private static bool IsNewerVersion(RoadmapVersion targetVersion, RoadmapVersion sourceVersion)
-    {
-        return targetVersion.MajorVersion > sourceVersion.MajorVersion
-            || (targetVersion.MajorVersion == sourceVersion.MajorVersion
-                && targetVersion.MinorVersion > sourceVersion.MinorVersion)
-            || (targetVersion.MajorVersion == sourceVersion.MajorVersion
-                && targetVersion.MinorVersion == sourceVersion.MinorVersion
-                && targetVersion.PatchVersion > sourceVersion.PatchVersion);
     }
 
     private static List<string> DeserializeStringArray(object? value)
