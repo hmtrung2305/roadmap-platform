@@ -319,12 +319,19 @@ public sealed class RoadmapCatalogEnrollmentAndMigrationTests
     }
 
     [Fact]
-    public async Task TC116_MinorUpdateIsExposedWithoutAutomaticMigration()
+    public async Task TC116_MinorUpdateKeepsCurrentEnrollmentAvailableUntilMigration()
     {
         await using var fixture = await RoadmapTestFixture.CreateAsync();
         var roadmap = fixture.CreateRoadmap();
-        var source = fixture.AddVersion(roadmap, "published", 1, 2, 3, "patch");
-        fixture.AddValidGraph(source, projectSlug: "stable-project");
+        var source = fixture.AddVersion(roadmap, "archived", 1, 2, 3, "patch");
+        var sourceNodes = fixture.AddValidGraph(source, projectSlug: "stable-project");
+        var remainingProject = fixture.AddNode(
+            source,
+            "project",
+            "remaining-project",
+            "Remaining Project",
+            sourceNodes.Phase,
+            orderIndex: 2);
         var target = fixture.AddVersion(
             roadmap,
             "published",
@@ -334,10 +341,15 @@ public sealed class RoadmapCatalogEnrollmentAndMigrationTests
             "minor",
             source.RoadmapVersionId);
         fixture.AddValidGraph(target, projectSlug: "stable-project");
-        var enrollment = fixture.AddEnrollment(source);
+        var enrollment = fixture.AddEnrollment(source, progressPercent: 50);
+        fixture.AddProgress(enrollment, sourceNodes.Project, "completed");
         await fixture.SaveAsync();
 
-        var detail = await fixture.QueryService.GetPublishedRoadmapBySlugAsync(
+        var publicGraph = await fixture.QueryService.GetPublishedRoadmapGraphBySlugAsync(
+            roadmap.Slug,
+            userId: null,
+            cancellationToken: CancellationToken.None);
+        var graph = await fixture.QueryService.GetPublishedRoadmapGraphBySlugAsync(
             roadmap.Slug,
             fixture.Learner.UserId,
             CancellationToken.None);
@@ -345,35 +357,63 @@ public sealed class RoadmapCatalogEnrollmentAndMigrationTests
             .AsNoTracking()
             .SingleAsync(item => item.RoadmapEnrollmentId == enrollment.RoadmapEnrollmentId);
 
-        Assert.Equal(target.RoadmapVersionId, detail.RoadmapVersionId);
-        Assert.Null(detail.Enrollment);
-        Assert.NotNull(detail.AvailableUpdate);
-        Assert.Equal(enrollment.RoadmapEnrollmentId, detail.AvailableUpdate!.RoadmapEnrollmentId);
-        Assert.Equal(source.RoadmapVersionId, detail.AvailableUpdate.CurrentRoadmapVersionId);
-        Assert.Equal(target.RoadmapVersionId, detail.AvailableUpdate.TargetRoadmapVersionId);
-        Assert.Equal("minor", detail.AvailableUpdate.ReleaseType);
+        Assert.Equal(target.RoadmapVersionId, publicGraph.RoadmapVersionId);
+        Assert.Null(publicGraph.Enrollment);
+        Assert.Equal(source.RoadmapVersionId, graph.RoadmapVersionId);
+        Assert.NotNull(graph.Enrollment);
+        Assert.Equal(enrollment.RoadmapEnrollmentId, graph.Enrollment!.RoadmapEnrollmentId);
+        Assert.Equal(50m, graph.ProgressPercent);
+        Assert.Contains(graph.Nodes, node =>
+            node.RoadmapNodeId == sourceNodes.Project.RoadmapNodeId
+            && node.Progress.Status == "completed");
+        Assert.Contains(graph.Nodes, node =>
+            node.RoadmapNodeId == remainingProject.RoadmapNodeId
+            && node.Progress.Status == "pending");
+        Assert.NotNull(graph.AvailableUpdate);
+        Assert.Equal(enrollment.RoadmapEnrollmentId, graph.AvailableUpdate!.RoadmapEnrollmentId);
+        Assert.Equal(source.RoadmapVersionId, graph.AvailableUpdate.CurrentRoadmapVersionId);
+        Assert.Equal(target.RoadmapVersionId, graph.AvailableUpdate.TargetRoadmapVersionId);
+        Assert.Equal("minor", graph.AvailableUpdate.ReleaseType);
         Assert.Equal(source.RoadmapVersionId, storedEnrollment.RoadmapVersionId);
     }
 
     [Fact]
-    public async Task TC117_ManualMinorMigrationPreservesMatchingProgress()
+    public async Task TC117_ManualMinorLineMigrationTargetsLatestPatchAndPreservesProgress()
     {
         await using var fixture = await RoadmapTestFixture.CreateAsync();
         var roadmap = fixture.CreateRoadmap();
-        var source = fixture.AddVersion(roadmap, "published", 1, 2, 3, "patch");
+        var source = fixture.AddVersion(roadmap, "archived", 1, 2, 3, "patch");
         var sourceNodes = fixture.AddValidGraph(source, projectSlug: "stable-project");
-        var target = fixture.AddVersion(
+        var minorBase = fixture.AddVersion(
             roadmap,
-            "published",
+            "archived",
             1,
             3,
             0,
             "minor",
             source.RoadmapVersionId);
+        fixture.AddValidGraph(minorBase, projectSlug: "stable-project");
+        var target = fixture.AddVersion(
+            roadmap,
+            "published",
+            1,
+            3,
+            1,
+            "patch",
+            minorBase.RoadmapVersionId);
         var targetNodes = fixture.AddValidGraph(target, projectSlug: "stable-project");
         var enrollment = fixture.AddEnrollment(source, progressPercent: 100, status: "completed");
         fixture.AddProgress(enrollment, sourceNodes.Project, "completed");
         await fixture.SaveAsync();
+
+        var beforeMigration = await fixture.QueryService.GetPublishedRoadmapGraphBySlugAsync(
+            roadmap.Slug,
+            fixture.Learner.UserId,
+            CancellationToken.None);
+
+        Assert.NotNull(beforeMigration.AvailableUpdate);
+        Assert.Equal("minor", beforeMigration.AvailableUpdate!.ReleaseType);
+        Assert.Equal(target.RoadmapVersionId, beforeMigration.AvailableUpdate.TargetRoadmapVersionId);
 
         var migrated = await fixture.EnrollmentService.MigrateEnrollmentAsync(
             fixture.Learner.UserId,
@@ -388,11 +428,11 @@ public sealed class RoadmapCatalogEnrollmentAndMigrationTests
     }
 
     [Fact]
-    public async Task TC118_ManualMajorMigrationRequiresAnExplicitTargetAndPreservesMatchingProgress()
+    public async Task TC118_MajorMigrationOccursOnlyAfterExplicitRequestAndPreservesProgress()
     {
         await using var fixture = await RoadmapTestFixture.CreateAsync();
         var roadmap = fixture.CreateRoadmap();
-        var source = fixture.AddVersion(roadmap, "published", 1, 2, 3, "patch");
+        var source = fixture.AddVersion(roadmap, "archived", 1, 2, 3, "patch");
         var sourceNodes = fixture.AddValidGraph(source, projectSlug: "stable-project");
         var target = fixture.AddVersion(
             roadmap,
@@ -407,15 +447,34 @@ public sealed class RoadmapCatalogEnrollmentAndMigrationTests
         fixture.AddProgress(enrollment, sourceNodes.Project, "completed");
         await fixture.SaveAsync();
 
+        var beforeMigration = await fixture.QueryService.GetPublishedRoadmapGraphBySlugAsync(
+            roadmap.Slug,
+            fixture.Learner.UserId,
+            CancellationToken.None);
+
+        Assert.Equal(source.RoadmapVersionId, beforeMigration.RoadmapVersionId);
+        Assert.NotNull(beforeMigration.Enrollment);
+        Assert.NotNull(beforeMigration.AvailableUpdate);
+        Assert.Equal("major", beforeMigration.AvailableUpdate!.ReleaseType);
+        Assert.Equal(target.RoadmapVersionId, beforeMigration.AvailableUpdate.TargetRoadmapVersionId);
+
         var migrated = await fixture.EnrollmentService.MigrateEnrollmentAsync(
             fixture.Learner.UserId,
             enrollment.RoadmapEnrollmentId,
             new MigrateRoadmapEnrollmentRequestDto { TargetRoadmapVersionId = target.RoadmapVersionId },
             CancellationToken.None);
         var progress = await fixture.Context.UserNodeProgresses.SingleAsync();
+        var afterMigration = await fixture.QueryService.GetPublishedRoadmapGraphBySlugAsync(
+            roadmap.Slug,
+            fixture.Learner.UserId,
+            CancellationToken.None);
 
         Assert.Equal(target.RoadmapVersionId, migrated.RoadmapVersionId);
         Assert.Equal(targetNodes.Project.RoadmapNodeId, progress.RoadmapNodeId);
+        Assert.Equal("completed", progress.Status);
+        Assert.Equal(target.RoadmapVersionId, afterMigration.RoadmapVersionId);
+        Assert.NotNull(afterMigration.Enrollment);
+        Assert.Null(afterMigration.AvailableUpdate);
     }
 
     [Fact]

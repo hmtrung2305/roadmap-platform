@@ -42,6 +42,8 @@ import RoadmapFlowNode from "../features/roadmaps/components/RoadmapFlowNode";
 import RoadmapFullScreen from "../features/roadmaps/components/RoadmapFullScreen";
 import RoadmapDetailDrawer from "../features/roadmaps/components/RoadmapDetailDrawer";
 import RoadmapStudyGuide from "../features/roadmaps/components/RoadmapStudyGuide";
+import RoadmapMigrationNotice from "../features/roadmaps/components/RoadmapMigrationNotice";
+import RoadmapViewerLearningControls from "../features/roadmaps/components/RoadmapViewerLearningControls";
 import { CreatorByline } from "../features/creatorProfile/components/CreatorProfileDisplay";
 const nodeTypes = {
   roadmapNode: RoadmapFlowNode,
@@ -592,7 +594,7 @@ export default function RoadmapViewerPage() {
     const availableUpdate = roadmap?.availableUpdate;
 
     if (!availableUpdate?.roadmapEnrollmentId || !availableUpdate?.targetRoadmapVersionId || isMigratingUpdate) {
-      return;
+      return false;
     }
 
     setIsMigratingUpdate(true);
@@ -614,9 +616,12 @@ export default function RoadmapViewerPage() {
       } else {
         await loadPage({ force: true });
       }
+
+      return true;
     } catch (error) {
       console.error(error);
       setMessage(error?.message || "Failed to migrate roadmap update.");
+      return false;
     } finally {
       setIsMigratingUpdate(false);
     }
@@ -790,69 +795,22 @@ export default function RoadmapViewerPage() {
               </div>
             )}
 
-            {availableUpdate && !isEnrolled && (
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#B9D8CC] bg-[#F4FBF8] px-3 py-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[#18332D]">
-                    {String(availableUpdate.releaseType || "Version").toUpperCase()} update available
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                    Current {availableUpdate.currentVersionLabel} &gt; New {availableUpdate.targetVersionLabel}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleMigrateUpdate}
-                  disabled={isMigratingUpdate}
-                  className="rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-4 py-2 text-xs font-extrabold tracking-[0.08em] text-white shadow-sm disabled:opacity-60"
-                >
-                  {isMigratingUpdate ? "Migrating..." : "Migrate update"}
-                </button>
-              </div>
-            )}
+            <RoadmapMigrationNotice
+              availableUpdate={availableUpdate}
+              isMigrating={isMigratingUpdate}
+              onMigrate={handleMigrateUpdate}
+            />
           </div>
 
           <div className="relative min-h-0 w-full overflow-hidden bg-[#F7F1E8]">
-            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col items-end gap-2">
-              <div className="pointer-events-auto flex h-12 w-36 flex-col justify-center rounded-lg border border-[#B9D8CC] bg-white/95 px-3 shadow-sm backdrop-blur sm:w-44">
-                <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold tracking-tight text-slate-500">
-                  <span>Progress</span>
-                  <span>{Math.round(progressPercent)}%</span>
-                </div>
-
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-md border border-[#B9D8CC] bg-white">
-                  <div
-                    className="h-full rounded-md bg-[#22C55E]"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, progressPercent))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="pointer-events-auto flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  data-roadmap-guide-target="how-to-learn"
-                  onClick={handleOpenGuide}
-                  className="h-8 rounded-lg border border-[#B9D8CC] bg-white/95 px-3 text-[11px] font-black tracking-[0.08em] text-[#1F6F5F] shadow-sm backdrop-blur transition hover:bg-[#EAF8F1]"
-                >
-                  How to learn
-                </button>
-
-                {!isEnrolled && !availableUpdate && (
-                  <button
-                    type="button"
-                    data-roadmap-guide-target="start-roadmap"
-                    onClick={handleEnroll}
-                    disabled={isEnrolling}
-                    className="h-8 rounded-lg border border-[#B9D8CC] bg-[#2FA084] px-3 text-[11px] font-black tracking-[0.08em] text-white shadow-sm transition hover:bg-[#1F6F5F] disabled:opacity-60"
-                  >
-                    {isEnrolling ? "Starting..." : "Start roadmap"}
-                  </button>
-                )}
-              </div>
-            </div>
+            <RoadmapViewerLearningControls
+              progressPercent={progressPercent}
+              isEnrolled={isEnrolled}
+              hasAvailableUpdate={Boolean(availableUpdate)}
+              isEnrolling={isEnrolling}
+              onOpenGuide={handleOpenGuide}
+              onEnroll={handleEnroll}
+            />
 
             {nodes.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8">

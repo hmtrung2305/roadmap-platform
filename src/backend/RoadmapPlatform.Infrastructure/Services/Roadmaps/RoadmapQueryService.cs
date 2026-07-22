@@ -108,7 +108,7 @@ public sealed class RoadmapQueryService(
         Guid? userId,
         CancellationToken cancellationToken)
     {
-        var roadmapVersionId = await GetPublishedVersionIdBySlugAsync(slug, cancellationToken);
+        var roadmapVersionId = await GetViewerVersionIdBySlugAsync(slug, userId, cancellationToken);
         return await detailBuilder.BuildAsync(roadmapVersionId, userId, cancellationToken);
     }
 
@@ -130,7 +130,7 @@ public sealed class RoadmapQueryService(
         Guid? userId,
         CancellationToken cancellationToken)
     {
-        var roadmapVersionId = await GetPublishedVersionIdBySlugAsync(slug, cancellationToken);
+        var roadmapVersionId = await GetViewerVersionIdBySlugAsync(slug, userId, cancellationToken);
         return await BuildGraphAsync(roadmapVersionId, userId, cancellationToken);
     }
 
@@ -210,7 +210,10 @@ public sealed class RoadmapQueryService(
             learningModules);
     }
 
-    private async Task<Guid> GetPublishedVersionIdBySlugAsync(string slug, CancellationToken cancellationToken)
+    private async Task<Guid> GetViewerVersionIdBySlugAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(slug))
         {
@@ -218,14 +221,41 @@ public sealed class RoadmapQueryService(
         }
 
         var normalizedSlug = slug.Trim().ToLowerInvariant();
-
-        var roadmapVersionId = await (
+        var publishedRoadmap = await (
             from version in dbContext.Set<RoadmapVersion>().AsNoTracking()
             join roadmap in dbContext.Set<Roadmap>().AsNoTracking()
                 on version.RoadmapId equals roadmap.RoadmapId
-            where version.Status == "published" &&
-                  roadmap.Visibility == "public" &&
-                  roadmap.Slug.ToLower() == normalizedSlug
+            where version.Status == "published"
+                && roadmap.Visibility == "public"
+                && roadmap.Slug.ToLower() == normalizedSlug
+            orderby version.MajorVersion descending,
+                    version.MinorVersion descending,
+                    version.PatchVersion descending,
+                    version.VersionNumber descending
+            select new
+            {
+                roadmap.RoadmapId,
+                version.RoadmapVersionId
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (publishedRoadmap == null)
+        {
+            throw new KeyNotFoundException("Roadmap was not found.");
+        }
+
+        if (!userId.HasValue)
+        {
+            return publishedRoadmap.RoadmapVersionId;
+        }
+
+        var enrolledVersionId = await (
+            from enrollment in dbContext.Set<RoadmapEnrollment>().AsNoTracking()
+            join version in dbContext.Set<RoadmapVersion>().AsNoTracking()
+                on enrollment.RoadmapVersionId equals version.RoadmapVersionId
+            where enrollment.UserId == userId.Value
+                && version.RoadmapId == publishedRoadmap.RoadmapId
+                && (version.Status == "published" || version.Status == "archived")
             orderby version.MajorVersion descending,
                     version.MinorVersion descending,
                     version.PatchVersion descending,
@@ -233,12 +263,9 @@ public sealed class RoadmapQueryService(
             select version.RoadmapVersionId)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (roadmapVersionId == Guid.Empty)
-        {
-            throw new KeyNotFoundException("Roadmap was not found.");
-        }
-
-        return roadmapVersionId;
+        return enrolledVersionId == Guid.Empty
+            ? publishedRoadmap.RoadmapVersionId
+            : enrolledVersionId;
     }
 
     private async Task<Dictionary<Guid, CreatorProfileDto>> LoadCreatorProfilesAsync(
@@ -363,9 +390,10 @@ public sealed class RoadmapQueryService(
         var statusByNodeId = RoadmapProgressCalculator.CalculateStatuses(nodes, edges, progressByNodeId);
         var progressSummary = RoadmapProgressCalculator.CalculateRoadmapProgress(nodes, edges, statusByNodeId);
         var estimatedTime = RoadmapEstimatedTimeCalculator.Calculate(nodes, edges);
-        var availableUpdate = enrollment == null
-            ? await detailBuilder.LoadAvailableUpdateAsync(version, userId, cancellationToken)
-            : null;
+        var availableUpdate = await detailBuilder.LoadAvailableUpdateAsync(
+            version,
+            enrollment,
+            cancellationToken);
         var versionHistory = await detailBuilder.LoadVersionHistoryAsync(version.RoadmapId, cancellationToken);
 
         return new RoadmapGraphDto

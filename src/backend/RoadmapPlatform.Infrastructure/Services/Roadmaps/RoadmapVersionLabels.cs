@@ -21,6 +21,29 @@ internal static class RoadmapVersionLabels
             .ThenByDescending(version => version.VersionNumber);
     }
 
+    public static string? GetChangeType(RoadmapVersion targetVersion, RoadmapVersion sourceVersion)
+    {
+        if (targetVersion.MajorVersion > sourceVersion.MajorVersion)
+        {
+            return "major";
+        }
+
+        if (targetVersion.MajorVersion == sourceVersion.MajorVersion
+            && targetVersion.MinorVersion > sourceVersion.MinorVersion)
+        {
+            return "minor";
+        }
+
+        if (targetVersion.MajorVersion == sourceVersion.MajorVersion
+            && targetVersion.MinorVersion == sourceVersion.MinorVersion
+            && targetVersion.PatchVersion > sourceVersion.PatchVersion)
+        {
+            return "patch";
+        }
+
+        return null;
+    }
+
     public static string RemoveLegacyVersionSuffix(string title)
     {
         return LegacyVersionSuffixPattern.Replace(title, string.Empty).Trim();
