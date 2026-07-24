@@ -6,6 +6,9 @@ using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
+    /// <summary>
+    /// Provides the catalogs required to complete a skill-gap assessment.
+    /// </summary>
     [ApiController]
     [Route("api/")]
     public class SkillGapCatalogController : ControllerBase

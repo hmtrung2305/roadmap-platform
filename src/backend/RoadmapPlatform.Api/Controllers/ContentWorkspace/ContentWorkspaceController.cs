@@ -7,6 +7,9 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.ContentWorkspace;
 
+/// <summary>
+/// Provides the content-manager workspace overview.
+/// </summary>
 [ApiController]
 [Route("api/content/workspace")]
 public sealed class ContentWorkspaceController(

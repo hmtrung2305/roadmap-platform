@@ -6,6 +6,9 @@ using RoadmapPlatform.Application.Interfaces.AiCredits;
 
 namespace RoadmapPlatform.Api.Controllers.AiCredits
 {
+    /// <summary>
+    /// Exposes the authenticated user's AI-credit balance and usage status.
+    /// </summary>
     [ApiController]
     [Route("api/ai-credits")]
     public class AiCreditsController : ControllerBase

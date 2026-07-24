@@ -7,6 +7,9 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
+/// <summary>
+/// Exposes learner-facing module discovery, enrollment, lessons, progress, and quizzes.
+/// </summary>
 [ApiController]
 [Route("api/learning-modules")]
 public sealed class LearningModulesController(

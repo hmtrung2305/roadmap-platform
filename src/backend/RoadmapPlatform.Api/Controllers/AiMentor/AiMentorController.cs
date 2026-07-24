@@ -9,6 +9,9 @@ using RoadmapPlatform.Application.Interfaces.AiMentor;
 
 namespace RoadmapPlatform.Api.Controllers.AiMentor
 {
+    /// <summary>
+    /// Manages AI mentor conversations, messages, and conversation lifecycle.
+    /// </summary>
     [ApiController]
     [Route("api/ai-mentor")]
     [RequirePermission(PermissionConstant.AI_MENTOR_CHAT_USE_SELF)]

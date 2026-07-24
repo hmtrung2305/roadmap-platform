@@ -7,6 +7,9 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Provides learner-facing access to published roadmaps and their graph structure.
+/// </summary>
 [ApiController]
 [Route("api/roadmaps")]
 public sealed class RoadmapsController(IRoadmapQueryService roadmapQueryService) : ControllerBase

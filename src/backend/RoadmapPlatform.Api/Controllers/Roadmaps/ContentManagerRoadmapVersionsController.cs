@@ -10,6 +10,9 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Manages validation, publication, archiving, and structure updates for roadmap versions.
+/// </summary>
 [ApiController]
 [Route("api/content/roadmap-versions")]
 public sealed class ContentManagerRoadmapVersionsController(

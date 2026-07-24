@@ -9,6 +9,9 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
+/// <summary>
+/// Manages quiz configuration and questions for learning-module authors.
+/// </summary>
 [ApiController]
 [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]
 [Route("api/content/learning-modules/{moduleId:guid}/quiz")]

@@ -7,6 +7,9 @@ using RoadmapPlatform.Application.Interfaces.Security;
 
 namespace RoadmapPlatform.Api.Filters;
 
+/// <summary>
+/// Validates the CAPTCHA token supplied to an action before the action executes.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class RequireCaptchaAttribute : Attribute, IAsyncActionFilter
 {

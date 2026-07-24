@@ -10,6 +10,9 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Manages roadmap drafts owned by content managers.
+/// </summary>
 [ApiController]
 [Route("api/content/roadmaps")]
 public sealed class ContentManagerRoadmapsController(

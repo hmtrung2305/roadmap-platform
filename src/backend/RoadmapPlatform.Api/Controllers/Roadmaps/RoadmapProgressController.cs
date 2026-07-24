@@ -7,6 +7,9 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Updates learner progress for nodes in a roadmap enrollment.
+/// </summary>
 [ApiController]
 [Route("api/roadmap-enrollments/{roadmapEnrollmentId:guid}/nodes")]
 public sealed class RoadmapProgressController(

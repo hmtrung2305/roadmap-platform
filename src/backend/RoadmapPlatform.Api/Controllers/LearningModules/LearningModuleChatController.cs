@@ -9,6 +9,9 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
+/// <summary>
+/// Answers learner questions using the context of an enrolled learning module.
+/// </summary>
 [ApiController]
 [RequirePermission(PermissionConstant.LEARNING_MODULE_CHAT_USE_ENROLLED)]
 [EnableRateLimiting(RateLimitPolicyNames.AiExpensive)]

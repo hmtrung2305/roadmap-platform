@@ -11,6 +11,9 @@ using RoadmapPlatform.Infrastructure.Configurations;
 
 namespace RoadmapPlatform.Api.Controllers.MarketPulse;
 
+/// <summary>
+/// Receives authenticated machine-to-machine Market Pulse refresh operations.
+/// </summary>
 [ApiController]
 [AllowAnonymous]
 [EnableRateLimiting(RateLimitPolicyNames.AdminMutation)]

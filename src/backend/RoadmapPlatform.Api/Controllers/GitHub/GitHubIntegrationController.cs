@@ -8,6 +8,9 @@ using RoadmapPlatform.Application.Interfaces.GitHub;
 
 namespace RoadmapPlatform.Api.Controllers.GitHub
 {
+    /// <summary>
+    /// Synchronizes GitHub repositories and generates repository insights.
+    /// </summary>
     [Route("api/integrations/github")]
     [ApiController]
     public class GitHubIntegrationController : ControllerBase

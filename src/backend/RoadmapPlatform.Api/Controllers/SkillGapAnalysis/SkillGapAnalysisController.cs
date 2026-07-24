@@ -8,6 +8,9 @@ using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGap
 {
+    /// <summary>
+    /// Calculates and returns skill-gap analysis for the authenticated learner.
+    /// </summary>
     [ApiController]
     [Route("api/")]
     public class SkillGapAnalysisController : ControllerBase

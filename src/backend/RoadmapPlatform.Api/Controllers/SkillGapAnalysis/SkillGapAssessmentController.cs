@@ -6,6 +6,9 @@ using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
+    /// <summary>
+    /// Manages learner skill-gap assessment answers and submission.
+    /// </summary>
     [ApiController]
     [Route("api/")]
     public class SkillGapAssessmentController : ControllerBase

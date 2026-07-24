@@ -8,6 +8,9 @@ using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
+    /// <summary>
+    /// Manages skill-gap category configuration for authorized users.
+    /// </summary>
     [ApiController]
     [Route("api/")]
     public class SkillGapConfigurationController : ControllerBase

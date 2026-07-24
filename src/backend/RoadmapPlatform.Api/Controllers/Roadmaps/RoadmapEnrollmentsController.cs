@@ -8,6 +8,9 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Manages learner enrollment in published roadmaps.
+/// </summary>
 [ApiController]
 [Route("api/roadmap-enrollments")]
 public sealed class RoadmapEnrollmentsController(

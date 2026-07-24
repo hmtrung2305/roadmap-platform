@@ -9,6 +9,9 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
+/// <summary>
+/// Manages the authoring, publication, archiving, and preview of learning modules.
+/// </summary>
 [ApiController]
 [Route("api/content/learning-modules")]
 public sealed class ContentManagerLearningModulesController(

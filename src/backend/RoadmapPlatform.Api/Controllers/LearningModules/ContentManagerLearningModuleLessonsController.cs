@@ -11,6 +11,9 @@ using RoadmapPlatform.Application.Interfaces.LearningModules;
 
 namespace RoadmapPlatform.Api.Controllers.LearningModules;
 
+/// <summary>
+/// Manages lesson content and ordering for learning-module authors.
+/// </summary>
 [ApiController]
 [Route("api/content/learning-modules/{moduleId:guid}/lessons")]
 public sealed class ContentManagerLearningModuleLessonsController(

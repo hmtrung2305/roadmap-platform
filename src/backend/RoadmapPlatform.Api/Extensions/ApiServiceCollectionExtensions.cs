@@ -46,7 +46,7 @@ namespace RoadmapPlatform.Api.Extensions
         ///
         /// It does not configure authentication, authorization, database access,
         /// or business services. Those are registered in other extension files.
-        /// </remark>
+        /// </remarks>
         public static IServiceCollection AddApiServices(
             this IServiceCollection services,
             IConfiguration configuration)

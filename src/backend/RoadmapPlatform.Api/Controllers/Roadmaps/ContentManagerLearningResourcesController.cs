@@ -8,6 +8,9 @@ using RoadmapPlatform.Application.Interfaces.LearningResources;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Manages the learning-resource catalog used by content managers.
+/// </summary>
 [ApiController]
 [Route("api/content/learning-resources")]
 public sealed class ContentManagerLearningResourcesController(

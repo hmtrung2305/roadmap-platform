@@ -10,6 +10,9 @@ using RoadmapPlatform.Infrastructure.Services.MarketPulse;
 
 namespace RoadmapPlatform.Api.Controllers.MarketPulse;
 
+/// <summary>
+/// Provides administrative Market Pulse refresh, import, failure, and classifier operations.
+/// </summary>
 [ApiController]
 [Route("api/market-pulse/admin")]
 [RequirePermission(PermissionConstant.MARKET_PULSE_MANAGE_ANY)]

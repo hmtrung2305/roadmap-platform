@@ -8,6 +8,9 @@ using RoadmapPlatform.Application.Interfaces.Skills;
 
 namespace RoadmapPlatform.Api.Controllers.Skills;
 
+/// <summary>
+/// Manages skills available to content managers.
+/// </summary>
 [ApiController]
 [Route("api/content/skills")]
 public sealed class ContentManagerSkillsController(

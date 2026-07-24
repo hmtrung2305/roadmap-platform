@@ -7,6 +7,9 @@ using RoadmapPlatform.Infrastructure.Data;
 
 namespace RoadmapPlatform.Api.Controllers.System
 {
+    /// <summary>
+    /// Provides service health and API availability endpoints.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class HomeController : ControllerBase

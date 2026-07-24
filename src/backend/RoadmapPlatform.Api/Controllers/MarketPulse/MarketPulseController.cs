@@ -6,6 +6,9 @@ using RoadmapPlatform.Application.Interfaces.MarketPulse;
 
 namespace RoadmapPlatform.Api.Controllers.MarketPulse;
 
+/// <summary>
+/// Exposes public Market Pulse analytics, trends, distributions, and insights.
+/// </summary>
 [ApiController]
 [Route("api/market-pulse")]
 public sealed class MarketPulseController(IMarketPulseService marketPulseService) : ControllerBase

@@ -8,6 +8,9 @@ using System.Security.Claims;
 
 namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
 {
+    /// <summary>
+    /// Provides the authenticated learner's skill-gap analysis history.
+    /// </summary>
     [ApiController]
     [Route("api/")]
     public class SkillGapHistoryController : ControllerBase

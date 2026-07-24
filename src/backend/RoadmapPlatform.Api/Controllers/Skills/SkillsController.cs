@@ -7,6 +7,9 @@ using RoadmapPlatform.Application.Interfaces.Skills;
 
 namespace RoadmapPlatform.Api.Controllers.Skills;
 
+/// <summary>
+/// Provides the public skill lookup catalog.
+/// </summary>
 [ApiController]
 [Route("api/skills")]
 public sealed class SkillsController(ISkillLookupService skillLookupService) : ControllerBase

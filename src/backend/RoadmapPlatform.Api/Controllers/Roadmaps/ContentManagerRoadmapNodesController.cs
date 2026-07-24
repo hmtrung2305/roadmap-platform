@@ -9,6 +9,9 @@ using RoadmapPlatform.Application.Interfaces.Roadmaps.ContentManagement;
 
 namespace RoadmapPlatform.Api.Controllers.Roadmaps;
 
+/// <summary>
+/// Manages nodes and edges in draft roadmap versions.
+/// </summary>
 [ApiController]
 [Route("api/content/roadmap-nodes")]
 [RequirePermission(PermissionConstant.ROADMAP_DRAFT_UPDATE_OWN)]
