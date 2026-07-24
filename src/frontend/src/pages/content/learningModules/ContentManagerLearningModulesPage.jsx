@@ -21,7 +21,7 @@ import {
   getLearningModuleRouteSegment,
 } from "../../../api/learningModuleApi";
 import AppSelect from "../../../components/common/AppSelect";
-import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 import {
   getStatusTone,
   ModuleBadge,

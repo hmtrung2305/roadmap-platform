@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 import { contentManagerRoadmapApi } from "../../../api/contentRoadmapApi";
 import { getFriendlyApiErrorMessage } from "../../../utils/apiErrorUtils";
 import AppSelect from "../../../components/common/AppSelect";
-import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 import {
   ModuleBadge,
   ModuleButton,

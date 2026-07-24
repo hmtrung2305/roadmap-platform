@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import ConfirmActionDialog from "../../learningModules/components/ConfirmActionDialog";
-
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 export default function RoadmapMigrationNotice({
   availableUpdate,
   isMigrating = false,
@@ -17,8 +16,7 @@ export default function RoadmapMigrationNotice({
   const targetVersionLabel = availableUpdate.targetVersionLabel || "new version";
   const targetTitle = availableUpdate.title?.trim();
   const migrationDescription = [
-    `Move your enrollment from ${currentVersionLabel} to ${targetVersionLabel}${
-      targetTitle ? ` (${targetTitle})` : ""
+    `Move your enrollment from ${currentVersionLabel} to ${targetVersionLabel}${targetTitle ? ` (${targetTitle})` : ""
     }.`,
     isMajorUpdate
       ? "This major update may change the roadmap structure and required learning path."

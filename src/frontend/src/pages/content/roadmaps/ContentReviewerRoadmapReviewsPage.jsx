@@ -18,7 +18,7 @@ import {
 import { toast } from "react-toastify";
 
 import { contentManagerRoadmapApi } from "../../../api/contentRoadmapApi";
-import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 import {
   inputClass,
   ModuleBadge,

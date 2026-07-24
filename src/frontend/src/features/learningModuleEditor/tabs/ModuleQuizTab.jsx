@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, GripVertical, Minus, Plus, Save, Settings, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { contentManagerLearningModuleApi } from "../../../api/learningModuleApi";
-import ConfirmActionDialog from "../../learningModules/components/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 import { inputClass, numberInputClass, ModuleBadge, ModuleButton, ModuleCard, ModuleEmptyState, ModuleField } from "../../learningModules/components/learningModuleUi";
 import { DirtyStateBadge } from "../EditorControls";
 import { createEmptyQuestionPayload, getEditorStorageKey, getUnsavedQuizQuestions, hasQuestionDraftChanges, hasQuizDraftChanges, isUnsavedQuestion, mergeQuizQuestions, readSessionJson, readSessionValue, removeSessionValue, toQuestionPayload, writeSessionJson, writeSessionValue } from "../editorUtils";
@@ -159,8 +159,8 @@ export default function ModuleQuizTab({ module, quiz, onChanged, onDirtyStateCha
         setQuestions((current) =>
           savedQuestion?.skillModuleQuizQuestionId
             ? current.map((item) =>
-                item.skillModuleQuizQuestionId === question.skillModuleQuizQuestionId ? savedQuestion : item,
-              )
+              item.skillModuleQuizQuestionId === question.skillModuleQuizQuestionId ? savedQuestion : item,
+            )
             : current.filter((item) => item.skillModuleQuizQuestionId !== question.skillModuleQuizQuestionId),
         );
 
@@ -481,13 +481,11 @@ export default function ModuleQuizTab({ module, quiz, onChanged, onDirtyStateCha
                       clearQuestionDragState();
                     }}
                     onClick={() => setActiveQuestionId(question.skillModuleQuizQuestionId)}
-                    className={`relative w-full rounded-lg border px-3 py-3 text-left transition-all duration-150 ${
-                      isActive
+                    className={`relative w-full rounded-lg border px-3 py-3 text-left transition-all duration-150 ${isActive
                         ? "border-[#6FCF97] bg-[#6FCF97]/14 shadow-sm"
                         : "border-[#B9D8CC]/70 bg-white hover:border-[#6FCF97] hover:bg-[#F7F1E8]/55"
-                    } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${
-                      isDropTarget ? "bg-[#F7F1E8]/70" : ""
-                    }`}
+                      } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${isDropTarget ? "bg-[#F7F1E8]/70" : ""
+                      }`}
                   >
                     {showDropBefore && (
                       <div className="absolute left-3 right-3 top-0 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
@@ -495,9 +493,8 @@ export default function ModuleQuizTab({ module, quiz, onChanged, onDirtyStateCha
 
                     <div className="flex items-start gap-3">
                       <GripVertical size={15} className="mt-1 shrink-0 cursor-grab text-slate-400 active:cursor-grabbing" />
-                      <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
-                        isActive ? "bg-[#6FCF97]/24 text-[#1F6F5F]" : "bg-[#F7F1E8] text-slate-600"
-                      }`}>
+                      <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold ${isActive ? "bg-[#6FCF97]/24 text-[#1F6F5F]" : "bg-[#F7F1E8] text-slate-600"
+                        }`}>
                         {index + 1}
                       </div>
 
@@ -557,25 +554,25 @@ export default function ModuleQuizTab({ module, quiz, onChanged, onDirtyStateCha
       </div>
 
       <ConfirmActionDialog
-        isOpen={Boolean(questionToDelete)}
-        tone="danger"
-        title="Delete this question?"
-        description="This question and its options will be removed from the quiz."
+        isOpen={Boolean(deleteQuestionTarget)}
+        title="Delete question?"
+        description="This question and its answers will be permanently removed."
         confirmLabel="Delete question"
-        cancelLabel="Keep question"
-        onCancel={() => setQuestionToDelete(null)}
-        onConfirm={confirmDeleteQuestion}
+        cancelLabel="Cancel"
+        isConfirming={isDeletingQuestion}
+        onCancel={handleCancelDeleteQuestion}
+        onConfirm={handleConfirmDeleteQuestion}
       />
 
       <ConfirmActionDialog
-        isOpen={Boolean(unsavedQuestionToDelete)}
-        tone="warning"
-        title="Discard this unsaved question?"
-        description="This question has not been saved yet. Discarding it will remove the draft question from this editor."
-        confirmLabel="Discard question"
-        cancelLabel="Keep editing"
-        onCancel={() => setUnsavedQuestionToDelete(null)}
-        onConfirm={confirmDeleteUnsavedQuestion}
+        isOpen={Boolean(deleteOptionTarget)}
+        title="Delete answer option?"
+        description="This answer option will be permanently removed."
+        confirmLabel="Delete option"
+        cancelLabel="Cancel"
+        isConfirming={isDeletingOption}
+        onCancel={handleCancelDeleteOption}
+        onConfirm={handleConfirmDeleteOption}
       />
     </div>
   );
@@ -684,11 +681,10 @@ function QuestionEditorCard({
                       })),
                     })
                   }
-                  className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-extrabold transition ${
-                    option.isCorrect
+                  className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-extrabold transition ${option.isCorrect
                       ? "border-[#6FCF97] bg-[#6FCF97]/24 text-[#1F6F5F]"
                       : "border-[#B9D8CC] bg-white text-slate-500"
-                  }`}
+                    }`}
                   aria-label={`Mark option ${optionIndex + 1} as correct`}
                 >
                   {String.fromCharCode(65 + optionIndex)}
