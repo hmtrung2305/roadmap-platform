@@ -428,9 +428,11 @@ export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexin
                         reorderLessons(draggedLessonId, lesson.skillModuleLessonId, dropTarget?.position || "before");
                         clearDragState();
                       }}
-                      className={`relative border-b border-[#B9D8CC]/60 p-3 transition-all duration-150 last:border-b-0 ${activeLessonId === lesson.skillModuleLessonId ? "bg-[#6FCF97]/10" : "bg-white"
-                        } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${isDropTarget ? "bg-[#F7F1E8]/70" : ""
-                        }`}
+                      className={`relative border-b border-[#B9D8CC]/60 p-3 transition-all duration-150 last:border-b-0 ${
+                        activeLessonId === lesson.skillModuleLessonId ? "bg-[#6FCF97]/10" : "bg-white"
+                      } ${isDragging ? "scale-[0.99] opacity-40" : "opacity-100"} ${
+                        isDropTarget ? "bg-[#F7F1E8]/70" : ""
+                      }`}
                     >
                       {showDropBefore && (
                         <div className="absolute left-3 right-3 top-0 z-10 h-0.5 rounded-full bg-[#1F6F5F] shadow-[0_0_0_3px_rgba(111,207,151,0.18)]" />
@@ -562,18 +564,15 @@ export default function ModuleLessonsTab({ module, lessons, onChanged, onIndexin
       />
 
       <ConfirmActionDialog
-        isOpen={Boolean(deleteLessonTarget)}
-        title="Delete lesson?"
-        description={
-          deleteLessonTarget
-            ? `This will permanently delete "${deleteLessonTarget.title}".`
-            : ""
-        }
+        isOpen={Boolean(lessonToDelete)}
+        tone="danger"
+        title="Delete this lesson?"
+        description="This lesson file and its indexed chunks will be removed from the draft module."
         confirmLabel="Delete lesson"
-        cancelLabel="Cancel"
+        cancelLabel="Keep lesson"
         isConfirming={isDeletingLesson}
-        onCancel={handleCancelDeleteLesson}
-        onConfirm={handleConfirmDeleteLesson}
+        onCancel={() => setLessonToDelete(null)}
+        onConfirm={confirmDeleteLesson}
       />
     </div>
   );
