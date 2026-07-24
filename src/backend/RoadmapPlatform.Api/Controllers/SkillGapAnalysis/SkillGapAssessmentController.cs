@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoadmapPlatform.Api.Authorization;
+using RoadmapPlatform.Api.Extensions;
 using RoadmapPlatform.Application.Constants;
 using RoadmapPlatform.Application.Interfaces.SkillGapAnalysis;
 
@@ -24,10 +25,16 @@ namespace RoadmapPlatform.Api.Controllers.SkillGapAnalysis
         [Authorize]
         [RequirePermission(PermissionConstant.CAREER_ROLE_VIEW_CATALOG)]
         [HttpGet("skill-gap/roadmaps/{roadmapId:guid}/assessment")]
-        public async Task<IActionResult> GetAssessment(Guid roadmapId)
+        public async Task<IActionResult> GetAssessment(
+            Guid roadmapId,
+            CancellationToken cancellationToken)
         {
-            var result = await _skillGapAssessmentService
-                .GetAssessmentAsync(roadmapId);
+            var userId = User.GetUserId();
+
+            var result = await _skillGapAssessmentService.GetAssessmentAsync(
+                userId,
+                roadmapId,
+                cancellationToken);
 
             return Ok(result);
         }
