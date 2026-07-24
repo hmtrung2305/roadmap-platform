@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 
-import ConfirmActionDialog from "../../../features/learningModules/components/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 import {
   ModuleCard,
   ModuleEmptyState,

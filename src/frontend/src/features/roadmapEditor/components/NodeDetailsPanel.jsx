@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, BookOpenText, Plus, Save, Tag, Trash2 } from "lucide-react";
-import ConfirmActionDialog from "../../learningModules/components/ConfirmActionDialog";
+import ConfirmActionDialog from "../../../components/common/ConfirmActionDialog";
 import AppSelect from "../../../components/common/AppSelect";
 
 import { DirtyStateBadge } from "../../learningModuleEditor/EditorControls";
